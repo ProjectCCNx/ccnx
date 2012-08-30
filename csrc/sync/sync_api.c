@@ -560,7 +560,7 @@ struct hash_list {
 // forward declarations
 
 static int
-start_interest(struct sync_diff_data *sdd);
+start_interest(struct sync_diff_data *diff_data);
 
 
 // utilities and stuff
@@ -732,8 +732,8 @@ each_round(struct ccn_schedule *sched,
         }
     } else {
         // do a comparison
-        struct sync_diff_data *sdd = ch->diff_data;
-        switch (sdd->state) {
+        struct sync_diff_data *diff_data = ch->diff_data;
+        switch (diff_data->state) {
             case sync_diff_state_init:
             case sync_diff_state_error:
             case sync_diff_state_done: {
@@ -748,10 +748,10 @@ each_round(struct ccn_schedule *sched,
                     // worth trying
                     ch->next_ce = ce;
                     if (ch->last_ce != NULL)
-                        sdd->hashX = ch->last_ce->hash;
+                        diff_data->hashX = ch->last_ce->hash;
                     if (ch->next_ce != NULL)
-                        sdd->hashY = ch->next_ce->hash;
-                    sync_diff_start(sdd);
+                        diff_data->hashY = ch->next_ce->hash;
+                    sync_diff_start(diff_data);
                 }
             }
             default:
@@ -801,9 +801,9 @@ my_response(struct ccn_closure *selfp,
             struct sync_diff_fetch_data *fd = selfp->data;
             //enum local_flags flags = selfp->intdata;
             if (fd == NULL) break;
-            struct sync_diff_data *sdd = fd->diff_data;
-            if (sdd == NULL) break;
-            struct ccns_handle *ch = sdd->client_data;
+            struct sync_diff_data *diff_data = fd->diff_data;
+            if (diff_data == NULL) break;
+            struct ccns_handle *ch = diff_data->client_data;
             free_fetch_data(ch, fd);
             start_round(ch, 10);
             ret = CCN_UPCALL_RESULT_OK;
@@ -814,11 +814,11 @@ my_response(struct ccn_closure *selfp,
             struct sync_diff_fetch_data *fd = selfp->data;
             enum local_flags flags = selfp->intdata;
             if (fd == NULL) break;
-            struct sync_diff_data *sdd = fd->diff_data;
-            if (sdd == NULL) break;
-            struct SyncRootStruct *root = sdd->root;
+            struct sync_diff_data *diff_data = fd->diff_data;
+            if (diff_data == NULL) break;
+            struct SyncRootStruct *root = diff_data->root;
             if (root == NULL) break;
-            struct ccns_handle *ch = sdd->client_data;
+            struct ccns_handle *ch = diff_data->client_data;
             struct SyncNodeComposite *nc = extractNode(root, info);
             if (ch->debug >= CCNL_FINE) {
                 char fs[1024];
@@ -843,14 +843,14 @@ my_response(struct ccn_closure *selfp,
                                                              info->content_comps);
                 struct ccn_charbuf *uri = SyncUriForName(nm);
                 pos += snprintf(fs+pos, sizeof(fs)-pos, ", %s", ccn_charbuf_as_string(uri));
-                SyncNoteSimple(sdd->root, here, fs);
+                SyncNoteSimple(diff_data->root, here, fs);
                 ccn_charbuf_destroy(&nm);
                 ccn_charbuf_destroy(&uri);
             }
             if (nc != NULL) {
                 // the node exists, so store it
                 // TBD: check the hash?
-                struct ccns_handle *ch = sdd->client_data;
+                struct ccns_handle *ch = diff_data->client_data;
                 struct SyncHashCacheEntry *ce = SyncHashEnter(root->ch,
                                                               nc->hash->buf, nc->hash->length,
                                                               SyncHashState_remote);
@@ -874,7 +874,7 @@ my_response(struct ccn_closure *selfp,
                     start_round(ch, 10);
                 } else {
                     // from sync_diff
-                    sync_diff_note_node(sdd, ce);
+                    sync_diff_note_node(diff_data, ce);
                 }
                 ret = CCN_UPCALL_RESULT_OK;
             }
@@ -910,10 +910,10 @@ advise_interest_arrived(struct ccn_closure *selfp,
                 ret = CCN_UPCALL_RESULT_OK;
                 break;
             }
-            struct sync_diff_data *sdd = ch->diff_data;
+            struct sync_diff_data *diff_data = ch->diff_data;
             struct SyncRootStruct *root = ch->root;
             //struct SyncBaseStruct *base = root->base;
-            int skipToHash = SyncComponentCount(sdd->root->topoPrefix) + 2;
+            int skipToHash = SyncComponentCount(diff_data->root->topoPrefix) + 2;
             // skipToHash gets to the new hash
             // topo + marker + sliceHash
             const unsigned char *hp = NULL;
@@ -927,7 +927,7 @@ advise_interest_arrived(struct ccn_closure *selfp,
             int cres = ccn_name_comp_get(info->interest_ccnb, info->interest_comps, skipToHash, &hp, &hs);
             if (cres < 0) {
                 if (ch->debug >= CCNL_INFO)
-                    SyncNoteSimple(sdd->root, here, "wrong number of interest name components");
+                    SyncNoteSimple(diff_data->root, here, "wrong number of interest name components");
                 break;
             }
             struct SyncHashCacheEntry *ce = SyncHashEnter(root->ch, hp, hs,
@@ -935,13 +935,13 @@ advise_interest_arrived(struct ccn_closure *selfp,
             if (ce == NULL || ce->state & SyncHashState_covered) {
                 // should not be added
                 if (ch->debug >= CCNL_FINE)
-                    SyncNoteSimple(sdd->root, here, "skipped");
+                    SyncNoteSimple(diff_data->root, here, "skipped");
             } else {
                 // remember the remote hash, maybe start something
                 if (ch->debug >= CCNL_FINE)
-                    SyncNoteSimple(sdd->root, here, "noting");
+                    SyncNoteSimple(diff_data->root, here, "noting");
                 ch->hashSeen = SyncNoteHash(ch->hashSeen, ce);
-                start_interest(sdd);
+                start_interest(diff_data);
             }
             ret = CCN_UPCALL_RESULT_OK;
             break;
@@ -954,13 +954,13 @@ advise_interest_arrived(struct ccn_closure *selfp,
 }
 
 static int
-start_interest(struct sync_diff_data *sdd) {
+start_interest(struct sync_diff_data *diff_data) {
     static char *here = "sync_track.start_interest";
-    struct SyncRootStruct *root = sdd->root;
+    struct SyncRootStruct *root = diff_data->root;
     struct SyncBaseStruct *base = root->base;
-    struct ccns_handle *ch = sdd->client_data;
+    struct ccns_handle *ch = diff_data->client_data;
     struct SyncHashCacheEntry *ce = ch->next_ce;
-    struct ccn_charbuf *prefix = SyncCopyName(sdd->root->topoPrefix);
+    struct ccn_charbuf *prefix = SyncCopyName(diff_data->root->topoPrefix);
     int res = 0;
     struct ccn *ccn = base->sd->ccn;
     if (ccn == NULL)
@@ -982,7 +982,7 @@ start_interest(struct sync_diff_data *sdd) {
     SyncFreeNameAccumAndNames(excl);
     struct ccn_closure *action = calloc(1, sizeof(*action));
     struct sync_diff_fetch_data *fetch_data = calloc(1, sizeof(*fetch_data));
-    fetch_data->diff_data = sdd;
+    fetch_data->diff_data = diff_data;
     fetch_data->action = action;
     fetch_data->startTime = SyncCurrentTime();
     // note: no ce available yet
@@ -994,7 +994,7 @@ start_interest(struct sync_diff_data *sdd) {
     res |= ccn_express_interest(ccn, prefix, action, template);
     ccn_charbuf_destroy(&template);
     if (ch->debug >= CCNL_FINE) {
-        SyncNoteUri(sdd->root, here, "start_interest", prefix);
+        SyncNoteUri(diff_data->root, here, "start_interest", prefix);
     }
     if (res < 0) {
         SyncNoteFailed(root, here, "ccn_express_interest failed", __LINE__);
@@ -1010,9 +1010,9 @@ static int
 my_get(struct sync_diff_get_closure *gc,
        struct sync_diff_fetch_data *fd) {
     char *here = "sync_track.my_get";
-    struct sync_diff_data *sdd = gc->diff_data;
-    struct ccns_handle *ch = sdd->client_data;
-    struct SyncRootStruct *root = sdd->root;
+    struct sync_diff_data *diff_data = gc->diff_data;
+    struct ccns_handle *ch = diff_data->client_data;
+    struct SyncRootStruct *root = diff_data->root;
     struct SyncBaseStruct *base = root->base;
     struct SyncHashCacheEntry *ce = fd->hash_cache_entry;
     int res = 0;
@@ -1023,7 +1023,7 @@ my_get(struct sync_diff_get_closure *gc,
         return SyncNoteFailed(root, here, "bad cache entry", __LINE__);
     // first, check for existing fetch of same hash
     struct ccn_charbuf *hash = ce->hash;
-    struct ccn_charbuf *name = SyncCopyName(sdd->root->topoPrefix);
+    struct ccn_charbuf *name = SyncCopyName(diff_data->root->topoPrefix);
     ccn_name_append_str(name, "\xC1.S.nf");
     res |= ccn_name_append(name, root->sliceHash->buf, root->sliceHash->length);
     if (hash == NULL || hash->length == 0)
@@ -1031,7 +1031,7 @@ my_get(struct sync_diff_get_closure *gc,
     else
         res |= ccn_name_append(name, ce->hash->buf, ce->hash->length);
     if (ch->debug >= CCNL_FINE) {
-        SyncNoteUri(sdd->root, here, "starting", name);
+        SyncNoteUri(diff_data->root, here, "starting", name);
     }
     // note, this fd belongs to sync_diff, not us
     struct ccn_closure *action = calloc(1, sizeof(*action));
@@ -1059,23 +1059,23 @@ my_get(struct sync_diff_get_closure *gc,
 static int
 my_add(struct sync_diff_add_closure *ac, struct ccn_charbuf *name) {
     char *here = "sync_track.my_add";
-    struct sync_diff_data *sdd = ac->diff_data;
-    struct ccns_handle *ch = sdd->client_data;
+    struct sync_diff_data *diff_data = ac->diff_data;
+    struct ccns_handle *ch = diff_data->client_data;
     if (name == NULL) {
         // end of comparison, so fire off another round
-        struct SyncRootStruct *root = sdd->root;
+        struct SyncRootStruct *root = diff_data->root;
         // struct ccn_charbuf *hash = ch->next_ce->hash;
         struct SyncHashCacheEntry *ce = ch->next_ce;
         int delay = 1000000;
         if (ch->debug >= CCNL_INFO) {
             char temp[1024];
             int pos = 0;
-            ch->add_accum += sdd->namesAdded;
+            ch->add_accum += diff_data->namesAdded;
             pos += snprintf(temp+pos, sizeof(temp)-pos, "added %jd, accum %jd",
-                            (intmax_t) sdd->namesAdded, (intmax_t) ch->add_accum);
-            SyncNoteSimple(sdd->root, here, temp);
+                            (intmax_t) diff_data->namesAdded, (intmax_t) ch->add_accum);
+            SyncNoteSimple(diff_data->root, here, temp);
         }
-        if (sdd->state == sync_diff_state_done) {
+        if (diff_data->state == sync_diff_state_done) {
             // successful difference, so next_ce is covered
             ce->state |= SyncHashState_covered;
             delay = 10000;
@@ -1104,7 +1104,7 @@ my_add(struct sync_diff_add_closure *ac, struct ccn_charbuf *name) {
         }
         SyncNameAccumAppend(ch->namesToAdd, SyncCopyName(name), 0);
         if (ch->debug >= CCNL_INFO)
-            SyncNoteUri(sdd->root, here, "adding", name);
+            SyncNoteUri(diff_data->root, here, "adding", name);
         if (ch->nc != NULL) {
             // callback per name
             struct ccn_charbuf *lhash = ((ch->last_ce != NULL)
@@ -1160,15 +1160,15 @@ ccns_open(struct ccn *h,
     struct ccns_handle *ch = calloc(1, sizeof(*ch));
     struct SyncBaseStruct *base = NULL;
     struct SyncRootStruct *root = NULL;
-    struct sync_depends_data *sd = NULL;
+    struct sync_depends_data *depends_data = NULL;
 
     if (nc == NULL || nc->callback == NULL) return NULL;
     
-    sd = calloc(1, sizeof(*sd));
-    sd->client_methods = &client_methods;
-    sd->ccn = h;
-    sd->sched = ccn_get_schedule(h);
-    if (sd->sched == NULL) {
+    depends_data = calloc(1, sizeof(*depends_data));
+    depends_data->client_methods = &client_methods;
+    depends_data->ccn = h;
+    depends_data->sched = ccn_get_schedule(h);
+    if (depends_data->sched == NULL) {
         struct ccn_schedule *schedule;
         struct ccn_gettime *timer = calloc(1, sizeof(*timer));
         timer->descr[0]='S';
@@ -1177,30 +1177,30 @@ ccns_open(struct ccn *h,
         timer->data = h;
         schedule = ccn_schedule_create(h, timer);
         ccn_set_schedule(h, schedule);
-        sd->sched = schedule;
+        depends_data->sched = schedule;
     }
-    ch->depends_data = sd;
+    ch->depends_data = depends_data;
     ch->nc = nc;
     nc->ccns = ch;
     ch->ccn = h;
     
     // gen the closure for diff data
-    struct sync_diff_data *sdd = calloc(1, sizeof(*sdd));
+    struct sync_diff_data *diff_data = calloc(1, sizeof(*diff_data));
     struct sync_diff_get_closure *get_closure = calloc(1, sizeof(*get_closure));
     struct sync_diff_add_closure *add_closure = calloc(1, sizeof(*add_closure));
-    sdd->add_closure = add_closure;
-    add_closure->diff_data = sdd;
+    diff_data->add_closure = add_closure;
+    add_closure->diff_data = diff_data;
     add_closure->add = my_add;
     add_closure->data = ch;
-    sdd->get_closure = get_closure;
-    get_closure->diff_data = sdd;
+    diff_data->get_closure = get_closure;
+    get_closure->diff_data = diff_data;
     get_closure->get = my_get;
     get_closure->data = ch;
     
-    sdd->hashX = NULL;
-    sdd->hashY = NULL;
-    sdd->client_data = ch;
-    ch->diff_data = sdd;
+    diff_data->hashX = NULL;
+    diff_data->hashY = NULL;
+    diff_data->client_data = ch;
+    ch->diff_data = diff_data;
     
     // gen the closure for update data
     struct sync_done_closure *done_closure = calloc(1, sizeof(*done_closure));
@@ -1212,7 +1212,7 @@ ccns_open(struct ccn *h,
     update_data->client_data = ch;
     ch->update_data = update_data;
     
-    base = SyncNewBase(sd);
+    base = SyncNewBase(depends_data);
     ch->base = base;
     struct sync_depends_sync_methods *sync_methods = ch->depends_data->sync_methods;
     if (sync_methods!= NULL && sync_methods->sync_start != NULL) {
@@ -1228,11 +1228,11 @@ ccns_open(struct ccn *h,
     root = SyncAddRoot(base, base->priv->syncScope,
                        slice->topo, slice->prefix, NULL);
     ch->root = root;
-    sdd->root = root;
+    diff_data->root = root;
     update_data->root = root;
     
     // register the root advise interest listener
-    struct ccn_charbuf *prefix = SyncCopyName(sdd->root->topoPrefix);
+    struct ccn_charbuf *prefix = SyncCopyName(diff_data->root->topoPrefix);
     ccn_name_append_str(prefix, "\xC1.S.ra");
     ccn_name_append(prefix, root->sliceHash->buf, root->sliceHash->length);
     struct ccn_closure *action = NEW_STRUCT(1, ccn_closure);
@@ -1282,15 +1282,15 @@ ccns_close(struct ccns_handle **sh,
                 ccn_schedule_cancel(ch->depends_data->sched, ev);
             }
             // stop any differencing
-            struct sync_diff_data *sdd = ch->diff_data;
-            if (sdd != NULL) {
+            struct sync_diff_data *diff_data = ch->diff_data;
+            if (diff_data != NULL) {
                 // no more differencing
                 ch->diff_data = NULL;
-                free(sdd->add_closure);
-                sdd->add_closure = NULL;
-                free(sdd->get_closure);
-                sdd->get_closure = NULL;
-                sync_diff_stop(sdd);
+                free(diff_data->add_closure);
+                diff_data->add_closure = NULL;
+                free(diff_data->get_closure);
+                diff_data->get_closure = NULL;
+                sync_diff_stop(diff_data);
             }
             // stop any updating
             struct sync_update_data *ud = ch->update_data;
