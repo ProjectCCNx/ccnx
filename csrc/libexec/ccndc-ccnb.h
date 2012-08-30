@@ -44,6 +44,23 @@ void
 ccndc_destroy (struct ccndc_data **data);
 
 /**
+ * @brief Select a correct command based on the supplied argument
+ * @param self          data pointer to "this"
+ * @param check_only    flag indicating that only command checking is requested (no messages are exchanged with ccnd)
+ * @param cmd           command name (e.g., add, del, or destroyface)
+ * @param options       command options
+ * @param num_options   number of command line options (not checked if < 0)
+ * @returns 0 on success, non zero means error, -99 means command line error
+ */
+int
+ccndc_dispatch_cmd (struct ccndc_data *self,
+                    int check_only,
+                    const char *cmd,
+                    const char *options,
+                    int num_options);
+
+
+/**
  * @brief Create a new FIB entry if it doesn't exist
  *
  * The call also automatically creates a face (if it doesn't exist)
@@ -54,6 +71,7 @@ ccndc_destroy (struct ccndc_data **data);
  * @param self          data pointer to "this"
  * @param check_only    flag indicating that only command checking is requested (nothing will be created)
  * @param cmd           add command without leading 'add' component
+ * @returns 0 on success
  */
 int
 ccndc_add (struct ccndc_data *self,
@@ -73,6 +91,7 @@ ccndc_add (struct ccndc_data *self,
  * @param self          data pointer to "this"
  * @param check_only    flag indicating that only command checking is requested (nothing will be removed)
  * @param cmd           del command without leading 'del' component
+ * @returns 0 on success
  */
 int
 ccndc_del (struct ccndc_data *self,
@@ -88,6 +107,7 @@ ccndc_del (struct ccndc_data *self,
  * @param self          data pointer to "this"
  * @param check_only    flag indicating that only command checking is requested (nothing will be destroyed)
  * @param cmd           destroyface command without leading 'destroyface' component
+ * @returns 0 on success
  */
 int
 ccndc_destroyface (struct ccndc_data *self,
@@ -119,20 +139,6 @@ struct ccndc_data
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 
-// struct ccndc_prefix_entry *
-// initialize_prefix_entry (void);
-
-// void
-// destroy_prefix_entry (struct ccndc_prefix_entry **entry);
-
-// int
-// parse_prefix_entry (struct ccndc_prefix_entry *entry,
-//                     char *cmd_uri,
-//                     char *cmd_proto,
-//                     char *cmd_host, char *cmd_port,
-//                     char *cmd_flags,
-//                     char *cmd_mcastttl, char *cmd_mcastif);
-
 struct ccn_forwarding_entry *
 parse_ccn_forwarding_entry (struct ccndc_data *self,
                             const char *cmd_uri,
@@ -146,40 +152,8 @@ parse_ccn_face_instance (struct ccndc_data *self,
                          const char *cmd_mcastttl, const char *cmd_mcastif,
                          int freshness);
 
-// struct ccn_forwarding_entry {
-//     const char *         action;         check
-//     struct ccn_charbuf * name_prefix;    check
-//     const unsigned char *ccnd_id;        check
-//     size_t               ccnd_id_size;   check
-//     unsigned             faceid;         
-//     int                  flags;
-//     int                  lifetime;
-//     unsigned char store[48];
-// };
-
-// struct ccn_face_instance {
-//     const char *         action;
-//     const unsigned char *ccnd_id;
-//     size_t               ccnd_id_size;
-//     unsigned             faceid;
-//     struct ccn_sockdescr descr;
-//     int                  lifetime;
-//     struct ccn_charbuf * store;
-// };
-
-// ccn_forwarding_entry
-// struct ccn_forwarding_entry {
-    
-//     struct ccn_charbuf *prefix;
-//     int iflags;
-
-//     struct ccn_face_instance *fi;
-//     // int imcastttl;
-//     // int createface;
-//     // int facenumber;
-//     // char rhostnamebuf [NI_MAXHOST];
-//     // char rhostportbuf [NI_MAXSERV];
-// };
-
+struct ccn_face_instance *
+parse_ccn_face_instance_from_face (struct ccndc_data *self,
+                                   const char *cmd_faceid);
 
 #endif // CCNDC_CCNB_H

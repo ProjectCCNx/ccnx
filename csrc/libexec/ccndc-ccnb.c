@@ -122,6 +122,37 @@ ccndc_destroy (struct ccndc_data **data) {
     }
 }
 
+
+int
+ccndc_dispatch_cmd (struct ccndc_data *ccndc,
+                    int check_only,
+                    const char *cmd,
+                    const char *options,
+                    int num_options)
+{
+    if (strcasecmp (cmd, "add") == 0) {
+        if (num_options >= 0 && (num_options < 2 || num_options > 8))
+            return -99;
+
+        return ccndc_add (ccndc, check_only, options);
+    }
+    else if (strcasecmp (cmd, "del") == 0) {
+        if (num_options >= 0 && (num_options < 2 || num_options > 9))
+            return -99;
+
+        return ccndc_del (ccndc, check_only, options);
+    }
+    else if (strcasecmp (cmd, "destroyface") == 0) {
+        if (num_options >= 0 && num_options != 2)
+            return -99;
+
+        return ccndc_destroyface (ccndc, check_only, options);
+    }
+    else
+        return -99;
+}
+
+
 struct ccn_forwarding_entry *
 parse_ccn_forwarding_entry (struct ccndc_data *self,
                             const char *cmd_uri,
@@ -302,6 +333,42 @@ parse_ccn_face_instance (struct ccndc_data *self,
     }
 
     entry->lifetime = freshness;
+    
+    return entry;
+    
+ ExitOnError:
+    ccn_face_instance_destroy (&entry);
+    return NULL;
+}
+
+struct ccn_face_instance *
+parse_ccn_face_instance_from_face (struct ccndc_data *self,
+                                   const char *cmd_faceid)
+{
+    struct ccn_face_instance *entry = calloc (1, sizeof (struct ccn_face_instance));
+    
+    // allocate storage for Face data
+    entry->store = ccn_charbuf_create ();
+
+    // copy static info
+    entry->ccnd_id = (const unsigned char *)self->ccnd_id;
+    entry->ccnd_id_size = self->ccnd_id_size;
+
+    /* destroy a face - the URI field will hold the face number */
+    if (cmd_faceid == NULL) {
+        ccndc_warn(__LINE__, "command error, missing face number for destroyface\n");
+        goto ExitOnError;
+    }
+
+    char *endptr;
+    int facenumber = strtol (cmd_faceid, &endptr, 10);
+    if ((endptr != &cmd_faceid[strlen (cmd_faceid)]) ||
+        facenumber < 0) {
+        ccndc_warn(__LINE__, "command error invalid face number for destroyface: %d\n", facenumber);
+        goto ExitOnError;
+    }
+
+    entry->faceid = facenumber;
     
     return entry;
     
@@ -536,49 +603,23 @@ ccndc_destroyface (struct ccndc_data *self,
     char *cmd_faceid;
     GET_NEXT_TOKEN (cmd_faceid);
 
-    /* destroy a face - the URI field will hold the face number */
-    if (cmd_faceid == NULL) {
-        ccndc_warn(__LINE__, "command error, missing face number for destroyface\n");
-        ret_code = -1;
-        goto Cleanup;
-    }
-
-    char *endptr;
-    int facenumber = strtol (cmd_faceid, &endptr, 10);
-    if ((endptr != &cmd_faceid[strlen (cmd_faceid)]) ||
-        facenumber < 0) {
-        ccndc_warn(__LINE__, "command error invalid face number for destroyface: %d\n", facenumber);
-        ret_code = -1;
-        goto Cleanup;
-    }
-
-    struct ccn_face_instance *face = calloc (1, sizeof (struct ccn_face_instance));
+    struct ccn_face_instance *face = parse_ccn_face_instance_from_face (self,
+                                                                        cmd_faceid);
     if (face == NULL) {
-        ccndc_warn(__LINE__, "Cannot allocate memory\n");
         ret_code = -1;
-        goto Cleanup;
     }
 
-    // copy static info
-    face->ccnd_id = (const unsigned char *)self->ccnd_id;
-    face->ccnd_id_size = self->ccnd_id_size;
-    
-    if (check_only == 0) {
-        face->faceid = facenumber;
-        
+    if (ret_code == 0 && check_only == 0) {
         struct ccn_face_instance *newface = do_face_action (self, "destroyface", face);
         if (newface == NULL) {
-            ccndc_warn(__LINE__, "Cannot destroy face %d or the face does not exist\n", facenumber);        
+            ccndc_warn(__LINE__, "Cannot destroy face %d or the face does not exist\n", face->faceid);        
         } else {
             ccn_face_instance_destroy (&newface);
         }
     }
     
     ccn_face_instance_destroy (&face);
-    
- Cleanup:
     free (cmd_fixed);
-
     return ret_code;
 }
 

@@ -26,24 +26,29 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <strings.h>
+#include <errno.h>
+
+static int
+read_configfile (struct ccndc_data *ccndc, const char *filename);
 
 static void
 usage (const char *progname)
 {
     fprintf (stderr,
              "Usage:\n"
-             // "%s [-d] [-v] (-f configfile | (add|del|delwithface) uri (udp|tcp) host [port [flags [mcastttl [mcastif]]]])\n"
-             "   %s (add|del) uri (udp|tcp) host [port [flags [mcastttl [mcastif]]]])\n"
+             "   %s [-v] (-f <configfile> | COMMAND)\n"
              // "      -d enter dynamic mode and create FIB entries based on DNS SRV records\n"
-             // "      -f configfile add or delete FIB entries based on contents of configfile\n"
-             // "      -v increase logging level\n"
-             // "         add|del add or delete FIB entry based on parameters\n"
-             // "   delwithface delete FIB entry and associated face\n"
-             // "%s [-v] destroyface faceid\n"
-             // "   destroy face based on face number\n",
-             // progname,
-             , progname);
-    exit(1);
+             "      -f <configfile> add or delete FIB entries based on the content of <configfile>\n"
+             "      -v increase logging level\n"
+             "\n"
+             "   COMMAND can be one of following:\n"
+             "      add <uri> (udp|tcp) <host> [<port> [<flags> [<mcastttl> [<mcastif>]]]])\n"
+             "         to add FIB entry\n"
+             "      del <uri> (udp|tcp) <host> [<port> [<flags> [<mcastttl> [<mcastif> [destroyface]]]]])\n"
+             "         to remove FIB entry and optionally an associated face\n"
+             "      destroyface <faceid>\n"
+             "         destroy face based on face number\n",
+             progname);
 }
 
 char *create_command_from_command_line (int argc, char **argv)
@@ -72,6 +77,8 @@ char *create_command_from_command_line (int argc, char **argv)
     return out;
 }
 
+
+
 int
 main (int argc, char **argv)
 {
@@ -83,151 +90,152 @@ main (int argc, char **argv)
     char *cmd = NULL;
 
     progname = argv[0];
+    
+    while ((opt = getopt(argc, argv, "hvf:")) != -1) {
+        switch (opt) {
+        case 'f':
+            configfile = optarg;
+            break;
+        case 'v':
+            verbose++;
+            break;
+        case 'h':
+        default:
+            usage(progname);
+            return 1;
+        }
+    }
 
-    if (argc == 1) {
+    if (configfile == NULL && optind == argc) {
         usage (progname);
+        return 1;
     }
     
     ccndc = ccndc_initialize ();
     
-    while ((opt = getopt(argc, argv, "h")) != -1) {
-        switch (opt) {
-            // case 'f':
-            //     configfile = optarg;
-            //     break;
-            case 'h':
-            default:
-                usage(progname);
-        }
-    }
-
     if (optind < argc) {
         /* config file cannot be combined with command line */
         if (configfile != NULL) {
+            ccndc_warn (__LINE__, "Config file cannot be combined with command line\n");
             usage(progname);
-        }
-        /* (add|delete) uri type host [port [flags [mcast-ttl [mcast-if]]]] */
-
-        if (argc - optind < 1)
-            usage (progname);
-        
-        if (strcasecmp (argv[optind], "add") == 0) {
-            if (argc - optind < 2 || argc - optind > 8)
-                usage (progname);
-
-            cmd = create_command_from_command_line (argc-optind-1, &argv[optind+1]);
-            res = ccndc_add (ccndc, 0, cmd);
-            free (cmd);
-        }
-        else if (strcasecmp (argv[optind], "del") == 0) {
-            if (argc - optind < 2 || argc - optind > 9)
-                usage (progname);
-
-            cmd = create_command_from_command_line (argc-optind-1, &argv[optind+1]);
-            res = ccndc_del (ccndc, 0, cmd);
-            free (cmd);
-        }
-        else if (strcasecmp (argv[optind], "destroyface") == 0) {
-            if (argc - optind < 2 || argc - optind > 2)
-                usage (progname);
-
-            cmd = create_command_from_command_line (argc-optind-1, &argv[optind+1]);
-            res = ccndc_destroyface (ccndc, 0, cmd);
-            free (cmd);
-        }
-        else {
-            usage (progname);
+            res = 1;
+            goto Cleanup;
         }
         
-        // res = process_command_tokens(pflhead, 0,
-        //                              argv[optind],
-        //                              argv[optind+1],
-        //                              (optind + 2) < argc ? argv[optind+2] : NULL,
-        //                              (optind + 3) < argc ? argv[optind+3] : NULL,
-        //                              (optind + 4) < argc ? argv[optind+4] : NULL,
-        //                              (optind + 5) < argc ? argv[optind+5] : NULL,
-        //                              (optind + 6) < argc ? argv[optind+6] : NULL,
-        //                              (optind + 7) < argc ? argv[optind+7] : NULL);
-        if (res < 0)
-            usage(progname);
+        if (argc - optind < 1) {
+            usage (progname);
+            res = 1;
+            goto Cleanup;
+        }
+        
+        cmd = create_command_from_command_line (argc-optind-1, &argv[optind+1]);
+        res = ccndc_dispatch_cmd (ccndc, 0, argv[optind], cmd, argc - optind);
+        free (cmd);
+        
+        if (res == -99) {
+            usage (progname);
+            res = 1;
+            goto Cleanup;
+        }
     }
     
-    // if (configfile) {
-    //     read_configfile(configfile, pflhead);
-    // }
-    
-    // h = ccn_create();
-    // res = ccn_connect(h, NULL);
-    // if (res < 0) {
-    //     ccn_perror (h, "ccn_connect");
-    //     exit(1);
-    // }
-    
-    // if (pflhead->next) {        
-    //     ccndid_size = get_ccndid(h, ccndid, sizeof(ccndid_storage));
-    //     for (pfl = pflhead->next; pfl != NULL; pfl = pfl->next) {
-    //         process_prefix_face_list_item(h, pfl);
-    //     }
-    //     prefix_face_list_destroy(&pflhead->next);
-    // }
+    if (configfile) {
+        read_configfile (ccndc, configfile);
+    }
 
+ Cleanup:
+    ccndc_destroy (&ccndc);
     return res;
 }
 
+/**
+ * @brief Process configuration file
+ * @param filename
+ *
+ * Processing configuration file in two rounds. First round performs a dry run
+ * to check for errors.  If no erors found, commands are executing if normal mode.
+ */
+static int
+read_configfile (struct ccndc_data *ccndc, const char *filename)
+{
+    int configerrors = 0;
+    int lineno = 0;
 
-// static int
-// read_configfile(const char *filename, struct prefix_face_list_item *pfltail)
-// {
-//     int configerrors = 0;
-//     int lineno = 0;
-//     char *cmd;
-//     char *uri;
-//     char *proto;
-//     char *host;
-//     char *port;
-//     char *flags;
-//     char *mcastttl;
-//     char *mcastif;
-//     FILE *cfg;
-//     char buf[1024];
-//     const char *seps = " \t\n";
-//     char *cp = NULL;
-//     char *last = NULL;
-//     int res;
+    FILE *cfg;
+    char buf [1024];
+    char *cp = NULL;
+    int res = 0;
     
-//     cfg = fopen(filename, "r");
-//     if (cfg == NULL)
-//         ccndc_fatal(__LINE__, "%s (%s)\n", strerror(errno), filename);
+    cfg = fopen(filename, "r");
+    if (cfg == NULL)
+        ccndc_fatal(__LINE__, "%s (%s)\n", strerror(errno), filename);
     
-//     while (fgets((char *)buf, sizeof(buf), cfg)) {
-//         int len;
-//         lineno++;
-//         len = strlen(buf);
-//         if (buf[0] == '#' || len == 0)
-//             continue;
-//         if (buf[len - 1] == '\n')
-//             buf[len - 1] = '\0';
-//         cp = index(buf, '#');
-//         if (cp != NULL)
-//             *cp = '\0';
-        
-//         cmd = strtok_r(buf, seps, &last);
-//         if (cmd == NULL)	/* blank line */
-//             continue;
-//         uri = strtok_r(NULL, seps, &last);
-//         proto = strtok_r(NULL, seps, &last);
-//         host = strtok_r(NULL, seps, &last);
-//         port = strtok_r(NULL, seps, &last);
-//         flags = strtok_r(NULL, seps, &last);
-//         mcastttl = strtok_r(NULL, seps, &last);
-//         mcastif = strtok_r(NULL, seps, &last);
-//         res = process_command_tokens(pfltail, lineno, cmd, uri, proto, host, port, flags, mcastttl, mcastif);
-//         if (res < 0) {
-//             configerrors--;
-//         } else {
-//             pfltail = pfltail->next;
-//         }
-//     }
-//     fclose(cfg);
-//     return (configerrors);
-// }
+    while (fgets((char *)buf, sizeof(buf), cfg)) {
+        int len;
+        lineno++;
+        len = strlen(buf);
+        if (buf[0] == '#' || len == 0)
+            continue;
+        if (buf[len - 1] == '\n')
+            buf[len - 1] = '\0';
+        cp = index(buf, '#');
+        if (cp != NULL)
+            *cp = '\0';
+
+        char *cmd;
+        char *rest_of_the_command = buf;
+        do {
+            cmd = strsep (&rest_of_the_command, " \t");
+        } while (cmd != NULL && cmd[0] == 0);
+
+        if (cmd == NULL) /* blank line */
+            continue;
+
+        // printf (">> %s [%s] <<\n", cmd, rest_of_the_command);
+
+        res = ccndc_dispatch_cmd (ccndc, 1, cmd, rest_of_the_command, -1);
+        if (res < 0) {
+            ccndc_warn (__LINE__, "Error: near line %d\n", lineno);
+            configerrors++;
+        }
+    }
+    fclose(cfg);
+
+    if (configerrors != 0)
+        return (-configerrors);
+
+    //////////////////////////////////////////////////////////////////
+    // Same thing, but actually applying commands
+    //////////////////////////////////////////////////////////////////
+    
+    cfg = fopen(filename, "r");
+    if (cfg == NULL)
+        ccndc_fatal(__LINE__, "%s (%s)\n", strerror(errno), filename);
+
+    while (fgets((char *)buf, sizeof(buf), cfg)) {
+        int len;
+        lineno++;
+        len = strlen(buf);
+        if (buf[0] == '#' || len == 0)
+            continue;
+        if (buf[len - 1] == '\n')
+            buf[len - 1] = '\0';
+        cp = index(buf, '#');
+        if (cp != NULL)
+            *cp = '\0';
+
+        char *cmd;
+        char *rest_of_the_command = buf;
+        do {
+            cmd = strsep (&rest_of_the_command, " \t");
+        } while (cmd != NULL && cmd[0] == 0);
+
+        if (cmd == NULL) /* blank line */
+            continue;
+
+        res += ccndc_dispatch_cmd (ccndc, 0, cmd, rest_of_the_command, -1);
+    }
+    fclose(cfg);
+
+    return res;
+}
