@@ -41,11 +41,35 @@ test:
 # Dependencies below here are checked by depend target
 # but must be updated manually.
 ###############################
-ccndc.o: ccndc.c ccndc.h ccndc-log.h ccndc-srv.h
+ccndc.o: ccndc.c ccndc.h ccndc-log.h ccndc-srv.h \
+	../include/ccn/ccn.h		\
+	../include/ccn/ccnd.h		\
+	../include/ccn/charbuf.h	\
+	../include/ccn/uri.h		\
+	../include/ccn/face_mgmt.h	\
+	../include/ccn/reg_mgmt.h 	\
+	../include/ccn/sockcreate.h	\
+	../include/ccn/signing.h
 
-ccndc-log.o: ccndc-log.h ccndc-log.c ccndc.h
+ccndc-log.o: ccndc-log.h ccndc-log.c ccndc.h \
+	../include/ccn/ccn.h		\
+	../include/ccn/ccnd.h		\
+	../include/ccn/charbuf.h	\
+	../include/ccn/uri.h		\
+	../include/ccn/face_mgmt.h	\
+	../include/ccn/reg_mgmt.h 	\
+	../include/ccn/sockcreate.h	\
+	../include/ccn/signing.h
 
-ccndc-srv.o: ccndc-srv.h ccndc-srv.c ccndc.h ccndc-log.h
+ccndc-srv.o: ccndc-srv.h ccndc-srv.c ccndc.h ccndc-log.h \
+	../include/ccn/ccn.h		\
+	../include/ccn/ccnd.h		\
+	../include/ccn/charbuf.h	\
+	../include/ccn/uri.h		\
+	../include/ccn/face_mgmt.h	\
+	../include/ccn/reg_mgmt.h 	\
+	../include/ccn/sockcreate.h	\
+	../include/ccn/signing.h
 
 udplink.o: udplink.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \

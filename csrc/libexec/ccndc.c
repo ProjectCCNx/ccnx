@@ -109,20 +109,20 @@ ccndc_dispatch_cmd (struct ccndc_data *ccndc,
                     int num_options)
 {
     if (strcasecmp (cmd, "add") == 0) {
-        if (num_options >= 0 && (num_options < 2 || num_options > 8))
+        if (num_options >= 0 && (num_options < 3 || num_options > 8))
             return -99;
 
         return ccndc_add (ccndc, check_only, options);
     }
     else if (strcasecmp (cmd, "del") == 0) {
-        if (num_options >= 0 && (num_options < 2 || num_options > 9))
+        if (num_options >= 0 && (num_options < 3 || num_options > 9))
             return -99;
 
         return ccndc_del (ccndc, check_only, options, 0);
     }
     else if (strcasecmp (cmd, "srv") == 0) {
         // attempt to guess parameters using SRV record of a domain in search list
-        if (num_options != 0)
+        if (num_options >= 0 && num_options != 0)
             return -99;
 
         // doesn't make sense to check srv command
@@ -132,7 +132,7 @@ ccndc_dispatch_cmd (struct ccndc_data *ccndc,
             return 0; // ok
     }
     else if (strcasecmp (cmd, "readd") == 0) {
-        if (num_options >= 0 && (num_options < 2 || num_options > 8))
+        if (num_options >= 0 && (num_options < 3 || num_options > 8))
             return -99;
 
         if (check_only)
@@ -143,7 +143,7 @@ ccndc_dispatch_cmd (struct ccndc_data *ccndc,
         return ccndc_add (ccndc, check_only, options);
     }
     else if (strcasecmp (cmd, "destroyface") == 0) {
-        if (num_options >= 0 && num_options != 2)
+        if (num_options >= 0 && num_options != 1)
             return -99;
 
         return ccndc_destroyface (ccndc, check_only, options);
@@ -415,7 +415,9 @@ ccndc_srv (struct ccndc_data *self,
     
     struct ccn_charbuf *uri = ccn_charbuf_create();
     ccn_charbuf_append_string(uri, "ccnx:/");
-    ccn_uri_append_percentescaped(uri, (const unsigned char *)domain, domain_size);
+    if (domain_size != 0) {
+        ccn_uri_append_percentescaped(uri, (const unsigned char *)domain, domain_size);
+    }
 
     char port_str [10];
     snprintf (port_str, 10, "%d", port);
@@ -439,15 +441,39 @@ ccndc_srv (struct ccndc_data *self,
                                     (~0U) >> 1);
 
     if (face != NULL && prefix != NULL) {
+        // crazy operation
+        // First. "Create" face, which will do nothing if face already exists
+        // Second. Destroy the face
+        // Third. Create face for real
+        
         struct ccn_face_instance *newface =
             ccndc_do_face_action (self, "newface", face);
-
+        
         if (newface == NULL) {
             ccndc_warn (__LINE__, "Cannot create/lookup face");
             res = -1;
             goto Cleanup;
         }
 
+        face->faceid = newface->faceid;
+        ccn_face_instance_destroy (&newface);
+            
+        newface = ccndc_do_face_action (self, "destroyface", face);
+        if (newface == NULL) {
+            ccndc_warn (__LINE__, "Cannot destroy face\n");
+        } else {
+            ccn_face_instance_destroy (&newface);
+        }
+
+        newface =
+            ccndc_do_face_action (self, "newface", face);
+        
+        if (newface == NULL) {
+            ccndc_warn (__LINE__, "Cannot create/lookup face");
+            res = -1;
+            goto Cleanup;
+        }
+        
         prefix->faceid = newface->faceid;
         ccn_face_instance_destroy (&newface);
 

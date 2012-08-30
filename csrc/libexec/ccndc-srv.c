@@ -37,7 +37,7 @@
 #include <arpa/nameser.h>
 #include <resolv.h>
 #include <errno.h>
-#include <ccn/bloom.h>
+// #include <ccn/bloom.h>
 #include <ccn/ccn.h>
 #include <ccn/ccnd.h>
 #include <ccn/charbuf.h>

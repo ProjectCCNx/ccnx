@@ -210,6 +210,7 @@ read_configfile (struct ccndc_data *ccndc, const char *filename)
 
         res = ccndc_dispatch_cmd (ccndc, 1, cmd, rest_of_the_command, -1);
         if (res < 0) {
+            verbose ++;
             ccndc_warn (__LINE__, "Error: near line %d\n", lineno);
             configerrors++;
         }
