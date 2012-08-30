@@ -163,12 +163,9 @@ tv_earlier(const struct timeval *a, const struct timeval *b)
  *        where available.
  */
 void
-ccn_perror(struct ccn *h, const char *s, ...)
+ccn_perror(struct ccn *h, const char *s)
 {
     const char *dlm = ": ";
-    va_list ap;
-    va_start(ap, s);
-    
     if (s == NULL) {
         if (h->err > 0)
             s = strerror(h->err);
@@ -176,10 +173,8 @@ ccn_perror(struct ccn *h, const char *s, ...)
             dlm = s = "";
     }
     // XXX - time stamp
-    fprintf(stderr, "ccn_client.c:%d[%d] - error %d%s",
-                        h->errline, (int)getpid(), h->err, dlm);
-    vfprintf(stderr, s, ap);
-    fprintf(stderr, "\n");
+    fprintf(stderr, "ccn_client.c:%d[%d] - error %d%s%s\n",
+                        h->errline, (int)getpid(), h->err, dlm, s);
 }
 
 static int
