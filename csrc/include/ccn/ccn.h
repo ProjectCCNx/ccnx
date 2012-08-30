@@ -912,6 +912,7 @@ int ccn_encode_StatusResponse(struct ccn_charbuf *buf,
  * ccn_seterror records error info, ccn_geterror gets it.
  */
 void ccn_perror(struct ccn *h, const char *s);
+void ccn_perror2(struct ccn *h, const char *s, ...);
 int ccn_seterror(struct ccn *h, int error_code);
 int ccn_geterror(struct ccn *h);
 

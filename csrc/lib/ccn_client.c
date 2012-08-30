@@ -177,6 +177,36 @@ ccn_perror(struct ccn *h, const char *s)
                         h->errline, (int)getpid(), h->err, dlm, s);
 }
 
+/**
+ * Produce message on standard error output describing the last
+ * error encountered during a call using the given handle.
+ *
+ * Same as ccn_perror, but supports variadic parameters
+ *
+ * @param h is the ccn handle - may not be NULL.
+ * @param s is a client-supplied message; if NULL a message will be supplied
+ *        where available.
+ */
+void
+ccn_perror2(struct ccn *h, const char *s, ...)
+{
+    const char *dlm = ": ";
+    va_list ap;
+    va_start(ap, s);
+    
+    if (s == NULL) {
+        if (h->err > 0)
+            s = strerror(h->err);
+        else
+            dlm = s = "";
+    }
+    // XXX - time stamp
+    fprintf(stderr, "ccn_client.c:%d[%d] - error %d%s",
+            h->errline, (int)getpid(), h->err, dlm);
+    vfprintf(stderr, s, ap);
+    fprintf(stderr, "\n");
+}
+
 static int
 ccn_note_err(struct ccn *h)
 {
@@ -2585,7 +2615,7 @@ ccn_load_key_or_create(struct ccn *h,
     // two cases, either file exists and we password is wrong or file does not exist
 
     if (access (keystore, R_OK) == 0) {
-      ccn_perror (h, "Keystore file [%s] exists, but private key cannot be loaded.  "
+      ccn_perror2 (h, "Keystore file [%s] exists, but private key cannot be loaded.  "
                   "Check if CCNX_KEYSTORE_PASSWORD is set to a correct password, "
                   "otherwise remove [%s] and it will be automatically created.",
                   keystore, keystore);
@@ -2593,12 +2623,12 @@ ccn_load_key_or_create(struct ccn *h,
       return res;
     }
     
-    ccn_perror (h, "Keystore [%s] does not exist and will be automatically created", keystore);
+    ccn_perror2 (h, "Keystore [%s] does not exist and will be automatically created", keystore);
     
     res = ccn_keystore_file_init ((char*)keystore, (char*)password,
                                   "ccnxuser", 0, 3650); // create a key valid for 10 years
     if (res != 0) {
-      ccn_perror (h, "Cannot create keystore [%s]", keystore);
+      ccn_perror2 (h, "Cannot create keystore [%s]", keystore);
       res = NOTE_ERRNO (h);
       return res;
     }
@@ -2609,7 +2639,7 @@ ccn_load_key_or_create(struct ccn *h,
                                default_pubid);
     if (res != 0 || default_pubid->length != key_size) {
       // this definitely should not happen
-      ccn_perror (h, "Cannot load keystore [%s] just after it has been created", keystore);
+      ccn_perror2 (h, "Cannot load keystore [%s] just after it has been created", keystore);
       res = NOTE_ERRNO (h);
       return res;
     }
@@ -2693,7 +2723,7 @@ ccn_chk_signing_params(struct ccn *h,
                     res = mkdir (ccn_charbuf_as_string (temp), S_IRWXU);
                     if (res != 0)
                       {
-                        ccn_perror (h, "Failed to create directory [%s]", ccn_charbuf_as_string (temp));
+                        ccn_perror2 (h, "Failed to create directory [%s]", ccn_charbuf_as_string (temp));
                       }
                   }
                 
