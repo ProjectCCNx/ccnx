@@ -22,6 +22,7 @@
 #include "ccndc.h"
 
 #include "ccndc-log.h"
+#include "ccndc-srv.h"
 
 // #include <limits.h>
 #include <string.h>
@@ -118,6 +119,17 @@ ccndc_dispatch_cmd (struct ccndc_data *ccndc,
             return -99;
 
         return ccndc_del (ccndc, check_only, options, 0);
+    }
+    else if (strcasecmp (cmd, "srv") == 0) {
+        // attempt to guess parameters using SRV record of a domain in search list
+        if (num_options != 0)
+            return -99;
+
+        // doesn't make sense to check srv command
+        if (!check_only)
+            return ccndc_srv (ccndc, NULL, 0);
+        else
+            return 0; // ok
     }
     else if (strcasecmp (cmd, "readd") == 0) {
         if (num_options >= 0 && (num_options < 2 || num_options > 8))
@@ -384,6 +396,77 @@ ccndc_destroyface (struct ccndc_data *self,
     ccn_face_instance_destroy (&face);
     free (cmd_fixed);
     return ret_code;
+}
+
+
+int
+ccndc_srv (struct ccndc_data *self,
+           const char *domain,
+           size_t domain_size)
+{
+    char *proto = NULL;
+    char *host = NULL;
+    int port = 0;
+
+    int res = ccndc_query_srv ((const unsigned char *)domain, domain_size, &host, &port, &proto);
+    if (res < 0) {
+        return -1;
+    }
+    
+    struct ccn_charbuf *uri = ccn_charbuf_create();
+    ccn_charbuf_append_string(uri, "ccnx:/");
+    ccn_uri_append_percentescaped(uri, (const unsigned char *)domain, domain_size);
+
+    char port_str [10];
+    snprintf (port_str, 10, "%d", port);
+    
+    /* now process the results */
+    /* pflhead, lineno=0, "add" "ccnx:/asdfasdf.com/" "tcp|udp", host, portstring, NULL NULL NULL */
+
+    ccndc_warn (__LINE__, " >>> trying:   add %s %s %s %s <<<\n", ccn_charbuf_as_string(uri), proto, host, port_str);
+    
+    struct ccn_face_instance *face =
+        parse_ccn_face_instance (self,
+                                 proto,
+                                 host, port_str,
+                                 NULL, NULL,
+                                 (~0U) >> 1);
+
+    struct ccn_forwarding_entry *prefix =
+        parse_ccn_forwarding_entry (self,
+                                    ccn_charbuf_as_string(uri),
+                                    NULL,
+                                    (~0U) >> 1);
+
+    if (face != NULL && prefix != NULL) {
+        struct ccn_face_instance *newface =
+            ccndc_do_face_action (self, "newface", face);
+
+        if (newface == NULL) {
+            ccndc_warn (__LINE__, "Cannot create/lookup face");
+            res = -1;
+            goto Cleanup;
+        }
+
+        prefix->faceid = newface->faceid;
+        ccn_face_instance_destroy (&newface);
+
+        res = ccndc_do_prefix_action (self, "prefixreg", prefix);
+        if (res < 0) {
+            ccndc_warn (__LINE__, "Cannot register prefix [%s]\n", ccn_charbuf_as_string(uri));
+        }
+    } else {
+        res = -1;
+    }
+
+ Cleanup:
+    free (uri);
+    free (host);
+    
+    ccn_face_instance_destroy (&face);
+    ccn_forwarding_entry_destroy (&prefix);
+
+    return res;
 }
 
 

@@ -98,6 +98,8 @@ ccndc_daemonize (struct ccndc_data *ccndc)
     ccn_set_interest_filter_with_flags (ccndc->ccn_handle, temp, &interest_closure,
                                         CCN_FORW_ACTIVE | CCN_FORW_CHILD_INHERIT | CCN_FORW_LAST);
     ccn_charbuf_destroy (&temp);
+
+    ccndc_warn (__LINE__, "Starting dynamic DNS-base FIB prefix resolution\n");
     ccn_run (ccndc->ccn_handle, -1);
 }
 
@@ -125,11 +127,24 @@ ccndc_query_srv (const unsigned char *domain, int domain_size,
      */
     
     *proto = "tcp";
-    snprintf(srv_name, sizeof(srv_name), "_ccnx._tcp.%.*s", (int)domain_size, domain);
-    ans_size = res_query(srv_name, C_IN, T_SRV, ans.buf, sizeof(ans.buf));
+    if (domain_size != 0) {
+        snprintf(srv_name, sizeof(srv_name), "_ccnx._tcp.%.*s", (int)domain_size, domain);
+        ans_size = res_query(srv_name, C_IN, T_SRV, ans.buf, sizeof(ans.buf));
+    } else {
+        snprintf(srv_name, sizeof(srv_name), "_ccnx._tcp");
+        ans_size = res_search(srv_name, C_IN, T_SRV, ans.buf, sizeof(ans.buf));
+    }
+        
     if (ans_size < 0) {
         *proto = "udp";
-        snprintf(srv_name, sizeof(srv_name), "_ccnx._udp.%.*s", (int)domain_size, domain);
+        if (domain_size != 0) {
+            snprintf(srv_name, sizeof(srv_name), "_ccnx._udp.%.*s", (int)domain_size, domain);
+            ans_size = res_query(srv_name, C_IN, T_SRV, ans.buf, sizeof(ans.buf));
+        } else {
+            snprintf(srv_name, sizeof(srv_name), "_ccnx._udp");
+            ans_size = res_search(srv_name, C_IN, T_SRV, ans.buf, sizeof(ans.buf));
+        }
+        
         ans_size = res_query(srv_name, C_IN, T_SRV, ans.buf, sizeof(ans.buf));
         if (ans_size < 0)
             return (-1);
@@ -209,11 +224,6 @@ incoming_interest(struct ccn_closure *selfp,
     struct ccn_indexbuf *comps = info->interest_comps;
     const unsigned char *comp0 = NULL;
     size_t comp0_size = 0;
-    struct ccn_charbuf *uri;
-    int port;
-    char portstring[10];
-    char *host;
-    char *proto;
     int res;
     struct ccndc_data *ccndc = (struct ccndc_data *)selfp->data;
         
@@ -231,62 +241,8 @@ incoming_interest(struct ccn_closure *selfp,
         return (CCN_UPCALL_RESULT_OK);
     if (memchr(comp0, '.', comp0_size) == NULL)
         return (CCN_UPCALL_RESULT_OK);
-    
-    host = NULL;
-    port = 0;
-    res = ccndc_query_srv (comp0, comp0_size, &host, &port, &proto);
-    if (res < 0) {
-        free(host);
-        return (CCN_UPCALL_RESULT_ERR);
-    }
-    
-    uri = ccn_charbuf_create();
-    ccn_charbuf_append_string(uri, "ccnx:/");
-    ccn_uri_append_percentescaped(uri, comp0, comp0_size);
-    snprintf(portstring, sizeof(portstring), "%d", port);
 
-    char port_str [10];
-    snprintf (port_str, 10, "%d", port);
-    
-    /* now process the results */
-    /* pflhead, lineno=0, "add" "ccnx:/asdfasdf.com/" "tcp|udp", host, portstring, NULL NULL NULL */
-    
-    struct ccn_face_instance *face =
-        parse_ccn_face_instance (ccndc,
-                                 proto,
-                                 host, port_str,
-                                 NULL, NULL,
-                                 (~0U) >> 1);
-
-    struct ccn_forwarding_entry *prefix =
-        parse_ccn_forwarding_entry (ccndc,
-                                    ccn_charbuf_as_string(uri),
-                                    NULL,
-                                    (~0U) >> 1);
-
-    if (face != NULL && prefix != NULL) {        
-        struct ccn_face_instance *newface =
-            ccndc_do_face_action (ccndc, "newface", face);
-
-        if (newface == NULL) {
-            ccndc_warn (__LINE__, "Cannot create/lookup face");
-            res = -1;
-            goto Cleanup;
-        }
-
-        prefix->faceid = newface->faceid;
-        ccn_face_instance_destroy (&newface);
-
-        res = ccndc_do_prefix_action (ccndc, "prefixreg", prefix);
-        if (res < 0) {
-            ccndc_warn (__LINE__, "Cannot register prefix [%s]\n", ccn_charbuf_as_string(uri));
-        }
-    }
-
- Cleanup:
-    
-    ccn_face_instance_destroy (&face);
-    ccn_forwarding_entry_destroy (&prefix);
+    res = ccndc_srv (ccndc, (const char *)comp0, comp0_size);
 
     if (res < 0)
         return (CCN_UPCALL_RESULT_ERR);

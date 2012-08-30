@@ -104,6 +104,18 @@ ccndc_del (struct ccndc_data *self,
            int destroyface);
 
 /**
+ * brief Add (and if exists recreated) FIB entry based on guess from SRV records for a specified domain
+ * @param domain        domain name
+ * @param domain_size   size of the "domain" variable
+ *
+ * @returns 0 on success
+ */
+int
+ccndc_srv (struct ccndc_data *self,
+           const char *domain,
+           size_t domain_size);
+
+/**
  * @brief Destroy face if it exists
  *
  * cmd format:

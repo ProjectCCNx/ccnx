@@ -38,7 +38,7 @@ usage (const char *progname)
     fprintf (stderr,
              "Usage:\n"
              "   %s [-v] (-f <configfile> | COMMAND)\n"
-             // "      -d enter dynamic mode and create FIB entries based on DNS SRV records\n"
+             "      -d enter dynamic mode and create FIB entries based on DNS SRV records\n"
              "      -f <configfile> add or delete FIB entries based on the content of <configfile>\n"
              "      -v increase logging level\n"
              "\n"
@@ -48,7 +48,10 @@ usage (const char *progname)
              "      del <uri> (udp|tcp) <host> [<port> [<flags> [<mcastttl> [<mcastif> [destroyface]]]]])\n"
              "         to remove FIB entry and optionally an associated face\n"
              "      destroyface <faceid>\n"
-             "         destroy face based on face number\n",
+             "         destroy face based on face number\n"
+             "      srv\n"
+             "         guess gateway parameters based on SRV record of a damain in search list\n"
+             ,
              progname);
 }
 
@@ -58,6 +61,9 @@ char *create_command_from_command_line (int argc, char **argv)
     char *out = NULL;
     int i;
 
+    if (argc == 0)
+        return NULL;
+    
     for (i = 0; i < argc; i++) {
         len += strlen (argv[i]) + 1;
     }
@@ -89,16 +95,20 @@ main (int argc, char **argv)
     int res;
     int opt;
     char *cmd = NULL;
+    int dynamic = 0;
 
     progname = argv[0];
     
-    while ((opt = getopt(argc, argv, "hvf:")) != -1) {
+    while ((opt = getopt(argc, argv, "hdvf:")) != -1) {
         switch (opt) {
         case 'f':
             configfile = optarg;
             break;
         case 'v':
             verbose++;
+            break;
+        case 'd':
+            dynamic++;
             break;
         case 'h':
         default:
@@ -107,7 +117,7 @@ main (int argc, char **argv)
         }
     }
 
-    if (configfile == NULL && optind == argc) {
+    if (configfile == NULL && !dynamic && optind == argc) {
         usage (progname);
         return 1;
     }
@@ -123,14 +133,14 @@ main (int argc, char **argv)
             goto Cleanup;
         }
         
-        if (argc - optind < 1) {
+        if (argc - optind < 0) {
             usage (progname);
             res = 1;
             goto Cleanup;
         }
         
         cmd = create_command_from_command_line (argc-optind-1, &argv[optind+1]);
-        res = ccndc_dispatch_cmd (ccndc, 0, argv[optind], cmd, argc - optind);
+        res = ccndc_dispatch_cmd (ccndc, 0, argv[optind], cmd, argc - optind - 1);
         free (cmd);
         
         if (res == -99) {
@@ -142,6 +152,10 @@ main (int argc, char **argv)
     
     if (configfile) {
         read_configfile (ccndc, configfile);
+    }
+
+    if (dynamic) {
+        ccndc_daemonize (ccndc);
     }
 
  Cleanup:
