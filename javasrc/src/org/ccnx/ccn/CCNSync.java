@@ -19,6 +19,7 @@ package org.ccnx.ccn;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
@@ -59,6 +60,8 @@ public class CCNSync {
 			if (syncMon == null)
 				syncMon = new ProtocolBasedSyncMonitor(handle);
 			syncMon.registerCallback(syncCallback, slice, startHash, startName);
+			if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
+				Log.info("Started sync with topo: {0} and prefix: {1}", topo, prefix);
 			return slice;
 		} catch (Exception e) {
 			Log.warning(Log.FAC_REPO, "Error when starting sync for slice with prefix: {0}", prefix);

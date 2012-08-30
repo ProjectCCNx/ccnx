@@ -117,18 +117,20 @@ public class SliceComparator implements Runnable {
 	 * @return
 	 */
 	public boolean addPending(SyncTreeEntry ste) {
-		for (SyncTreeEntry tste : _pendingEntries) {
-			if (ste.equals(tste)) {
-				return false;
+		synchronized (this) {
+			for (SyncTreeEntry tste : _pendingEntries) {
+				if (ste.equals(tste)) {
+					return false;
+				}
 			}
-		}
-		for (SyncTreeEntry tste: _next) {
-			if (ste.equals(tste)) {
-				return false;
+			for (SyncTreeEntry tste: _next) {
+				if (ste.equals(tste)) {
+					return false;
+				}
 			}
+			_pendingEntries.add(ste);
+			return true;
 		}
-		_pendingEntries.add(ste);
-		return true;
 	}
 	
 	/**
@@ -141,15 +143,29 @@ public class SliceComparator implements Runnable {
 	
 	protected SyncTreeEntry getPending() {
 		SyncTreeEntry best = null;
-		for (SyncTreeEntry ste : _pendingEntries) {
-			if (!ste.isCovered()) {
-				if (best == null)
-					best = ste;
-				else {
-					if (DataUtils.compare(ste.getHash(), best.getHash()) > 0) {
-						best = ste;
+		ArrayList<SyncTreeEntry> removes = new ArrayList<SyncTreeEntry>();
+		synchronized (this) {
+		  outerLoop:
+			for (SyncTreeEntry ste : _pendingEntries) {
+				for (SyncTreeEntry tste : _current) {
+					if (ste.equals(tste)) {
+						removes.add(tste);
+						continue outerLoop;
 					}
 				}
+				if (!ste.isCovered()) {
+					if (best == null)
+						best = ste;
+					else {
+						if (DataUtils.compare(ste.getHash(), best.getHash()) > 0) {
+							best = ste;
+						}
+					}
+				} else
+					removes.add(ste);
+			}
+			for (SyncTreeEntry ste : removes) {
+				_pendingEntries.remove(ste);
 			}
 		}
 		return best;
@@ -290,6 +306,7 @@ public class SliceComparator implements Runnable {
 			srtY = getHead(_next);
 			srtX = getHead(_current);
 		}
+
 		while (null != srtY) {
 			SyncNodeComposite sncX = null;
 			SyncNodeComposite sncY = null;
@@ -315,6 +332,12 @@ public class SliceComparator implements Runnable {
 				if (null != sncY) {
 					sneY = srtY.getCurrentElement();
 				}
+				if (null == sneY) {
+					if (Log.isLoggable(Log.FAC_SYNC, Level.FINE))
+						Log.fine(Log.FAC_SYNC, "No data for Y: {0}, pos is {1}", Component.printURI(srtY.getHash()), srtY.getPos());
+					requestNode(srtY.getHash());
+					return;
+				}
 				
 				while (null != srtX && srtX.lastPos()) {
 					pop(_current);
@@ -325,10 +348,16 @@ public class SliceComparator implements Runnable {
 					if (null != sncX) {
 						sneX = srtX.getCurrentElement();
 					}
+					if (null == sneX) {
+						if (Log.isLoggable(Log.FAC_SYNC, Level.FINE))
+							Log.fine(Log.FAC_SYNC, "No data for X: {0}, pos is {1}", Component.printURI(srtY.getHash()), srtY.getPos());
+						requestNode(srtX.getHash());
+						return;
+					}
 				}
 			}
 			
-			if (null == sneX && null != sneY) {
+			if (null == sneX) {
 				// We only have a Y tree so we will output all LEAF names that we see	
 				if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST))
 					Log.finest(Log.FAC_SYNC, "Y hash only for {0}, type is {1}", Component.printURI(srtY.getHash()), sneY.getType());
@@ -353,13 +382,7 @@ public class SliceComparator implements Runnable {
 				default:
 					break;
 				}
-			} else if (null == sneY) {
-				// This shouldn't happen often because we should have already preloaded the node
-				if (Log.isLoggable(Log.FAC_SYNC, Level.FINE))
-					Log.fine(Log.FAC_SYNC, "No data for {0}, pos is {1}", Component.printURI(srtY.getHash()), srtY.getPos());
-				requestNode(srtY.getHash());
-				return;
-			} else if (null != sneX) {
+			} else {
 				// We have both X and Y entries. Compare is different depending on what type the entries are
 				SyncNodeType typeX = sneX.getType();
 				SyncNodeType typeY = sneY.getType();
@@ -591,24 +614,31 @@ public class SliceComparator implements Runnable {
 								snc.decode(data);
 								SyncTreeEntry ste = _pbsm.addHash(snc.getHash());
 								ste.setNode(snc);
-								addPending(ste);
+								if (null != _currentRoot && _currentRoot.getHash().length == 0) {
+									if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
+										Log.info(Log.FAC_SYNC, "Starting for items after {0}", Component.printURI(ste.getHash()));
+									_currentRoot = ste;
+									nextRound();
+								} else
+									addPending(ste);
 							}
 						} while (null != data);
 						SyncTreeEntry ste = getPending();
 						if (null != ste) {
+							ste.setPos(0);
 							push(ste, _next);
 							_currentRoot = ste;
 							changeState(SyncCompareState.PRELOAD);
 						}
-						if (_state == SyncCompareState.INIT) {
-							_state = SyncCompareState.DONE;
+						if (getState() == SyncCompareState.INIT) {
+							changeState(SyncCompareState.DONE);
+							break;
 						} else {
 							if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
 								Log.info(Log.FAC_SYNC, "Starting new round with X = {0} and Y = {1}",
 										(null == getHead(_current) ? "null" : Component.printURI(getHead(_current).getHash())),
 										Component.printURI(getHead(_next).getHash()));
 						}
-						continue;
 					}
 					// Fall through
 				case PRELOAD:	// Need to load data for the compare

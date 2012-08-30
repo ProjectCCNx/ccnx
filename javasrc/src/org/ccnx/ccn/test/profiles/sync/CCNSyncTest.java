@@ -25,8 +25,6 @@ import java.util.Vector;
 
 import junit.framework.Assert;
 
-import org.ccnx.ccn.CCNContentHandler;
-import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNSync;
 import org.ccnx.ccn.CCNSyncHandler;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -38,7 +36,6 @@ import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.metadata.MetadataProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
-import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.test.CCNTestBase;
 import org.ccnx.ccn.test.CCNTestHelper;
 import org.junit.Before;
@@ -223,13 +220,45 @@ public class CCNSyncTest extends CCNTestBase implements CCNSyncHandler {
 	}
 	
 	@Test
+	public void testSyncRoot() throws Exception {
+		Log.info(Log.FAC_TEST,"Starting testSyncRoot");
+		ContentName prefix1;
+		CCNSync sync1 = new CCNSync();
+		prefix1 = prefix.append("slice7");
+		ConfigSlice slice7 = sync1.startSync(getHandle, topo, prefix1, this);
+		ContentName prefix1a = prefix1.append("round1");
+		Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1a);
+		int segments = writeFile(prefix1a, true, 0);
+		int segmentCheck = checkCallbacks(prefix1a, segments, 0);
+		if (segmentCheck!=0)
+			Assert.fail("Did not receive all of the callbacks");
+		sync1.stopSync(this, slice7);
+		synchronized (callbackNames) {
+			callbackNames.clear();
+		}
+		slice7 = sync1.startSync(getHandle, topo, prefix1, null, new byte[]{}, null, this);
+		Thread.sleep(SystemConfiguration.MEDIUM_TIMEOUT);  // Make sure we don't see new stuff before we start
+		ContentName prefix1b = prefix1.append("round2");
+		segments = writeFile(prefix1b, true, 0);
+		segmentCheck = checkCallbacks(prefix1b, segments, 0);
+		if (segmentCheck!=0)
+			Assert.fail("Did not receive all of the callbacks");
+		synchronized (callbackNames) {
+			for (ContentName n: callbackNames) {
+				Assert.assertTrue("Saw unexpected data: " + n, prefix1b.isPrefixOf(n));
+			}		
+		}
+
+		Log.info(Log.FAC_TEST,"Finished running testSyncRoot");
+	}
+	
+	@Test
 	public void testSyncStartName() throws Exception {
 		Log.info(Log.FAC_TEST,"Starting testSyncStartName");
 		ContentName prefix1;
-		prefix1 = prefix.append("slice7");
+		prefix1 = prefix.append("slice8");
 		CCNSync sync1 = new CCNSync();
 		
-		//the slice should be written..  now save content and get a callback.
 		Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1);
 		
 		// Write a 100 block file to test a true sync tree
@@ -239,13 +268,15 @@ public class CCNSyncTest extends CCNTestBase implements CCNSyncHandler {
 		ContentName name = checkObj.name();
 		name = name.cut(name.count() - 1);
 		ContentName startName = SegmentationProfile.segmentName(name, 20);
-		ConfigSlice slice7 = sync1.startSync(getHandle, topo, prefix1, null, null, startName, this);
+		
+		// We should start looking starting with segment 20
+		ConfigSlice slice8 = sync1.startSync(getHandle, topo, prefix1, null, null, startName, this);
 		int segmentCheck = checkCallbacks(prefix1, segments - 20, 20);
 		if (segmentCheck!=0)
 			Assert.fail("Did not receive all of the callbacks");
 		else
 			Log.fine(Log.FAC_TEST, "I got all the callbacks for part 1 of testSyncRestart!");
-		sync1.stopSync(this, slice7);
+		sync1.stopSync(this, slice8);
 		Log.info(Log.FAC_TEST,"Finished running testSyncStartName");
 	}
 	
@@ -290,7 +321,6 @@ public class CCNSyncTest extends CCNTestBase implements CCNSyncHandler {
 		}
 		dos.flush();
 		dos.close();
-		rfos.close();
 		Log.info(Log.FAC_TEST, "Wrote file to repository: {0} with {1} segments", rfos.getBaseName(), segmentsToWrite);
 		return segmentsToWrite;
 	}
