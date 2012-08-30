@@ -25,6 +25,8 @@
 #include <ccn/charbuf.h>
 #include <netdb.h>
 #include <ccn/sockcreate.h>
+#include <ccn/face_mgmt.h>
+#include <ccn/reg_mgmt.h>
 
 struct ccndc_data;
 struct ccndc_prefix_entry;
@@ -116,6 +118,41 @@ int
 ccndc_destroyface (struct ccndc_data *self,
                    int check_only,
                    const char *cmd);
+
+/**
+ * @brief Get ID of the local CCND
+ *
+ * CCND ID is recorded in supplied ccndc_data data structure
+ *
+ * @param self          data pointer to "this"
+ */
+int
+ccndc_get_ccnd_id (struct ccndc_data *self);
+
+/**
+ * @brief Perform action using face management protocol
+ * @param self          data pointer to "this"
+ * @param action        action string
+ * @param face_instance filled ccn_face_instance structure
+ * @returns on success returns a new struct ccn_face_instance, describing created/destroyed face
+ *         the structure needs to be manually destroyed
+ */
+struct ccn_face_instance *
+ccndc_do_face_action(struct ccndc_data *self,
+                     const char *action,
+                     struct ccn_face_instance *face_instance);
+
+/**
+ * @brief Perform action using prefix management protocol
+ * @param self          data pointer to "this"
+ * @param action        action string
+ * @param forwarding_entry filled ccn_forwarding_entry structure
+ * @returns 0 on success
+ */
+int
+ccndc_do_prefix_action(struct ccndc_data *self,
+                       const char *action,
+                       struct ccn_forwarding_entry *forwarding_entry);
 
 
 /**

@@ -19,8 +19,9 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#include "ccndc-ccnb.h"
+#include "ccndc.h"
 #include "ccndc-log.h"
+#include "ccndc-srv.h"
 
 #include <stdio.h>
 #include <stdlib.h>
