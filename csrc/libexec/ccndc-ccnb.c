@@ -140,7 +140,18 @@ ccndc_dispatch_cmd (struct ccndc_data *ccndc,
         if (num_options >= 0 && (num_options < 2 || num_options > 9))
             return -99;
 
-        return ccndc_del (ccndc, check_only, options);
+        return ccndc_del (ccndc, check_only, options, 0);
+    }
+    else if (strcasecmp (cmd, "readd") == 0) {
+        if (num_options >= 0 && (num_options < 2 || num_options > 8))
+            return -99;
+
+        if (check_only)
+            return ccndc_add (ccndc, check_only, options);
+        
+        ccndc_del (ccndc, check_only, options, 1);
+        
+        return ccndc_add (ccndc, check_only, options);
     }
     else if (strcasecmp (cmd, "destroyface") == 0) {
         if (num_options >= 0 && num_options != 2)
@@ -150,6 +161,253 @@ ccndc_dispatch_cmd (struct ccndc_data *ccndc,
     }
     else
         return -99;
+}
+
+
+#define GET_NEXT_TOKEN(token_var)                       \
+    do {                                                \
+        token_var = strsep (&cmd, " \t");               \
+    } while (token_var != NULL && token_var[0] == 0);
+
+/*
+ *   uri (udp|tcp) host [port [flags [mcastttl [mcastif]]]])
+ */
+int
+ccndc_add (struct ccndc_data *self,
+           int check_only,
+           const char *cmd_orig)
+{
+    int ret_code = 0;
+    char *cmd, *cmd_fixed = NULL;
+    char *cmd_uri = NULL,
+        *cmd_proto = NULL,
+        *cmd_host = NULL,
+        *cmd_port = NULL,
+        *cmd_flags = NULL,
+        *cmd_mcastttl = NULL,
+        *cmd_mcastif = NULL;
+    // struct ccndc_prefix_entry *entry;
+    
+    if (cmd_orig == NULL) {
+        ccndc_warn (__LINE__, "command error\n");
+        return -1;
+    }
+    
+    cmd = calloc (strlen (cmd_orig)+1, sizeof(char));
+    cmd_fixed = cmd;
+    if (cmd == NULL) {
+        ccndc_warn (__LINE__, "Cannot allocate memory for copy of the command\n");
+        return -1;
+    }            
+        
+    strcpy (cmd, cmd_orig);
+
+    GET_NEXT_TOKEN (cmd_uri);
+    GET_NEXT_TOKEN (cmd_proto);
+    GET_NEXT_TOKEN (cmd_host);
+    GET_NEXT_TOKEN (cmd_port);
+    GET_NEXT_TOKEN (cmd_flags);
+    GET_NEXT_TOKEN (cmd_mcastttl);
+    GET_NEXT_TOKEN (cmd_mcastif);
+   
+    // perform sanity checking
+
+    struct ccn_face_instance *face =
+        parse_ccn_face_instance (self,
+                                 cmd_proto,
+                                 cmd_host,     cmd_port,
+                                 cmd_mcastttl, cmd_mcastif,
+                                 (~0U) >> 1);
+
+    struct ccn_forwarding_entry *prefix =
+        parse_ccn_forwarding_entry (self,
+                                    cmd_uri,
+                                    cmd_flags,
+                                    (~0U) >> 1);
+    
+    if (face == NULL || prefix == NULL) {
+        ret_code = -1;
+    }
+
+    if (ret_code == 0 && check_only == 0) {
+        // do something
+        struct ccn_face_instance *newface =
+            do_face_action (self, "newface", face);
+
+        if (newface == NULL)
+            {
+                ccndc_warn (__LINE__, "Cannot create/lookup face");
+                goto Cleanup;
+            }
+
+        prefix->faceid = newface->faceid;
+        ccn_face_instance_destroy (&newface);
+
+        ret_code = do_prefix_action (self, "prefixreg", prefix);
+        if (ret_code < 0) {
+            ccndc_warn (__LINE__, "Cannot register prefix [%s]\n", cmd_uri);
+        }
+    }
+
+ Cleanup:
+    ccn_face_instance_destroy (&face);
+    ccn_forwarding_entry_destroy (&prefix);
+
+    free (cmd_fixed);
+
+    return ret_code;
+}
+
+
+int
+ccndc_del (struct ccndc_data *self,
+           int check_only,
+           const char *cmd_orig,
+           int destroyface)
+{
+    int ret_code = 0;
+    char *cmd, *cmd_fixed = NULL;
+    char *cmd_uri = NULL,
+        *cmd_proto = NULL,
+        *cmd_host = NULL,
+        *cmd_port = NULL,
+        *cmd_flags = NULL,
+        *cmd_mcastttl = NULL,
+        *cmd_mcastif = NULL,
+        *cmd_destroyface = NULL;
+    
+    // struct ccndc_prefix_entry *entry;
+    
+    if (cmd_orig == NULL) {
+        ccndc_warn (__LINE__, "command error\n");
+        return -1;
+    }
+    
+    cmd = calloc (strlen (cmd_orig)+1, sizeof(char));
+    cmd_fixed = cmd;
+    if (cmd == NULL) {
+        ccndc_warn (__LINE__, "Cannot allocate memory for copy of the command\n");
+        return -1;
+    }            
+        
+    strcpy (cmd, cmd_orig);
+
+    GET_NEXT_TOKEN (cmd_uri);
+    GET_NEXT_TOKEN (cmd_proto);
+    GET_NEXT_TOKEN (cmd_host);
+    GET_NEXT_TOKEN (cmd_port);
+    GET_NEXT_TOKEN (cmd_flags);
+    GET_NEXT_TOKEN (cmd_mcastttl);
+    GET_NEXT_TOKEN (cmd_mcastif);
+    GET_NEXT_TOKEN (cmd_destroyface);
+
+    struct ccn_face_instance *face =
+        parse_ccn_face_instance (self,
+                                 cmd_proto,
+                                 cmd_host,     cmd_port,
+                                 cmd_mcastttl, cmd_mcastif,
+                                 (~0U) >> 1);
+
+    struct ccn_forwarding_entry *prefix =
+        parse_ccn_forwarding_entry (self,
+                                    cmd_uri,
+                                    cmd_flags,
+                                    (~0U) >> 1);
+
+    if (face == NULL || prefix == NULL) {
+        ret_code = -1;
+    }
+    
+    if (ret_code == 0) { // do one more check
+        if (cmd_destroyface != NULL &&
+            strcasecmp (cmd_destroyface, "destroyface") != 0) {
+            ccndc_warn(__LINE__, "command format error\n");
+            ret_code = -1;
+        }
+    }
+    
+    if (ret_code == 0 && check_only == 0) {
+        // do something
+        struct ccn_face_instance *newface =
+            do_face_action (self, "newface", face);
+
+        if (newface == NULL)
+            {
+                ccndc_warn (__LINE__, "Cannot create/lookup face\n");
+                goto Cleanup;
+            }
+
+        if (destroyface || cmd_destroyface != NULL) {
+            face->faceid = newface->faceid;
+            ccn_face_instance_destroy (&newface);
+            
+            newface = do_face_action (self, "destroyface", face);
+            if (newface == NULL) {
+                ccndc_warn (__LINE__, "Cannot destroy face\n");
+            } else {
+                ccn_face_instance_destroy (&newface);
+            }
+        } else {
+            prefix->faceid = newface->faceid;
+            ccn_face_instance_destroy (&newface);
+            
+            ret_code = do_prefix_action (self, "unreg", prefix);
+            if (ret_code < 0) {
+                ccndc_warn (__LINE__, "Cannot unregister prefix [%s]\n", cmd_uri);
+            }
+        }
+    }
+
+ Cleanup:
+    ccn_face_instance_destroy (&face);
+    ccn_forwarding_entry_destroy (&prefix);
+    free (cmd_fixed);
+
+    return ret_code;
+}
+
+
+int
+ccndc_destroyface (struct ccndc_data *self,
+                   int check_only,
+                   const char *cmd_orig)
+{
+    int ret_code = 0;
+    if (cmd_orig == NULL) {
+        ccndc_warn (__LINE__, "command error\n");
+        return -1;
+    }
+    
+    char *cmd = calloc (strlen (cmd_orig)+1, sizeof(char));
+    char *cmd_fixed = cmd;
+    if (cmd == NULL) {
+        ccndc_warn (__LINE__, "Cannot allocate memory for copy of the command\n");
+        return -1;
+    }            
+        
+    strcpy (cmd, cmd_orig);
+
+    char *cmd_faceid;
+    GET_NEXT_TOKEN (cmd_faceid);
+
+    struct ccn_face_instance *face = parse_ccn_face_instance_from_face (self,
+                                                                        cmd_faceid);
+    if (face == NULL) {
+        ret_code = -1;
+    }
+
+    if (ret_code == 0 && check_only == 0) {
+        struct ccn_face_instance *newface = do_face_action (self, "destroyface", face);
+        if (newface == NULL) {
+            ccndc_warn(__LINE__, "Cannot destroy face %d or the face does not exist\n", face->faceid);        
+        } else {
+            ccn_face_instance_destroy (&newface);
+        }
+    }
+    
+    ccn_face_instance_destroy (&face);
+    free (cmd_fixed);
+    return ret_code;
 }
 
 
@@ -378,250 +636,6 @@ parse_ccn_face_instance_from_face (struct ccndc_data *self,
 }
 
                     
-#define GET_NEXT_TOKEN(token_var)                       \
-    do {                                                \
-        token_var = strsep (&cmd, " \t");               \
-    } while (token_var != NULL && token_var[0] == 0);
-
-/*
- *   uri (udp|tcp) host [port [flags [mcastttl [mcastif]]]])
- */
-int
-ccndc_add (struct ccndc_data *self,
-           int check_only,
-           const char *cmd_orig)
-{
-    int ret_code = 0;
-    char *cmd, *cmd_fixed = NULL;
-    char *cmd_uri = NULL,
-        *cmd_proto = NULL,
-        *cmd_host = NULL,
-        *cmd_port = NULL,
-        *cmd_flags = NULL,
-        *cmd_mcastttl = NULL,
-        *cmd_mcastif = NULL;
-    // struct ccndc_prefix_entry *entry;
-    
-    if (cmd_orig == NULL) {
-        ccndc_warn (__LINE__, "command error\n");
-        return -1;
-    }
-    
-    cmd = calloc (strlen (cmd_orig)+1, sizeof(char));
-    cmd_fixed = cmd;
-    if (cmd == NULL) {
-        ccndc_warn (__LINE__, "Cannot allocate memory for copy of the command\n");
-        return -1;
-    }            
-        
-    strcpy (cmd, cmd_orig);
-
-    GET_NEXT_TOKEN (cmd_uri);
-    GET_NEXT_TOKEN (cmd_proto);
-    GET_NEXT_TOKEN (cmd_host);
-    GET_NEXT_TOKEN (cmd_port);
-    GET_NEXT_TOKEN (cmd_flags);
-    GET_NEXT_TOKEN (cmd_mcastttl);
-    GET_NEXT_TOKEN (cmd_mcastif);
-   
-    // perform sanity checking
-
-    struct ccn_face_instance *face =
-        parse_ccn_face_instance (self,
-                                 cmd_proto,
-                                 cmd_host,     cmd_port,
-                                 cmd_mcastttl, cmd_mcastif,
-                                 (~0U) >> 1);
-
-    struct ccn_forwarding_entry *prefix =
-        parse_ccn_forwarding_entry (self,
-                                    cmd_uri,
-                                    cmd_flags,
-                                    (~0U) >> 1);
-    
-    if (face == NULL || prefix == NULL) {
-        ret_code = -1;
-    }
-
-    if (ret_code == 0 && check_only == 0) {
-        // do something
-        struct ccn_face_instance *newface =
-            do_face_action (self, "newface", face);
-
-        if (newface == NULL)
-            {
-                ccndc_warn (__LINE__, "Cannot create/lookup face");
-                goto Cleanup;
-            }
-
-        prefix->faceid = newface->faceid;
-        ccn_face_instance_destroy (&newface);
-
-        ret_code = do_prefix_action (self, "prefixreg", prefix);
-        if (ret_code < 0) {
-            ccndc_warn (__LINE__, "Cannot register prefix [%s]\n", cmd_uri);
-        }
-    }
-
- Cleanup:
-    ccn_face_instance_destroy (&face);
-    ccn_forwarding_entry_destroy (&prefix);
-
-    free (cmd_fixed);
-
-    return ret_code;
-}
-
-
-int
-ccndc_del (struct ccndc_data *self,
-           int check_only,
-           const char *cmd_orig)
-{
-    int ret_code = 0;
-    char *cmd, *cmd_fixed = NULL;
-    char *cmd_uri = NULL,
-        *cmd_proto = NULL,
-        *cmd_host = NULL,
-        *cmd_port = NULL,
-        *cmd_flags = NULL,
-        *cmd_mcastttl = NULL,
-        *cmd_mcastif = NULL,
-        *cmd_destroyface = NULL;
-    
-    // struct ccndc_prefix_entry *entry;
-    
-    if (cmd_orig == NULL) {
-        ccndc_warn (__LINE__, "command error\n");
-        return -1;
-    }
-    
-    cmd = calloc (strlen (cmd_orig)+1, sizeof(char));
-    cmd_fixed = cmd;
-    if (cmd == NULL) {
-        ccndc_warn (__LINE__, "Cannot allocate memory for copy of the command\n");
-        return -1;
-    }            
-        
-    strcpy (cmd, cmd_orig);
-
-    GET_NEXT_TOKEN (cmd_uri);
-    GET_NEXT_TOKEN (cmd_proto);
-    GET_NEXT_TOKEN (cmd_host);
-    GET_NEXT_TOKEN (cmd_port);
-    GET_NEXT_TOKEN (cmd_flags);
-    GET_NEXT_TOKEN (cmd_mcastttl);
-    GET_NEXT_TOKEN (cmd_mcastif);
-    GET_NEXT_TOKEN (cmd_destroyface);
-
-    struct ccn_face_instance *face =
-        parse_ccn_face_instance (self,
-                                 cmd_proto,
-                                 cmd_host,     cmd_port,
-                                 cmd_mcastttl, cmd_mcastif,
-                                 (~0U) >> 1);
-
-    struct ccn_forwarding_entry *prefix =
-        parse_ccn_forwarding_entry (self,
-                                    cmd_uri,
-                                    cmd_flags,
-                                    (~0U) >> 1);
-
-    if (face == NULL || prefix == NULL) {
-        ret_code = -1;
-    }
-    
-    if (ret_code == 0) { // do one more check
-        if (cmd_destroyface != NULL &&
-            strcasecmp (cmd_destroyface, "destroyface") != 0) {
-            ccndc_warn(__LINE__, "command format error\n");
-            ret_code = -1;
-        }
-    }
-    
-    if (ret_code == 0 && check_only == 0) {
-        // do something
-        struct ccn_face_instance *newface =
-            do_face_action (self, "newface", face);
-
-        if (newface == NULL)
-            {
-                ccndc_warn (__LINE__, "Cannot create/lookup face\n");
-                goto Cleanup;
-            }
-
-        if (cmd_destroyface != NULL) {
-            face->faceid = newface->faceid;
-            ccn_face_instance_destroy (&newface);
-            
-            newface = do_face_action (self, "destroyface", face);
-            if (newface == NULL) {
-                ccndc_warn (__LINE__, "Cannot destroy face\n");
-            } else {
-                ccn_face_instance_destroy (&newface);
-            }
-        } else {
-            prefix->faceid = newface->faceid;
-            ccn_face_instance_destroy (&newface);
-            
-            ret_code = do_prefix_action (self, "unreg", prefix);
-            if (ret_code < 0) {
-                ccndc_warn (__LINE__, "Cannot unregister prefix [%s]\n", cmd_uri);
-            }
-        }
-    }
-
- Cleanup:
-    ccn_face_instance_destroy (&face);
-    ccn_forwarding_entry_destroy (&prefix);
-    free (cmd_fixed);
-
-    return ret_code;
-}
-
-
-int
-ccndc_destroyface (struct ccndc_data *self,
-                   int check_only,
-                   const char *cmd_orig)
-{
-    int ret_code = 0;
-    if (cmd_orig == NULL) {
-        ccndc_warn (__LINE__, "command error\n");
-        return -1;
-    }
-    
-    char *cmd = calloc (strlen (cmd_orig)+1, sizeof(char));
-    char *cmd_fixed = cmd;
-    if (cmd == NULL) {
-        ccndc_warn (__LINE__, "Cannot allocate memory for copy of the command\n");
-        return -1;
-    }            
-        
-    strcpy (cmd, cmd_orig);
-
-    char *cmd_faceid;
-    GET_NEXT_TOKEN (cmd_faceid);
-
-    struct ccn_face_instance *face = parse_ccn_face_instance_from_face (self,
-                                                                        cmd_faceid);
-    if (face == NULL) {
-        ret_code = -1;
-    }
-
-    if (ret_code == 0 && check_only == 0) {
-        struct ccn_face_instance *newface = do_face_action (self, "destroyface", face);
-        if (newface == NULL) {
-            ccndc_warn(__LINE__, "Cannot destroy face %d or the face does not exist\n", face->faceid);        
-        } else {
-            ccn_face_instance_destroy (&newface);
-        }
-    }
-    
-    ccn_face_instance_destroy (&face);
-    free (cmd_fixed);
-    return ret_code;
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////

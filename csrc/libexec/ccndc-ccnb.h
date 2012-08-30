@@ -91,12 +91,15 @@ ccndc_add (struct ccndc_data *self,
  * @param self          data pointer to "this"
  * @param check_only    flag indicating that only command checking is requested (nothing will be removed)
  * @param cmd           del command without leading 'del' component
+ * @param destroyface   flag requesting destruction of an associate face (either command
+ *                      line or this flag will activate face destruction)
  * @returns 0 on success
  */
 int
 ccndc_del (struct ccndc_data *self,
            int check_only,
-           const char *cmd);
+           const char *cmd,
+           int destroyface);
 
 /**
  * @brief Destroy face if it exists
