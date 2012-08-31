@@ -231,6 +231,8 @@ SyncFreeBase(struct SyncBaseStruct **bp) {
         *bp = NULL;
         if (base != NULL) {
             struct SyncPrivate *priv = base->priv;
+            struct SyncNameAccumList *nal = NULL;
+            struct SyncNameAccumList *nalNext = NULL;
             // free the errList
             SyncClearErr(base);
             // free the roots
@@ -244,7 +246,16 @@ SyncFreeBase(struct SyncBaseStruct **bp) {
                 SyncFreeNameAccumAndNames(priv->prefixAccum);
             if (priv->comps != NULL)
                 ccn_indexbuf_destroy(&priv->comps);
+            // free the name accums in the filter list
+            if (priv->filters != NULL) {
+                for (nal = priv->filters; nal != NULL; nal = nalNext) {
+                    nalNext = nal->next;
+                    SyncFreeNameAccumAndNames(nal->accum);
+                    free(nal);
+                }
+            }
             ccn_charbuf_destroy(&priv->sliceCmdPrefix);
+            ccn_charbuf_destroy(&priv->localHostPrefix);
             free(priv);
             free(base);
         }
