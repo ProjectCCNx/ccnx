@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -15,7 +15,8 @@
 # Subdirectories we build in
 TOPSUBDIRS = doc/manpages doc/technical csrc schema `cat local.subdirs 2>/dev/null || :`
 # Packing list for packaging
-PACKLIST = Makefile README LICENSE NEWS NOTICES configure doc/index.txt $(TOPSUBDIRS) android experiments
+PACKLIST = Makefile README LICENSE NEWS NOTICES configure doc/index.txt \
+		   $(TOPSUBDIRS) android experiments javasrc apps
 BLDMSG = printf '=== %s ' 'Building $@ in' && pwd
 
 # Include build parameters
