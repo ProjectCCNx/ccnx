@@ -265,7 +265,7 @@ public class ccndcontrol {
 	 * @return void
 	 */
 	@SuppressWarnings("unused")
-	public static void main(String[] args) {
+	public static int executeCommand(String[] args) {
 		boolean dynamic = false;
 		String configFile = null;
 		int startArg = 0;
@@ -278,7 +278,7 @@ public class ccndcontrol {
 				startArg++;
 			} else if (args[i].equals("-h")) {
 				usage(_extraUsage);
-				System.exit(0);
+                return(-1);
 			} else if (args[i].equals(("-v"))) {
 				if (startArg <= i)
 					startArg = i + 1;
@@ -295,7 +295,7 @@ public class ccndcontrol {
 			} else if (args[i].equals("-f")) {
 				if (args.length < (i + 2)) {
 					usage(_extraUsage);
-					System.exit(1);
+                    return(-1);
 				}
 				configFile = args[++i];
 				if (startArg <= i) {
@@ -307,7 +307,7 @@ public class ccndcontrol {
 
 		if (null == configFile && args.length < startArg + 2) {
 			usage(_extraUsage);
-			System.exit(1);
+            return(-1);
 		}
 
 		if (null != configFile) {
@@ -344,25 +344,44 @@ public class ccndcontrol {
 				} else {
 					/* This really can't happen unless the check above was wrong. */
 					System.err.println("Internal error.  command (" + entry.command + ") not add or del");
-					System.exit(1);
+					return(-1);
 				}
 
 			} catch (ConfigurationException e) {
 				String m = e.getMessage();
 				System.err.println(m);
-				System.exit(1);
+                return(-1);
 			} catch (IOException e) {
 				String m = e.getMessage();
 				System.err.println(m);
-				System.exit(1);
+                return(-1);
 			}catch (CCNDaemonException e) {
 				String m = e.getMessage();
 				System.err.println(m);
-				System.exit(1);
+                return(-1);
 			}
 		}
 
-		System.exit(0);
+		return(0);
 	}
+
+	/**
+	 * Main function for the ccndcontrol tool.  Initializes the tool, reads the argument list
+	 * and constructs face to be added.
+	 *
+	 * @param args Command line arguments:
+	 *
+	 * @return void
+	 */
+	@SuppressWarnings("unused")
+	public static void main(String[] args) {
+        if (executeCommand(args) < 0) {
+            System.err.println("Error processing command, unable to complete");
+            System.exit(1);
+        } else {
+            System.out.println("Success");
+            System.exit(0);
+        }
+    }
 
 }
