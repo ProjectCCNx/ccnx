@@ -32,10 +32,13 @@ import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.RepositoryFileOutputStream;
 import org.ccnx.ccn.io.content.ConfigSlice;
+import org.ccnx.ccn.io.content.SyncNodeComposite;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.metadata.MetadataProfile;
+import org.ccnx.ccn.profiles.sync.Sync;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.test.CCNTestBase;
 import org.ccnx.ccn.test.CCNTestHelper;
 import org.junit.Before;
@@ -236,6 +239,11 @@ public class CCNSyncTest extends CCNTestBase implements CCNSyncHandler {
 		synchronized (callbackNames) {
 			callbackNames.clear();
 		}
+		
+		/*
+		 * Test for start with empty root.  This should start at the time we start sync, but not give
+		 * us anything before that.
+		 */
 		slice7 = sync1.startSync(getHandle, topo, prefix1, null, new byte[]{}, null, this);
 		Thread.sleep(SystemConfiguration.MEDIUM_TIMEOUT);  // Make sure we don't see new stuff before we start
 		ContentName prefix1b = prefix1.append("round2");
@@ -245,9 +253,31 @@ public class CCNSyncTest extends CCNTestBase implements CCNSyncHandler {
 			Assert.fail("Did not receive all of the callbacks");
 		synchronized (callbackNames) {
 			for (ContentName n: callbackNames) {
-				Assert.assertTrue("Saw unexpected data: " + n, prefix1b.isPrefixOf(n));
+				Assert.assertTrue("Saw unexpected data in zero length root test: " + n, prefix1b.isPrefixOf(n));
 			}		
 		}
+		sync1.stopSync(this, slice7);
+		
+		synchronized (callbackNames) {
+			callbackNames.clear();
+		}
+		ContentName rootAdvise = new ContentName(slice7.topo, Sync.SYNC_ROOT_ADVISE_MARKER, slice7.getHash());
+		Interest interest = new Interest(rootAdvise);
+		interest.scope(1);
+		ContentObject obj = getHandle.get(interest, SystemConfiguration.MEDIUM_TIMEOUT);
+		Assert.assertTrue(obj != null);
+		SyncNodeComposite snc = new SyncNodeComposite();
+		snc.decode(obj.content());
+		slice7 = sync1.startSync(getHandle, topo, prefix1, null, snc.getHash(), null, this);
+		ContentName prefix1c = prefix1.append("round3");
+		segments = writeFile(prefix1c, true, 0);
+		segmentCheck = checkCallbacks(prefix1c, segments, 0);
+		if (segmentCheck!=0)
+			Assert.fail("Did not receive all of the callbacks");
+		sync1.stopSync(this, slice7);
+		for (ContentName n: callbackNames) {
+			Assert.assertFalse("Saw unexpected data in arbitrary root test: " + n, prefix1a.isPrefixOf(n));
+		}		
 
 		Log.info(Log.FAC_TEST,"Finished running testSyncRoot");
 	}
