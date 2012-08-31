@@ -85,10 +85,27 @@ ccnr_msg_level_from_string(const char *s)
 void
 ccnr_msg(struct ccnr_handle *h, const char *fmt, ...)
 {
-    struct timeval t;
     va_list ap;
+    va_start(ap, fmt);
+    ccnr_vmsg(h, fmt, ap);
+    va_end(ap);
+}
+
+/**
+ *  Produce ccnr debug output.
+ *  Output is produced via h->logger under the control of h->debug;
+ *  prepends decimal timestamp and process identification.
+ *  Caller should not supply newlines.
+ *  @param      h  the ccnr handle
+ *  @param      fmt  printf-like format string
+ */
+void
+ccnr_vmsg(struct ccnr_handle *h, const char *fmt, va_list ap)
+{
+    struct timeval t;
     struct ccn_charbuf *b;
     int res;
+    time_t clock;
     if (h == NULL || h->debug == 0 || h->logger == 0)
         return;
     b = ccn_charbuf_create();
@@ -97,18 +114,19 @@ ccnr_msg(struct ccnr_handle *h, const char *fmt, ...)
     gettimeofday(&t, NULL);
     if ((h->debug >= CCNL_FINE) &&
         ((h->logbreak-- < 0 && t.tv_sec != h->logtime) ||
-          t.tv_sec >= h->logtime + 30)) {
-        ccn_charbuf_putf(b, "%ld.000000 ccnr[%d]: %s ____________________ %s",
-                         (long)t.tv_sec, h->logpid, h->portstr ? h->portstr : "", ctime(&t.tv_sec));
-        h->logtime = t.tv_sec;
-        h->logbreak = 30;
-    }
+         t.tv_sec >= h->logtime + 30)) {
+            clock = t.tv_sec;
+            ccn_charbuf_putf(b, "%ld.000000 ccnr[%d]: %s ____________________ %s",
+                             (long)t.tv_sec, h->logpid,
+                             h->portstr ? h->portstr : "",
+                             ctime(&clock));
+            h->logtime = t.tv_sec;
+            h->logbreak = 30;
+        }
     ccn_charbuf_putf(b, "%ld.%06u ccnr[%d]: %s\n",
-        (long)t.tv_sec, (unsigned)t.tv_usec, h->logpid, fmt);
-    va_start(ap, fmt);
+                     (long)t.tv_sec, (unsigned)t.tv_usec, h->logpid, fmt);
     /* b should already have null termination, but use call for cleanliness */
     res = (*h->logger)(h->loggerdata, ccn_charbuf_as_string(b), ap);
-    va_end(ap);
     ccn_charbuf_destroy(&b);
     /* if there's no one to hear, don't make a sound */
     if (res < 0)

@@ -24,6 +24,7 @@
 #define CCNR_MSG_DEFINED
 
 #include <ccn/loglevels.h>
+#include <stdarg.h>
 
 struct ccnr_handle;
 struct fdholder;
@@ -37,5 +38,6 @@ void ccnr_debug_ccnb(struct ccnr_handle *h,
                      const unsigned char *ccnb,
                      size_t ccnb_size);
 void ccnr_msg(struct ccnr_handle *h, const char *fmt, ...);
+void ccnr_vmsg(struct ccnr_handle *h, const char *fmt, va_list ap);
 
 #endif
