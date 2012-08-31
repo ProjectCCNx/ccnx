@@ -47,7 +47,7 @@ test: default
 $(PROGRAMS): $(CCNLIBDIR)/libccn.a
 
 OBJ_GROUP1 = IndexSorter.o SyncBase.o SyncHashCache.o SyncNode.o SyncRoot.o SyncTreeWorker.o SyncUtil.o
-OBJ_GROUP2 = $(OBJ_GROUP1) sync_diff.o sync_api.o
+OBJ_GROUP2 = $(OBJ_GROUP1) SyncActions.o sync_diff.o sync_api.o
 
 lib:	libsync.a
 
