@@ -1476,7 +1476,7 @@ purgeOldEntries(struct SyncRootStruct *root) {
     if (ceL == NULL) return;
     struct SyncTreeWorkerHead *twL = SyncTreeWorkerCreate(ch, ceL);
     int64_t now = SyncCurrentTime();
-    int64_t trigger = cachePurgeTrigger*M;
+    int64_t trigger = cachePurgeTrigger * M;
     SyncHashClearMarks(ch);
     SyncTreeMarkReachable(twL, 0);
     int hx = 0;
@@ -1936,8 +1936,8 @@ HeartbeatAction(struct ccn_schedule *sched,
     }
     int64_t now = SyncCurrentTime();
     root = priv->rootHead;
-    int64_t lifeMicros = ((int64_t) priv->rootAdviseLifetime)*M;
-    int64_t needMicros = ((int64_t) updateNeedDelta)*M;
+    int64_t lifeMicros = ((int64_t) priv->rootAdviseLifetime) * M;
+    int64_t needMicros = ((int64_t) updateNeedDelta) * M;
         
     while (root != NULL) {
         struct SyncRootPrivate *rp = root->priv;
@@ -3780,12 +3780,17 @@ sync_notify_for_actions(struct sync_depends_data *sd,
     // here for any updates, whether from time-based enumeration
     // or from prefix-based enumeration
     char *here = "Sync.sync_notify_for_actions";
-    if (sd == NULL) return -1;
-    struct SyncBaseStruct *base = (struct SyncBaseStruct *) sd->sync_data;
-    if (base == NULL || base->sd != sd) return -1;
+    struct SyncBaseStruct *base;
+    struct SyncPrivate *priv;
+    int debug;
     
-    struct SyncPrivate *priv = base->priv;
-    int debug = base->debug;
+    if (sd == NULL) return -1;
+    base = (struct SyncBaseStruct *) sd->sync_data;
+    if (base == NULL || base->sd != sd)
+        return (-1);
+    
+    priv = base->priv;
+    debug = base->debug;
     
     if (name == NULL) {
         // end of an enumeration
@@ -3796,6 +3801,7 @@ sync_notify_for_actions(struct sync_depends_data *sd,
             priv->sliceEnum = 0;
             if (debug >= CCNL_INFO)
                 sync_msg(base, "%s, all slice names seen", here);
+            return(0);
         } else if (enum_index == priv->sliceBusy) {
             priv->sliceBusy = 0;
             struct SyncRootStruct *root = priv->rootHead;
@@ -3818,7 +3824,8 @@ sync_notify_for_actions(struct sync_depends_data *sd,
                     break;
                 }
                 root = root->next;
-            }  
+            }
+            return(0);
         } else {
             if (debug >= CCNL_WARNING)
                 sync_msg(base, "%s, end of what enum?", here);
