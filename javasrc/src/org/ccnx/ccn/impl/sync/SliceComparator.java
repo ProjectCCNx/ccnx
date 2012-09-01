@@ -585,7 +585,7 @@ public class SliceComparator implements Runnable {
 	protected void nextRound() {
 		synchronized (this) {
 			_current.clear();
-			if (_currentRoot != null) {
+			if (_currentRoot != null && _currentRoot.getHash().length > 0) {
 				_currentRoot.setPos(0);
 				push(_currentRoot, _current);
 			}
@@ -623,12 +623,18 @@ public class SliceComparator implements Runnable {
 									addPending(ste);
 							}
 						} while (null != data);
-						SyncTreeEntry ste = getPending();
-						if (null != ste) {
-							ste.setPos(0);
-							push(ste, _next);
-							_currentRoot = ste;
-							changeState(SyncCompareState.PRELOAD);
+						
+						// If we are starting at the "current root" we have to wait until we see a
+						// return from the root advise request (which will be "pending content") so that
+						// we know what the "current root" is.
+						if (null == _currentRoot ||  _currentRoot.getHash().length != 0) {
+							SyncTreeEntry ste = getPending();
+							if (null != ste) {
+								ste.setPos(0);
+								push(ste, _next);
+								_currentRoot = ste;
+								changeState(SyncCompareState.PRELOAD);
+							}
 						}
 						if (getState() == SyncCompareState.INIT) {
 							changeState(SyncCompareState.DONE);

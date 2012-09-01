@@ -26,6 +26,7 @@ import java.util.Vector;
 
 import junit.framework.Assert;
 
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNSync;
 import org.ccnx.ccn.CCNSyncHandler;
@@ -47,7 +48,7 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
 
-public class CCNSyncTest extends CCNTestBase implements CCNSyncHandler {
+public class CCNSyncTest extends CCNTestBase implements CCNSyncHandler, CCNContentHandler {
 	
 	public static CCNTestHelper testHelper = new CCNTestHelper(CCNSyncTest.class);
 	
@@ -266,8 +267,14 @@ public class CCNSyncTest extends CCNTestBase implements CCNSyncHandler {
 		 * Test for start with empty root.  This should start at the time we start sync, but not give
 		 * us anything before that.
 		 */
+		ContentName rootAdvise = new ContentName(slice7.topo, Sync.SYNC_ROOT_ADVISE_MARKER, slice7.getHash());
+		Interest interest = new Interest(rootAdvise);
+		interest.scope(1);
+		getHandle.registerInterest(interest, this);
 		slice7 = sync1.startSync(getHandle, topo, prefix1, null, new byte[]{}, null, this);
-		Thread.sleep(SystemConfiguration.MEDIUM_TIMEOUT);  // Make sure we don't see new stuff before we start
+		synchronized (this) {
+			wait(SystemConfiguration.EXTRA_LONG_TIMEOUT);
+		}
 		ContentName prefix1b = prefix1.append("round2");
 		segments = writeFile(prefix1b, true, 0);
 		segmentCheck = checkCallbacks(prefix1b, segments, 0);
@@ -283,9 +290,7 @@ public class CCNSyncTest extends CCNTestBase implements CCNSyncHandler {
 		synchronized (callbackNames) {
 			callbackNames.clear();
 		}
-		ContentName rootAdvise = new ContentName(slice7.topo, Sync.SYNC_ROOT_ADVISE_MARKER, slice7.getHash());
-		Interest interest = new Interest(rootAdvise);
-		interest.scope(1);
+		
 		ContentObject obj = getHandle.get(interest, SystemConfiguration.MEDIUM_TIMEOUT);
 		Assert.assertTrue(obj != null);
 		SyncNodeComposite snc = new SyncNodeComposite();
@@ -433,5 +438,13 @@ public class CCNSyncTest extends CCNTestBase implements CCNSyncHandler {
 			Log.info(Log.FAC_TEST, "{0} outstanding segments = {1}", outstanding, unreceived);
 		}
 		return segments;
+	}
+
+	@Override
+	public Interest handleContent(ContentObject data, Interest interest) {
+		synchronized(this) {
+			notify();
+		}
+		return null;
 	}
 }
