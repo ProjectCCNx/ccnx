@@ -68,7 +68,7 @@ struct sync_depends_sync_methods {
     // or from the name updates (if enum_index == 0)
     //    (for name updates, the seq_num can be used to set the fence)
     // if (name == NULL), marks the end of enumeration
-    // returns < 0 to terminate
+    // returns < 0 to indicate an error, and terminate the enumeration
     // returns 0 if the name was not used
     // returns > 0 if the name was used
     int (* sync_notify)(struct sync_depends_data *sd,
