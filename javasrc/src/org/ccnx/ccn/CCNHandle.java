@@ -463,6 +463,21 @@ public class CCNHandle implements CCNBase {
 		getNetworkManager().expressInterest(this, interest, handler);
 	}
 	
+	public void registerInterest(
+			Interest interest,
+			final CCNContentHandler handler) throws IOException {
+		if( Log.isLoggable(Level.FINE) )
+			Log.fine(Log.FAC_NETMANAGER, formatMessage("expressInterest " + interest.name().toString()));
+
+		synchronized(_openLock) {
+			if( !_isOpen )
+				throw new IOException(formatMessage("Handle is closed"));
+		}
+
+		// Will add the interest to the listener.
+		getNetworkManager().registerInterest(this, interest, handler);
+	}
+	
 	@Deprecated
 	public void expressInterest(
 			Interest interest,

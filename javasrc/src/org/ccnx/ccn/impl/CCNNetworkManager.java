@@ -889,6 +889,30 @@ public class CCNNetworkManager implements Runnable {
 		InterestRegistration reg = new InterestRegistration(interest, handler, caller);
 		expressInterest(reg);
 	}
+	
+	/**
+	 * Register to receive a content object without issuing an interest
+	 * 
+	 * @param caller 	must not be null
+	 * @param interest 	the interest
+	 * @param handler	handler to callback on receipt of data
+	 * @throws IOException on incorrect interest
+	 */
+	public void registerInterest(
+			Object caller,
+			Interest interest,
+			Object handler) throws IOException {
+		// TODO - use of "caller" should be reviewed - don't believe this is currently serving
+		// serving any useful purpose.
+		if (null == handler) {
+			throw new NullPointerException(formatMessage("registerInterest: callbackHandler cannot be null"));
+		}
+
+		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
+			Log.fine(Log.FAC_NETMANAGER, formatMessage("registerInterest: {0}"), interest);
+		InterestRegistration reg = new InterestRegistration(interest, handler, caller);
+		registerInterest(reg);
+	}
 
 	private void expressInterest(InterestRegistration reg) throws IOException {
 		_stats.increment(StatsEnum.ExpressInterest);
