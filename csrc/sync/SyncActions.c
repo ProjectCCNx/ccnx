@@ -1890,7 +1890,7 @@ setFence(struct SyncBaseStruct *base) {
         while (root != NULL) {
             struct SyncRootPrivate *rp = root->priv;
             uint64_t ms = rp->max_seq_num_stable;
-            if (ms > fence)
+            if (ms > fence) // XXX: should it not be the min of the maxes?
                 fence = ms;
             root = root->next;
         }
