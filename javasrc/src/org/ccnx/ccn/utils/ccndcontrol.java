@@ -257,8 +257,8 @@ public class ccndcontrol {
 	}
 
 	/**
-	 * Main function for the ccndcontrol tool.  Initializes the tool, reads the argument list
-	 * and constructs face to be added.
+	 *Utility function for the ccndcontrol tool.  Initializes the tool, 
+     * reads the argument list and constructs face to be added.
 	 *
 	 * @param args Command line arguments:
 	 *
@@ -370,8 +370,8 @@ public class ccndcontrol {
 	}
 
 	/**
-	 * Main function for the ccndcontrol tool.  Initializes the tool, reads the argument list
-	 * and constructs face to be added.
+	 * Main function for the ccndcontrol tool.
+	 * Calls executeCommand() to pass args for processing the command.
 	 *
 	 * @param args Command line arguments:
 	 *
