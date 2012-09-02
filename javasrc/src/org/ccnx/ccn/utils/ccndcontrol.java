@@ -359,7 +359,11 @@ public class ccndcontrol {
 				String m = e.getMessage();
 				System.err.println(m);
                 return(-1);
-			}
+			} finally {
+                if (ccnHandle != null) {
+                    ccnHandle.close();
+                }
+            }
 		}
 
 		return(0);
