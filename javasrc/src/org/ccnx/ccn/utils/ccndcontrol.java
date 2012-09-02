@@ -257,7 +257,7 @@ public class ccndcontrol {
 	}
 
 	/**
-	 *Utility function for the ccndcontrol tool.  Initializes the tool, 
+	 *Utility function for the ccndcontrol tool.  Initializes the tool,
      * reads the argument list and constructs face to be added.
 	 *
 	 * @param args Command line arguments:
