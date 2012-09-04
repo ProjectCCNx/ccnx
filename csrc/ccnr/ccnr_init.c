@@ -55,6 +55,8 @@
 #include <ccn/schedule.h>
 #include <ccn/reg_mgmt.h>
 #include <ccn/uri.h>
+#include <sync/sync_depends.h>
+#include <sync/SyncActions.h>
 
 #include "ccnr_private.h"
 
@@ -71,7 +73,6 @@
 #include "ccnr_store.h"
 #include "ccnr_sync.h"
 #include "ccnr_util.h"
-#include <sync/sync_depends.h>
 
 static int load_policy(struct ccnr_handle *h);
 static int merge_files(struct ccnr_handle *h);
@@ -478,7 +479,7 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h = calloc(1, sizeof(*h));
     if (h == NULL)
         return(h);
-    h->notify_after = CCNR_MAX_ACCESSION;
+    h->notify_after = 0; //CCNR_MAX_ACCESSION;
     h->logger = logger;
     h->loggerdata = loggerdata;
     h->logpid = (int)getpid();
@@ -596,7 +597,7 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h->sync_depends_data->sched = h->sched;
     h->sync_depends_data->client_methods = &sync_client_methods;
     h->sync_depends_data->client_data = h;
-    h->sync_base = SyncNewBase(h->sync_depends_data);
+    h->sync_base = SyncNewBaseForActions(h->sync_depends_data);
     if (-1 == load_policy(h))
         goto Bail;
     r_net_listen_on(h, listen_on);
@@ -606,7 +607,17 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     if (merge_files(h) == -1)
         r_init_fail(h, __LINE__, "Unable to merge additional repository data files.", errno);
     if (h->running == -1) goto Bail;
-    // SyncInit(h->sync_handle); XXX: we need to call something to get things started...
+    // Start sync running
+    // returns < 0 if a failure occurred
+    // returns 0 if the name updates should fully restart
+    // returns > 0 if the name updates should restart at last fence
+    res = h->sync_depends_data->sync_methods->sync_start(h->sync_depends_data, NULL);
+    if (res < 0)
+        r_init_fail(h, __LINE__, "starting sync", res);
+    else if (res > 0) {
+        // XXX: need to work out details of starting from last fence.
+        // By examination of code, SyncActions won't take this path
+    }
 Bail:
     if (sockname)
         free(sockname);
@@ -620,8 +631,12 @@ Bail:
 void
 r_init_fail(struct ccnr_handle *ccnr, int line, const char *culprit, int err)
 {
-    ccnr_msg(ccnr, "Startup failure %d %s - %s", line, culprit,
-             (err > 0) ? strerror(err) : "");
+    if (err > 0)
+        ccnr_msg(ccnr, "Startup failure %d %s - %s", line, culprit,
+                 strerror(err));
+    else {
+        ccnr_msg(ccnr, "Startup failure %d %s - error %d", line, culprit, err);
+    }
     ccnr->running = -1;
 }
 
@@ -643,8 +658,8 @@ r_init_destroy(struct ccnr_handle **pccnr)
     hashtb_destroy(&h->nameprefix_tab);
     hashtb_destroy(&h->content_by_accession_tab);
     hashtb_destroy(&h->enum_state_tab);
-    
-    SyncFreeBase(&h->sync_base);
+    // SyncActions sync_stop method should be shutting down heartbeat
+    h->sync_depends_data->sync_methods->sync_stop(h->sync_depends_data, NULL);
     if (h->sync_depends_data != NULL) {
         free(h->sync_depends_data);
         h->sync_depends_data = NULL;
