@@ -125,7 +125,7 @@ r_sync_msg(struct sync_depends_data *sdd,
     struct ccnr_handle *ccnr = (struct ccnr_handle *)sdd->client_data;
     va_list ap;
     va_start(ap, fmt);
-    ccnr_msg(ccnr, fmt, ap);
+    ccnr_vmsg(ccnr, fmt, ap);
     va_end(ap);
 }
 
@@ -135,6 +135,7 @@ r_sync_fence(struct sync_depends_data *sdd,
 {
     struct ccnr_handle *h = (struct ccnr_handle *)sdd->client_data;
     // TODO: this needs to do something more interesting.
+    ccnr_msg(h, "r_sync_fence: seq_num %ju", seq_num);
     h->notify_after = (ccnr_accession) seq_num;
     return (0);
 }
@@ -145,14 +146,19 @@ r_sync_fence(struct sync_depends_data *sdd,
 PUBLIC int
 r_sync_notify_content(struct ccnr_handle *ccnr, int e, struct content_entry *content)
 {
-    struct sync_depends_sync_methods *sm = ccnr->sync_depends_data->sync_methods;
+    struct sync_depends_data *depends_data = ccnr->sync_depends_data;
     int res;
     ccnr_accession acc = CCNR_NULL_ACCESSION;
-    
+
+    if (depends_data == NULL)
+        return (0);
+
     if (content == NULL) {
-        res = sm->sync_notify(ccnr->sync_depends_data, NULL, e, CCNR_NULL_ACCESSION);
+        if (e == 0)
+            abort();
+        res = depends_data->sync_methods->sync_notify(ccnr->sync_depends_data, NULL, e, 0);
         if (res < 0)
-            ccnr_msg(ccnr, "sync_notify returned %d, expected >= 0",
+            ccnr_msg(ccnr, "sync_notify(..., NULL, %d, 0) returned %d, expected >= 0",
                      e, res);
     }
     else {
@@ -169,7 +175,7 @@ r_sync_notify_content(struct ccnr_handle *ccnr, int e, struct content_entry *con
         if (res < 0) abort();
         if (CCNSHOULDLOG(ccnr, r_sync_notify_content, CCNL_FINEST))
             ccnr_debug_content(ccnr, __LINE__, "r_sync_notify_content", NULL, content);
-        res = sm->sync_notify(ccnr->sync_depends_data, cb, e, acc);
+        res = depends_data->sync_methods->sync_notify(ccnr->sync_depends_data, cb, e, acc);
         r_util_charbuf_release(ccnr, cb);
     }
     if (CCNSHOULDLOG(ccnr, r_sync_notify_content, CCNL_FINEST))
