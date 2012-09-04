@@ -1341,7 +1341,7 @@ SyncLocalRepoStore(struct SyncBaseStruct *base,
                    int flags) {
     char *here = "Sync.SyncLocalRepoStore";
     int res = -__LINE__;
-    struct sync_depends_data *sd = base->sd;
+    struct sync_plumbing *sd = base->sd;
     if (sd->client_methods->r_sync_local_store == NULL)
         return -__LINE__;
     struct ccn_charbuf *cob = SyncSignBuf(base, content, name, -1, flags);
@@ -1372,7 +1372,7 @@ SyncLocalRepoFetch(struct SyncBaseStruct *base,
     struct ccn_charbuf *interest = SyncGenInterest(name, 1, 1, -1, 1, NULL);
     struct ccn_parsed_ContentObject pcos;
     if (pco == NULL) pco = &pcos;
-    struct sync_depends_data *sd = base->sd;
+    struct sync_plumbing *sd = base->sd;
     if (sd->client_methods->r_sync_lookup == NULL)
         return -__LINE__;
     if (interest == NULL) return -__LINE__;

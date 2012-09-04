@@ -55,7 +55,7 @@
 #include <ccn/schedule.h>
 #include <ccn/reg_mgmt.h>
 #include <ccn/uri.h>
-#include <sync/sync_depends.h>
+#include <sync/sync_plumbing.h>
 #include <sync/SyncActions.h>
 
 #include "ccnr_private.h"
@@ -77,7 +77,7 @@
 static int load_policy(struct ccnr_handle *h);
 static int merge_files(struct ccnr_handle *h);
 
-static struct sync_depends_client_methods sync_client_methods = {
+static struct sync_plumbing_client_methods sync_client_methods = {
     .r_sync_msg = &r_sync_msg,
     .r_sync_fence = &r_sync_fence,
     .r_sync_enumerate = &r_sync_enumerate,
@@ -592,12 +592,12 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     }
     else
         ccn_disconnect(h->direct_client); // Apparently ccn_connect error case needs work.
-    h->sync_depends_data = calloc(1, sizeof(struct sync_depends_data));
-    h->sync_depends_data->ccn = h->direct_client;
-    h->sync_depends_data->sched = h->sched;
-    h->sync_depends_data->client_methods = &sync_client_methods;
-    h->sync_depends_data->client_data = h;
-    h->sync_base = SyncNewBaseForActions(h->sync_depends_data);
+    h->sync_plumbing = calloc(1, sizeof(struct sync_plumbing));
+    h->sync_plumbing->ccn = h->direct_client;
+    h->sync_plumbing->sched = h->sched;
+    h->sync_plumbing->client_methods = &sync_client_methods;
+    h->sync_plumbing->client_data = h;
+    h->sync_base = SyncNewBaseForActions(h->sync_plumbing);
     if (-1 == load_policy(h))
         goto Bail;
     r_net_listen_on(h, listen_on);
@@ -611,7 +611,7 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     // returns < 0 if a failure occurred
     // returns 0 if the name updates should fully restart
     // returns > 0 if the name updates should restart at last fence
-    res = h->sync_depends_data->sync_methods->sync_start(h->sync_depends_data, NULL);
+    res = h->sync_plumbing->sync_methods->sync_start(h->sync_plumbing, NULL);
     if (res < 0)
         r_init_fail(h, __LINE__, "starting sync", res);
     else if (res > 0) {
@@ -659,10 +659,10 @@ r_init_destroy(struct ccnr_handle **pccnr)
     hashtb_destroy(&h->content_by_accession_tab);
     hashtb_destroy(&h->enum_state_tab);
     // SyncActions sync_stop method should be shutting down heartbeat
-    h->sync_depends_data->sync_methods->sync_stop(h->sync_depends_data, NULL);
-    if (h->sync_depends_data != NULL) {
-        free(h->sync_depends_data);
-        h->sync_depends_data = NULL;
+    h->sync_plumbing->sync_methods->sync_stop(h->sync_plumbing, NULL);
+    if (h->sync_plumbing != NULL) {
+        free(h->sync_plumbing);
+        h->sync_plumbing = NULL;
     }
     
     r_store_final(h, stable);

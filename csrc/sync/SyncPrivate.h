@@ -29,7 +29,7 @@ struct SyncHashCacheEntry;              // from SyncHashCache.h
 
 struct SyncMethodsList {
     struct SyncMethodsList *next;
-    struct sync_depends_sync_methods *sync_methods;
+    struct sync_plumbing_sync_methods *sync_methods;
 };
 
 struct SyncPrivate {

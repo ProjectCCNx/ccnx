@@ -47,7 +47,7 @@ struct hashtb;
 struct ccnr_meter;
 struct ccn_btree;
 
-struct sync_depends_data;
+struct sync_plumbing;
 struct SyncBaseStruct;
 
 /*
@@ -254,7 +254,7 @@ struct ccnr_handle {
     struct ccn_scheduled_event *direct_client_refresh;
     struct ccn_scheduled_event *notice_push;
     /* items related to sync/repo integration */
-    struct sync_depends_data *sync_depends_data;  /**< encapsulates methods and data */
+    struct sync_plumbing *sync_plumbing;  /**< encapsulates methods and data */
     struct SyncBaseStruct *sync_base;
     ccnr_accession notify_after;  /**< starting item for notifying sync */
     ccnr_accession active_enum[CCNR_MAX_ENUM]; /**< active sync enumerations */

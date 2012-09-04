@@ -68,7 +68,7 @@ struct ccns_slice {
 #define CCNS_FLAGS_SC 1      // start at current root hash.
 
 struct ccns_handle {
-    struct sync_depends_data *depends_data;
+    struct sync_plumbing *sync_plumbing;
     struct SyncBaseStruct *base;
     struct SyncRootStruct *root;
     struct ccn_scheduled_event *ev;
@@ -576,7 +576,7 @@ noteErr2(const char *why, const char *msg) {
 }
 
 static void
-my_r_sync_msg(struct sync_depends_data *sd, const char *fmt, ...) {
+my_r_sync_msg(struct sync_plumbing *sd, const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     vfprintf(stdout, fmt, ap);
@@ -769,9 +769,9 @@ start_round(struct ccns_handle *ch, int micros) {
     struct ccn_scheduled_event *ev = ch->ev;
     if (ev != NULL && ev->action != NULL && ev->evdata == ch)
         // get rid of the existing event
-        ccn_schedule_cancel(ch->depends_data->sched, ev);
+        ccn_schedule_cancel(ch->sync_plumbing->sched, ev);
     // start a new event
-    ch->ev = ccn_schedule_event(ch->depends_data->sched,
+    ch->ev = ccn_schedule_event(ch->sync_plumbing->sched,
                                 micros,
                                 each_round,
                                 ch,
@@ -1147,7 +1147,7 @@ note_update_done(struct sync_done_closure *dc) {
 
 // the only client routine we might need is the logger
 // there is no Repo in this application
-static struct sync_depends_client_methods client_methods = {
+static struct sync_plumbing_client_methods client_methods = {
     my_r_sync_msg, NULL, NULL, NULL, NULL, NULL
 };
 
@@ -1160,15 +1160,15 @@ ccns_open(struct ccn *h,
     struct ccns_handle *ch = calloc(1, sizeof(*ch));
     struct SyncBaseStruct *base = NULL;
     struct SyncRootStruct *root = NULL;
-    struct sync_depends_data *depends_data = NULL;
+    struct sync_plumbing *sync_plumbing = NULL;
 
     if (nc == NULL || nc->callback == NULL) return NULL;
     
-    depends_data = calloc(1, sizeof(*depends_data));
-    depends_data->client_methods = &client_methods;
-    depends_data->ccn = h;
-    depends_data->sched = ccn_get_schedule(h);
-    if (depends_data->sched == NULL) {
+    sync_plumbing = calloc(1, sizeof(*sync_plumbing));
+    sync_plumbing->client_methods = &client_methods;
+    sync_plumbing->ccn = h;
+    sync_plumbing->sched = ccn_get_schedule(h);
+    if (sync_plumbing->sched == NULL) {
         struct ccn_schedule *schedule;
         struct ccn_gettime *timer = calloc(1, sizeof(*timer));
         timer->descr[0]='S';
@@ -1177,9 +1177,9 @@ ccns_open(struct ccn *h,
         timer->data = h;
         schedule = ccn_schedule_create(h, timer);
         ccn_set_schedule(h, schedule);
-        depends_data->sched = schedule;
+        sync_plumbing->sched = schedule;
     }
-    ch->depends_data = depends_data;
+    ch->sync_plumbing = sync_plumbing;
     ch->nc = nc;
     nc->ccns = ch;
     ch->ccn = h;
@@ -1212,12 +1212,12 @@ ccns_open(struct ccn *h,
     update_data->client_data = ch;
     ch->update_data = update_data;
     
-    base = SyncNewBase(depends_data);
+    base = SyncNewBase(sync_plumbing);
     ch->base = base;
-    struct sync_depends_sync_methods *sync_methods = ch->depends_data->sync_methods;
+    struct sync_plumbing_sync_methods *sync_methods = ch->sync_plumbing->sync_methods;
     if (sync_methods!= NULL && sync_methods->sync_start != NULL) {
         // read the initial options, start life for the base
-        sync_methods->sync_start(ch->depends_data, NULL); 
+        sync_methods->sync_start(ch->sync_plumbing, NULL); 
     }
     
     // make the debug levels agree
@@ -1269,7 +1269,7 @@ ccns_close(struct ccns_handle **sh,
             if (registered != NULL) {
                 // break the link, remove this particular registration
                 registered->data = NULL;
-                ccn_set_interest_filter_with_flags(ch->depends_data->ccn,
+                ccn_set_interest_filter_with_flags(ch->sync_plumbing->ccn,
                                                    root->topoPrefix,
                                                    registered,
                                                    0);
@@ -1279,7 +1279,7 @@ ccns_close(struct ccns_handle **sh,
             if (ev != NULL) {
                 ch->ev = NULL;
                 ev->evdata = NULL;
-                ccn_schedule_cancel(ch->depends_data->sched, ev);
+                ccn_schedule_cancel(ch->sync_plumbing->sched, ev);
             }
             // stop any differencing
             struct sync_diff_data *diff_data = ch->diff_data;
@@ -1318,10 +1318,10 @@ ccns_close(struct ccns_handle **sh,
 
             // get rid of the base
             if (ch->base != NULL) {
-                struct sync_depends_sync_methods *sm = ch->depends_data->sync_methods;
+                struct sync_plumbing_sync_methods *sm = ch->sync_plumbing->sync_methods;
                 ch->base = NULL;
                 if (sm != NULL && sm->sync_stop != NULL) {
-                    sm->sync_stop(ch->depends_data, NULL); 
+                    sm->sync_stop(ch->sync_plumbing, NULL); 
                 }
             }
 

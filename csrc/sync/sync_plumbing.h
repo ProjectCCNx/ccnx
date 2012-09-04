@@ -1,5 +1,5 @@
 /*
- * @file sync/sync_depends.h
+ * @file sync/sync_plumbing.h
  *  
  * Part of CCNx Sync.
  *
@@ -36,31 +36,31 @@
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 
-struct sync_depends_data;           // forward def
-struct sync_depends_sync_methods;   // forward def
-struct sync_depends_client_methods; // forward def
+struct sync_plumbing;           // forward def
+struct sync_plumbing_sync_methods;   // forward def
+struct sync_plumbing_client_methods; // forward def
 
-struct sync_depends_data {
+struct sync_plumbing {
     struct ccn *ccn;                // ccn handle to share
     struct ccn_schedule *sched;     // scheduler to share
     
     // sync data and methods
     void *sync_data;
-    struct sync_depends_sync_methods *sync_methods;
+    struct sync_plumbing_sync_methods *sync_methods;
     
     // client data and methods
     void *client_data;
-    struct sync_depends_client_methods *client_methods;
+    struct sync_plumbing_client_methods *client_methods;
     
 };
 
-struct sync_depends_sync_methods {
+struct sync_plumbing_sync_methods {
     // call to start sync processing
     // state_buf holds recovery data (from last sync_stop)
     // returns < 0 if a failure occurred
     // returns 0 if the name updates should fully restart
     // returns > 0 if the name updates should restart at last fence
-    int (* sync_start)(struct sync_depends_data *sd,
+    int (* sync_start)(struct sync_plumbing *sd,
                         struct ccn_charbuf *state_buf);
     
     // call to add a name to the sync trees
@@ -71,20 +71,20 @@ struct sync_depends_sync_methods {
     // returns < 0 to indicate an error, and terminate the enumeration
     // returns 0 if the name was not used
     // returns > 0 if the name was used
-    int (* sync_notify)(struct sync_depends_data *sd,
+    int (* sync_notify)(struct sync_plumbing *sd,
                         struct ccn_charbuf *name,
                         int enum_index,
                         uint64_t seq_num);
     
     // call to stop sync processing (and return resources)
     // state_buf holds recovery data (for next sync_start)
-    void (* sync_stop)(struct sync_depends_data *sd,
+    void (* sync_stop)(struct sync_plumbing *sd,
                        struct ccn_charbuf *state_buf);
 };
 
-struct sync_depends_client_methods {
+struct sync_plumbing_client_methods {
     // logging facility
-    void (* r_sync_msg)(struct sync_depends_data *sd,
+    void (* r_sync_msg)(struct sync_plumbing *sd,
                         const char *fmt, ...);
     
     // sets a fence for repo-style recovery (see below),
@@ -92,7 +92,7 @@ struct sync_depends_client_methods {
     // returns < 0 for an error
     // returns >= 0 for success
     // method is NULL if fence not supported
-    int (* r_sync_fence)(struct sync_depends_data *sd,
+    int (* r_sync_fence)(struct sync_plumbing *sd,
                          uint64_t seq_num);
     
     // starts a name enumeration (via sync_notify), returns immediately
@@ -101,14 +101,14 @@ struct sync_depends_client_methods {
     // returns an enumeration index > 0 if successful
     // (index will be passed to sync_notify)
     // method is NULL if no local enumeration
-    int (* r_sync_enumerate)(struct sync_depends_data *sd,
+    int (* r_sync_enumerate)(struct sync_plumbing *sd,
                              struct ccn_charbuf *interest);
     
     // lookup interest locally (no pause)
     // returns < 0 for an error or not present, >= 0 if fetched
     // if (content != NULL), fills content with the signed content object
     // method is NULL if no local lookup
-    int (* r_sync_lookup)(struct sync_depends_data *sd,
+    int (* r_sync_lookup)(struct sync_plumbing *sd,
                           struct ccn_charbuf *interest,
                           struct ccn_charbuf *content);
     
@@ -117,7 +117,7 @@ struct sync_depends_client_methods {
     // returns 0 if already stored (or is in progress)
     // returns > 0 if newly stored
     // method is NULL if no local store
-    int (* r_sync_local_store)(struct sync_depends_data *sd,
+    int (* r_sync_local_store)(struct sync_plumbing *sd,
                                struct ccn_charbuf *content);
     
     // stores signed content (no pause) from inside a content handler
@@ -125,7 +125,7 @@ struct sync_depends_client_methods {
     // returns 0 if already stored (or is in progress)
     // returns > 0 if newly stored
     // method is NULL if no local store
-    enum ccn_upcall_res (* r_sync_upcall_store)(struct sync_depends_data *sd,
+    enum ccn_upcall_res (* r_sync_upcall_store)(struct sync_plumbing *sd,
                                                 enum ccn_upcall_kind kind,
                                                 struct ccn_upcall_info *info);
 };

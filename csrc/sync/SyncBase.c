@@ -62,7 +62,7 @@ SyncClearErr(struct SyncBaseStruct *base) {
 extern void
 sync_msg(struct SyncBaseStruct *base, const char *fmt, ...) {
     if (base != NULL) {
-        struct sync_depends_data *sd = base->sd;
+        struct sync_plumbing *sd = base->sd;
         if (sd != NULL && sd->sync_data == base
             && sd->client_methods != NULL && sd->client_methods->r_sync_msg != NULL) {
             va_list ap;
@@ -91,7 +91,7 @@ getEnvLimited(char *key, int lo, int hi, int def) {
  * the default behavior for sync_start is to read the options, but not start anything
  */
 static int
-sync_start_default(struct sync_depends_data *sd,
+sync_start_default(struct sync_plumbing *sd,
                    struct ccn_charbuf *state_buf) {
     
     if (sd == NULL) return -1;
@@ -272,7 +272,7 @@ SyncFreeBase(struct SyncBaseStruct **bp) {
 }
 
 static int
-sync_notify_default(struct sync_depends_data *sd,
+sync_notify_default(struct sync_plumbing *sd,
                     struct ccn_charbuf *name,
                     int enum_index,
                     uint64_t seq_num) {
@@ -284,7 +284,7 @@ sync_notify_default(struct sync_depends_data *sd,
 }
 
 extern void
-sync_stop_default(struct sync_depends_data *sd,
+sync_stop_default(struct sync_plumbing *sd,
                   struct ccn_charbuf *state_buf) {
     char *here = "Sync.sync_stop";
     if (sd == NULL) return;
@@ -298,14 +298,14 @@ sync_stop_default(struct sync_depends_data *sd,
     SyncFreeBase(&base);
 }
 
-struct sync_depends_sync_methods defaultMethods = {
+struct sync_plumbing_sync_methods defaultMethods = {
     &sync_start_default,
     &sync_notify_default,
     &sync_stop_default
 };
 
 extern struct SyncBaseStruct *
-SyncNewBase(struct sync_depends_data *sd) {
+SyncNewBase(struct sync_plumbing *sd) {
     int64_t now = SyncCurrentTime();
     struct SyncBaseStruct *base = NEW_STRUCT(1, SyncBaseStruct);
     base->sd = sd;

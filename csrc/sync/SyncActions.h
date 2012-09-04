@@ -62,6 +62,6 @@ struct SyncActionData {
  * construct a new base with methods at the SyncActions level
  */
 struct SyncBaseStruct *
-SyncNewBaseForActions(struct sync_depends_data *sd);
+SyncNewBaseForActions(struct sync_plumbing *sd);
 
 #endif

@@ -939,7 +939,7 @@ SyncRemoteFetchResponse(struct ccn_closure *selfp,
                 case SRI_Kind_Content: {
                     struct SyncRootStruct *root = data->root;
                     struct SyncBaseStruct *base = root->base;
-                    struct sync_depends_data *sd = base->sd;
+                    struct sync_plumbing *sd = base->sd;
                     if (sd->client_methods->r_sync_upcall_store != NULL
                         && bytes > 0) {
                         // we fetched the content, so store it to the repo
@@ -1513,7 +1513,7 @@ SyncStartContentFetch(struct SyncRootStruct *root,
                       struct SyncCompareData *comp) {
     static char *here = "Sync.SyncStartContentFetch";
     struct SyncBaseStruct *base = root->base;
-    struct sync_depends_data *sd = base->sd;
+    struct sync_plumbing *sd = base->sd;
     int debug = base->debug;
     int res = -1;
     struct ccn *ccn = base->sd->ccn;
@@ -1853,7 +1853,7 @@ static int
 SyncStartSliceEnum(struct SyncRootStruct *root) {
     char *here = "Sync.SyncStartSliceEnum";
     struct SyncBaseStruct *base = root->base;
-    struct sync_depends_data *sd = base->sd;
+    struct sync_plumbing *sd = base->sd;
     if (sd->client_methods->r_sync_enumerate == NULL)
         return -1;
     if (base->priv->sliceBusy == 0) {
@@ -1882,7 +1882,7 @@ SyncStartSliceEnum(struct SyncRootStruct *root) {
 static void
 setFence(struct SyncBaseStruct *base) {
     struct SyncPrivate *priv = base->priv;
-    struct sync_depends_data *sd = base->sd;
+    struct sync_plumbing *sd = base->sd;
     if (sd != NULL && sd->client_methods != NULL
         && sd->client_methods->r_sync_fence != NULL) {
         struct SyncRootStruct *root = priv->rootHead;
@@ -2049,7 +2049,7 @@ SyncStartHeartbeat(struct SyncBaseStruct *base) {
     int res = -1;
     if (base != NULL && base->sd->sched != NULL) {
         int debug = base->debug;
-        struct sync_depends_data *sd = base->sd;
+        struct sync_plumbing *sd = base->sd;
         struct SyncPrivate *priv = base->priv;
         struct ccn_charbuf *nin = SyncGenInterest(priv->sliceCmdPrefix,
                                                   -1, -1, -1, -1,
@@ -2156,7 +2156,7 @@ static int
 SyncHandleSlice(struct SyncBaseStruct *base, struct ccn_charbuf *name) {
     char *here = "Sync.SyncHandleSlice";
     char *why = NULL;
-    struct sync_depends_data *sd = base->sd;
+    struct sync_plumbing *sd = base->sd;
     int debug = base->debug;
     const unsigned char *hp = NULL;
     ssize_t hs = 0;
@@ -3752,7 +3752,7 @@ SyncStartCompareAction(struct SyncRootStruct *root, struct ccn_charbuf *hashR) {
 ///////////////////////////////////////////////////////////////////////////
 
 static int
-sync_start_for_actions(struct sync_depends_data *sd,
+sync_start_for_actions(struct sync_plumbing *sd,
                    struct ccn_charbuf *state_buf) {
     char *here = "Sync.sync_start_for_actions";
     if (sd == NULL) return -1;
@@ -3773,7 +3773,7 @@ sync_start_for_actions(struct sync_depends_data *sd,
 }
 
 static int
-sync_notify_for_actions(struct sync_depends_data *sd,
+sync_notify_for_actions(struct sync_plumbing *sd,
                     struct ccn_charbuf *name,
                     int enum_index,
                     uint64_t seq_num) {
@@ -3852,7 +3852,7 @@ sync_notify_for_actions(struct sync_depends_data *sd,
 }
 
 static void
-sync_stop_for_actions(struct sync_depends_data *sd,
+sync_stop_for_actions(struct sync_plumbing *sd,
                       struct ccn_charbuf *state_buf) {
     struct SyncBaseStruct *base = sd->sync_data;
     if (base != NULL && base->sd == sd) {
@@ -3861,14 +3861,14 @@ sync_stop_for_actions(struct sync_depends_data *sd,
     }
 }
 
-struct sync_depends_sync_methods syncActionMethods = {
+struct sync_plumbing_sync_methods syncActionMethods = {
     &sync_start_for_actions,
     &sync_notify_for_actions,
     &sync_stop_for_actions
 };
 
 extern struct SyncBaseStruct *
-SyncNewBaseForActions(struct sync_depends_data *sd) {
+SyncNewBaseForActions(struct sync_plumbing *sd) {
     // most of the construction happens using the default
     struct SyncBaseStruct *base = SyncNewBase(sd);
     struct SyncPrivate *bp = base->priv;

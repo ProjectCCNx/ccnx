@@ -81,7 +81,7 @@ struct SyncTestParms {
 // Dummy for ccnr routines (needed to avoid link errors)
 //////////////////////////////////////////////////////////////////////
 
-#include "sync_depends.h"
+#include "sync_plumbing.h"
 
 
 ////////////////////////////////////////
@@ -1468,7 +1468,7 @@ existingRootOp(struct SyncTestParms *parms,
 }
 
 static void
-my_r_sync_msg(struct sync_depends_data *sd, const char *fmt, ...) {
+my_r_sync_msg(struct sync_plumbing *sd, const char *fmt, ...) {
     if (sd != NULL && fmt != NULL) {
         va_list ap;
         va_start(ap, fmt);
@@ -1477,7 +1477,7 @@ my_r_sync_msg(struct sync_depends_data *sd, const char *fmt, ...) {
     }
 }
 
-struct sync_depends_client_methods client_methods = {
+struct sync_plumbing_client_methods client_methods = {
     &my_r_sync_msg,
     NULL,
     NULL,
@@ -1487,7 +1487,7 @@ struct sync_depends_client_methods client_methods = {
 
 static void
 SyncFreeBase(struct SyncBaseStruct *base) {
-    struct sync_depends_data *sd = base->sd;
+    struct sync_plumbing *sd = base->sd;
     struct ccn_charbuf *state_buf = ccn_charbuf_create();
     sd->sync_methods->sync_stop(sd, state_buf);
     ccn_charbuf_destroy(&state_buf);
@@ -1529,8 +1529,8 @@ main(int argc, char **argv) {
     int i = 1;
     int seen = 0;
     int res = 0;
-    struct sync_depends_data sdStruct;
-    struct sync_depends_data *sd = &sdStruct;
+    struct sync_plumbing sdStruct;
+    struct sync_plumbing *sd = &sdStruct;
     struct SyncTestParms parmStore;
     struct SyncTestParms *parms = &parmStore;
     

@@ -33,7 +33,7 @@
 #include "SyncPrivate.h"
 #include "SyncTreeWorker.h"
 
-#include "sync_depends.h"
+#include "sync_plumbing.h"
 #include "sync_diff.h"
 
 static int nodeSplitTrigger = 4000;     // in bytes, triggers node split
@@ -391,8 +391,8 @@ start_node_fetch(struct sync_diff_data *sdd,
     if (ce->ncL != NULL || ce->ncR != NULL)
         // we already have the node
         return 0;
-    struct sync_depends_data *sd = root->base->sd;
-    struct sync_depends_client_methods *sdcm = sd->client_methods;
+    struct sync_plumbing *sd = root->base->sd;
+    struct sync_plumbing_client_methods *sdcm = sd->client_methods;
     if (sdcm != NULL && sdcm->r_sync_lookup != NULL) {
         // we have a means for local lookup (like a Repo)
         struct SyncNodeComposite *nc = NULL;

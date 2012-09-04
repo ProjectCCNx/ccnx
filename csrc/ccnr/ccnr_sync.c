@@ -48,7 +48,7 @@
 #include "ccnr_sync.h"
 #include "ccnr_util.h"
 
-#include <sync/sync_depends.h>
+#include <sync/sync_plumbing.h>
 
 #ifndef CCNLINT
 
@@ -116,10 +116,10 @@ ccnr_hwm_compare(struct ccnr_handle *ccnr, ccnr_hwm x, ccnr_hwm y)
 #endif
 
 /**
- * A wrapper for ccnr_msg that takes a sync_depends_data instead of ccnr_handle
+ * A wrapper for ccnr_msg that takes a sync_plumbing instead of ccnr_handle
  */
 PUBLIC void
-r_sync_msg(struct sync_depends_data *sdd,
+r_sync_msg(struct sync_plumbing *sdd,
            const char *fmt, ...)
 {
     struct ccnr_handle *ccnr = (struct ccnr_handle *)sdd->client_data;
@@ -130,7 +130,7 @@ r_sync_msg(struct sync_depends_data *sdd,
 }
 
 PUBLIC int
-r_sync_fence(struct sync_depends_data *sdd,
+r_sync_fence(struct sync_plumbing *sdd,
              uint64_t seq_num)
 {
     struct ccnr_handle *h = (struct ccnr_handle *)sdd->client_data;
@@ -146,17 +146,17 @@ r_sync_fence(struct sync_depends_data *sdd,
 PUBLIC int
 r_sync_notify_content(struct ccnr_handle *ccnr, int e, struct content_entry *content)
 {
-    struct sync_depends_data *depends_data = ccnr->sync_depends_data;
+    struct sync_plumbing *sync_plumbing = ccnr->sync_plumbing;
     int res;
     ccnr_accession acc = CCNR_NULL_ACCESSION;
 
-    if (depends_data == NULL)
+    if (sync_plumbing == NULL)
         return (0);
 
     if (content == NULL) {
         if (e == 0)
             abort();
-        res = depends_data->sync_methods->sync_notify(ccnr->sync_depends_data, NULL, e, 0);
+        res = sync_plumbing->sync_methods->sync_notify(ccnr->sync_plumbing, NULL, e, 0);
         if (res < 0)
             ccnr_msg(ccnr, "sync_notify(..., NULL, %d, 0) returned %d, expected >= 0",
                      e, res);
@@ -175,7 +175,7 @@ r_sync_notify_content(struct ccnr_handle *ccnr, int e, struct content_entry *con
         if (res < 0) abort();
         if (CCNSHOULDLOG(ccnr, r_sync_notify_content, CCNL_FINEST))
             ccnr_debug_content(ccnr, __LINE__, "r_sync_notify_content", NULL, content);
-        res = depends_data->sync_methods->sync_notify(ccnr->sync_depends_data, cb, e, acc);
+        res = sync_plumbing->sync_methods->sync_notify(ccnr->sync_plumbing, cb, e, acc);
         r_util_charbuf_release(ccnr, cb);
     }
     if (CCNSHOULDLOG(ccnr, r_sync_notify_content, CCNL_FINEST))
@@ -321,7 +321,7 @@ r_sync_enumerate_action(struct ccn_schedule *sched,
  *      in the SyncNotifyContent
  */
 PUBLIC int
-r_sync_enumerate(struct sync_depends_data *sdd,
+r_sync_enumerate(struct sync_plumbing *sdd,
                  struct ccn_charbuf *interest)
 {
     struct ccnr_handle *ccnr = (struct ccnr_handle *)sdd->client_data;
@@ -409,7 +409,7 @@ Bail:
 }
 
 PUBLIC int
-r_sync_lookup(struct sync_depends_data *sdd,
+r_sync_lookup(struct sync_plumbing *sdd,
               struct ccn_charbuf *interest,
               struct ccn_charbuf *content_ccnb)
 {
@@ -452,7 +452,7 @@ r_lookup(struct ccnr_handle *ccnr,
  * committed to stable storage by the repo.
  */
 PUBLIC enum ccn_upcall_res
-r_sync_upcall_store(struct sync_depends_data *sdd,
+r_sync_upcall_store(struct sync_plumbing *sdd,
                     enum ccn_upcall_kind kind,
                     struct ccn_upcall_info *info)
 {
@@ -495,7 +495,7 @@ r_sync_upcall_store(struct sync_depends_data *sdd,
  */
 
 PUBLIC int
-r_sync_local_store(struct sync_depends_data *sdd,
+r_sync_local_store(struct sync_plumbing *sdd,
                    struct ccn_charbuf *content_cb)
 {
     struct ccnr_handle *ccnr = (struct ccnr_handle *)sdd->client_data;

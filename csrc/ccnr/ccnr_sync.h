@@ -25,13 +25,13 @@
 /** Report message from sync code back through ccnr message infrastructure
  *
  */
-void r_sync_msg(struct sync_depends_data *sdd, const char *fmt, ...);
+void r_sync_msg(struct sync_plumbing *sdd, const char *fmt, ...);
 
 /**
  * A call to r_sync_fence sets a "fence" marker that is remembered for any
  * clean shut down of a repo/sync pair.
  */
-int r_sync_fence(struct sync_depends_data *sdd, uint64_t seq_num);
+int r_sync_fence(struct sync_plumbing *sdd, uint64_t seq_num);
 
 /** Notify repo of starting point for new names to be passed to sync.
  * Use item = 0 as the initial value.
@@ -57,7 +57,7 @@ r_sync_notify_after(struct ccnr_handle *ccnr, ccnr_hwm item);
  *      in the SyncNotifyContent
  */
 int
-r_sync_enumerate(struct sync_depends_data *sdd, struct ccn_charbuf *interest);
+r_sync_enumerate(struct sync_plumbing *sdd, struct ccn_charbuf *interest);
 
 /** Look up a content object that is stored locally in the repository
  * based on the supplied interest.
@@ -65,7 +65,7 @@ r_sync_enumerate(struct sync_depends_data *sdd, struct ccn_charbuf *interest);
  * returns 0 for success, -1 for error.
  */
 int
-r_sync_lookup(struct sync_depends_data *sdd, struct ccn_charbuf *interest,
+r_sync_lookup(struct sync_plumbing *sdd, struct ccn_charbuf *interest,
               struct ccn_charbuf *content_ccnb);
 
 /** Look up a content object that is stored locally in the repository
@@ -82,7 +82,7 @@ r_lookup(struct ccnr_handle *ccnr, struct ccn_charbuf *interest,
  * committed to stable storage by the repo.
  */
 enum ccn_upcall_res
-r_sync_upcall_store(struct sync_depends_data *sdd, enum ccn_upcall_kind kind,
+r_sync_upcall_store(struct sync_plumbing *sdd, enum ccn_upcall_kind kind,
                     struct ccn_upcall_info *info);
 
 /**
@@ -92,7 +92,7 @@ r_sync_upcall_store(struct sync_depends_data *sdd, enum ccn_upcall_kind kind,
  */
 
 int
-r_sync_local_store(struct sync_depends_data *sdd, struct ccn_charbuf *content_cb);
+r_sync_local_store(struct sync_plumbing *sdd, struct ccn_charbuf *content_cb);
 
 /**
  * A wrapper for the sync_notify method that takes a content entry.

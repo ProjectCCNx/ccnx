@@ -25,7 +25,7 @@
 #include <ccn/loglevels.h>
 #include <stdint.h>
 
-#include "sync_depends.h"
+#include "sync_plumbing.h"
 
 // Incomplete types for opaque structures.
 struct ccn_schedule;
@@ -36,7 +36,7 @@ struct SyncPrivate;
 // list of collections. 
 
 struct SyncBaseStruct {
-    struct sync_depends_data *sd;   // interface between client and sync
+    struct sync_plumbing *sd;   // interface between client and sync
     struct SyncErrStruct *errList;  // private data for Sync
     struct SyncPrivate *priv;       // opaque data for Repo (from Repo)
     int debug;                      // higher gives more output, 0 gives none
@@ -59,7 +59,7 @@ struct SyncErrStruct {
 };
 
 
-// Logging support (veneer over sync_depends logging)
+// Logging support (veneer over sync_plumbing logging)
 void sync_msg(struct SyncBaseStruct *base, const char *fmt, ...);
 
 // add a new error record
@@ -76,7 +76,7 @@ void SyncClearErr(struct SyncBaseStruct *base);
 // allocate a new sync base
 // and fill in the sync methods in sd
 struct SyncBaseStruct *
-SyncNewBase(struct sync_depends_data *sd);
+SyncNewBase(struct sync_plumbing *sd);
 
 
 #endif
