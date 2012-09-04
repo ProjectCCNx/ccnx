@@ -1,4 +1,4 @@
-# sync_exp/dir.mk
+# sync/dir.mk
 # 
 # Part of the CCNx distribution.
 #
@@ -37,7 +37,13 @@ CSRC = \
  sync_api.c \
  sync_diff.c
 
-HSRC = IndexSorter.h SyncActions.h SyncBase.h SyncHashCache.h SyncMacros.h SyncNode.h SyncPrivate.h SyncRoot.h SyncTreeWorker.h SyncUtil.h sync_depends.h sync_diff.h
+HSRC = IndexSorter.h SyncActions.h SyncBase.h SyncHashCache.h SyncMacros.h \
+       SyncNode.h SyncPrivate.h SyncRoot.h SyncTreeWorker.h SyncUtil.h \
+       sync_depends.h sync_diff.h 
+
+LIBS = libsync.a
+LIB_OBJS = IndexSorter.o SyncBase.o SyncHashCache.o SyncNode.o SyncRoot.o \
+       SyncTreeWorker.o SyncUtil.o SyncActions.o sync_diff.o sync_api.o
 
 default all: $(PROGRAMS) lib
 all: $(BROKEN_PROGRAMS)
@@ -46,13 +52,11 @@ test: default
 
 $(PROGRAMS): $(CCNLIBDIR)/libccn.a
 
-OBJ_GROUP1 = IndexSorter.o SyncBase.o SyncHashCache.o SyncNode.o SyncRoot.o SyncTreeWorker.o SyncUtil.o
-OBJ_GROUP2 = $(OBJ_GROUP1) SyncActions.o sync_diff.o sync_api.o
-
 lib:	libsync.a
 
-libsync.a:	$(OBJ_GROUP2)
-	ar crus $@ $(OBJ_GROUP2)
+libsync.a:	$(LIB_OBJS)
+	rm -f $@
+	ar crus $@ $(LIB_OBJS)
 
 SyncTest_OBJ = SyncTest.o
 SyncTest: $(SyncTest_OBJ) lib

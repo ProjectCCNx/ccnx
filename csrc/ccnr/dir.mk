@@ -12,7 +12,7 @@
 # FOR A PARTICULAR PURPOSE.
 #
 
-LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -L$(SYNCLIBDIR) -lsync -lccn
+LDLIBS = -L$(CCNLIBDIR) -L$(SYNCLIBDIR) $(MORE_LDLIBS) -lsync -lccn
 CCNLIBDIR = ../lib
 SYNCLIBDIR = ../sync
 # Override conf.mk or else we don't pick up all the includes
@@ -26,16 +26,16 @@ BROKEN_PROGRAMS =
 CSRC = ccnr_dispatch.c ccnr_forwarding.c ccnr_init.c ccnr_internal_client.c ccnr_io.c ccnr_link.c ccnr_main.c ccnr_match.c ccnr_msg.c ccnr_net.c ccnr_proto.c ccnr_sendq.c ccnr_stats.c ccnr_store.c ccnr_sync.c ccnr_util.c
 HSRC = ccnr_private.h
 SCRIPTSRC = 
- 
+
 default: $(PROGRAMS)
 
 all: default $(BROKEN_PROGRAMS)
 
-$(PROGRAMS): $(CCNLIBDIR)/libccn.a 
+$(PROGRAMS): $(CCNLIBDIR)/libccn.a $(SYNCLIBDIR)/libsync.a
 
 CCNR_OBJ = ccnr_dispatch.o ccnr_forwarding.o ccnr_init.o ccnr_internal_client.o ccnr_io.o ccnr_link.o ccnr_main.o ccnr_match.o ccnr_msg.o ccnr_net.o ccnr_proto.o ccnr_sendq.o ccnr_stats.o ccnr_store.o ccnr_sync.o ccnr_util.o
 
-ccnr: $(CCNR_OBJ) $(SYNCLIBDIR)/libsync.a
+ccnr: $(CCNR_OBJ)
 	$(CC) $(CFLAGS) -o $@ $(CCNR_OBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 clean:
