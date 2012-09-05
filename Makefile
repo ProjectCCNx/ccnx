@@ -20,7 +20,7 @@ PACKLIST = Makefile README LICENSE NEWS NOTICES configure doc/index.txt \
 BLDMSG = printf '=== %s ' 'Building $@ in' && pwd
 
 # Include build parameters
-include csrc/conf.mk
+-include csrc/conf.mk
 
 default all: _always
 	for i in $(TOPSUBDIRS); do         \

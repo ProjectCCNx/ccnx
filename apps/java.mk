@@ -12,7 +12,7 @@
 # FOR A PARTICULAR PURPOSE.
 #
 
-include ../conf.mk
+-include ../conf.mk
 
 ANT = `command -v ant || echo echo SKIPPING ant`
 LIBS = $(JAR)
