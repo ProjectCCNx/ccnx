@@ -12,7 +12,7 @@
 # FOR A PARTICULAR PURPOSE.
 #
 
-LDLIBS = -L$(CCNLIBDIR) -L$(SYNCLIBDIR) $(MORE_LDLIBS) -lsync -lccn
+LDLIBS = -L$(CCNLIBDIR) -L$(SYNCLIBDIR) $(MORE_LDLIBS) -lccnsync -lccn
 CCNLIBDIR = ../lib
 SYNCLIBDIR = ../sync
 # Override conf.mk or else we don't pick up all the includes
@@ -31,7 +31,7 @@ default: $(PROGRAMS)
 
 all: default $(BROKEN_PROGRAMS)
 
-$(PROGRAMS): $(CCNLIBDIR)/libccn.a $(SYNCLIBDIR)/libsync.a
+$(PROGRAMS): $(CCNLIBDIR)/libccn.a $(SYNCLIBDIR)/libccnsync.a
 
 CCNR_OBJ = ccnr_dispatch.o ccnr_forwarding.o ccnr_init.o ccnr_internal_client.o ccnr_io.o ccnr_link.o ccnr_main.o ccnr_match.o ccnr_msg.o ccnr_net.o ccnr_proto.o ccnr_sendq.o ccnr_stats.o ccnr_store.o ccnr_sync.o ccnr_util.o
 

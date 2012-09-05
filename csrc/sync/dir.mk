@@ -13,7 +13,7 @@
 #
 
 CCNLIBDIR = ../lib
-LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn -L. -lsync
+LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn -L. -lccnsync
 
 INSTALLED_PROGRAMS = 
 
@@ -41,7 +41,7 @@ HSRC = IndexSorter.h SyncActions.h SyncBase.h SyncHashCache.h SyncMacros.h \
        SyncNode.h SyncPrivate.h SyncRoot.h SyncTreeWorker.h SyncUtil.h \
        sync_plumbing.h sync_diff.h 
 
-LIBS = libsync.a
+LIBS = libccnsync.a
 LIB_OBJS = IndexSorter.o SyncBase.o SyncHashCache.o SyncNode.o SyncRoot.o \
        SyncTreeWorker.o SyncUtil.o SyncActions.o sync_diff.o sync_api.o
 
@@ -52,9 +52,9 @@ test: default
 
 $(PROGRAMS): $(CCNLIBDIR)/libccn.a
 
-lib:	libsync.a
+lib:	libccnsync.a
 
-libsync.a:	$(LIB_OBJS)
+libccnsync.a:	$(LIB_OBJS)
 	rm -f $@
 	ar crus $@ $(LIB_OBJS)
 
