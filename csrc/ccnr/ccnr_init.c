@@ -1052,7 +1052,8 @@ CreateNewPolicy:
                                       600, policy);
     // save the policy content object to the repository
     content = process_incoming_content(ccnr, ccnr->face0,
-                                       (void *)policy_cob->buf, policy_cob->length);
+                                       (void *)policy_cob->buf,
+                                       policy_cob->length, NULL);
     r_store_commit_content(ccnr, content);
     ccn_charbuf_destroy(&policy_cob);
     // make a link to the policy content object
