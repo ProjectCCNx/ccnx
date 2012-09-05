@@ -77,6 +77,7 @@ struct content_entry {
 };
 
 static const unsigned char *bogon = NULL;
+const ccnr_accession r_store_mark_repoFile1 = ((ccnr_accession)1) << 48;
 
 static int
 r_store_set_flatname(struct ccnr_handle *h, struct content_entry *content,
@@ -829,26 +830,33 @@ r_store_look(struct ccnr_handle *h, const unsigned char *key, size_t size)
     return(content);
 }
 
-PUBLIC struct content_entry *
-r_store_find_first_match_candidate(struct ccnr_handle *h,
-                                   const unsigned char *interest_msg,
-                                   const struct ccn_parsed_interest *pi)
+/**
+ * Extract the flatname representations of the bounds for the
+ * next component after the name prefix of the interest.
+ * These are exclusive bounds.  The results are appended to
+ * lower and upper (when not NULL).  If there is
+ * no lower bound, lower will be unchanged.
+ * If there is no upper bound, a sentinel value is appended to upper.
+ *
+ * @returns on success the number of Components in Exclude.
+ *          A negative value indicates an error.
+ */
+static int
+ccn_append_interest_bounds(const unsigned char *interest_msg,
+                           const struct ccn_parsed_interest *pi,
+                           struct ccn_charbuf *lower,
+                           struct ccn_charbuf *upper)
 {
-    int res;
-    size_t start = pi->offset[CCN_PI_B_Name];
-    size_t end = pi->offset[CCN_PI_E_Name];
-    struct ccn_charbuf *namebuf = NULL;
-    struct ccn_charbuf *flatname = NULL;
-    struct content_entry *content = NULL;
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d = NULL;
+    size_t xstart = 0;
+    size_t xend = 0;
+    int atlower = 0;
+    int atupper = 0;
+    int res = 0;
+    int nexcl = 0;
     
-    flatname = ccn_charbuf_create_n(pi->offset[CCN_PI_E]);
-    ccn_flatname_from_ccnb(flatname, interest_msg, pi->offset[CCN_PI_E]);
     if (pi->offset[CCN_PI_B_Exclude] < pi->offset[CCN_PI_E_Exclude]) {
-        /* Check for <Exclude><Any/><Component>... fast case */
-        struct ccn_buf_decoder decoder;
-        struct ccn_buf_decoder *d;
-        size_t ex1start;
-        size_t ex1end;
         d = ccn_buf_decoder_start(&decoder,
                                   interest_msg + pi->offset[CCN_PI_B_Exclude],
                                   pi->offset[CCN_PI_E_Exclude] -
@@ -857,36 +865,138 @@ r_store_find_first_match_candidate(struct ccnr_handle *h,
         if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
             ccn_buf_advance(d);
             ccn_buf_check_close(d);
-            if (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
-                ex1start = pi->offset[CCN_PI_B_Exclude] + d->decoder.token_index;
-                ccn_buf_advance_past_element(d);
-                ex1end = pi->offset[CCN_PI_B_Exclude] + d->decoder.token_index;
-                if (d->decoder.state >= 0) {
-                    namebuf = ccn_charbuf_create_n((end - start) + (ex1end - ex1start));
-                    ccn_charbuf_append(namebuf,
-                                       interest_msg + start,
-                                       end - start);
-                    namebuf->length--;
-                    ccn_charbuf_append(namebuf,
-                                       interest_msg + ex1start,
-                                       ex1end - ex1start);
-                    ccn_charbuf_append_closer(namebuf);
-                    res = ccn_flatname_append_from_ccnb(flatname,
-                                                        interest_msg + ex1start,
-                                                        ex1end - ex1start,
-                                                        0, 1);
-                    if (res != 1)
-                        ccnr_debug_ccnb(h, __LINE__, "fastex_bug", NULL,
-                                        namebuf->buf, namebuf->length);
-                    if (CCNSHOULDLOG(h, LM_8, CCNL_FINER))
-                        ccnr_debug_ccnb(h, __LINE__, "fastex", NULL,
-                                        namebuf->buf, namebuf->length);
-                }
+            atlower = 1; /* look for <Exclude><Any/><Component>... case */
+        }
+        else if (ccn_buf_match_dtag(d, CCN_DTAG_Bloom))
+            ccn_buf_advance_past_element(d);
+        while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
+            nexcl++;
+            xstart = pi->offset[CCN_PI_B_Exclude] + d->decoder.token_index;
+            ccn_buf_advance_past_element(d);
+            xend = pi->offset[CCN_PI_B_Exclude] + d->decoder.token_index;
+            if (atlower && lower != NULL && d->decoder.state >= 0) {
+                res = ccn_flatname_append_from_ccnb(lower,
+                        interest_msg + xstart, xend - xstart, 0, 1);
+                if (res < 0)
+                    d->decoder.state = - __LINE__;
             }
+            atlower = 0;
+            atupper = 0;
+            if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
+                atupper = 1; /* look for ...</Component><Any/></Exclude> case */
+                ccn_buf_advance(d);
+                ccn_buf_check_close(d);
+            }
+            else if (ccn_buf_match_dtag(d, CCN_DTAG_Bloom))
+                ccn_buf_advance_past_element(d);
+        }
+        ccn_buf_check_close(d);
+        res = d->decoder.state;
+    }
+    if (upper != NULL) {
+        if (atupper && res >= 0)
+            res = ccn_flatname_append_from_ccnb(upper,
+                     interest_msg + xstart, xend - xstart, 0, 1);
+        else
+            ccn_charbuf_append(upper, "\377\377\377", 3);
+    }
+    return (res < 0 ? res : 0);
+}
+
+static struct content_entry *
+r_store_lookup_backwards(struct ccnr_handle *h,
+                         const unsigned char *interest_msg,
+                         const struct ccn_parsed_interest *pi,
+                         struct ccn_indexbuf *comps)
+{
+    struct content_entry *content = NULL;
+    struct ccn_btree_node *leaf = NULL;
+    struct ccn_charbuf *lower = NULL;
+    struct ccn_charbuf *f = NULL;
+    size_t size;
+    size_t fsz;
+    int errline = 0;
+    int try = 0;
+    int ndx;
+    int res;
+    int rnc;
+    
+    size = pi->offset[CCN_PI_E];
+    f = ccn_charbuf_create_n(pi->offset[CCN_PI_E_Name]);
+    lower = ccn_charbuf_create();
+    if (f == NULL || lower == NULL) { errline = __LINE__; goto Done; };
+    rnc = ccn_flatname_from_ccnb(f, interest_msg, size);
+    fsz = f->length;
+    res = ccn_charbuf_append_charbuf(lower, f);
+    if (rnc < 0 || res < 0) { errline = __LINE__; goto Done; };
+    res = ccn_append_interest_bounds(interest_msg, pi, lower, f);
+    if (res < 0) { errline = __LINE__; goto Done; };
+    /* Now f is beyond any we care about */
+    res = ccn_btree_lookup(h->btree, f->buf, f->length, &leaf);
+    if (res < 0) { errline = __LINE__; goto Done; };
+    ndx = CCN_BT_SRCH_INDEX(res);
+    for (try = 1;; try++) {
+        if (ndx == 0) {
+            res = ccn_btree_prev_leaf(h->btree, leaf, &leaf);
+            if (res != 1) goto Done;
+            ndx = ccn_btree_node_nent(leaf);
+            if (ndx <= 0) goto Done;
+        }
+        ndx -= 1;
+        res = ccn_btree_compare(lower->buf, lower->length, leaf, ndx);
+        if (res > 0 || (res == 0 && lower->length > fsz))
+            goto Done;
+        f->length = 0;
+        res = ccn_btree_key_fetch(f, leaf, ndx);
+        if (res < 0) { errline = __LINE__; goto Done; }
+        if (f->length > fsz) {
+            rnc = ccn_flatname_next_comp(f->buf + fsz, f->length - fsz);
+            if (rnc < 0) { errline = __LINE__; goto Done; };
+            f->length = fsz + CCNFLATDELIMSZ(rnc) + CCNFLATDATASZ(rnc);
+            res = ccn_btree_lookup(h->btree, f->buf, f->length, &leaf);
+            if (res < 0) { errline = __LINE__; goto Done; };
+            ndx = CCN_BT_SRCH_INDEX(res);
+        }
+        else if (f->length < fsz) { errline = __LINE__; goto Done; }
+        res = ccn_btree_match_interest(leaf, ndx, interest_msg, pi, f);
+        if (res == 1) {
+            res = ccn_btree_key_fetch(f, leaf, ndx);
+            if (res < 0) { errline = __LINE__; goto Done; }
+            content = r_store_look(h, f->buf, f->length);
+            goto Done;
+        }
+        else if (res != 0) { errline = __LINE__; goto Done; }
+    }
+Done:
+    if (errline != 0)
+        ccnr_debug_ccnb(h, errline, "match_error", NULL, interest_msg, size);
+    else {
+        if (content != NULL) {
+            h->count_rmc_found += 1;
+            h->count_rmc_found_iters += try;
+        }
+        else {
+            h->count_rmc_notfound += 1;
+            h->count_rmc_notfound_iters += try;
         }
     }
+    ccn_charbuf_destroy(&lower);
+    ccn_charbuf_destroy(&f);
+    return(content);
+}
+
+PUBLIC struct content_entry *
+r_store_find_first_match_candidate(struct ccnr_handle *h,
+                                   const unsigned char *interest_msg,
+                                   const struct ccn_parsed_interest *pi)
+{
+    struct ccn_charbuf *flatname = NULL;
+    struct content_entry *content = NULL;
+    
+    flatname = ccn_charbuf_create_n(pi->offset[CCN_PI_E]);
+    ccn_flatname_from_ccnb(flatname, interest_msg, pi->offset[CCN_PI_E]);
+    ccn_append_interest_bounds(interest_msg, pi, flatname, NULL);
     content = r_store_look(h, flatname->buf, flatname->length);
-    ccn_charbuf_destroy(&namebuf);
     ccn_charbuf_destroy(&flatname);
     return(content);
 }
@@ -976,6 +1086,11 @@ r_store_lookup(struct ccnr_handle *h,
     int res;
     int try;
     
+    if ((pi->orderpref & 1) == 1) {
+        content = r_store_lookup_backwards(h, msg, pi, comps);
+        return(content);
+    }
+    
     content = r_store_find_first_match_candidate(h, msg, pi);
     if (content != NULL && CCNSHOULDLOG(h, LM_8, CCNL_FINER))
         ccnr_debug_content(h, __LINE__, "first_candidate", NULL,
@@ -988,7 +1103,7 @@ r_store_lookup(struct ccnr_handle *h,
             content = NULL;
         }
     scratch = ccn_charbuf_create();
-    for (try = 0; content != NULL; try++) {
+    for (try = 1; content != NULL; try++) {
         res = ccn_btree_lookup(h->btree,
                                content->flatname->buf,
                                content->flatname->length,
@@ -1024,6 +1139,14 @@ r_store_lookup(struct ccnr_handle *h,
             content = r_store_content_from_accession(h, last_match_acc);
     }
     ccn_charbuf_destroy(&scratch);
+    if (content != NULL) {
+        h->count_lmc_found += 1;
+        h->count_lmc_found_iters += try;
+    }
+    else {
+        h->count_lmc_notfound += 1;
+        h->count_lmc_notfound_iters += try;
+    }
     return(content);
 }
 
@@ -1191,7 +1314,7 @@ r_store_content_flatname(struct ccnr_handle *h, struct content_entry *content)
 
 PUBLIC struct content_entry *
 process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
-                         unsigned char *msg, size_t size)
+                         unsigned char *msg, size_t size, off_t *offsetp)
 {
     struct ccn_parsed_ContentObject obj = {0};
     int res;
@@ -1211,6 +1334,11 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
     if (res < 0) goto Bail;
     ccnr_meter_bump(h, fdholder->meter[FM_DATI], 1);
     content->accession = CCNR_NULL_ACCESSION;
+    if (fdholder->filedesc == h->active_in_fd && offsetp != NULL) {
+        // if we are reading from repoFile1 to rebuild the index we already know
+        // the accession number
+        content->accession = ((ccnr_accession)*offsetp) | r_store_mark_repoFile1;
+    }
     r_store_enroll_content(h, content);
     if (CCNSHOULDLOG(h, LM_4, CCNL_FINE))
         ccnr_debug_content(h, __LINE__, "content_from", fdholder, content);
@@ -1259,7 +1387,6 @@ r_store_content_field_access(struct ccnr_handle *h,
     return(res);
 }
 
-const ccnr_accession r_store_mark_repoFile1 = ((ccnr_accession)1) << 48;
 
 PUBLIC int
 r_store_set_accession_from_offset(struct ccnr_handle *h,
@@ -1334,8 +1461,15 @@ r_store_send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct co
 PUBLIC int
 r_store_commit_content(struct ccnr_handle *h, struct content_entry *content)
 {
+    struct fdholder *fdholder = r_io_fdholder_from_fd(h, h->active_out_fd);
     // XXX - here we need to check if this is something we *should* be storing, according to our policy
     if ((r_store_content_flags(content) & CCN_CONTENT_ENTRY_STABLE) == 0) {
+        if (fdholder == NULL)
+        {
+            ccnr_msg(h, "Repository shutting down due to error storing content.");
+            h->running = 0;
+            return(-1);
+        }
         r_store_send_content(h, r_io_fdholder_from_fd(h, h->active_out_fd), content);
         r_store_content_change_flags(content, CCN_CONTENT_ENTRY_STABLE, 0);
     }

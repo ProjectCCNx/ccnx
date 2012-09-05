@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011, 2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -19,6 +19,7 @@ package org.ccnx.ccn.test.protocol;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Vector;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
@@ -65,6 +66,9 @@ public class LatestVersionTest {
 	public static ContentObject failVerify2 = null;
 	public static ContentObject failVerify4 = null;
 
+	private static Vector<Interest> outstandingInterests = new Vector<Interest>();
+
+	
 	Responder responder;
 
 	/**
@@ -166,9 +170,19 @@ public class LatestVersionTest {
 		Assert.assertTrue(skipTime.before(skipTime2));
 
 		try {
-			responderHandle.put(obj1);
-			responderHandle.put(obj2);
+			//should not force content objects into ccnd...
+			//responderHandle.put(obj1);
+			//responderHandle.put(obj2);
 
+			responseObjects.add(obj1);
+			responseObjects.add(obj2);
+			
+			ContentObject o1 = getHandle.get(obj1.name(), SystemConfiguration.MEDIUM_TIMEOUT);
+			ContentObject o2 = getHandle.get(obj2.name(), SystemConfiguration.MEDIUM_TIMEOUT);
+
+			Assert.assertNotNull(o1);
+			Assert.assertNotNull(o2);
+			
 			object = VersioningProfile.getLatestVersion(baseName, null, timeout, getHandle.defaultVerifier(), getHandle);
 			responder.checkError();
 			Assert.assertNotNull(object);
@@ -194,6 +208,10 @@ public class LatestVersionTest {
 		responseObjects.add(obj3);
 		Log.info(Log.FAC_TEST, "added: "+obj3.name());
 
+		System.out.println("do we have outstanding interests? "+outstandingInterests.size() +" or response Objects? "+ responseObjects.size());
+		responder.processOutstandingInterests();
+		System.out.println("after processing: do we have outstanding interests? "+outstandingInterests.size() +" or response Objects? "+ responseObjects.size());
+
 		//now put third version
 		try {
 			Log.info(Log.FAC_TEST, "calling gLV at: "+System.currentTimeMillis());
@@ -211,6 +229,9 @@ public class LatestVersionTest {
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.name()) == VersioningProfile.getLastVersionAsLong(three));
 			Log.info(Log.FAC_TEST, "passed test for getFirstBlockOfLatestVersion with 3 versions available");
 
+			if (responseObjects.size() > 0 )
+				System.out.println("i have a content object...: "+responseObjects.get(0).fullName());
+			
 			Assert.assertTrue(responseObjects.size() == 0);
 
 		} catch (VersionMissingException e) {
@@ -221,6 +242,10 @@ public class LatestVersionTest {
 		}
 
 
+		System.out.println("do we have outstanding interests? "+outstandingInterests.size() +" or response Objects? "+ responseObjects.size());
+		responder.processOutstandingInterests();
+		System.out.println("after processing: do we have outstanding interests? "+outstandingInterests.size() +" or response Objects? "+ responseObjects.size());
+		
 		//now make sure we can get the latest version with an explicit request for
 		//something after version 2
 		try {
@@ -236,6 +261,11 @@ public class LatestVersionTest {
 		} catch (VersionMissingException e) {
 			Assert.fail("Failed to get version from object: "+e.getMessage());
 		}
+
+		
+		System.out.println("do we have outstanding interests? "+outstandingInterests.size() +" or response Objects? "+ responseObjects.size());
+		responder.processOutstandingInterests();
+		System.out.println("after processing: do we have outstanding interests? "+outstandingInterests.size() +" or response Objects? "+ responseObjects.size());
 
 
 		//now check to make sure when we ask for a later version (that does not exist) that we don't wait too long.
@@ -267,9 +297,10 @@ public class LatestVersionTest {
 			Assert.fail("failed to test with different timeouts: "+e.getMessage());
 		}
 
+		Thread.sleep(4000); // Allow time for the unanswered interests to expire
 
 		responseObjects.add(obj4);
-
+		
 		//add a fourth responder and make sure we don't get it back.
 		try {
 			lastVersionPublished = obj4;
@@ -292,6 +323,7 @@ public class LatestVersionTest {
 			Assert.fail("failed to test with timeout of 0: "+e.getMessage());
 		}
 
+		
 		//need to clear out segment 4 from our responder
 		//now make sure we can get the latest version with an explicit request for
 		//something after version 2
@@ -309,7 +341,6 @@ public class LatestVersionTest {
 		} catch (VersionMissingException e) {
 			Assert.fail("Failed to get version from object: "+e.getMessage());
 		}
-
 
 
 		//test for getting the first segment of a version that does not have a first segment
@@ -357,6 +388,7 @@ public class LatestVersionTest {
 
 		lastVersionPublished = responseObjects.get(responseObjects.size()-1);
 
+		
 		//test for sending in a null timeout
 		try {
 
@@ -402,7 +434,8 @@ public class LatestVersionTest {
 		versionToAdd.increment(1);
 		failVerify = ContentObject.buildContentObject(SegmentationProfile.segmentName(new ContentName(baseName, versionToAdd), 0), "here is failVerify".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
 		responseObjects.add(failVerify);
-
+				
+		
 		try {
 			getHandle.get(failVerify.fullName(), timeout);
 			responder.checkError();
@@ -446,7 +479,7 @@ public class LatestVersionTest {
 		versionToAdd.increment(1);
 		ContentObject verify = ContentObject.buildContentObject(SegmentationProfile.segmentName(new ContentName(baseName, versionToAdd), 0), "here is verify".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
 		responseObjects.add(verify);
-
+		
 		try {
 			getHandle.get(verify.fullName(), timeout);
 			responder.checkError();
@@ -626,6 +659,31 @@ public class LatestVersionTest {
 			handle.registerFilter(baseName, this);
 		}
 
+		
+		public void processOutstandingInterests() {
+			Vector<Interest> interestToRemove = new Vector<Interest>();
+			Vector<ContentObject> responsesToRemove = new Vector<ContentObject>();
+
+			for (Interest i: outstandingInterests) {
+				for (ContentObject c: responseObjects) {
+					if (i.matches(c)) {
+						System.out.println("found a match, responding with stored content object");
+						System.out.println("interest: "+i.toString()+" response: "+c.fullName());
+						try {
+							handle.put(c);
+						} catch (IOException e) {
+							Assert.fail("could not put object in responder");
+						}
+						interestToRemove.add(i);
+						responsesToRemove.add(c);
+					}
+				}
+			}
+			System.out.println("removing "+interestToRemove.size() + " interests and "+responsesToRemove.size()+" contentObjects");
+			System.out.println("removingI: "+outstandingInterests.removeAll(interestToRemove));
+			System.out.println("removingC: "+responseObjects.removeAll(responsesToRemove));
+		}
+		
 		public boolean handleInterest(Interest interest) {
 			Log.info(Log.FAC_TEST, System.currentTimeMillis()+ " handling interest "+ interest.name());
 
@@ -635,6 +693,7 @@ public class LatestVersionTest {
 
 			if(responseObjects.size() == 0) {
 				System.out.println("responseObjects size == 0");
+				LatestVersionTest.outstandingInterests.add(interest);
 				return false;
 			}
 
@@ -650,6 +709,8 @@ public class LatestVersionTest {
 			} else {
 				Log.info(Log.FAC_TEST, "didn't have a match with: "+responseObjects.get(0).fullName());
 				Log.info(Log.FAC_TEST, "full interest: "+interest.toString());
+				//adding interest to outstanding interests vector
+				outstandingInterests.add(interest);
 				return false;
 			}
 		}

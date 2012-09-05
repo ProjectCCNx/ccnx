@@ -748,7 +748,7 @@ r_init_map_and_process_file(struct ccnr_handle *h, struct ccn_charbuf *filename,
         if (!CCN_FINAL_DSTATE(d->state))
             break;
         if (add_content) {
-            content = process_incoming_content(h, fdholder, msg + d->index - dres, dres);
+            content = process_incoming_content(h, fdholder, msg + d->index - dres, dres, NULL);
             if (content != NULL)
                 r_store_commit_content(h, content);
         }
@@ -1026,6 +1026,7 @@ CreateNewPolicy:
     ccn_indexbuf_destroy(&nc);
     ccn_charbuf_destroy(&basename);
     ccn_charbuf_destroy(&policy);
+    ccn_charbuf_destroy(&ccnr->policy_name);
     ccnr_msg(ccnr, "Creating new policy file.");
     // construct the policy content object
     global_prefix = getenv ("CCNR_GLOBAL_PREFIX");
@@ -1055,6 +1056,7 @@ CreateNewPolicy:
     r_store_commit_content(ccnr, content);
     ccn_charbuf_destroy(&policy_cob);
     // make a link to the policy content object
+    ccn_charbuf_destroy(&ccnr->policy_link_cob);
     ccnr->policy_link_cob = ccnr_init_policy_link_cob(ccnr, ccnr->direct_client,
                                                       basename);
     if (ccnr->policy_link_cob == NULL) {

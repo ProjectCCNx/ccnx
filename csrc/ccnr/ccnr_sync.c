@@ -469,7 +469,7 @@ r_sync_upcall_store(struct sync_plumbing *sdd,
     ccnb_size = info->pco->offset[CCN_PCO_E];
     
     content = process_incoming_content(ccnr, r_io_fdholder_from_fd(ccnr, ccn_get_connection_fd(info->h)),
-                                       (void *)ccnb, ccnb_size);
+                                       (void *)ccnb, ccnb_size, NULL);
     if (content == NULL) {
         ccnr_msg(ccnr, "r_sync_upcall_store: failed to process incoming content");
         return(CCN_UPCALL_RESULT_ERR);
@@ -503,7 +503,7 @@ r_sync_local_store(struct sync_plumbing *sdd,
     
     // pretend it came from the internal client, for statistics gathering purposes
     content = process_incoming_content(ccnr, ccnr->face0,
-                                       (void *)content_cb->buf, content_cb->length);
+                                       (void *)content_cb->buf, content_cb->length, NULL);
     if (content == NULL) {
         ccnr_msg(ccnr, "r_sync_local_store: failed to process content");
         return(-1);

@@ -26,6 +26,9 @@ import org.ccnx.android.ccnlib.RepoWrapper.CCNR_OPTIONS;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.IntentFilter;
+import android.content.Intent;
+import android.content.BroadcastReceiver;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Bundle;
@@ -61,10 +64,11 @@ public final class Controller extends Activity implements OnClickListener {
 	
 	private TextView tvCcndStatus;
 	private TextView tvRepoStatus;
-	private TextView deviceIPAddress;
+	private TextView deviceIPAddress = null;
 	
 	private CCNxServiceControl control;
 	private String mReleaseVersion = "Unknown";
+    private BroadcastReceiver mReceiver;
 
 	// Create a handler to receive status updates
 	private final Handler _handler = new Handler() {
@@ -112,6 +116,7 @@ public final class Controller extends Activity implements OnClickListener {
     protected void onPause() {
     	super.onPause();
     	// We should be saving out the state here for the UI so we don't lose user settings
+        this.unregisterReceiver(mReceiver);
     }
 
     @Override
@@ -123,14 +128,22 @@ public final class Controller extends Activity implements OnClickListener {
     @Override
     public void onResume() {
     	super.onResume();
-    	String ipaddr = getIPAddress();
-        
-        if (ipaddr != null) {
-        	deviceIPAddress.setText(ipaddr);
-        } else {
-        	deviceIPAddress.setText("Unable to determine IP Address");
-        }
- 
+
+        IntentFilter intentfilter = new IntentFilter("android.net.conn.CONNECTIVITY_CHANGE");
+        mReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                Log.d(TAG, "Received android.net.conn.CONNECTIVITY_CHANGE");
+                updateIPAddress();
+            }
+        };
+        this.registerReceiver(mReceiver, intentfilter);
+        //
+        // Update on resume, as frequently, in old Android esp, WIFI gets
+        // shut off and may lose the address it had
+        //
+        updateIPAddress();
+
         // We should updateState on resuming, in case Service state has changed
         updateState();
     }
@@ -281,8 +294,19 @@ public final class Controller extends Activity implements OnClickListener {
 		try {
 			for (Enumeration<NetworkInterface> e = NetworkInterface.getNetworkInterfaces(); e.hasMoreElements();) {
 				NetworkInterface nic = e.nextElement();
+                Log.d(TAG,"---------------------------------");
+                Log.d(TAG,"NIC: " + nic.toString());
+                Log.d(TAG,"---------------------------------");
 				for (Enumeration<InetAddress> enumIpAddr = nic.getInetAddresses(); enumIpAddr.hasMoreElements();) {
 					InetAddress addr = enumIpAddr.nextElement();
+                    if(addr != null)
+                    {
+                        Log.d(TAG, "      HostName: " + addr.getHostName());
+                        Log.d(TAG, "         Class: " + addr.getClass().getSimpleName());
+                        Log.d(TAG, "            IP: " + addr.getHostAddress());
+                        Log.d(TAG, " CanonicalHost: " + addr.getCanonicalHostName());
+                        Log.d(TAG, " Is SiteLocal?: " + addr.isSiteLocalAddress());
+                    }
 					if (!addr.isLoopbackAddress()) {
 						return addr.getHostAddress().toString();
 					}
@@ -301,6 +325,16 @@ public final class Controller extends Activity implements OnClickListener {
 		// Normally we'd do real field validation to make sure input matches type of input
 		return (!((val == null) || (val.length() == 0)));
 	}
+
+    private void updateIPAddress() {
+        String ipaddr = getIPAddress();
+
+        if (ipaddr != null) {
+            deviceIPAddress.setText(ipaddr);
+        } else {
+            deviceIPAddress.setText("Unable to determine IP Address");
+        }
+    }
 
 	public void aboutviewButtonListener (View view) {
 		// Called with user clicks OK, return to main view

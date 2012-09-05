@@ -134,6 +134,7 @@ main(int argc, char **argv)
         exit(1);
     signal(SIGINT, &handle_signal);
     signal(SIGTERM, &handle_signal);
+    signal(SIGXFSZ, &handle_signal);
     r_dispatch_run(global_h);
     s = (global_h->running != 0);
     ccnr_msg(global_h, "exiting.");

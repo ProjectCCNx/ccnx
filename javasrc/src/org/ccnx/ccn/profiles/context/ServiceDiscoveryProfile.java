@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -268,10 +268,9 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 		ContentName serviceKeyName = 
 			KeyProfile.keyName(serviceKeyPrefix, serviceKey);
 
-		// Register a filter for the interest we are likely to actually get. 
-		keyManager.respondToKeyRequests(serviceKeyPrefix);
-
 		// Need a way to override any stored key locator. Don't remember this key locator.
 		keyManager.publishSelfSignedKey(serviceKeyName, serviceKey, false);
+		// Register a filter for the interest we are likely to actually get. 
+		keyManager.respondToKeyRequests(serviceKeyPrefix);
 	}
 }
