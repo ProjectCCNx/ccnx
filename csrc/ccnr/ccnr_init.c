@@ -592,12 +592,14 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     }
     else
         ccn_disconnect(h->direct_client); // Apparently ccn_connect error case needs work.
-    h->sync_plumbing = calloc(1, sizeof(struct sync_plumbing));
-    h->sync_plumbing->ccn = h->direct_client;
-    h->sync_plumbing->sched = h->sched;
-    h->sync_plumbing->client_methods = &sync_client_methods;
-    h->sync_plumbing->client_data = h;
-    h->sync_base = SyncNewBaseForActions(h->sync_plumbing);
+    if (1 == r_init_confval(h, "CCNS_ENABLE", 0, 1, 1)) {
+        h->sync_plumbing = calloc(1, sizeof(struct sync_plumbing));
+        h->sync_plumbing->ccn = h->direct_client;
+        h->sync_plumbing->sched = h->sched;
+        h->sync_plumbing->client_methods = &sync_client_methods;
+        h->sync_plumbing->client_data = h;
+        h->sync_base = SyncNewBaseForActions(h->sync_plumbing);
+    }
     if (-1 == load_policy(h))
         goto Bail;
     r_net_listen_on(h, listen_on);
@@ -607,16 +609,20 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     if (merge_files(h) == -1)
         r_init_fail(h, __LINE__, "Unable to merge additional repository data files.", errno);
     if (h->running == -1) goto Bail;
-    // Start sync running
-    // returns < 0 if a failure occurred
-    // returns 0 if the name updates should fully restart
-    // returns > 0 if the name updates should restart at last fence
-    res = h->sync_plumbing->sync_methods->sync_start(h->sync_plumbing, NULL);
-    if (res < 0)
-        r_init_fail(h, __LINE__, "starting sync", res);
-    else if (res > 0) {
-        // XXX: need to work out details of starting from last fence.
-        // By examination of code, SyncActions won't take this path
+    if (h->sync_plumbing) {
+        // Start sync running
+        // returns < 0 if a failure occurred
+        // returns 0 if the name updates should fully restart
+        // returns > 0 if the name updates should restart at last fence
+        res = h->sync_plumbing->sync_methods->sync_start(h->sync_plumbing, NULL);
+        if (res < 0) {
+            r_init_fail(h, __LINE__, "starting sync", res);
+            abort();
+        }
+        else if (res > 0) {
+            // XXX: need to work out details of starting from last fence.
+            // By examination of code, SyncActions won't take this path
+        }
     }
 Bail:
     if (sockname)
@@ -659,10 +665,11 @@ r_init_destroy(struct ccnr_handle **pccnr)
     hashtb_destroy(&h->content_by_accession_tab);
     hashtb_destroy(&h->enum_state_tab);
     // SyncActions sync_stop method should be shutting down heartbeat
-    h->sync_plumbing->sync_methods->sync_stop(h->sync_plumbing, NULL);
-    if (h->sync_plumbing != NULL) {
+    if (h->sync_plumbing) {
+        h->sync_plumbing->sync_methods->sync_stop(h->sync_plumbing, NULL);
         free(h->sync_plumbing);
         h->sync_plumbing = NULL;
+        h->sync_base = NULL; // freed by sync_stop ?
     }
     
     r_store_final(h, stable);
