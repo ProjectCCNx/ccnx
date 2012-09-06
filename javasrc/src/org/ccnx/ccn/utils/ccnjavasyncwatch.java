@@ -2,6 +2,7 @@ package org.ccnx.ccn.utils;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
@@ -20,6 +21,8 @@ public class ccnjavasyncwatch implements Usage, CCNSyncHandler{
 		System.out.println("usage: ccnjavasyncwatch [-log level] -t <topo> -p <prefix> [-f filter] [-r roothash-hex] [-w timeout-secs]");
 		System.exit(1);
 	}
+	
+	public HashSet<ContentName> _names = new HashSet<ContentName>();
 	
 	public static void main(String[] args) {
 		ccnsync.startSync(args);
@@ -111,6 +114,9 @@ public class ccnjavasyncwatch implements Usage, CCNSyncHandler{
 
 	public void handleContentName(ConfigSlice syncSlice, ContentName syncedContent) {
 		System.out.println("Got a new name!!!! "+ syncedContent);
+		if (_names.contains(syncedContent))
+			System.out.println("Saw bad repeat name!!");
+		_names.add(syncedContent);
 	}
 
 }

@@ -24,8 +24,6 @@ import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.SyncNodeComposite;
-import org.ccnx.ccn.profiles.SegmentationProfile;
-import org.ccnx.ccn.protocol.Component;
 
 /**
  * IMPORTANT NOTE: For now we rely on external synchronization for access to internal values of this class
@@ -49,7 +47,7 @@ public class SyncTreeEntry {
 	public void setNode(SyncNodeComposite snc) {
 		_nodeX = snc;
 		if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
-			decodeLogging();
+			SyncNodeComposite.decodeLogging(_nodeX);
 		}
 	}
 	
@@ -72,7 +70,7 @@ public class SyncTreeEntry {
 			}
 			_rawContent = null;
 			if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
-				decodeLogging();
+				SyncNodeComposite.decodeLogging(_nodeX);
 			}
 		}
 		return _nodeX;
@@ -131,14 +129,5 @@ public class SyncTreeEntry {
 			_flags |= type;
 		else
 			_flags &= ~type;
-	}
-	
-	private void decodeLogging() {
-		Log.finest(Log.FAC_SYNC, "decode node for {0} depth = {1} refs = {2}, position = {3}", Component.printURI(_nodeX._longhash), 
-				_nodeX._treeDepth, _nodeX.getRefs().size(), _position);
-		Log.finest(Log.FAC_SYNC, "min is {0}, max is {1}, expanded min is {2}, expanded max is {3}", 
-				SegmentationProfile.getSegmentNumber(_nodeX._minName.getName().parent()), 
-				SegmentationProfile.getSegmentNumber(_nodeX._maxName.getName().parent()),
-				_nodeX._minName.getName(), _nodeX._maxName.getName());
 	}
 }

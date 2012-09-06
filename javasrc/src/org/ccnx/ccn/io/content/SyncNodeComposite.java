@@ -20,13 +20,19 @@ package org.ccnx.ccn.io.content;
 import static org.ccnx.ccn.impl.encoding.CCNProtocolDTags.SyncVersion;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.logging.Level;
 
+import org.ccnx.ccn.CCNSync;
 import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
+import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.sync.Sync;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 
 /**
@@ -39,6 +45,12 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 		public SyncNodeType _type = SyncNodeType.LEAF;
 		public ContentName _name;
 		public byte[] _data;
+		
+		public SyncNodeElement() {}
+		
+		public SyncNodeElement(ContentName name) {
+			_name = name;
+		}
 		
 		public SyncNodeType getType() {
 			return _type;
@@ -79,6 +91,22 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 	public int _leafCount;
 	public int _treeDepth;
 	public int _byteCount;
+	
+	public SyncNodeComposite() {}
+	
+	public SyncNodeComposite(ArrayList<SyncNodeElement> refs) {
+		_refs = refs;
+		if (_refs.size() > 0) {	// error if not?
+			_minName = _refs.get(0);
+			_maxName = refs.get(_refs.size() - 1);
+		}
+		computeLeafHash();
+		_treeDepth = 1;
+		if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
+			Log.finest(Log.FAC_SYNC, "Creating new node:");
+			decodeLogging(this);
+		}
+	}
 	
 	public ArrayList<SyncNodeElement> getRefs() {
 		return _refs;
@@ -146,5 +174,42 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 	
 	public byte[] getHash() {
 		return _longhash;
+	}
+	
+	public static void decodeLogging(SyncNodeComposite node) {
+		Log.finest(Log.FAC_SYNC, "decode node for {0} depth = {1} refs = {2}", Component.printURI(node._longhash), 
+				node._treeDepth, node.getRefs().size());
+		Log.finest(Log.FAC_SYNC, "min is {0}, max is {1}, expanded min is {2}, expanded max is {3}", 
+				SegmentationProfile.getSegmentNumber(node._minName.getName().parent()), 
+				SegmentationProfile.getSegmentNumber(node._maxName.getName().parent()),
+				node._minName.getName(), node._maxName.getName());
+	}
+	
+	/**
+	 * The C code handles different sized hashes and digests. Since I currently
+	 * believe that digests are always 32 bytes, I'm not worrying about that for now...
+	 */
+	private void computeLeafHash() {
+		_longhash = new byte[CCNSync.SYNC_HASH_LENGTH];
+		Arrays.fill(_longhash, (byte)0);
+		for (SyncNodeElement sne : _refs) {
+			ContentName name = sne.getName();
+			int xs = CCNSync.SYNC_HASH_LENGTH;
+			byte[] nc = name.lastComponent();
+			if (null != nc && nc.length >= CCNSync.SYNC_HASH_LENGTH) { // Should always be true
+				accumHash(xs, nc);
+			}
+		}
+	}
+	
+	private void accumHash(int xs, byte[] toAdd) {
+		int c = 0;
+		while (xs > 0) {
+			xs--;
+			int val = c;
+			val = val + _longhash[xs] + toAdd[xs];
+			c = (val >> 8) & 255;
+			_longhash[xs] = (byte)(val & 255);
+		}
 	}
 }

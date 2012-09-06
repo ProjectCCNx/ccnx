@@ -22,6 +22,7 @@ import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.Stack;
 import java.util.Timer;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -89,6 +90,7 @@ public class SliceComparator implements Runnable {
 	protected SyncTreeEntry _currentRoot = null;
 	protected ContentName _startName = null;
 	protected boolean _doCallbacks = true;
+	protected TreeSet<ContentName> _updateNames = new TreeSet<ContentName>();
 	
 	public SliceComparator(ProtocolBasedSyncMonitor pbsm, CCNSyncHandler callback, ConfigSlice slice, 
 				SyncTreeEntry startHash, ContentName startName, CCNHandle handle) {
@@ -363,7 +365,7 @@ public class SliceComparator implements Runnable {
 					Log.finest(Log.FAC_SYNC, "Y hash only for {0}, type is {1}", Component.printURI(srtY.getHash()), sneY.getType());
 				switch (sneY.getType()) {
 				case LEAF:
-					doCallback(sneY);
+					newName(sneY);
 					srtY.incPos();
 					break;
 				case HASH:
@@ -457,7 +459,7 @@ public class SliceComparator implements Runnable {
 						int resMin = sneY.getName().compareTo(sncX.getMinName().getName());
 						int resMax = sneY.getName().compareTo(sncX.getMaxName().getName());
 						if (resMin < 0) {
-							doCallback(sneY);
+							newName(sneY);
 							srtY.incPos();
 						} else if (resMin == 0) {
 							srtY.incPos();
@@ -503,8 +505,8 @@ public class SliceComparator implements Runnable {
 									if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
 										Log.finest(Log.FAC_SYNC, "Shortcut - popping X back to {0}, pos {1}", Component.printURI(srtX.getHash()), srtX.getPos());
 									}
-									continue;	// Don't inc X - should have been pre-incremented
 								}
+								continue;	// Don't inc X - should have been pre-incremented
 							}
 						}
 						if (comp == 0) {
@@ -513,7 +515,7 @@ public class SliceComparator implements Runnable {
 						} else if (comp < 0) {
 							srtX.incPos();
 						} else {
-							doCallback(sneY);
+							newName(sneY);
 							srtY.incPos();
 						}
 					}
@@ -549,8 +551,10 @@ public class SliceComparator implements Runnable {
 	 * 
 	 * @param sne
 	 */
-	private void doCallback(SyncNodeComposite.SyncNodeElement sne) {
-		ContentName name = sne.getName().parent();	// remove digest here
+	private void newName(SyncNodeComposite.SyncNodeElement sne) {
+		ContentName name = sne.getName();
+		_updateNames.add(name); // we want the digest here
+		name = name.parent();  // remove digest here
 		if (!_doCallbacks) {
 			if (!name.equals(_startName))
 				return;
@@ -588,7 +592,96 @@ public class SliceComparator implements Runnable {
 			if (_currentRoot != null && _currentRoot.getHash().length > 0) {
 				_currentRoot.setPos(0);
 				push(_currentRoot, _current);
+				updateCurrent();
+				_updateNames.clear();
 			}
+		}
+	}
+	
+	protected void updateCurrent() {
+		TreeSet<ContentName> neededNames = new TreeSet<ContentName>();
+		SyncTreeEntry ste = getHead(_current);
+		SyncTreeEntry origSte = ste;
+		SyncTreeEntry newHead = null;
+		if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST) && _updateNames.size() > 0)
+			Log.finest(Log.FAC_SYNC, "Starting update from hash {0}", Component.printURI(ste.getHash()));
+		for (ContentName name : _updateNames) {
+			SyncNodeComposite snc = null;
+			SyncNodeElement sne = null;
+			while (null != ste && ste.lastPos()) {
+				pop(_current);
+				ste = getHead(_current);
+			}
+			if (null != ste) {
+				snc = ste.getNodeX(_decoder);
+				if (null != snc) {
+					sne = ste.getCurrentElement();
+				}
+				if (null == snc || null == sne) {
+					Log.warning(Log.FAC_SYNC, "Missing node for {0} should not be missing", Component.printURI(ste.getHash()));
+					return;
+				}
+			}
+			
+			if (null != ste) {
+				switch (sne.getType()) {
+				case HASH:
+					Log.info("Saw a hash on update");
+					return;	// tmp
+				case LEAF:
+					int comp = sne.getName().compareTo(name);
+					if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST) && _updateNames.size() > 0) {
+						Log.finest(Log.FAC_SYNC, "Update compare: name from tree (expanded) is {0}, name  is {1}, comp is {2}", sne.getName(), name, comp);
+					}
+					if (ste.getPos() == 0) {
+						// If we are after everything in X, no need to compare to X
+						int comp2 = snc.getMaxName().getName().compareTo(name);
+						if (comp2 < 0) {
+							synchronized (this) {
+								pop(_current);
+								ste = getHead(_current);
+							}
+							if (null != ste) {
+								if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
+									Log.finest(Log.FAC_SYNC, "Shortcut in update - popping back to {0}, pos {1}", Component.printURI(ste.getHash()), ste.getPos());
+								}
+							}
+							continue;	// Don't inc X - should have been pre-incremented
+						}
+					}
+					if (comp < 0) {
+						neededNames.add(name);
+						// If there are any needed names, we need to redo this whole leaf
+						for (SyncNodeElement tsne: snc.getRefs()) {
+							neededNames.add(tsne.getName());
+						}
+						ste = pop(_current);
+					} else  {
+						ste.incPos();
+					}
+				default:
+					break;
+				}
+			} else {
+				neededNames.add(name);
+			}
+		}
+		
+		if (neededNames.size() > 0) {
+			ArrayList<SyncNodeComposite.SyncNodeElement> refs = new ArrayList<SyncNodeComposite.SyncNodeElement>();
+			for (ContentName tname : neededNames) {
+				refs.add(new SyncNodeComposite.SyncNodeElement(tname));
+			}
+			SyncNodeComposite snc = new SyncNodeComposite(refs);
+			newHead = _pbsm.addHash(snc.getHash());
+		}
+		_current.clear();
+		if (null != newHead) {
+			push(newHead, _current);
+			Log.info("Resetting current to created head: {0}", Component.printURI(newHead.getHash()));
+		} else {
+			ste.setPos(0);
+			push(origSte, _current);
 		}
 	}
 	

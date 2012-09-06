@@ -31,6 +31,8 @@ import org.ccnx.ccn.protocol.ContentName;
 
 public class CCNSync {
 	
+	public static final int SYNC_HASH_LENGTH = 32;
+	
 	protected SyncMonitor syncMon = null;
 	
 	/**
