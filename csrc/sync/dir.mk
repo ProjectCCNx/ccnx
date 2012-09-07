@@ -50,7 +50,7 @@ all: $(BROKEN_PROGRAMS)
 
 test: default
 
-$(PROGRAMS): $(CCNLIBDIR)/libccn.a
+$(PROGRAMS): $(CCNLIBDIR)/libccn.a $(LIBS)
 
 lib:	libccnsync.a
 
