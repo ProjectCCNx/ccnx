@@ -506,8 +506,8 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h->nameprefix_tab = hashtb_create(sizeof(struct nameprefix_entry), &param);
     param.finalize = 0; // PRUNED &r_fwd_finalize_propagating;
     h->propagating_tab = hashtb_create(sizeof(struct propagating_entry), &param);
-    param.finalize = 0;
-    h->enum_state_tab = hashtb_create(sizeof(struct enum_state), NULL); // XXX - do we need finalization? Perhaps
+    param.finalize = &r_proto_finalize_enum_state;
+    h->enum_state_tab = hashtb_create(sizeof(struct enum_state), &param);
     h->min_stale = ~0;
     h->max_stale = 0;
     h->unsol = ccn_indexbuf_create();
@@ -662,8 +662,9 @@ r_init_destroy(struct ccnr_handle **pccnr)
     ccn_schedule_destroy(&h->sched);
     hashtb_destroy(&h->propagating_tab);
     hashtb_destroy(&h->nameprefix_tab);
-    hashtb_destroy(&h->content_by_accession_tab);
     hashtb_destroy(&h->enum_state_tab);
+    hashtb_destroy(&h->content_by_accession_tab);
+
     // SyncActions sync_stop method should be shutting down heartbeat
     if (h->sync_plumbing) {
         h->sync_plumbing->sync_methods->sync_stop(h->sync_plumbing, NULL);
@@ -699,7 +700,9 @@ r_init_destroy(struct ccnr_handle **pccnr)
         free(h->parsed_policy);
         h->parsed_policy = NULL;
     }
+    ccn_charbuf_destroy(&h->policy_name);
     ccn_charbuf_destroy(&h->policy_link_cob);
+    ccn_charbuf_destroy(&h->ccnr_keyid);
     free(h);
     *pccnr = NULL;
 }
