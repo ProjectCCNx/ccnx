@@ -12,9 +12,10 @@
 # FOR A PARTICULAR PURPOSE.
 #
 
-LDLIBS = -L../lib $(MORE_LDLIBS) -lccn
+LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn
 EXPATLIBS = -lexpat
 CCNLIBDIR = ../lib
+SYNCLIBS = -L../sync -lccnsync
 
 INSTALLED_PROGRAMS = \
     ccn_ccnbtoxml ccn_splitccnb ccnc ccndumpnames ccnnamelist ccnrm \
@@ -178,10 +179,10 @@ ccnsnew: ccnsnew.o
 	$(CC) $(CFLAGS) -o $@ ccnsnew.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccnsyncwatch: ccnsyncwatch.o
-	$(CC) $(CFLAGS) -o $@ ccnsyncwatch.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+	$(CC) $(CFLAGS) -o $@ ccnsyncwatch.o $(SYNCLIBS) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccnsyncslice: ccnsyncslice.o
-	$(CC) $(CFLAGS) -o $@ ccnsyncslice.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+	$(CC) $(CFLAGS) -o $@ ccnsyncslice.o $(SYNCLIBS) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 clean:
 	rm -f *.o libccn.a libccn.1.$(SHEXT) $(PROGRAMS) depend

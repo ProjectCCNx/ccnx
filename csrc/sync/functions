@@ -1,0 +1,122 @@
+# ccnr/csrc/sync_exp/functions
+#
+# Functions for supporting the test_* scripts
+#
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+
+BEFORE () {
+  : Used by testdriver for determining test order
+}
+
+AFTER () {
+  : Used by testdriver for determining test order
+}
+
+Fail () {
+  echo "***" Failing $TESTNAME - $*
+  exit 1
+}
+
+Failed () {
+  Fail Failed $*
+}
+
+SkipTest () {
+  echo "***" Skipping $TESTNAME - $*
+  exit 9
+}
+
+LongTest () {
+  [ "$MAKE_TEST_TARGET" = "check" ] && SkipTest make target is \'check\'
+}
+
+WithCCND () {
+  local port;
+  port=$((CCN_LOCAL_PORT_BASE+$1))
+  shift
+  CCN_LOCAL_PORT=$port "$@"
+}
+
+CheckForCCND () {
+  WithCCND $1 ccndsmoketest && return 0
+  echo "***" ccnd $1 is not ready yet ... >&2
+  return 1
+}
+
+CCNDStatus () {
+  echo 'GET / ' | ccndsmoketest -b -T localhost send - recv recv
+}
+
+Linkup () {
+  local A B
+  A=$((CCN_LOCAL_PORT_BASE+$1))
+  B=$((CCN_LOCAL_PORT_BASE+$2))
+  shift 2
+  test $A -ne $B || Fail FIXME
+  env CCN_LOCAL_PORT=$A ccndc add / udp localhost $B
+  env CCN_LOCAL_PORT=$B ccndc add / udp localhost $A
+}
+
+ExpectLines () {
+  local file lines minimum maximum
+  lines=`wc -l < $1` || Fail
+  file=$1
+  minimum=$2
+  maximum=$3
+  shift 3
+  test $lines -ge $minimum || Fail Expecting at least $minimum lines in ${file}, got $lines $*
+  test $lines -le $maximum || Fail Expecting at most $maximum lines in ${file}, got $lines $*
+  return 0
+}
+
+GenSym () {
+  echo $1`openssl rand -base64 12 | tr '/+' '-_'`
+}
+
+##
+# Start ccnd with specified capacity and minimal logging
+CappedCCNDStart () {
+  [ ${1:=missing} -ge 0 ] || Fail argument missing or invalid: $1
+  WHICHCCND=${CCN_LOCAL_PORT:-9695}
+  ccndsmoketest kill 2>/dev/null
+  env CCND_DEBUG=71 CCND_CAP=$1 ccnd 2>>ccnd$((WHICHCCND % 10))-capped-$1.out &
+  ccndsmoketest -u localhost -t 50 recv >/dev/null
+  ccndsmoketest >/dev/null
+}
+
+##
+# Stage data into the active ccnd by writing it into a fresh repo
+StageData () { (
+  [ ${1:=missing} -ge 1000 ] || Fail argument missing or invalid: $1
+  set -e
+  rm -rf stage
+  mkdir stage
+  env CCNR_DIRECTORY=stage CCNR_DEBUG=0 ccnr &
+  rm -f testfile
+  dd bs=1 count=1 seek=$(($1 - 1)) of=testfile if=/dev/zero
+  ccnputfile /test/bulk/${1}.dat testfile 2> putfile-${1}.out
+  ccndstatus
+  ccnnamelist stage/repoFile1 | tail -n 4 >> lastblocks.txt
+  kill `cat stage/index/.LCK`
+  rm testfile
+) }
+
+##
+#
+DoPS () {
+  ps aux | grep -w -e '[M]EM' -e '[c]cnd$' -e '[c]cnr$' -e '[j]ava'
+}
+
+RunTest () {
+  ( . settings; . functions; . $1 )
+}

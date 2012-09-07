@@ -25,9 +25,6 @@
 
 struct SyncHashCacheHead;  // defined in SyncHashCache.h
 struct SyncNameAccum;      // defined in SyncUtil.h
-struct SyncActionData;     // defined in SyncActions.h
-struct SyncCompareData;    // defined in SyncActions.c
-struct SyncUpdateData;     // defined in SyncActions.c
 struct SyncBaseStruct;     // defined in SyncBase.h
 struct SyncRootPrivate;    // private to SyncRoot.c
 
@@ -46,9 +43,9 @@ struct SyncRootStruct {
     struct ccn_charbuf *currentHash;      /**< current top-level cache hash */
     struct SyncNameAccum *namesToAdd;     /**< names needing addition to root */
     struct SyncNameAccum *namesToFetch;   /**< names needing contents fetch */
-    struct SyncActionData *actions;       /**< data for pending interests */
-    struct SyncCompareData *compare;      /**< data for doing sync tree comparison */
-    struct SyncUpdateData *update;        /**< data for doing sync tree updates */
+    void *actions;                        /**< data for pending interests */
+    void *compare;                        /**< data for doing sync tree comparison */
+    void *update;                         /**< data for doing sync tree updates */
     struct ccn_charbuf *sliceCoding;      /**< ccnb encoding for the description */
     struct ccn_charbuf *sliceHash;        /**< the raw hash of the sliceCoding */
 };

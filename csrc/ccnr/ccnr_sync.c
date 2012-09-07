@@ -48,6 +48,8 @@
 #include "ccnr_sync.h"
 #include "ccnr_util.h"
 
+#include <sync/sync_plumbing.h>
+
 #ifndef CCNLINT
 
 /* Preliminary implementation - algorithm may change */
@@ -113,28 +115,50 @@ ccnr_hwm_compare(struct ccnr_handle *ccnr, ccnr_hwm x, ccnr_hwm y)
 }
 #endif
 
+/**
+ * A wrapper for ccnr_msg that takes a sync_plumbing instead of ccnr_handle
+ */
 PUBLIC void
-r_sync_notify_after(struct ccnr_handle *ccnr, ccnr_hwm item)
+r_sync_msg(struct sync_plumbing *sdd,
+           const char *fmt, ...)
 {
-    /* XXX - if ccnr_hwm becomes multi-dimensional then this code has to become
-     * more sophisticated about restarting the enumeration
-     */
-    ccnr->notify_after = (ccnr_accession) item;
+    struct ccnr_handle *ccnr = (struct ccnr_handle *)sdd->client_data;
+    va_list ap;
+    va_start(ap, fmt);
+    ccnr_vmsg(ccnr, fmt, ap);
+    va_end(ap);
+}
+
+PUBLIC int
+r_sync_fence(struct sync_plumbing *sdd,
+             uint64_t seq_num)
+{
+    struct ccnr_handle *h = (struct ccnr_handle *)sdd->client_data;
+    // TODO: this needs to do something more interesting.
+    ccnr_msg(h, "r_sync_fence: seq_num %ju", seq_num);
+    h->notify_after = (ccnr_accession) seq_num;
+    return (0);
 }
 
 /**
- * A wrapper for SyncNotifyContent that takes a content entry.
+ * A wrapper for the sync_notify method that takes a content entry.
  */
 PUBLIC int
 r_sync_notify_content(struct ccnr_handle *ccnr, int e, struct content_entry *content)
 {
+    struct sync_plumbing *sync_plumbing = ccnr->sync_plumbing;
     int res;
     ccnr_accession acc = CCNR_NULL_ACCESSION;
-    
+
+    if (sync_plumbing == NULL)
+        return (0);
+
     if (content == NULL) {
-        res = SyncNotifyContent(ccnr->sync_handle, e, CCNR_NULL_ACCESSION, NULL);
-        if (res != -1)
-            ccnr_msg(ccnr, "SyncNotifyContent returned %d, expected -1",
+        if (e == 0)
+            abort();
+        res = sync_plumbing->sync_methods->sync_notify(ccnr->sync_plumbing, NULL, e, 0);
+        if (res < 0)
+            ccnr_msg(ccnr, "sync_notify(..., NULL, %d, 0) returned %d, expected >= 0",
                      e, res);
     }
     else {
@@ -151,14 +175,16 @@ r_sync_notify_content(struct ccnr_handle *ccnr, int e, struct content_entry *con
         if (res < 0) abort();
         if (CCNSHOULDLOG(ccnr, r_sync_notify_content, CCNL_FINEST))
             ccnr_debug_content(ccnr, __LINE__, "r_sync_notify_content", NULL, content);
-        res = SyncNotifyContent(ccnr->sync_handle, e, acc, cb);
+        res = sync_plumbing->sync_methods->sync_notify(ccnr->sync_plumbing, cb, e, acc);
         r_util_charbuf_release(ccnr, cb);
     }
     if (CCNSHOULDLOG(ccnr, r_sync_notify_content, CCNL_FINEST))
-        ccnr_msg(ccnr, "SyncNotifyContent(..., %d, 0x%jx, ...) returned %d",
+        ccnr_msg(ccnr, "sync_notify(..., %d, 0x%jx, ...) returned %d",
                  e, ccnr_accession_encode(ccnr, acc), res);
-    if (e == 0 && res == -1)
-        r_sync_notify_after(ccnr, CCNR_MAX_ACCESSION); // XXXXXX should be hwm
+    if (e == 0 && res == -1) {
+        // TODO: wrong in new sync interface terms
+        //r_sync_notify_after(ccnr, CCNR_MAX_ACCESSION); // XXXXXX should be hwm
+    }
     return(res);
 }
 
@@ -295,9 +321,10 @@ r_sync_enumerate_action(struct ccn_schedule *sched,
  *      in the SyncNotifyContent
  */
 PUBLIC int
-r_sync_enumerate(struct ccnr_handle *ccnr,
+r_sync_enumerate(struct sync_plumbing *sdd,
                  struct ccn_charbuf *interest)
 {
+    struct ccnr_handle *ccnr = (struct ccnr_handle *)sdd->client_data;
     int ans = -1;
     int i;
     int res;
@@ -382,16 +409,25 @@ Bail:
 }
 
 PUBLIC int
-r_sync_lookup(struct ccnr_handle *ccnr,
+r_sync_lookup(struct sync_plumbing *sdd,
               struct ccn_charbuf *interest,
               struct ccn_charbuf *content_ccnb)
+{
+    struct ccnr_handle *ccnr = (struct ccnr_handle *)sdd->client_data;
+    return(r_lookup(ccnr, interest, content_ccnb));
+}
+
+PUBLIC int
+r_lookup(struct ccnr_handle *ccnr,
+                  struct ccn_charbuf *interest,
+                  struct ccn_charbuf *content_ccnb)
 {
     int ans = -1;
     struct ccn_indexbuf *comps = r_util_indexbuf_obtain(ccnr);
     struct ccn_parsed_interest parsed_interest = {0};
     struct ccn_parsed_interest *pi = &parsed_interest;
     struct content_entry *content = NULL;
-
+    
     if (NULL == comps || (ccn_parse_interest(interest->buf, interest->length, pi, comps) < 0))
         abort();
     content = r_store_lookup(ccnr, interest->buf, pi, comps);
@@ -409,19 +445,18 @@ r_sync_lookup(struct ccnr_handle *ccnr,
         }
     }
     r_util_indexbuf_release(ccnr, comps);
-
     return(ans);
 }
-
 /**
  * Called when a content object is received by sync and needs to be
  * committed to stable storage by the repo.
  */
 PUBLIC enum ccn_upcall_res
-r_sync_upcall_store(struct ccnr_handle *ccnr,
+r_sync_upcall_store(struct sync_plumbing *sdd,
                     enum ccn_upcall_kind kind,
                     struct ccn_upcall_info *info)
 {
+    struct ccnr_handle *ccnr = (struct ccnr_handle *)sdd->client_data;
     enum ccn_upcall_res ans = CCN_UPCALL_RESULT_OK;
     const unsigned char *ccnb = NULL;
     size_t ccnb_size = 0;
@@ -460,9 +495,10 @@ r_sync_upcall_store(struct ccnr_handle *ccnr,
  */
 
 PUBLIC int
-r_sync_local_store(struct ccnr_handle *ccnr,
+r_sync_local_store(struct sync_plumbing *sdd,
                    struct ccn_charbuf *content_cb)
 {
+    struct ccnr_handle *ccnr = (struct ccnr_handle *)sdd->client_data;
     struct content_entry *content = NULL;
     
     // pretend it came from the internal client, for statistics gathering purposes

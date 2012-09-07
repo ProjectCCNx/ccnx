@@ -1,0 +1,370 @@
+#
+# ccnr/csrc/sync_exp/setup
+
+# must be executed in ccnx/csrc/sync_exp
+. ./settings
+. ./functions
+. ./preamble
+export FailReason=""
+SetFailed () {
+  export FailReason="$*"
+  if [ "$FailReason" ] ; then
+     echo "*** Failed: $FailReason"
+  fi
+}
+ClearFailed () {
+   export FailReason=""
+}
+CheckProc () {
+   if [ ! `which $1` ]; then
+      SetFailed No $1 found
+    fi
+}
+RX () {
+  r --slave --vanilla -e "$*" | awk '{print $2}' -
+}
+InitTest () {
+  ClearFailed
+  export SyncPutFlags="-scope 1 -bs $SyncTestSegSize"
+  if [ ${SyncTestDebug:=0} -gt 0 ] ; then
+    export CCND_DEBUG=7
+    export CCNR_DEBUG=INFO
+    export CCNS_DEBUG=INFO
+    export SyncPutFlags="$SyncPutFlags -nodup -v -mark"
+  fi
+  CheckProc ccnd
+  CheckProc ccnr
+  CheckProc SyncTest
+  if [ $FailReason ]; then
+     echo Missing path to ccnd, ccnr, or SyncTest?
+     return
+  fi
+  export RootBeerHash=`SyncTest -nosend -slice $SyncTestTopo /root/beer`
+  export ZeroPointHash=`SyncTest -nosend -slice $SyncTestTopo /zero/point`
+}
+StartEmptyRepo () {
+  N=$1
+  export CCNR_NAME="repo.$N"
+  export CCNR_DIRECTORY=$SyncTestDir/$CCNR_NAME.dir
+  rm -Rf $CCNR_DIRECTORY; mkdir $CCNR_DIRECTORY
+  ulimit -c unlimited
+  ccnr 2>$SyncTestDir/ccnr.$N.$SyncTestNames.txt
+}
+GetStats () {
+  while true; do
+    { SyncTest -scope 1 -stats $SyncTestTopo $1 >$2; } && break
+    sleep 1
+    { SyncTest -scope 1 -stats $SyncTestTopo $1 >$2; } && break
+    sleep 1
+    { SyncTest -scope 1 -stats $SyncTestTopo $1 >$2; } && break
+    sleep 1
+    { SyncTest -scope 1 -stats $SyncTestTopo $1 >$2; } && break
+    sleep 1
+    echo ERROR: SyncTest -scope 1 -stats $SyncTestTopo $1
+    break
+  done
+}
+DoSlice () {
+  N=$1 ;
+  SyncTest -scope 1 -mark -slice $SyncTestTopo /root/beer
+  GetStats $RootBeerHash $SyncTestDir/init.$N.txt
+}
+Warn () {
+  echo "Warning: $1"
+}
+StatsPause () {
+  sleep 0.2
+}
+WaitRepoLeaves () {
+  N=$1
+  while true; do
+    printf "."
+    WithCCND $N GetStats $RootBeerHash $SyncTestDir/stats.$N.txt
+    { grep "treeNames $2" $SyncTestDir/stats.$N.txt >/dev/null ; } && break
+    StatsPause
+  done
+  printf " "
+}
+EndTest () {
+  I=0
+  while test $I -le $SyncTestRepos; do
+    WithCCND $I ccndsmoketest kill
+    I=`expr $I + 1`
+  done
+  sleep 1
+}
+AwkDiff () {
+  echo $1 $2 | awk '{ print $2 - $1 }' -
+}
+AwkDiv () {
+  echo $1 $2 | awk '{ print $1 / $2 }' -
+}
+AwkMax () {
+  echo $1 $2 | awk '{ x=0.0+$1; y = 0.0+$2; if (y > x) x = y; print x }' -
+}
+ZeroPoint () {
+  # create a non-participating slice to set the initial point
+  local I
+  I=1
+  while test $I -le $SyncTestRepos; do
+    WithCCND $I SyncTest -scope 1 -mark -slice $SyncTestTopo /zero/point >/dev/null
+    WithCCND $I SyncTest $SyncPutFlags -put $SyncTestDir/small.data ccnx:/zero/point/data >$SyncTestDir/tfr0.$I.txt
+    WithCCND $I GetStats $ZeroPointHash $SyncTestDir/zero.$I.txt
+    I=`expr $I + 1`
+  done
+}
+GetCPU () {
+  awk '{ K=split($0,FLD); print FLD[K]+FLD[K-2] }' $1
+}
+GetMark () {
+  awk '{ print $1 }' $1
+}
+Extract () {
+  awk -v z=$1 '{ len=length($0); sx=index($0,z); if (sx<=0) print 0; else {s=substr($0,sx,len-sx+1); K=split(s,FLD,",| |:"); print FLD[2] }}' $2
+}
+MyDate () {
+  date "+%Y-%m-%d.%H:%M:%S" ;
+}
+IfInitDataBefore () {
+   if [  ${SyncTestInitBefore:=0} -gt 0 ] ; then
+      eval $*
+   fi
+}
+IfInitDataAfter () {
+   if [ ${SyncTestInitBefore:=0} -eq 0 ] ; then
+      eval $*
+   fi
+}
+AppendSummary () {
+  local I
+  etLine="Elapsed"
+  etMax=0.0
+  packetSum=0
+  intLine="Interests"
+  I=1
+  while test $I -le $SyncTestRepos; do
+    statsF=$SyncTestDir/stats.$I.txt
+    maxrss=`Extract maxrss $statsF`
+    lastHashChange=`Extract lastHashChange $statsF`
+    treeDepth=`Extract treeDepth $statsF`
+    treeBytes=`Extract treeBytes $statsF`
+    nodesCreated=`Extract nodesCreated $statsF`
+    dCPU=`AwkDiff $(GetCPU $SyncTestDir/zero.$I.txt) $(GetCPU $statsF)`
+    ZeroMark=$(GetMark $SyncTestDir/zero.$I.txt)
+    dt=$(AwkDiff $ZeroMark $lastHashChange)
+    etMax=$(AwkMax $etMax $dt)
+    etLine="$etLine, e$I = $dt"
+    packets=`awk -f scan-sumint.awk $statsF`
+    packetSum=$(($packetSum + $packets))
+    intLine="$intLine, P$I = $packets"
+    echo Repo $I dCPU = $dCPU, maxrss = $maxrss, depth = $treeDepth, treeBytes = $treeBytes, nodesCreated = $nodesCreated, lastHashChange = $lastHashChange >>$SyncTestDir/res.txt
+      I=`expr $I + 1`
+  done
+  etLine="$etLine, max = $etMax"
+  echo $etLine >>$SyncTestDir/res.txt
+  echo $etLine
+  intLine="$intLine, sum = $packetSum"
+  echo $intLine >>$SyncTestDir/res.txt ;
+  echo $intLine
+}
+InitData () {
+  WithCCND 1 SyncTest $SyncPutFlags -put $SyncTestDir/test.data ccnx:/root/beer/floatX >$SyncTestDir/tfr1.txt
+  WithCCND 1 SyncTest $SyncPutFlags -put $SyncTestDir/test.data ccnx:/root/beer/floatZ >>$SyncTestDir/tfr2.txt
+}
+WaitLim () {
+  local I
+  I=1
+  while test $I -le $SyncTestRepos; do
+      WaitRepoLeaves $I $LIM
+      I=`expr $I + 1`
+  done
+}
+SetSlices () {
+  local I
+  I=1
+  while test $I -le $SyncTestRepos; do {
+     WithCCND $I DoSlice $I >$SyncTestDir/slice.$I.txt
+      I=`expr $I + 1`
+  }; done
+}
+DoTest () {
+  local I
+  testOrder="after"
+  if [ ${SyncTestInitBefore:=0} -gt 0 ]; then testOrder="before"; fi
+  testLine="-- Testing, repos $SyncTestRepos, config $repoConfig, init $testOrder, $SyncTestExtra, names $SyncTestNames, `MyDate`"
+  echo $testLine
+  echo $testLine >>$SyncTestDir/res.txt
+  I=1
+  while test $I -le $SyncTestRepos; do
+      WithCCND $I ccnd 2>$SyncTestDir/ccnd.$I.$SyncTestNames.txt &
+      sleep 0.2
+      I=`expr $I + 1`
+  done
+  sleep 1
+  if [ ${SyncTestUseStar:=0} -eq 1 ] ; then
+  I=2
+  while test $I -le $SyncTestRepos; do {
+    Linkup 1 $I
+    Linkup $I 1
+    I=`expr $I + 1`
+  }; done
+  else
+  I=1
+  while test $I -lt $SyncTestRepos; do {
+    II=`expr $I + 1`
+    Linkup $I $II
+    Linkup $II $I
+    I=`expr $I + 1`
+  }; done
+  fi
+  I=1
+  while test $I -le $SyncTestRepos; do {
+    WithCCND $I StartEmptyRepo $I &
+    I=`expr $I + 1`
+  }; done
+  sleep $(( $SyncTestRepos / 4 ))
+
+  LIM=$SyncTestNames
+  if [ ${SyncTestInitBefore:=0} -gt 0 ] ; then
+     InitData
+     ZeroPoint
+     SetSlices
+  else
+     ZeroPoint
+     SetSlices
+     InitData
+  fi
+  WaitLim
+  echo ----
+  tail -1 $SyncTestDir/tfr1.txt >>$SyncTestDir/res.txt
+  tail -1 $SyncTestDir/tfr2.txt >>$SyncTestDir/res.txt
+  tail -1 $SyncTestDir/tfr1.txt
+  tail -1 $SyncTestDir/tfr2.txt
+  AppendSummary
+
+  stp=${SyncTestPlus:=0}
+  if [ $stp -gt 0 ] ; then
+    I=1
+    while test $I -le $SyncTestRepos; do
+      WithCCND $I GetStats $RootBeerHash $SyncTestDir/prev.$I.txt
+      I=`expr $I + 1`
+    done
+    WithCCND 1 SyncTest $SyncPutFlags -put $SyncTestDir/small.data ccnx:/root/beer/floatY >$SyncTestDir/tfr3.txt
+    LIM=`expr $LIM + $stp`
+    ncLine="Added $stp name"
+    ncMax=0
+    etLine="Update time"
+    etMax=0.0
+    cpuLine="Update CPU"
+    cpuMax=0.0
+    if [ $stp -gt 1 ]; then ncLine="${ncLine}s"; fi
+    packetSum=0
+    intLine="Update interests"
+    I=1
+    while test $I -le $SyncTestRepos; do
+      WaitRepoLeaves $I $LIM
+      x=`Extract nodesCreated $SyncTestDir/prev.$I.txt`
+      y=`Extract nodesCreated $SyncTestDir/stats.$I.txt`
+      nc=$(( $y - $x ))
+      ncLine="$ncLine, D$I = $nc"
+      ncMax=$(AwkMax $ncMax $nc)
+      if [ $SyncTestInitBefore -gt 0 ]; then
+         dt=$(AwkDiv `Extract lastUpdateMicros $SyncTestDir/stats.$I.txt` 1000000.0)
+      else
+         x=`GetMark $SyncTestDir/prev.$I.txt`
+         y=`GetMark $SyncTestDir/stats.$I.txt`
+         dt=$(AwkDiff $x $y)
+      fi
+      etMax=$(AwkMax $etMax $dt)
+      etLine="$etLine, E$I = $dt"
+      x=`GetCPU $SyncTestDir/prev.$I.txt`
+      y=`GetCPU $SyncTestDir/stats.$I.txt`
+      dt=$(AwkDiff $x $y)
+      cpuMax=$(AwkMax $cpuMax $dt)
+      cpuLine="$cpuLine, P$I = $dt"
+      packets=`awk -f scan-sumint.awk $SyncTestDir/stats.$I.txt`
+      packetSum=$(($packetSum + $packets))
+      intLine="$intLine, P$I = $packets"
+      I=`expr $I + 1`
+    done
+    echo ----
+    tail -1 $SyncTestDir/tfr3.txt >>$SyncTestDir/res.txt
+    tail -1 $SyncTestDir/tfr3.txt
+    ncLine="$ncLine, max = $ncMax"
+    etLine="$etLine, max = $etMax"
+    cpuLine="$cpuLine, max = $cpuMax"
+    intLine="$intLine, sum = $packetSum"
+    echo $ncLine
+    echo $etLine
+    echo $cpuLine
+    echo $intLine
+    echo $ncLine >>$SyncTestDir/res.txt
+    echo $etLine >>$SyncTestDir/res.txt
+    echo $cpuLine >>$SyncTestDir/res.txt
+    echo $intLine >>$SyncTestDir/res.txt
+  fi
+
+  EndTest
+  x=1
+  while test $x -le $SyncTestRepos; do {
+    StatsPause
+    stuff=`jobs -p`
+    if [ ! "$stuff" ] ; then break; fi ;
+    x=`expr $x + 1`
+  } ; done
+}
+CheckDir () {
+  if [ ! -d $1 ]; then
+    echo making $1 
+    mkdir $1
+  fi
+}
+CheckFile () {
+  if [ ! -f $2 ]; then
+    echo making $2 
+    mkfile $1 $2
+  fi
+}
+StartTest () {
+  I=0
+  while test $I -le $SyncTestRepos; do
+      WithCCND $I ccnd 2>$SyncTestDir/ccnd.$I.$SyncTestNames.txt &
+      sleep 0.2
+      I=`expr $I + 1`
+  done
+  I=1
+  while test $I -le $SyncTestRepos; do
+     WithCCND $I StartEmptyRepo $I &
+     I=`expr $I + 1`
+  done
+  I=0
+  while test $I -le $SyncTestRepos; do
+      J=0
+      while test $J -le $SyncTestRepos; do
+        if [ $I -ne $J ]; then
+           echo Linkup $I $J
+           Linkup $I $J
+        fi
+        J=`expr $J + 1`
+      done
+      I=`expr $I + 1`
+  done
+  SetSlices
+}
+StoreFile () {
+  WithCCND $1 SyncTest -v -put test/$2.data ccnx:/root/beer/$2
+}
+Setup () {
+  export SyncTestDebug=1
+  export SyncTestTopo=/parc/sync
+  export SyncTestNames=simple
+  export SyncTestDir=`pwd`/test
+  export SyncTestRepos=2
+  export SyncTestSegSize=4096
+  CheckDir $SyncTestDir
+  CheckFile 16k $SyncTestDir/small.data
+  CheckFile 1024k $SyncTestDir/big.data
+  InitTest
+  echo RootBeerHash = $RootBeerHash
+}
+
