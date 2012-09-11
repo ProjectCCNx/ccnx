@@ -56,7 +56,7 @@ default all: dtag_check lib $(PROGRAMS)
 # Don't try to build shared libs right now.
 # all: shlib
 
-# all: basicparsetest ccn_verifysig
+all: ccn_verifysig
 
 install: install_headers
 install_headers:
@@ -78,7 +78,7 @@ shlib: $(SHLIBNAME)
 lib: libccn.a
 
 test: default keystore_check encodedecodetest ccnbtreetest
-	./encodedecodetest -k $(CCNX_DIR)/.ccnx_keystore -o /dev/null
+	./encodedecodetest -o /dev/null
 	./ccnbtreetest
 	./ccnbtreetest - < q.dat
 	rm -R _bt_*
@@ -87,12 +87,13 @@ dtag_check: _always
 	@./gen_dtag_table 2>/dev/null | diff - ccn_dtag_table.c | grep '^[<]' >/dev/null && echo '*** Warning: ccn_dtag_table.c may be out of sync with tagnames.cvsdict' || :
 
 keystore_check: ccn_initkeystore.sh
-	test -f "$(CCNX_DIR)/.ccnx_keystore" || $(MAKE) -f dir.mk new_keystore
+	test ! -z "$$HOME"
+	test -f "$$HOME/.ccnx/.ccnx_keystore" || $(MAKE) -f dir.mk new_keystore
 
 new_keystore:
 	@echo === CCNx Keystore not found in your home directory
 	@echo === I will create one for you now '(^C to abort)'
-	sleep 1 && sh ccn_initkeystore.sh && sleep 3 && mkdir -p "$(CCNX_DIR)/" && mv .ccnx/.ccnx_keystore "$(CCNX_DIR)/"
+	sleep 1 && sh ccn_initkeystore.sh && sleep 3 && mv .ccnx "$$HOME"
 
 libccn.a: $(LIB_OBJS)
 	ar crus $@ $(LIB_OBJS)
