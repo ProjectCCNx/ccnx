@@ -19,8 +19,8 @@ PACKLIST = Makefile README LICENSE NEWS NOTICES configure doc/index.txt \
 		   $(TOPSUBDIRS) android experiments javasrc apps
 BLDMSG = printf '=== %s ' 'Building $@ in' && pwd
 
-# Include build parameters
--include csrc/conf.mk
+# Include build parameters.
+include csrc/conf.mk	# If this file is missing, run ./configure
 
 default all: _always
 	for i in $(TOPSUBDIRS); do         \

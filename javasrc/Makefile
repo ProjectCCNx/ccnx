@@ -12,7 +12,7 @@
 # FOR A PARTICULAR PURPOSE.
 #
 
--include ../csrc/conf.mk
+include ../csrc/conf.mk   # if missing, top-level ./configure is needed
 
 ANT = `command -v ant || echo echo SKIPPING ant`
 JAR = ccn.jar
