@@ -40,7 +40,7 @@ TryAppend "local"
 TryScript "`uname`" "$@"
 TryScript "local" "$@"
 ProvideDefault CC = ${CC:=cc}
-ProvideDefault CPREFLAGS = -I../include ${CFLAGS:-}
+ProvideDefault CPREFLAGS = -I../include
 ProvideDefault PCAP_PROGRAMS = ${PCAP_PROGRAMS:-ccndumppcap}
 ProvideDefault RESOLV_LIBS = ${RESOLV_LIBS:--lresolv}
 ProvideDefault INSTALL_BASE = ${INSTALL_BASE:-/usr/local}
