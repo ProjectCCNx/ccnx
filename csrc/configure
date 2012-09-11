@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 # csrc/configure
 # 
 # Part of the CCNx distribution.
