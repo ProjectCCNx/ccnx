@@ -38,7 +38,8 @@ usage (const char *progname)
 {
     fprintf (stderr,
              "Usage:\n"
-             "   %s [-v] (-f <configfile> | COMMAND)\n"
+             "   %s [-h] [-d] [-v] (-f <configfile> | COMMAND)\n"
+             "      -h print usage and exit\n"
              "      -d enter dynamic mode and create FIB entries based on DNS SRV records\n"
              "      -f <configfile> add or delete FIB entries based on the content of <configfile>\n"
              "      -v increase logging level\n"
