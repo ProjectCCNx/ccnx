@@ -144,8 +144,6 @@ ccndc_query_srv (const unsigned char *domain, int domain_size,
             snprintf(srv_name, sizeof(srv_name), "_ccnx._udp");
             ans_size = res_search(srv_name, C_IN, T_SRV, ans.buf, sizeof(ans.buf));
         }
-        
-        ans_size = res_query(srv_name, C_IN, T_SRV, ans.buf, sizeof(ans.buf));
         if (ans_size < 0)
             return (-1);
     }
