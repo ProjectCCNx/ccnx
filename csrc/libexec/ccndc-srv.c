@@ -202,6 +202,12 @@ ccndc_query_srv (const unsigned char *domain, int domain_size,
         }
         msg = end;
     }
+
+	// not used for now
+	(void)sizeof(weight);
+	(void)sizeof(ttl);
+	(void)sizeof(class);
+
     if (hostp) {
         size = strlen(host);
         *hostp = calloc(1, size);

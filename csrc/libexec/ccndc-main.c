@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include <strings.h>
 #include <errno.h>
 
@@ -92,7 +93,7 @@ main (int argc, char **argv)
     struct ccndc_data *ccndc;
     const char *progname = NULL;
     const char *configfile = NULL;
-    int res;
+    int res = 0;
     int opt;
     char *cmd = NULL;
     int dynamic = 0;
