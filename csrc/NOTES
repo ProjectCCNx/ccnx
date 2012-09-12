@@ -29,21 +29,18 @@ The csrc/conf/ directory contains the system-specific make fragments and scripts
 If you need to override the configured values, put them into a file
 named csrc/conf/local.mk before you execute ./configure in csrc/.
 
-It is also possible to define the following environment variables
-to modify default guesses of the ./configure script:
-- CC (default: leave unset to be supplied by make)
+It is also possible to define certain environment variables
+to modify default guesses of the ./configure script.
+The most useful of these are:
 - CFLAGS (default: -g)
 - INSTALL_BASE (default: /usr/local)
-- INSTALL_INCLUDE (default: $(INSTALL_BASE)/include)
-- INSTALL_LIB (default: $(INSTALL_BASE)/lib)
-- INSTALL_BIN (default: $(INSTALL_BASE)/bin)
-- INSTALL (default: install}
+- AR (default: leave unset to be supplied by make)
+- CC (default: leave unset to be supplied by make)
+- INSTALL (default: install)
 - CP (default: cp)
 - RM (default: rm -f)
 - SH (default: /bin/sh)
 - LS (default: /bin/ls)
-- PCAP_PROGRAMS (default: ccndumppcap)
-- RESOLV_LIBS (default: -lresolv)
 
 For convenience, there is a Makefile link placed into the subdirectories of
 csrc/ so that you can easily rebuild just part of the world.

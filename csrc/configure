@@ -51,19 +51,21 @@ TryScript "local" "$@"
 echo COPT = ${CFLAGS:="-g"} >> conf.mk
 
 # Finally, provide default values and pick up overrides from the environment
-ProvideDefault CC
 ProvideDefault CWARNFLAGS
 ProvideDefault PLATCFLAGS
 ProvideDefault CPREFLAGS = -I../include
-ProvideDefault PCAP_PROGRAMS = ccndumppcap
-ProvideDefault RESOLV_LIBS = -lresolv
 ProvideDefault INSTALL_BASE = /usr/local
 ProvideDefault INSTALL_INCLUDE = '$(INSTALL_BASE)/include'
 ProvideDefault INSTALL_LIB = '$(INSTALL_BASE)/lib'
 ProvideDefault INSTALL_BIN = '$(INSTALL_BASE)/bin'
-ProvideDefault INSTALL = install
 
+ProvideDefault PCAP_PROGRAMS = ccndumppcap
+ProvideDefault RESOLV_LIBS = -lresolv
+
+ProvideDefault AR
+ProvideDefault CC
 ProvideDefault CP = cp
+ProvideDefault INSTALL = install
 ProvideDefault LS = /bin/ls
 ProvideDefault RM = rm -f
 ProvideDefault SH = /bin/sh
