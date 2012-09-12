@@ -20,14 +20,13 @@
 SUBDIRS = HttpProxy ccnChat ccnFileProxy `cat local.subdirs 2>/dev/null || :`
 MAKEF =  -f ../conf.mk -f dir.mk -f ../subr.mk $(PASSTHRU)
 PASSTHRU = `[ -z '$(INSTALL_BASE)' ] || echo INSTALL_BASE=$(DESTDIR)$(INSTALL_BASE)`
-CFLAGS = -g
 CSRCDIR = ../csrc
 
 default all clean depend test check shared install uninstall: conf.mk subr.mk generic.mk _always
 	test -d include/ccn || (test -d $(CSRCDIR)/include/ccn && ln -s $(CSRCDIR)/include)
 	for i in $(SUBDIRS); do           \
 	    if [ -f "$$i/dir.mk" ]; then  \
-	        (cd "$$i" && pwd && $(MAKE) $(MAKEF) "COPT=$(CFLAGS)" CFLAGS='$$(REAL_CFLAGS)' SRCDIR=../$(SRCDIR)/$$i $@) || exit 1;	\
+	        (cd "$$i" && pwd && $(MAKE) $(MAKEF) CFLAGS='$$(REAL_CFLAGS)' SRCDIR=../$(SRCDIR)/$$i $@) || exit 1;	\
 	    else			  \
 	        (cd "$$i" && pwd && $(MAKE) -f ../conf.mk -f Makefile $(PASSTHRU) $@) || exit 1;	\
 	    fi                            \

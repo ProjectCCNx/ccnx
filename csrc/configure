@@ -28,8 +28,8 @@ TryScript () {
 }
 
 ProvideDefault () {
- value=`eval echo '$'${1}`
- [ "$value" != "" ] && echo ${1} = $value >> conf.mk && return 0
+ value=`eval 'echo ${'${1}':-:EMPTY:}'`
+ [ "$value" != ":EMPTY:" ] && echo ${1} = $value >> conf.mk && return 0
  [ "$2" = "=" ] || return 0
  grep '^'${1}'[ 	]*=' conf.mk > /dev/null && return 0
  echo $* >> conf.mk
@@ -37,13 +37,23 @@ ProvideDefault () {
 
 test -f conf.mk && mv conf.mk conf.mk~
 echo '#' generated `uname -nsrv` > conf.mk
+# Append each of the relevant conf/*.mk,
+# in order by increasing specificity.
 TryAppend "`uname`"
 TryAppend "`uname -sr | sed -e 's/ /-/g'`"
 TryAppend "local"
+# Next the relevant scripts, that get to do whatever is needed.
 TryScript "`uname`" "$@"
 TryScript "local" "$@"
 
+# CFLAGS take some extra care.
+# Save these as COPT in conf.mk
+echo COPT = ${CFLAGS:="-g"} >> conf.mk
+
+# Finally, provide default values and pick up overrides from the environment
 ProvideDefault CC
+ProvideDefault CWARNFLAGS
+ProvideDefault PLATCFLAGS
 ProvideDefault CPREFLAGS = -I../include
 ProvideDefault PCAP_PROGRAMS = ccndumppcap
 ProvideDefault RESOLV_LIBS = -lresolv
@@ -58,6 +68,7 @@ ProvideDefault LS = /bin/ls
 ProvideDefault RM = rm -f
 ProvideDefault SH = /bin/sh
 
+# The top-level CCNx Makefile picks these up.
 ProvideDefault BUILD_JAVA = true
 ProvideDefault BUILD_APPS = true
 
