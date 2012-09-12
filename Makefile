@@ -19,6 +19,16 @@ PACKLIST = Makefile README LICENSE NEWS NOTICES configure doc/index.txt \
 		   $(TOPSUBDIRS) android experiments javasrc apps
 BLDMSG = printf '=== %s ' 'Building $@ in' && pwd
 
+# Default target:
+default:
+
+# If csrc/conf.mk is missing, we need to run configure.
+# Some versions of make will do this automatically,
+# with other versions the documented recipie must
+# be used.
+csrc/conf.mk:
+	./configure
+
 # Include build parameters.
 include csrc/conf.mk	# If this file is missing, run ./configure
 
