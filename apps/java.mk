@@ -14,11 +14,7 @@
 
 include ../conf.mk
 
-ANT = `command -v ant || echo echo SKIPPING ant`
 LIBS = $(JAR)
-WHINE = sh -c "type $(ANT) 2>/dev/null ||                  \
-               echo Skipping java build in $$(pwd -L) -    \
-                    $(ANT) is not installed; "
 
 default all: jar
 check: test

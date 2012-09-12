@@ -34,20 +34,15 @@ include csrc/conf.mk	# If this file is missing, run ./configure
 
 IBINSTALL = $(MAKE) install DINST_BIN=$$ib/bin DINST_INC=$$ib/include DINST_LIB=$$ib/lib
 default all: _always
-	for i in $(TOPSUBDIRS); do         \
+	for i in $(TOPSUBDIRS) javasrc apps; do         \
 	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
 	done
-	if [ "x$(BUILD_JAVA)" = "xtrue" ]; then \
-	  (cd javasrc && $(MAKE) $@); \
-	  if [ "x$(BUILD_APPS)" = "xtrue" ]; then \
-	    (cd apps && $(MAKE) $@); \
-	  fi; \
-	fi
 	mkdir -p ./lib ./bin
 	test -d ./include || ln -s ./csrc/include
 	ib=`pwd` && (cd csrc && $(IBINSTALL))
-	[ "x$(BUILD_JAVA)" = "xtrue" ] && \
-		ib=`pwd` && (cd javasrc && $(IBINSTALL))
+	if [ "x$(BUILD_JAVA)" = "xtrue" ]; then \
+	  ib=`pwd` && (cd javasrc && $(IBINSTALL)); \
+	fi
 	ib=`pwd` && (cd apps && $(IBINSTALL))
 
 clean depend test check shared: _always

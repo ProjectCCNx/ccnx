@@ -19,7 +19,7 @@
 
 SUBDIRS = HttpProxy ccnChat ccnFileProxy `cat local.subdirs 2>/dev/null || :`
 MAKEF =  -f ../conf.mk -f dir.mk -f ../subr.mk $(PASSTHRU)
-PASSTHRU = DINST_LIB=$(DINST_LIB) DINST_LIB=$(DINST_BIN)
+PASSTHRU = DINST_INC=$(DINST_INC) DINST_LIB=$(DINST_LIB) DINST_LIB=$(DINST_BIN)
 CSRCDIR = ../csrc
 
 default all clean depend test check shared install uninstall: conf.mk subr.mk generic.mk _always

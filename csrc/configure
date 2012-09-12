@@ -62,6 +62,9 @@ ProvideDefault INSTALL_BIN = '$(INSTALL_BASE)/bin'
 ProvideDefault PCAP_PROGRAMS = ccndumppcap
 ProvideDefault RESOLV_LIBS = -lresolv
 
+: ${ANT:=`command -v ant || echo echo SKIPPING ant`}
+
+ProvideDefault ANT
 ProvideDefault AR
 ProvideDefault CC
 ProvideDefault CP = cp
@@ -72,6 +75,8 @@ ProvideDefault SH = /bin/sh
 
 # For the benefit of makefiles outside of csrc
 ProvideDefault BUILD_JAVA = true
+grep '^BUILD_JAVA[ 	]*=' conf.mk | tail -n 1 | grep 'true' >/dev/null || \
+  echo ANT = : skipping ant >> conf.mk
 
 cat <<'EOF' >> conf.mk
 DINST_BIN = $(DESTDIR)$(INSTALL_BIN)
