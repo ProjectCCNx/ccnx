@@ -70,9 +70,14 @@ ProvideDefault LS = /bin/ls
 ProvideDefault RM = rm -f
 ProvideDefault SH = /bin/sh
 
-# The top-level CCNx Makefile picks these up.
+# For the benefit of makefiles outside of csrc
 ProvideDefault BUILD_JAVA = true
-ProvideDefault BUILD_APPS = true
+
+cat <<'EOF' >> conf.mk
+DINST_BIN = $(DESTDIR)$(INSTALL_BIN)
+DINST_INC = $(DESTDIR)$(INSTALL_INCLUDE)
+DINST_LIB = $(DESTDIR)$(INSTALL_LIB)
+EOF
 
 echo ============= conf.mk =============>&2
 cat conf.mk				>&2

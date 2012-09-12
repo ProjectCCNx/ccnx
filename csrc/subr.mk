@@ -31,20 +31,20 @@ $(OBJDIR)/dir.mk: dir.mk
 	cp -p dir.mk $(OBJDIR)/dir.mk
 
 install_libs: $(LIBS)
-	@test -d $(DESTDIR)$(INSTALL_LIB) || (echo $(DESTDIR)$(INSTALL_LIB) does not exist.  Please mkdir -p $(DESTDIR)$(INSTALL_LIB) if this is what you intended. && exit 2)
-	for i in $(LIBS) ""; do test -z "$$i" || $(INSTALL) $$i $(DESTDIR)$(INSTALL_LIB); done
+	@test -d $(DINST_LIB) || (echo $(DINST_LIB) does not exist.  Please mkdir -p $(DINST_LIB) if this is what you intended. && exit 2)
+	for i in $(LIBS) ""; do test -z "$$i" || $(INSTALL) $$i $(DINST_LIB); done
 
 install_programs: $(INSTALLED_PROGRAMS)
-	@test -d $(DESTDIR)$(INSTALL_BIN) || (echo $(DESTDIR)$(INSTALL_BIN) does not exist.  Please mkdir -p $(DESTDIR)$(INSTALL_BIN) if this is what you intended. && exit 2)
-	for i in $(INSTALLED_PROGRAMS) ""; do test -z "$$i" || $(INSTALL) $$i $(DESTDIR)$(INSTALL_BIN); done
+	@test -d $(DINST_BIN) || (echo $(DINST_BIN) does not exist.  Please mkdir -p $(DINST_BIN) if this is what you intended. && exit 2)
+	for i in $(INSTALLED_PROGRAMS) ""; do test -z "$$i" || $(INSTALL) $$i $(DINST_BIN); done
 
 install: install_libs install_programs
 
 uninstall_libs:
-	for i in $(LIBS) ""; do test -z "$$i" || $(RM) $(DESTDIR)$(INSTALL_LIB)/$$i; done
+	for i in $(LIBS) ""; do test -z "$$i" || $(RM) $(DINST_LIB)/$$i; done
 
 uninstall_programs:
-	for i in $(PROGRAMS) ""; do test -z "$$i" || $(RM) $(DESTDIR)$(INSTALL_BIN)/$$i; done
+	for i in $(PROGRAMS) ""; do test -z "$$i" || $(RM) $(DINST_BIN)/$$i; done
 
 uninstall: uninstall_libs uninstall_programs
 

@@ -23,7 +23,7 @@ WHINE = sh -c "type $(ANT) 2>/dev/null ||                  \
                     $(ANT) is not installed; "
 WARN_NO_INSTALL = echo Nothing installed from javasrc/
 # Default, the top-level Makefile default target will
-# call the install target here but override INSTALL_BASE
+# call the install target here but override DINST_*
 # with dir in the source tree
 
 default all: jar
@@ -31,20 +31,19 @@ check: test
 
 install:
 	@test -f $(JAR) && $(MAKE) real_install \
-            INSTALL_BASE=$(DESTDIR)$(INSTALL_BASE)        \
-            INSTALL_LIB=$(DESTDIR)$(INSTALL_LIB)          \
-            INSTALL_BIN=$(DESTDIR)$(INSTALL_BIN) || $(WARN_NO_INSTALL)
+            DINST_LIB=$(DINST_LIB)          \
+            DINST_BIN=$(DINST_BIN) || $(WARN_NO_INSTALL)
 
 real_install: _always
-	test -d $(INSTALL_LIB) 
-	for i in $(LIBS) ""; do test -z "$$i" || $(INSTALL) $$i $(INSTALL_LIB); done
-	test -d $(INSTALL_BIN)
+	test -d $(DINST_LIB) 
+	for i in $(LIBS) ""; do test -z "$$i" || $(INSTALL) $$i $(DINST_LIB); done
+	test -d $(DINST_BIN)
 	# Using -R on . dir to preserve sym links
-	$(CP) -R tools/. $(INSTALL_BIN)
+	$(CP) -R tools/. $(DINST_BIN)
 
 uninstall:
-	for i in $(LIBS) ""; do test -z "$$i" || rm -f $(DESTDIR)$(INSTALL_LIB)/`basename $$i`; done
-	for i in `$(LS) tools` "" ; do test -z "$$i" || rm -f $(DESTDIR)$(INSTALL_BIN)/`basename $$i`; done
+	for i in $(LIBS) ""; do test -z "$$i" || rm -f $(DINST_LIB)/`basename $$i`; done
+	for i in `$(LS) tools` "" ; do test -z "$$i" || rm -f $(DINST_BIN)/`basename $$i`; done
 
 # Use ant to actually do the work for these targets
 jar test: _always

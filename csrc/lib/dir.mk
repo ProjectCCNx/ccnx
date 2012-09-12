@@ -60,18 +60,18 @@ all: ccn_verifysig
 
 install: install_headers
 install_headers:
-	@test -d $(DESTDIR)$(INSTALL_INCLUDE) || (echo $(DESTDIR)$(INSTALL_INCLUDE) does not exist.  Please mkdir -p $(DESTDIR)$(INSTALL_INCLUDE) if this is what you intended. && exit 2)
-	mkdir -p $(DESTDIR)$(INSTALL_INCLUDE)/ccn
+	@test -d $(DINST_INC) || (echo $(DINST_INC) does not exist.  Please mkdir -p $(DINST_INC) if this is what you intended. && exit 2)
+	mkdir -p $(DINST_INC)/ccn
 	for i in `cd ../include/ccn && echo *.h`; do                \
-	    cmp -s ../include/ccn/$$i $(DESTDIR)$(INSTALL_INCLUDE)/ccn/$$i || \
-	        cp ../include/ccn/$$i $(DESTDIR)$(INSTALL_INCLUDE)/ccn/$$i || \
+	    cmp -s ../include/ccn/$$i $(DINST_INC)/ccn/$$i || \
+	        cp ../include/ccn/$$i $(DINST_INC)/ccn/$$i || \
 	        exit 1;                                             \
 	done
 
 uninstall: uninstall_headers
 uninstall_headers:
-	test -L $(DESTDIR)$(INSTALL_INCLUDE)/ccn && $(RM) $(DESTDIR)$(INSTALL_INCLUDE)/ccn ||:
-	test -L $(DESTDIR)$(INSTALL_INCLUDE) || $(RM) -r $(DESTDIR)$(INSTALL_INCLUDE)/ccn
+	test -L $(DINST_INC)/ccn && $(RM) $(DINST_INC)/ccn ||:
+	test -L $(DINST_INC) || $(RM) -r $(DINST_INC)/ccn
 
 shlib: $(SHLIBNAME)
 
