@@ -18,7 +18,7 @@ CCNLIBDIR = ../lib
 INSTALLED_PROGRAMS = ccndc
 DEBRIS = ccndc-inject
 PROGRAMS = $(INSTALLED_PROGRAMS) udplink
-CSRC = ccndc.c udplink.c
+CSRC = ccndc-log.c ccndc-main.c ccndc-srv.c ccndc.c udplink.c
 
 default all: $(PROGRAMS)
 
@@ -41,36 +41,20 @@ test:
 # Dependencies below here are checked by depend target
 # but must be updated manually.
 ###############################
-ccndc.o: ccndc.c ccndc.h ccndc-log.h ccndc-srv.h \
-	../include/ccn/ccn.h		\
-	../include/ccn/ccnd.h		\
-	../include/ccn/charbuf.h	\
-	../include/ccn/uri.h		\
-	../include/ccn/face_mgmt.h	\
-	../include/ccn/reg_mgmt.h 	\
-	../include/ccn/sockcreate.h	\
-	../include/ccn/signing.h
-
-ccndc-log.o: ccndc-log.h ccndc-log.c ccndc.h \
-	../include/ccn/ccn.h		\
-	../include/ccn/ccnd.h		\
-	../include/ccn/charbuf.h	\
-	../include/ccn/uri.h		\
-	../include/ccn/face_mgmt.h	\
-	../include/ccn/reg_mgmt.h 	\
-	../include/ccn/sockcreate.h	\
-	../include/ccn/signing.h
-
-ccndc-srv.o: ccndc-srv.h ccndc-srv.c ccndc.h ccndc-log.h \
-	../include/ccn/ccn.h		\
-	../include/ccn/ccnd.h		\
-	../include/ccn/charbuf.h	\
-	../include/ccn/uri.h		\
-	../include/ccn/face_mgmt.h	\
-	../include/ccn/reg_mgmt.h 	\
-	../include/ccn/sockcreate.h	\
-	../include/ccn/signing.h
-
+ccndc-log.o: ccndc-log.c ccndc-log.h
+ccndc-main.o: ccndc-main.c ccndc.h ../include/ccn/charbuf.h \
+  ../include/ccn/sockcreate.h ../include/ccn/face_mgmt.h \
+  ../include/ccn/reg_mgmt.h ccndc-log.h ccndc-srv.h
+ccndc-srv.o: ccndc-srv.c ccndc-srv.h ccndc.h ../include/ccn/charbuf.h \
+  ../include/ccn/sockcreate.h ../include/ccn/face_mgmt.h \
+  ../include/ccn/reg_mgmt.h ccndc-log.h ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/indexbuf.h ../include/ccn/ccnd.h \
+  ../include/ccn/uri.h ../include/ccn/signing.h
+ccndc.o: ccndc.c ccndc.h ../include/ccn/charbuf.h \
+  ../include/ccn/sockcreate.h ../include/ccn/face_mgmt.h \
+  ../include/ccn/reg_mgmt.h ccndc-log.h ccndc-srv.h ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/indexbuf.h ../include/ccn/ccnd.h \
+  ../include/ccn/uri.h ../include/ccn/signing.h
 udplink.o: udplink.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
   ../include/ccn/ccnd.h
