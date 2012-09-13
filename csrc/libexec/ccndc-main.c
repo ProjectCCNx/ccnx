@@ -1,4 +1,3 @@
-/* -*- mode: C; c-file-style: "gnu"; c-basic-offset: 4; indent-tabs-mode:nil; -*- */
 /**
  * @file ccndc.c
  * @brief Bring up a link to another ccnd.
@@ -31,12 +30,12 @@
 #include <errno.h>
 
 static int
-read_configfile (struct ccndc_data *ccndc, const char *filename);
+read_configfile(struct ccndc_data *ccndc, const char *filename);
 
 static void
-usage (const char *progname)
+usage(const char *progname)
 {
-    fprintf (stderr,
+    fprintf(stderr,
              "Usage:\n"
              "   %s [-h] [-d] [-v] (-f <configfile> | COMMAND)\n"
              "      -h print usage and exit\n"
@@ -47,17 +46,20 @@ usage (const char *progname)
              "   COMMAND can be one of following:\n"
              "      add <uri> (udp|tcp) <host> [<port> [<flags> [<mcastttl> [<mcastif>]]]])\n"
              "         to add FIB entry\n"
+             "      readd <uri> (udp|tcp) <host> [<port> [<flags> [<mcastttl> [<mcastif>]]]])\n"
+             "         to delete and then re-add FIB entry\n"
              "      del <uri> (udp|tcp) <host> [<port> [<flags> [<mcastttl> [<mcastif> [destroyface]]]]])\n"
              "         to remove FIB entry and optionally an associated face\n"
              "      destroyface <faceid>\n"
              "         destroy face based on face number\n"
              "      srv\n"
-             "         guess gateway parameters based on SRV record of a damain in search list\n"
+             "         add FIB entry based on SRV record of a domain in search list\n"
              ,
              progname);
 }
 
-char *create_command_from_command_line (int argc, char **argv)
+char *
+create_command_from_command_line(int argc, char **argv)
 {
     int len = 0;
     char *out = NULL;
@@ -67,18 +69,18 @@ char *create_command_from_command_line (int argc, char **argv)
         return NULL;
     
     for (i = 0; i < argc; i++) {
-        len += strlen (argv[i]) + 1;
+        len += strlen(argv[i]) + 1;
     }
     
-    out = calloc (len, sizeof (char));
+    out = calloc(len, sizeof(char));
     if (out == 0) {
-        ccndc_fatal (__LINE__, "Cannot allocate memory\n");
+        ccndc_fatal(__LINE__, "Cannot allocate memory\n");
     }
 
     len = 0;
     for (i = 0; i < argc; i++) {
-        memcpy (out+len, argv[i], strlen (argv[i]));
-        len += strlen (argv[i]) + 1;
+        memcpy(out+len, argv[i], strlen(argv[i]));
+        len += strlen(argv[i]) + 1;
         out[len-1] = ' '; // separate everything with one space
     }
     out[len-1] = 0;
@@ -89,7 +91,7 @@ char *create_command_from_command_line (int argc, char **argv)
 
 
 int
-main (int argc, char **argv)
+main(int argc, char **argv)
 {
     struct ccndc_data *ccndc;
     const char *progname = NULL;
@@ -120,48 +122,48 @@ main (int argc, char **argv)
     }
 
     if (configfile == NULL && !dynamic && optind == argc) {
-        usage (progname);
+        usage(progname);
         return 1;
     }
     
-    ccndc = ccndc_initialize ();
+    ccndc = ccndc_initialize();
     
     if (optind < argc) {
         /* config file cannot be combined with command line */
         if (configfile != NULL) {
-            ccndc_warn (__LINE__, "Config file cannot be combined with command line\n");
+            ccndc_warn(__LINE__, "Config file cannot be combined with command line\n");
             usage(progname);
             res = 1;
             goto Cleanup;
         }
         
         if (argc - optind < 0) {
-            usage (progname);
+            usage(progname);
             res = 1;
             goto Cleanup;
         }
         
-        cmd = create_command_from_command_line (argc-optind-1, &argv[optind+1]);
-        res = ccndc_dispatch_cmd (ccndc, 0, argv[optind], cmd, argc - optind - 1);
-        free (cmd);
+        cmd = create_command_from_command_line(argc-optind-1, &argv[optind+1]);
+        res = ccndc_dispatch_cmd(ccndc, 0, argv[optind], cmd, argc - optind - 1);
+        free(cmd);
         
         if (res == -99) {
-            usage (progname);
+            usage(progname);
             res = 1;
             goto Cleanup;
         }
     }
     
     if (configfile) {
-        read_configfile (ccndc, configfile);
+        read_configfile(ccndc, configfile);
     }
 
     if (dynamic) {
-        ccndc_daemonize (ccndc);
+        ccndc_daemonize(ccndc);
     }
 
  Cleanup:
-    ccndc_destroy (&ccndc);
+    ccndc_destroy(&ccndc);
     return res;
 }
 
@@ -173,7 +175,7 @@ main (int argc, char **argv)
  * to check for errors.  If no erors found, commands are executing if normal mode.
  */
 static int
-read_configfile (struct ccndc_data *ccndc, const char *filename)
+read_configfile(struct ccndc_data *ccndc, const char *filename)
 {
     int configerrors = 0;
     int lineno = 0;
@@ -202,7 +204,7 @@ read_configfile (struct ccndc_data *ccndc, const char *filename)
         char *cmd;
         char *rest_of_the_command = buf;
         do {
-            cmd = strsep (&rest_of_the_command, " \t");
+            cmd = strsep(&rest_of_the_command, " \t");
         } while (cmd != NULL && cmd[0] == 0);
 
         if (cmd == NULL) /* blank line */
@@ -210,10 +212,10 @@ read_configfile (struct ccndc_data *ccndc, const char *filename)
 
         // printf (">> %s [%s] <<\n", cmd, rest_of_the_command);
 
-        res = ccndc_dispatch_cmd (ccndc, 1, cmd, rest_of_the_command, -1);
+        res = ccndc_dispatch_cmd(ccndc, 1, cmd, rest_of_the_command, -1);
         if (res < 0) {
             verbose ++;
-            ccndc_warn (__LINE__, "Error: near line %d\n", lineno);
+            ccndc_warn(__LINE__, "Error: near line %d\n", lineno);
             configerrors++;
         }
     }
@@ -245,13 +247,13 @@ read_configfile (struct ccndc_data *ccndc, const char *filename)
         char *cmd;
         char *rest_of_the_command = buf;
         do {
-            cmd = strsep (&rest_of_the_command, " \t");
+            cmd = strsep(&rest_of_the_command, " \t");
         } while (cmd != NULL && cmd[0] == 0);
 
         if (cmd == NULL) /* blank line */
             continue;
 
-        res += ccndc_dispatch_cmd (ccndc, 0, cmd, rest_of_the_command, -1);
+        res += ccndc_dispatch_cmd(ccndc, 0, cmd, rest_of_the_command, -1);
     }
     fclose(cfg);
 

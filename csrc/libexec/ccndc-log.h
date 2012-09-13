@@ -1,7 +1,7 @@
 /* -*- mode: C; c-file-style: "gnu"; c-basic-offset: 4; indent-tabs-mode:nil; -*- */
 /**
  * @file ccndc-log.h
- * @brief Bring up a link to another ccnd.
+ * @brief logging functions for ccndc.
  *
  * A CCNx program.
  *
@@ -21,12 +21,13 @@
 
 #ifndef CCNDC_LOG_H
 #define CCNDC_LOG_H
-
-#include <stdio.h>
-#include <stdarg.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/time.h>
+/**
+ * @brief Issue note on stderr, controlled by verbose flag
+ * @param lineno Line number where problem happened
+ * @param format printf-style format line
+ */
+void
+ccndc_note(int lineno, const char *format, ...);
 
 /**
  * @brief Issue warning on stderr
@@ -45,29 +46,4 @@ void
 ccndc_fatal(int line, const char *format, ...);
 
 extern int verbose;
-
-#define ON_ERROR_CLEANUP(resval)                                        \
-    {                                                                   \
-        if ((resval) < 0) {                                             \
-            if (verbose > 0) ccndc_warn (__LINE__, "OnError cleanup\n"); \
-            goto Cleanup;                                               \
-        }                                                               \
-    }
-
-#define ON_NULL_CLEANUP(resval)                                         \
-    {                                                                   \
-        if ((resval) == NULL) {                                         \
-            if (verbose > 0) ccndc_warn(__LINE__, "OnNull cleanup\n");  \
-            goto Cleanup;                                               \
-        }                                                               \
-    }
-
-#define ON_ERROR_EXIT(resval, msg)                                      \
-    {                                                                   \
-        if (resval < 0) {                                               \
-            ccndc_fatal(__LINE__, "fatal error, res = %d, %s\n", resval, msg); \
-        }                                                               \
-    }
-    
-
 #endif // CCNDC_LOG_H

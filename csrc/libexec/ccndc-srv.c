@@ -1,4 +1,3 @@
-/* -*- mode: C; c-file-style: "gnu"; c-basic-offset: 4; indent-tabs-mode:nil; -*- */
 /**
  * @file ccndc.c
  * @brief Bring up a link to another ccnd.
@@ -19,42 +18,21 @@
  * Boston, MA 02110-1301, USA.
  */
 
+#include "ccndc.h"
 #include "ccndc-srv.h"
 #include "ccndc-log.h"
 
-#include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
-#include <limits.h>
 #include <string.h>
 #include <strings.h>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include <netdb.h>
-#include <netinet/in.h>
 #define BIND_8_COMPAT
 #include <arpa/nameser.h>
 #include <resolv.h>
-#include <errno.h>
-// #include <ccn/bloom.h>
+
 #include <ccn/ccn.h>
-#include <ccn/ccnd.h>
 #include <ccn/charbuf.h>
 #include <ccn/uri.h>
-#include <ccn/face_mgmt.h>
 #include <ccn/reg_mgmt.h>
-#include <ccn/sockcreate.h>
-#include <ccn/signing.h>
-
-#if defined(NEED_GETADDRINFO_COMPAT)
-#include "getaddrinfo.h"
-#include "dummyin6.h"
-#endif
-
-#ifndef AI_ADDRCONFIG
-#define AI_ADDRCONFIG 0 /*IEEE Std 1003.1-2001/Cor 1-2002, item XSH/TC1/D6/20*/
-#endif
 
 #ifndef NS_MAXMSG
 #define NS_MAXMSG 65535
@@ -89,20 +67,18 @@ incoming_interest(struct ccn_closure *selfp,
 void
 ccndc_daemonize (struct ccndc_data *ccndc)
 {
-    struct ccn_closure interest_closure = { .p=&incoming_interest, .data = (void*)ccndc };
-    
+    struct ccn_closure interest_closure = { .p=&incoming_interest, .data = (void *)ccndc };
     struct ccn_charbuf *temp = ccn_charbuf_create();
-
+    
     /* Set up a handler for interests */
-    ccn_name_init (temp); // root prefix
-    ccn_set_interest_filter_with_flags (ccndc->ccn_handle, temp, &interest_closure,
-                                        CCN_FORW_ACTIVE | CCN_FORW_CHILD_INHERIT | CCN_FORW_LAST);
-    ccn_charbuf_destroy (&temp);
-
-    ccndc_warn (__LINE__, "Starting dynamic DNS-base FIB prefix resolution\n");
-    ccn_run (ccndc->ccn_handle, -1);
+    ccn_name_from_uri(temp, "ccnx:/");
+    ccn_set_interest_filter_with_flags(ccndc->ccn_handle, temp, &interest_closure,
+                                       CCN_FORW_ACTIVE | CCN_FORW_CHILD_INHERIT | CCN_FORW_LAST);
+    ccn_charbuf_destroy(&temp);
+    
+    ccndc_note(__LINE__, "Starting dynamic DNS-based FIB prefix resolution\n");
+    ccn_run(ccndc->ccn_handle, -1);
 }
-
 
 int
 ccndc_query_srv (const unsigned char *domain, int domain_size,
@@ -134,7 +110,7 @@ ccndc_query_srv (const unsigned char *domain, int domain_size,
         snprintf(srv_name, sizeof(srv_name), "_ccnx._tcp");
         ans_size = res_search(srv_name, C_IN, T_SRV, ans.buf, sizeof(ans.buf));
     }
-        
+    
     if (ans_size < 0) {
         *proto = "udp";
         if (domain_size != 0) {
@@ -200,12 +176,12 @@ ccndc_query_srv (const unsigned char *domain, int domain_size,
         }
         msg = end;
     }
-
+    
 	// not used for now
 	(void)sizeof(weight);
 	(void)sizeof(ttl);
 	(void)sizeof(class);
-
+    
     if (hostp) {
         size = strlen(host);
         *hostp = calloc(1, size);
@@ -230,7 +206,7 @@ incoming_interest(struct ccn_closure *selfp,
     size_t comp0_size = 0;
     int res;
     struct ccndc_data *ccndc = (struct ccndc_data *)selfp->data;
-        
+    
     if (kind == CCN_UPCALL_FINAL)
         return (CCN_UPCALL_RESULT_OK);
     if (kind != CCN_UPCALL_INTEREST)
@@ -245,11 +221,11 @@ incoming_interest(struct ccn_closure *selfp,
         return (CCN_UPCALL_RESULT_OK);
     if (memchr(comp0, '.', comp0_size) == NULL)
         return (CCN_UPCALL_RESULT_OK);
-
-    res = ccndc_srv (ccndc, (const char *)comp0, comp0_size);
-
+    
+    res = ccndc_srv(ccndc, comp0, comp0_size);
+    
     if (res < 0)
         return (CCN_UPCALL_RESULT_ERR);
-
+    
     return (CCN_UPCALL_RESULT_OK);
 }

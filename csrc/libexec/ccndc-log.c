@@ -1,7 +1,6 @@
-/* -*- mode: C; c-file-style: "gnu"; c-basic-offset: 4; indent-tabs-mode:nil; -*- */
 /**
  * @file ccndc-log.h
- * @brief Bring up a link to another ccnd.
+ * @brief Logging utilities for ccndc.
  *
  * A CCNx program.
  *
@@ -19,22 +18,38 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#include "ccndc-log.h"
+#include <stdio.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/time.h>
 
 int verbose = 0;
 
 void
-ccndc_warn(int lineno, const char *format, ...)
+ccndc_note(int lineno, const char *format, ...)
 {
+    struct timeval t;
+    va_list ap;
     if (verbose) {
-        struct timeval t;
-        va_list ap;
         va_start(ap, format);
         gettimeofday(&t, NULL);
         fprintf(stderr, "%d.%06d ccndc[%d]:%d: ", (int)t.tv_sec, (unsigned)t.tv_usec, (int)getpid(), lineno);
         vfprintf(stderr, format, ap);
         va_end(ap);
     }
+}
+
+void
+ccndc_warn(int lineno, const char *format, ...)
+{
+    struct timeval t;
+    va_list ap;
+    va_start(ap, format);
+    gettimeofday(&t, NULL);
+    fprintf(stderr, "%d.%06d ccndc[%d]:%d: ", (int)t.tv_sec, (unsigned)t.tv_usec, (int)getpid(), lineno);
+    vfprintf(stderr, format, ap);
+    va_end(ap);
 }
 
 void

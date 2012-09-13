@@ -22,8 +22,6 @@
 #ifndef CCNDC_SRV_H
 #define CCNDC_SRV_H
 
-#include "ccndc.h"
-
 /**
  * @brief Register / prefix and start dynamically creating entries based on SRV records
  *
@@ -45,4 +43,4 @@ int
 ccndc_query_srv (const unsigned char *domain, int domain_size,
                  char **hostp, int *portp, char **proto);
 
-#endif // CCNDC_SRV_H
+#endif

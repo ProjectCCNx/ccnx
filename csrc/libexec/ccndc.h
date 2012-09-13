@@ -19,31 +19,40 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef CCNDC_CCNB_H
-#define CCNDC_CCNB_H
+#ifndef CCNDC_H
+#define CCNDC_H
 
 #include <ccn/charbuf.h>
-#include <netdb.h>
-#include <ccn/sockcreate.h>
-#include <ccn/face_mgmt.h>
-#include <ccn/reg_mgmt.h>
 
-struct ccndc_data;
 struct ccndc_prefix_entry;
+struct ccn_forwarding_entry;
+struct ccn_face_instance;
+
+/**
+ * @brief Internal data structure for ccndc
+ */
+struct ccndc_data
+{
+    struct ccn  *ccn_handle;
+    char    ccnd_id [32];       //id of local ccnd
+    size_t  ccnd_id_size;
+    struct ccn_charbuf  *local_scope_template; // scope 1 template
+    struct ccn_charbuf  *no_name;   // an empty name
+};
 
 /**
  * @brief Initialize internal data structures
  * @returns "this" pointer
  */
 struct ccndc_data *
-ccndc_initialize (void);
+ccndc_initialize(void);
 
 /**
  * @brief Destroy internal data structures
  * @brief data pointer to "this"
  */
 void
-ccndc_destroy (struct ccndc_data **data);
+ccndc_destroy(struct ccndc_data **data);
 
 /**
  * @brief Select a correct command based on the supplied argument
@@ -55,11 +64,11 @@ ccndc_destroy (struct ccndc_data **data);
  * @returns 0 on success, non zero means error, -99 means command line error
  */
 int
-ccndc_dispatch_cmd (struct ccndc_data *self,
-                    int check_only,
-                    const char *cmd,
-                    const char *options,
-                    int num_options);
+ccndc_dispatch_cmd(struct ccndc_data *self,
+                   int check_only,
+                   const char *cmd,
+                   const char *options,
+                   int num_options);
 
 
 /**
@@ -76,9 +85,9 @@ ccndc_dispatch_cmd (struct ccndc_data *self,
  * @returns 0 on success
  */
 int
-ccndc_add (struct ccndc_data *self,
-           int check_only,
-           const char *cmd);
+ccndc_add(struct ccndc_data *self,
+          int check_only,
+          const char *cmd);
 
 
 /**
@@ -98,10 +107,10 @@ ccndc_add (struct ccndc_data *self,
  * @returns 0 on success
  */
 int
-ccndc_del (struct ccndc_data *self,
-           int check_only,
-           const char *cmd,
-           int destroyface);
+ccndc_del(struct ccndc_data *self,
+          int check_only,
+          const char *cmd,
+          int destroyface);
 
 /**
  * brief Add (and if exists recreated) FIB entry based on guess from SRV records for a specified domain
@@ -111,9 +120,9 @@ ccndc_del (struct ccndc_data *self,
  * @returns 0 on success
  */
 int
-ccndc_srv (struct ccndc_data *self,
-           const char *domain,
-           size_t domain_size);
+ccndc_srv(struct ccndc_data *self,
+          const unsigned char *domain,
+          size_t domain_size);
 
 /**
  * @brief Destroy face if it exists
@@ -127,9 +136,9 @@ ccndc_srv (struct ccndc_data *self,
  * @returns 0 on success
  */
 int
-ccndc_destroyface (struct ccndc_data *self,
-                   int check_only,
-                   const char *cmd);
+ccndc_destroyface(struct ccndc_data *self,
+                  int check_only,
+                  const char *cmd);
 
 /**
  * @brief Get ID of the local CCND
@@ -139,7 +148,7 @@ ccndc_destroyface (struct ccndc_data *self,
  * @param self          data pointer to "this"
  */
 int
-ccndc_get_ccnd_id (struct ccndc_data *self);
+ccndc_get_ccnd_id(struct ccndc_data *self);
 
 /**
  * @brief Perform action using face management protocol
@@ -167,45 +176,26 @@ ccndc_do_prefix_action(struct ccndc_data *self,
                        struct ccn_forwarding_entry *forwarding_entry);
 
 
-/**
- * @brief internal data structure for ccndc
- */
-struct ccndc_data
-{
-    /// CCN handle
-    struct ccn          *ccn_handle;
-
-    /// storage of ID of local CCND
-    char                ccnd_id [32];
-    /// size of the stored ID
-    size_t              ccnd_id_size;
-
-    /// interest template for ccnget calls, specifying scope 1 (Local)
-    struct ccn_charbuf  *local_scope_template;
-
-    /// empty name necessary for signing purposes
-    struct ccn_charbuf  *no_name;
-};
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 
 struct ccn_forwarding_entry *
-parse_ccn_forwarding_entry (struct ccndc_data *self,
-                            const char *cmd_uri,
-                            const char *cmd_flags,
-                            int freshness);
+parse_ccn_forwarding_entry(struct ccndc_data *self,
+                           const char *cmd_uri,
+                           const char *cmd_flags,
+                           int freshness);
 
 struct ccn_face_instance *
-parse_ccn_face_instance (struct ccndc_data *self,
-                         const char *cmd_proto,
-                         const char *cmd_host,     const char *cmd_port,
-                         const char *cmd_mcastttl, const char *cmd_mcastif,
-                         int freshness);
+parse_ccn_face_instance(struct ccndc_data *self,
+                        const char *cmd_proto,
+                        const char *cmd_host,     const char *cmd_port,
+                        const char *cmd_mcastttl, const char *cmd_mcastif,
+                        int freshness);
 
 struct ccn_face_instance *
-parse_ccn_face_instance_from_face (struct ccndc_data *self,
-                                   const char *cmd_faceid);
+parse_ccn_face_instance_from_face(struct ccndc_data *self,
+                                  const char *cmd_faceid);
 
-#endif // CCNDC_CCNB_H
+#endif
