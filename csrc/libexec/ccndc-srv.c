@@ -65,7 +65,7 @@ incoming_interest(struct ccn_closure *selfp,
 /////////////////////////////////////////////////////////////
 
 void
-ccndc_daemonize (struct ccndc_data *ccndc)
+ccndc_daemonize(struct ccndc_data *ccndc)
 {
     struct ccn_closure interest_closure = { .p=&incoming_interest, .data = (void *)ccndc };
     struct ccn_charbuf *temp = ccn_charbuf_create();
@@ -81,7 +81,7 @@ ccndc_daemonize (struct ccndc_data *ccndc)
 }
 
 int
-ccndc_query_srv (const unsigned char *domain, int domain_size,
+ccndc_query_srv(const unsigned char *domain, int domain_size,
                  char **hostp, int *portp, char **proto)
 {
     union {
@@ -104,7 +104,7 @@ ccndc_query_srv (const unsigned char *domain, int domain_size,
     
     *proto = "tcp";
     if (domain_size != 0) {
-        snprintf(srv_name, sizeof(srv_name), "_ccnx._tcp.%.*s", (int)domain_size, domain);
+        snprintf(srv_name, sizeof(srv_name), "_ccnx._tcp.%.*s", domain_size, domain);
         ans_size = res_query(srv_name, C_IN, T_SRV, ans.buf, sizeof(ans.buf));
     } else {
         snprintf(srv_name, sizeof(srv_name), "_ccnx._tcp");
@@ -114,7 +114,7 @@ ccndc_query_srv (const unsigned char *domain, int domain_size,
     if (ans_size < 0) {
         *proto = "udp";
         if (domain_size != 0) {
-            snprintf(srv_name, sizeof(srv_name), "_ccnx._udp.%.*s", (int)domain_size, domain);
+            snprintf(srv_name, sizeof(srv_name), "_ccnx._udp.%.*s", domain_size, domain);
             ans_size = res_query(srv_name, C_IN, T_SRV, ans.buf, sizeof(ans.buf));
         } else {
             snprintf(srv_name, sizeof(srv_name), "_ccnx._udp");
@@ -144,7 +144,7 @@ ccndc_query_srv (const unsigned char *domain, int domain_size,
     
     minpriority = INT_MAX;
     for (i = ancount; i > 0; --i) {
-        size = dn_expand(ans.buf, msgend, msg, srv_name, sizeof (srv_name));
+        size = dn_expand(ans.buf, msgend, msg, srv_name, sizeof(srv_name));
         if (size < 0) 
             return (CCN_UPCALL_RESULT_ERR);
         msg = msg + size;
@@ -170,7 +170,7 @@ ccndc_query_srv (const unsigned char *domain, int domain_size,
             minpriority = priority;
             GETSHORT(weight, msg);
             GETSHORT(port, msg);
-            size = dn_expand(ans.buf, msgend, msg, host, sizeof (host));
+            size = dn_expand(ans.buf, msgend, msg, host, sizeof(host));
             if (size < 0)
                 return (-1);
         }

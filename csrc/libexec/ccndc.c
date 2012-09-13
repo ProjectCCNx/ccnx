@@ -75,7 +75,7 @@
 }
 
 struct ccndc_data *
-ccndc_initialize (void) {
+ccndc_initialize(void) {
     struct ccndc_data *self;
     const char *msg = "Unable to initialize ccndc";
     int res;
@@ -106,7 +106,7 @@ ccndc_initialize (void) {
 }
 
 void
-ccndc_destroy (struct ccndc_data **data) {
+ccndc_destroy(struct ccndc_data **data) {
     struct ccndc_data *self = *data;
     
     if (self != NULL) {
@@ -121,30 +121,30 @@ ccndc_destroy (struct ccndc_data **data) {
 
 
 int
-ccndc_dispatch_cmd (struct ccndc_data *ccndc,
+ccndc_dispatch_cmd(struct ccndc_data *ccndc,
                     int check_only,
                     const char *cmd,
                     const char *options,
                     int num_options)
 {
-    if (strcasecmp (cmd, "add") == 0) {
+    if (strcasecmp(cmd, "add") == 0) {
         if (num_options >= 0 && (num_options < 3 || num_options > 8))
             return -99;
         return ccndc_add(ccndc, check_only, options);
     }
-    if (strcasecmp (cmd, "del") == 0) {
+    if (strcasecmp(cmd, "del") == 0) {
         if (num_options >= 0 && (num_options < 3 || num_options > 9))
             return -99;
         return ccndc_del(ccndc, check_only, options, 0);
     }
-    if (strcasecmp (cmd, "srv") == 0) {
+    if (strcasecmp(cmd, "srv") == 0) {
         // attempt to guess parameters using SRV record of a domain in search list
         if (num_options >= 0 && num_options != 0)
             return -99;
         if (check_only) return 0;
         return ccndc_srv(ccndc, NULL, 0);
     }
-    if (strcasecmp (cmd, "readd") == 0) {
+    if (strcasecmp(cmd, "readd") == 0) {
         if (num_options >= 0 && (num_options < 3 || num_options > 8))
             return -99;
         if (check_only)
@@ -152,7 +152,7 @@ ccndc_dispatch_cmd (struct ccndc_data *ccndc,
         ccndc_del(ccndc, check_only, options, 1);
         return ccndc_add(ccndc, check_only, options);
     }
-    if (strcasecmp (cmd, "destroyface") == 0) {
+    if (strcasecmp(cmd, "destroyface") == 0) {
         if (num_options >= 0 && num_options != 1)
             return -99;
         return ccndc_destroyface(ccndc, check_only, options);
@@ -352,7 +352,7 @@ ccndc_destroyface(struct ccndc_data *self,
     cmd_token = cmd;    
     GET_NEXT_TOKEN(cmd_token, cmd_faceid);
     
-    face = parse_ccn_face_instance_from_face (self, cmd_faceid);
+    face = parse_ccn_face_instance_from_face(self, cmd_faceid);
     if (face == NULL) {
         ret_code = -1;
     }
@@ -362,17 +362,17 @@ ccndc_destroyface(struct ccndc_data *self,
         if (newface == NULL) {
             ccndc_warn(__LINE__, "Cannot destroy face %d or the face does not exist\n", face->faceid);        
         }
-        ccn_face_instance_destroy (&newface);
+        ccn_face_instance_destroy(&newface);
     }
     
-    ccn_face_instance_destroy (&face);
-    free (cmd);
+    ccn_face_instance_destroy(&face);
+    free(cmd);
     return ret_code;
 }
 
 
 int
-ccndc_srv (struct ccndc_data *self,
+ccndc_srv(struct ccndc_data *self,
            const unsigned char *domain,
            size_t domain_size)
 {
@@ -433,7 +433,7 @@ ccndc_srv (struct ccndc_data *self,
     if (newface == NULL) {
         ccndc_warn(__LINE__, "Cannot destroy face");
     } else {
-        ccn_face_instance_destroy (&newface);
+        ccn_face_instance_destroy(&newface);
     }
     
     newface = ccndc_do_face_action(self, "newface", face);
@@ -491,7 +491,7 @@ parse_ccn_forwarding_entry(struct ccndc_data *self,
         goto ExitOnError;
     }
     
-    res = ccn_name_from_uri (entry->name_prefix, cmd_uri);
+    res = ccn_name_from_uri(entry->name_prefix, cmd_uri);
     if (res < 0) {
         ccndc_warn(__LINE__, "command error, bad CCNx URI '%s'\n", cmd_uri);
         goto ExitOnError;
@@ -501,7 +501,7 @@ parse_ccn_forwarding_entry(struct ccndc_data *self,
     if (cmd_flags != NULL && cmd_flags[0] != 0) {
         char *endptr;
         entry->flags = strtol(cmd_flags, &endptr, 10);
-        if ((endptr != &cmd_flags[strlen (cmd_flags)]) ||
+        if ((endptr != &cmd_flags[strlen(cmd_flags)]) ||
             (entry->flags & ~CCN_FORW_PUBMASK) != 0) {
             ccndc_warn(__LINE__, "command error, invalid flags %s\n", cmd_flags);
             goto ExitOnError;
@@ -519,7 +519,7 @@ ExitOnError:
 
 // creates a full structure without action
 struct ccn_face_instance *
-parse_ccn_face_instance (struct ccndc_data *self,
+parse_ccn_face_instance(struct ccndc_data *self,
                          const char *cmd_proto,
                          const char *cmd_host,     const char *cmd_port,
                          const char *cmd_mcastttl, const char *cmd_mcastif,
@@ -575,9 +575,9 @@ parse_ccn_face_instance (struct ccndc_data *self,
         cmd_port = CCN_DEFAULT_UNICAST_PORT;
     
     hints.ai_socktype = socktype;
-    res = getaddrinfo (cmd_host, cmd_port, &hints, &raddrinfo);
+    res = getaddrinfo(cmd_host, cmd_port, &hints, &raddrinfo);
     if (res != 0 || raddrinfo == NULL) {
-        ccndc_warn(__LINE__, "command error, getaddrinfo for host [%s] port [%s]: %s\n", cmd_host, cmd_port, gai_strerror (res));
+        ccndc_warn(__LINE__, "command error, getaddrinfo for host [%s] port [%s]: %s\n", cmd_host, cmd_port, gai_strerror(res));
         goto ExitOnError;
     }
     res = getnameinfo(raddrinfo->ai_addr, raddrinfo->ai_addrlen,
@@ -591,14 +591,14 @@ parse_ccn_face_instance (struct ccndc_data *self,
     }
     
     off_address = entry->store->length;
-    res = ccn_charbuf_append (entry->store, rhostnamebuf, strlen (rhostnamebuf)+1);
+    res = ccn_charbuf_append(entry->store, rhostnamebuf, strlen(rhostnamebuf)+1);
     if (res != 0) {
         ccndc_warn(__LINE__, "Cannot append to charbuf");
         goto ExitOnError;
     }
     
     off_port = entry->store->length;
-    res = ccn_charbuf_append (entry->store, rhostportbuf, strlen (rhostportbuf)+1);
+    res = ccn_charbuf_append(entry->store, rhostportbuf, strlen(rhostportbuf)+1);
     if (res != 0) {
         ccndc_warn(__LINE__, "Cannot append to charbuf");
         goto ExitOnError;
@@ -607,8 +607,8 @@ parse_ccn_face_instance (struct ccndc_data *self,
     entry->descr.mcast_ttl = -1;
     if (cmd_mcastttl != NULL) {
         char *endptr;
-        entry->descr.mcast_ttl = strtol (cmd_mcastttl, &endptr, 10); 
-        if ((endptr != &cmd_mcastttl[strlen (cmd_mcastttl)]) ||
+        entry->descr.mcast_ttl = strtol(cmd_mcastttl, &endptr, 10); 
+        if ((endptr != &cmd_mcastttl[strlen(cmd_mcastttl)]) ||
             entry->descr.mcast_ttl < 0 || entry->descr.mcast_ttl > 255) {
             ccndc_warn(__LINE__, "command error, invalid multicast ttl: %s\n", cmd_mcastttl);
             goto ExitOnError;
@@ -634,7 +634,7 @@ parse_ccn_face_instance (struct ccndc_data *self,
         }
         
         off_source_address = entry->store->length;
-        res = ccn_charbuf_append (entry->store, rhostnamebuf, strlen (rhostnamebuf)+1);
+        res = ccn_charbuf_append(entry->store, rhostnamebuf, strlen(rhostnamebuf)+1);
         if (res != 0) {
             ccndc_warn(__LINE__, "Cannot append to charbuf");
             goto ExitOnError;
@@ -652,18 +652,18 @@ parse_ccn_face_instance (struct ccndc_data *self,
     return entry;
     
 ExitOnError:
-    ccn_face_instance_destroy (&entry);
+    ccn_face_instance_destroy(&entry);
     return (NULL);
 }
 
 struct ccn_face_instance *
-parse_ccn_face_instance_from_face (struct ccndc_data *self,
+parse_ccn_face_instance_from_face(struct ccndc_data *self,
                                    const char *cmd_faceid)
 {
-    struct ccn_face_instance *entry = calloc (1, sizeof(*entry));
+    struct ccn_face_instance *entry = calloc(1, sizeof(*entry));
     
     // allocate storage for Face data
-    entry->store = ccn_charbuf_create ();
+    entry->store = ccn_charbuf_create();
     
     // copy static info
     entry->ccnd_id = (const unsigned char *)self->ccnd_id;
@@ -676,8 +676,8 @@ parse_ccn_face_instance_from_face (struct ccndc_data *self,
     }
     
     char *endptr;
-    int facenumber = strtol (cmd_faceid, &endptr, 10);
-    if ((endptr != &cmd_faceid[strlen (cmd_faceid)]) ||
+    int facenumber = strtol(cmd_faceid, &endptr, 10);
+    if ((endptr != &cmd_faceid[strlen(cmd_faceid)]) ||
         facenumber < 0) {
         ccndc_warn(__LINE__, "command error invalid face number for destroyface: %d\n", facenumber);
         goto ExitOnError;
@@ -688,7 +688,7 @@ parse_ccn_face_instance_from_face (struct ccndc_data *self,
     return entry;
     
 ExitOnError:
-    ccn_face_instance_destroy (&entry);
+    ccn_face_instance_destroy(&entry);
     return (NULL);
 }
 
@@ -703,7 +703,7 @@ ExitOnError:
 ///////////////////////////////////////////////////////////////////////////////
 
 int
-ccndc_get_ccnd_id (struct ccndc_data *self)
+ccndc_get_ccnd_id(struct ccndc_data *self)
 {
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *resultbuf = NULL;
@@ -712,26 +712,26 @@ ccndc_get_ccnd_id (struct ccndc_data *self)
     const unsigned char *ccndid_result;
     int res = 0;
     
-    name = ccn_charbuf_create ();
+    name = ccn_charbuf_create();
     if (name == NULL) {
         ccndc_warn(__LINE__, "Unable to allocate storage for service locator name charbuf\n");
         return -1;
     }
     
-    resultbuf = ccn_charbuf_create ();
+    resultbuf = ccn_charbuf_create();
     if (resultbuf == NULL) {
         ccndc_warn(__LINE__, "Unable to allocate storage for result charbuf");
         res = -1;
         goto Cleanup;
     }
     
-    res = ccn_name_from_uri (name, ccndid_uri);
+    res = ccn_name_from_uri(name, ccndid_uri);
     if (res < 0) {
         ccndc_warn(__LINE__, "Unable to parse service locator URI for ccnd key");
         goto Cleanup;
     }
     
-    res = ccn_get (self->ccn_handle,
+    res = ccn_get(self->ccn_handle,
                    name,
                    self->local_scope_template,
                    4500, resultbuf, &pcobuf, NULL, 0);
@@ -756,11 +756,11 @@ ccndc_get_ccnd_id (struct ccndc_data *self)
         goto Cleanup;
     }
     
-    memcpy (self->ccnd_id, ccndid_result, self->ccnd_id_size);
+    memcpy(self->ccnd_id, ccndid_result, self->ccnd_id_size);
     
 Cleanup:
-    ccn_charbuf_destroy (&name);
-    ccn_charbuf_destroy (&resultbuf);
+    ccn_charbuf_destroy(&name);
+    ccn_charbuf_destroy(&resultbuf);
     return (res);
 }
 

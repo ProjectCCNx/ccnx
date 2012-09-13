@@ -181,7 +181,7 @@ read_configfile(struct ccndc_data *ccndc, const char *filename)
     int lineno = 0;
 
     FILE *cfg;
-    char buf [1024];
+    char buf[1024];
     char *cp = NULL;
     int res = 0;
     
@@ -209,12 +209,8 @@ read_configfile(struct ccndc_data *ccndc, const char *filename)
 
         if (cmd == NULL) /* blank line */
             continue;
-
-        // printf (">> %s [%s] <<\n", cmd, rest_of_the_command);
-
         res = ccndc_dispatch_cmd(ccndc, 1, cmd, rest_of_the_command, -1);
         if (res < 0) {
-            verbose ++;
             ccndc_warn(__LINE__, "Error: near line %d\n", lineno);
             configerrors++;
         }
