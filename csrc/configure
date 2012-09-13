@@ -1,9 +1,9 @@
-#!/bin/sh
+#!/usr/bin/env sh
 # csrc/configure
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -28,27 +28,61 @@ TryScript () {
 }
 
 ProvideDefault () {
+ value=`eval 'echo ${'${1}':-:EMPTY:}'`
+ [ "$value" != ":EMPTY:" ] && echo ${1} = $value >> conf.mk && return 0
+ [ "$2" = "=" ] || return 0
  grep '^'${1}'[ 	]*=' conf.mk > /dev/null && return 0
  echo $* >> conf.mk
 }
 
 test -f conf.mk && mv conf.mk conf.mk~
 echo '#' generated `uname -nsrv` > conf.mk
+# Append each of the relevant conf/*.mk,
+# in order by increasing specificity.
 TryAppend "`uname`"
 TryAppend "`uname -sr | sed -e 's/ /-/g'`"
 TryAppend "local"
+# Next the relevant scripts, that get to do whatever is needed.
 TryScript "`uname`" "$@"
 TryScript "local" "$@"
+
+# CFLAGS take some extra care.
+# Save these as COPT in conf.mk
+echo COPT = ${CFLAGS:="-g"} >> conf.mk
+
+# Finally, provide default values and pick up overrides from the environment
+ProvideDefault CWARNFLAGS
+ProvideDefault PLATCFLAGS
 ProvideDefault CPREFLAGS = -I../include
-ProvideDefault PCAP_PROGRAMS = ccndumppcap
-ProvideDefault RESOLV_LIBS = -lresolv
-ProvideDefault INSTALL_BASE = ${INSTALL_BASE:-/usr/local}
+ProvideDefault INSTALL_BASE = /usr/local
 ProvideDefault INSTALL_INCLUDE = '$(INSTALL_BASE)/include'
 ProvideDefault INSTALL_LIB = '$(INSTALL_BASE)/lib'
 ProvideDefault INSTALL_BIN = '$(INSTALL_BASE)/bin'
+
+ProvideDefault PCAP_PROGRAMS = ccndumppcap
+ProvideDefault RESOLV_LIBS = -lresolv
+
+: ${ANT:=`command -v ant || echo echo SKIPPING ant`}
+
+ProvideDefault ANT
+ProvideDefault AR
+ProvideDefault CC
+ProvideDefault CP = cp
 ProvideDefault INSTALL = install
+ProvideDefault LS = /bin/ls
 ProvideDefault RM = rm -f
 ProvideDefault SH = /bin/sh
+
+# For the benefit of makefiles outside of csrc
+ProvideDefault BUILD_JAVA = true
+grep '^BUILD_JAVA[ 	]*=' conf.mk | tail -n 1 | grep 'true' >/dev/null || \
+  echo ANT = : skipping ant >> conf.mk
+
+cat <<'EOF' >> conf.mk
+DINST_BIN = $(DESTDIR)$(INSTALL_BIN)
+DINST_INC = $(DESTDIR)$(INSTALL_INCLUDE)
+DINST_LIB = $(DESTDIR)$(INSTALL_LIB)
+EOF
 
 echo ============= conf.mk =============>&2
 cat conf.mk				>&2

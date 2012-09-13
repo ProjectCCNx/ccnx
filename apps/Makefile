@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2011 Palo Alto Research Center, Inc.
+# Copyright (C) 2011-2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -19,9 +19,11 @@
 
 SUBDIRS = HttpProxy ccnChat ccnFileProxy `cat local.subdirs 2>/dev/null || :`
 MAKEF =  -f ../conf.mk -f dir.mk -f ../subr.mk $(PASSTHRU)
-PASSTHRU = `[ -z '$(INSTALL_BASE)' ] || echo INSTALL_BASE=$(INSTALL_BASE)`
-CFLAGS = -g
+PASSTHRU = DINST_INC=$(DINST_INC) DINST_LIB=$(DINST_LIB) DINST_LIB=$(DINST_BIN)
 CSRCDIR = ../csrc
+CFLAGS = $(COPT)
+
+include $(CSRCDIR)/conf.mk
 
 default all clean depend test check shared install uninstall: conf.mk subr.mk generic.mk _always
 	test -d include/ccn || (test -d $(CSRCDIR)/include/ccn && ln -s $(CSRCDIR)/include)

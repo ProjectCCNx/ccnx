@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -13,37 +13,52 @@
 #
 
 # Subdirectories we build in
-TOPSUBDIRS = doc/manpages doc/technical csrc schema javasrc apps `cat local.subdirs 2>/dev/null || :`
+TOPSUBDIRS = doc/manpages doc/technical csrc schema `cat local.subdirs 2>/dev/null || :`
 # Packing list for packaging
-PACKLIST = Makefile README LICENSE NEWS NOTICES configure doc/index.txt $(TOPSUBDIRS) android experiments
+PACKLIST = Makefile README LICENSE NEWS NOTICES configure doc/index.txt \
+		   $(TOPSUBDIRS) android experiments javasrc apps
 BLDMSG = printf '=== %s ' 'Building $@ in' && pwd
 
+# Default target:
+default:
+
+# If csrc/conf.mk is missing, we need to run configure.
+# Some versions of make will do this automatically,
+# with other versions the documented recipie must
+# be used.
+csrc/conf.mk:
+	./configure
+
+# Include build parameters.
+include csrc/conf.mk	# If this file is missing, run ./configure
+
+IBINSTALL = $(MAKE) install DINST_BIN=$$ib/bin DINST_INC=$$ib/include DINST_LIB=$$ib/lib
 default all: _always
-	for i in $(TOPSUBDIRS); do         \
+	for i in $(TOPSUBDIRS) javasrc apps; do         \
 	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
 	done
-	(cd csrc/lib && { test -f "$$HOME/.ccnx/.ccnx_keystore" || $(MAKE) test; }; )
 	mkdir -p ./lib ./bin
 	test -d ./include || ln -s ./csrc/include
-	(cd csrc && $(MAKE) install INSTALL_BASE=`pwd`/..)
-	(cd javasrc && $(MAKE) install INSTALL_BASE=`pwd`/..)
-	(cd apps && $(MAKE) install INSTALL_BASE=`pwd`/..)
+	ib=`pwd` && (cd csrc && $(IBINSTALL))
+	if [ "x$(BUILD_JAVA)" = "xtrue" ]; then \
+	  ib=`pwd` && (cd javasrc && $(IBINSTALL)); \
+	fi
+	ib=`pwd` && (cd apps && $(IBINSTALL))
 
 clean depend test check shared: _always
-	for i in $(TOPSUBDIRS); do         \
+	for i in $(TOPSUBDIRS) javasrc apps; do         \
 	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
 	done
 	@rm -f _always
 
 testinstall install uninstall: _always
-	IB=`[ -z '$(INSTALL_BASE)' ] && grep ^INSTALL_BASE csrc/conf.mk 2>/dev/null | sed -e 's/ //g' || echo INSTALL_BASE=$(INSTALL_BASE)`; \
-	for i in $(TOPSUBDIRS); do         \
-	  (cd "$$i" && pwd && $(MAKE) $$IB $@) || exit 1;	\
+	for i in $(TOPSUBDIRS) javasrc apps; do         \
+	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
 	done
 	@rm -f _always
 
 documentation dist-docs: _always
-	for i in $(TOPSUBDIRS) android; do         \
+	for i in $(TOPSUBDIRS) javasrc apps android; do         \
 	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
 	done
 	@rm -f _always

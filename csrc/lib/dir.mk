@@ -56,22 +56,22 @@ default all: dtag_check lib $(PROGRAMS)
 # Don't try to build shared libs right now.
 # all: shlib
 
-all: basicparsetest ccn_verifysig
+all: ccn_verifysig
 
 install: install_headers
 install_headers:
-	@test -d $(INSTALL_INCLUDE) || (echo $(INSTALL_INCLUDE) does not exist.  Please mkdir -p $(INSTALL_INCLUDE) if this is what you intended. && exit 2)
-	mkdir -p $(INSTALL_INCLUDE)/ccn
+	@test -d $(DINST_INC) || (echo $(DINST_INC) does not exist.  Please mkdir -p $(DINST_INC) if this is what you intended. && exit 2)
+	mkdir -p $(DINST_INC)/ccn
 	for i in `cd ../include/ccn && echo *.h`; do                \
-	    cmp -s ../include/ccn/$$i $(INSTALL_INCLUDE)/ccn/$$i || \
-	        cp ../include/ccn/$$i $(INSTALL_INCLUDE)/ccn/$$i || \
+	    cmp -s ../include/ccn/$$i $(DINST_INC)/ccn/$$i || \
+	        cp ../include/ccn/$$i $(DINST_INC)/ccn/$$i || \
 	        exit 1;                                             \
 	done
 
 uninstall: uninstall_headers
 uninstall_headers:
-	test -L $(INSTALL_INCLUDE)/ccn && $(RM) $(INSTALL_INCLUDE)/ccn ||:
-	test -L $(INSTALL_INCLUDE) || $(RM) -r $(INSTALL_INCLUDE)/ccn
+	test -L $(DINST_INC)/ccn && $(RM) $(DINST_INC)/ccn ||:
+	test -L $(DINST_INC) || $(RM) -r $(DINST_INC)/ccn
 
 shlib: $(SHLIBNAME)
 
@@ -87,6 +87,7 @@ dtag_check: _always
 	@./gen_dtag_table 2>/dev/null | diff - ccn_dtag_table.c | grep '^[<]' >/dev/null && echo '*** Warning: ccn_dtag_table.c may be out of sync with tagnames.cvsdict' || :
 
 keystore_check: ccn_initkeystore.sh
+	test ! -z "$$HOME"
 	test -f "$$HOME/.ccnx/.ccnx_keystore" || $(MAKE) -f dir.mk new_keystore
 
 new_keystore:
