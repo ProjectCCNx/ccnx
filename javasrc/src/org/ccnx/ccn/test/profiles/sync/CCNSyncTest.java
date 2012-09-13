@@ -287,14 +287,13 @@ public class CCNSyncTest extends CCNTestBase implements CCNSyncHandler, CCNConte
 		}
 		sync1.stopSync(this, slice7);
 		
-		synchronized (callbackNames) {
-			callbackNames.clear();
-		}
-		
 		ContentObject obj = getHandle.get(interest, SystemConfiguration.MEDIUM_TIMEOUT);
 		Assert.assertTrue(obj != null);
 		SyncNodeComposite snc = new SyncNodeComposite();
 		snc.decode(obj.content());
+		synchronized (callbackNames) {
+			callbackNames.clear();
+		}
 		slice7 = sync1.startSync(getHandle, topo, prefix1, null, snc.getHash(), null, this);
 		ContentName prefix1c = prefix1.append("round3");
 		segments = writeFile(prefix1c, true, 0);
@@ -345,8 +344,9 @@ public class CCNSyncTest extends CCNTestBase implements CCNSyncHandler, CCNConte
 		}
 		synchronized (callbackNames) {
 			for (ContentName name : callbackNames) {
-				if (name.equals(syncedContent))
+				if (name.equals(syncedContent)) {
 					errorMessage = "Saw duplicate name: " + syncedContent;
+				}
 			}
 			callbackNames.add(syncedContent);
 		}

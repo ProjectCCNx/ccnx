@@ -32,6 +32,7 @@ import org.ccnx.ccn.protocol.ContentName;
 public class CCNSync {
 	
 	public static final int SYNC_HASH_LENGTH = 32;
+	public static final int NODE_SPLIT_TRIGGER = 4000; // bytes
 	
 	protected SyncMonitor syncMon = null;
 	

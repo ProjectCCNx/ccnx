@@ -68,8 +68,10 @@ public class CCNTestBase {
 	
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
-		putHandle.close();
-		getHandle.close();
+		if (null != putHandle)
+			putHandle.close();
+		if (null != getHandle)
+			getHandle.close();
 		KeyManager.closeDefaultKeyManager();
 	}
 }

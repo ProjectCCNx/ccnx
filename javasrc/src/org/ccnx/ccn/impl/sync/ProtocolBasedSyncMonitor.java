@@ -110,7 +110,8 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 			if (null == entry) {
 				entry = new SyncTreeEntry(hash);
 				_hashes.put(new SyncHashEntry(hash), entry);
-			}
+			} else
+				entry.setPos(0);
 			return entry;
 		}
 	}

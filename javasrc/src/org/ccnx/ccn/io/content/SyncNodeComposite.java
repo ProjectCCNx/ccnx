@@ -21,7 +21,6 @@ import static org.ccnx.ccn.impl.encoding.CCNProtocolDTags.SyncVersion;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNSync;
 import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
@@ -41,7 +40,7 @@ import org.ccnx.ccn.protocol.ContentName;
 public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodable, Cloneable {
 	public enum SyncNodeType {HASH, LEAF, COMPONENT, BINARY};
 	
-	public static class SyncNodeElement {
+	public static class SyncNodeElement extends GenericXMLEncodable implements XMLEncodable {
 		public SyncNodeType _type = SyncNodeType.LEAF;
 		public ContentName _name;
 		public byte[] _data;
@@ -50,6 +49,11 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 		
 		public SyncNodeElement(ContentName name) {
 			_name = name;
+		}
+		
+		public SyncNodeElement(byte[] data) {
+			_data = data;
+			_type = SyncNodeType.HASH;
 		}
 		
 		public SyncNodeType getType() {
@@ -80,6 +84,41 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 			} else
 				throw new ContentDecodingException("Unexpected element in SyncNodeElements");
 		}
+
+		@Override
+		public void encode(XMLEncoder encoder) throws ContentEncodingException {
+			if (!validate())
+				throw new ContentEncodingException("Link failed to validate!");
+
+			encoder.writeStartElement(getElementLabel());
+			switch (_type) {
+			case LEAF:
+				_name.encode(encoder);
+				break;
+			case HASH:
+				encoder.writeElement(CCNProtocolDTags.SyncContentHash, _data);
+				break;
+			case COMPONENT:
+				encoder.writeElement(CCNProtocolDTags.Component, _data);
+				break;
+			case BINARY:
+				encoder.writeElement(CCNProtocolDTags.BinaryValue, _data);
+				break;
+			default:
+				break;
+			}	
+			encoder.writeEndElement();   		
+		}
+
+		@Override
+		public long getElementLabel() {
+			return CCNProtocolDTags.SyncNodeElement;
+		}
+
+		@Override
+		public boolean validate() {
+			return false;
+		}
 	}
 	
 	public int _version;
@@ -94,17 +133,19 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 	
 	public SyncNodeComposite() {}
 	
-	public SyncNodeComposite(ArrayList<SyncNodeElement> refs) {
+	public SyncNodeComposite(ArrayList<SyncNodeElement> refs, SyncNodeElement minName, SyncNodeElement maxName) {
 		_refs = refs;
-		if (_refs.size() > 0) {	// error if not?
-			_minName = _refs.get(0);
-			_maxName = refs.get(_refs.size() - 1);
-		}
-		computeLeafHash();
+		_minName = minName;
+		_maxName = maxName;
+		computeHash();
+		
+		// TODO: For now we just support trees here that are 1 or 2 nodes deep
 		_treeDepth = 1;
-		if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
-			Log.finest(Log.FAC_SYNC, "Creating new node:");
-			decodeLogging(this);
+		for (SyncNodeElement sne : refs) {
+			if (sne.getType() == SyncNodeType.HASH) {
+				_treeDepth = 2;
+				break;
+			}
 		}
 	}
 	
@@ -153,7 +194,7 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 	}
 
 	public void encode(XMLEncoder encoder) throws ContentEncodingException {
-		// We shouldn't need to encode these - will fill in later if we do...
+		// No current need to encode this - will add if needed
 	}
 
 	public long getElementLabel() {
@@ -189,15 +230,24 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 	 * The C code handles different sized hashes and digests. Since I currently
 	 * believe that digests are always 32 bytes, I'm not worrying about that for now...
 	 */
-	private void computeLeafHash() {
+	private void computeHash() {
 		_longhash = new byte[CCNSync.SYNC_HASH_LENGTH];
 		Arrays.fill(_longhash, (byte)0);
+		int xs = CCNSync.SYNC_HASH_LENGTH;
 		for (SyncNodeElement sne : _refs) {
-			ContentName name = sne.getName();
-			int xs = CCNSync.SYNC_HASH_LENGTH;
-			byte[] nc = name.lastComponent();
-			if (null != nc && nc.length >= CCNSync.SYNC_HASH_LENGTH) { // Should always be true
-				accumHash(xs, nc);
+			switch (sne.getType()) {
+			case LEAF:
+				ContentName name = sne.getName();
+				byte[] nc = name.lastComponent();
+				if (null != nc && nc.length >= CCNSync.SYNC_HASH_LENGTH) { // Should always be true
+					accumHash(xs, nc);
+				}
+				break;
+			case HASH:
+				accumHash(xs, sne.getData());
+				break;
+			default:
+				break;
 			}
 		}
 	}

@@ -30,12 +30,14 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.CCNSync;
 import org.ccnx.ccn.CCNSyncHandler;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.encoding.BinaryXMLDecoder;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ConfigSlice;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.io.content.SyncNodeComposite;
 import org.ccnx.ccn.io.content.SyncNodeComposite.SyncNodeElement;
 import org.ccnx.ccn.io.content.SyncNodeComposite.SyncNodeType;
@@ -88,17 +90,21 @@ public class SliceComparator implements Runnable {
 	protected ArrayList<SyncTreeEntry> _pendingEntries = new ArrayList<SyncTreeEntry>();
 	protected Queue<byte[]> _pendingContent = new ConcurrentLinkedQueue<byte[]>();
 	protected SyncTreeEntry _currentRoot = null;
+	protected SyncTreeEntry _startHash = null;
 	protected ContentName _startName = null;
 	protected boolean _doCallbacks = true;
 	protected TreeSet<ContentName> _updateNames = new TreeSet<ContentName>();
 	
 	public SliceComparator(ProtocolBasedSyncMonitor pbsm, CCNSyncHandler callback, ConfigSlice slice, 
 				SyncTreeEntry startHash, ContentName startName, CCNHandle handle) {
+		if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
+			Log.info(Log.FAC_SYNC, "Beginning sync monitoring {0}", null == startHash ? "from start"
+					: "starting with: " + Component.printURI(startHash.getHash()));
 		_pbsm = pbsm;
 		_slice = slice;
 		_callback = callback;
 		_handle = handle;
-		_currentRoot = startHash;
+		_startHash = startHash;
 		_startName = startName;
 		if (null != startName)
 			_doCallbacks = false;
@@ -174,9 +180,11 @@ public class SliceComparator implements Runnable {
 	}
 	
 	protected byte[] getPendingContent() {
-		try {
-			return _pendingContent.remove();
-		} catch (NoSuchElementException nsee) {}
+		synchronized (this) {
+			try {
+				return _pendingContent.remove();
+			} catch (NoSuchElementException nsee) {}
+		}
 		return null;
 	}
 	
@@ -587,102 +595,201 @@ public class SliceComparator implements Runnable {
 	 * the last Y hash tree so we move it to X (_current) here.
 	 */
 	protected void nextRound() {
-		synchronized (this) {
-			_current.clear();
-			if (_currentRoot != null && _currentRoot.getHash().length > 0) {
-				_currentRoot.setPos(0);
-				push(_currentRoot, _current);
-				updateCurrent();
-				_updateNames.clear();
-			}
+		_current.clear();
+		if (_currentRoot != null) {
+			_currentRoot.setPos(0);
+			push(_currentRoot, _current);
+			updateCurrent();
+			_updateNames.clear();
 		}
 	}
 	
+	/**
+	 * We keep a running tree of what we already have in "X". Update it here to reflect what we
+	 * got on the last round.
+	 * 
+	 * Note: I don't think this needs to be synchronized because I don't believe that anything
+	 * referred to here could be simultaneously updated elsewhere.
+	 */
 	protected void updateCurrent() {
 		TreeSet<ContentName> neededNames = new TreeSet<ContentName>();
+		boolean newHasNodes = false;
+		boolean redo = false;
 		SyncTreeEntry ste = getHead(_current);
 		SyncTreeEntry origSte = ste;
 		SyncTreeEntry newHead = null;
 		if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST) && _updateNames.size() > 0)
 			Log.finest(Log.FAC_SYNC, "Starting update from hash {0}", Component.printURI(ste.getHash()));
+		ArrayList<SyncNodeElement> nodeElements = new ArrayList<SyncNodeElement>();
+		SyncNodeElement thisHashElement = null;
+		SyncNodeElement firstElement = null;
+
 		for (ContentName name : _updateNames) {
 			SyncNodeComposite snc = null;
 			SyncNodeElement sne = null;
-			while (null != ste && ste.lastPos()) {
-				pop(_current);
-				ste = getHead(_current);
-			}
-			if (null != ste) {
-				snc = ste.getNodeX(_decoder);
-				if (null != snc) {
-					sne = ste.getCurrentElement();
+			boolean found = false;
+			while (!found && null != ste) {
+				while (null != ste && ste.lastPos()) {
+					pop(_current);
+					ste = getHead(_current);
 				}
-				if (null == snc || null == sne) {
-					Log.warning(Log.FAC_SYNC, "Missing node for {0} should not be missing", Component.printURI(ste.getHash()));
-					return;
-				}
-			}
-			
-			if (null != ste) {
-				switch (sne.getType()) {
-				case HASH:
-					Log.info("Saw a hash on update");
-					return;	// tmp
-				case LEAF:
-					int comp = sne.getName().compareTo(name);
-					if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST) && _updateNames.size() > 0) {
-						Log.finest(Log.FAC_SYNC, "Update compare: name from tree (expanded) is {0}, name  is {1}, comp is {2}", sne.getName(), name, comp);
+				if (null != ste) {
+					snc = ste.getNodeX(_decoder);
+					if (null != snc) {
+						sne = ste.getCurrentElement();
 					}
-					if (ste.getPos() == 0) {
-						// If we are after everything in X, no need to compare to X
-						int comp2 = snc.getMaxName().getName().compareTo(name);
-						if (comp2 < 0) {
-							synchronized (this) {
-								pop(_current);
-								ste = getHead(_current);
-							}
-							if (null != ste) {
-								if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
-									Log.finest(Log.FAC_SYNC, "Shortcut in update - popping back to {0}, pos {1}", Component.printURI(ste.getHash()), ste.getPos());
-								}
-							}
-							continue;	// Don't inc X - should have been pre-incremented
+					if (null == snc || null == sne) {
+						Log.warning(Log.FAC_SYNC, "Missing node for {0} should not be missing", Component.printURI(ste.getHash()));
+						return;
+					}
+				
+					switch (sne.getType()) {
+					case HASH:
+						newHasNodes = true;
+						if (null == firstElement)
+							firstElement = snc.getMinName();
+						SyncTreeEntry entry = _pbsm.getHash(sne.getData());
+						if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
+							Log.finest(Log.FAC_SYNC, "Update compare - moving to: {0}", entry == null ? null : Component.printURI(entry.getHash()));
 						}
+						if (null == entry)
+							return;	// Shouldn't happen I don't think
+						thisHashElement = ste.getCurrentElement();
+						ste.incPos();
+						if (redo) {
+							snc = entry.getNodeX(_decoder);
+							for (SyncNodeElement tsne: snc.getRefs()) {
+								neededNames.add(tsne.getName());
+							}
+						} else {
+							push(entry, _current);
+							ste = entry;
+							ste.setPos(0);
+						}
+						break;
+					case LEAF:
+						int comp = redo ? -1 : sne.getName().compareTo(name);
+						if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST) && _updateNames.size() > 0) {
+							Log.finest(Log.FAC_SYNC, "Update compare: name from tree (expanded) is {0}, name  is {1}, comp is {2}", sne.getName(), name, comp);
+						}
+						if (ste.getPos() == 0 && !redo) {
+							// If we are after everything in X, no need to compare to X
+							int comp2 = snc.getMaxName().getName().compareTo(name);
+							if (comp2 < 0) {
+								synchronized (this) {
+									pop(_current);
+									ste = getHead(_current);
+								}
+								if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
+									if (null != ste)
+										Log.finest(Log.FAC_SYNC, "Shortcut in update - popping back to {0}, pos {1}", Component.printURI(ste.getHash()), ste.getPos());
+									else
+										Log.finest(Log.FAC_SYNC, "Shortcut in update - popping last node");
+								}
+								if (thisHashElement != null) {
+									nodeElements.add(thisHashElement);
+								}
+								continue;	// Don't inc X - should have been pre-incremented
+							}
+						}
+						found = true;
+						if (comp < 0) {
+							// We've have to redo everything starting from here (which means the start of this
+							// original node).
+							redo = true;
+							if (nodeElements.size() == 0)  // If we are restarting from the first node, just recalculate the first element
+								firstElement = null;
+							if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
+								Log.finest(Log.FAC_SYNC, "Update: starting redo of names because of {0} at {1}", name, snc.getMinName().getName());
+							}
+							neededNames.add(name);
+							for (SyncNodeElement tsne: snc.getRefs()) {
+								neededNames.add(tsne.getName());
+							}
+							ste = pop(_current);
+						} else  {
+							ste.incPos();
+							if (ste.lastPos() && thisHashElement != null)
+								nodeElements.add(thisHashElement);
+						}
+						break;
+					default:
+						break;
 					}
-					if (comp < 0) {
-						neededNames.add(name);
-						// If there are any needed names, we need to redo this whole leaf
-						for (SyncNodeElement tsne: snc.getRefs()) {
+				}
+			}
+			if (!found) {
+				if (!redo && !newHasNodes) {
+					// This is the case of a single node tree where everything in the original
+					// single node was covered but we have more to add afterwards. We need to
+					// Add all the original names into ones to put into the new node. Those will
+					// be in origSte
+					SyncNodeComposite tsnc = origSte.getNodeX(_decoder);
+					if (null != tsnc) {
+						for (SyncNodeElement tsne: tsnc.getRefs()) {
 							neededNames.add(tsne.getName());
 						}
-						ste = pop(_current);
-					} else  {
-						ste.incPos();
 					}
-				default:
-					break;
 				}
-			} else {
+				redo = true;
 				neededNames.add(name);
 			}
 		}
 		
-		if (neededNames.size() > 0) {
-			ArrayList<SyncNodeComposite.SyncNodeElement> refs = new ArrayList<SyncNodeComposite.SyncNodeElement>();
-			for (ContentName tname : neededNames) {
-				refs.add(new SyncNodeComposite.SyncNodeElement(tname));
+		while (neededNames.size() > 0) {
+			newHead = newLeafNode(neededNames);
+			if (null == firstElement)
+				firstElement = newHead.getCurrentElement();
+			if (neededNames.size() > 0) {	// Need to split
+				newHasNodes = true;
 			}
-			SyncNodeComposite snc = new SyncNodeComposite(refs);
+			if (newHasNodes)
+				nodeElements.add(new SyncNodeElement(newHead.getHash()));
+		}
+		if (redo && newHasNodes) {
+			SyncNodeComposite snc = new SyncNodeComposite(nodeElements, firstElement, newHead.getNodeX(_decoder).getMaxName());
 			newHead = _pbsm.addHash(snc.getHash());
+			newHead.setNode(snc);
+			newHead.setCovered(true);
 		}
 		_current.clear();
 		if (null != newHead) {
 			push(newHead, _current);
-			Log.info("Resetting current to created head: {0}", Component.printURI(newHead.getHash()));
+			_currentRoot = newHead;
+			if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
+				Log.info(Log.FAC_SYNC, "Resetting current to created head: {0}", Component.printURI(newHead.getHash()));
 		} else {
-			ste.setPos(0);
-			push(origSte, _current);
+			origSte.setPos(0);
+			push(origSte, _current);  // Should already be _currentRoot
 		}
+	}
+	
+	private SyncTreeEntry newLeafNode(TreeSet<ContentName> names) {
+		ArrayList<SyncNodeComposite.SyncNodeElement> refs = new ArrayList<SyncNodeComposite.SyncNodeElement>();
+		ArrayList<ContentName> removes = new ArrayList<ContentName>();
+		int total = 0;
+		boolean atLeastOneAdded = false;
+		for (ContentName tname : names) {
+			SyncNodeElement sne = new SyncNodeComposite.SyncNodeElement(tname);
+			byte[] lengthTest;
+			try {
+				lengthTest = sne.encode();
+				total += lengthTest.length;
+			} catch (ContentEncodingException e) {} // Shouldn't happen because we built the data
+			if (atLeastOneAdded && total > CCNSync.NODE_SPLIT_TRIGGER)
+				break;
+			atLeastOneAdded = true;
+			refs.add(sne);
+			removes.add(tname);
+		}
+		for (ContentName tname : removes) {
+			names.remove(tname);
+		}
+		SyncNodeComposite snc = new SyncNodeComposite(refs, refs.get(0), refs.get(refs.size() - 1));
+		SyncTreeEntry ste = _pbsm.addHash(snc.getHash());
+		ste.setNode(snc);
+		ste.setCovered(true);
+		return ste;
 	}
 	
 	/**
@@ -697,47 +804,45 @@ public class SliceComparator implements Runnable {
 			do {
 				switch (getState()) {
 				case INIT:		// Starting a new compare
-					nextRound();
-					synchronized (this) {
-						byte[] data = null;
-						do {
-							data = getPendingContent();
-							if (null != data) {
-								SyncNodeComposite snc = new SyncNodeComposite();
-								snc.decode(data);
-								SyncTreeEntry ste = _pbsm.addHash(snc.getHash());
-								ste.setNode(snc);
-								if (null != _currentRoot && _currentRoot.getHash().length == 0) {
-									if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
-										Log.info(Log.FAC_SYNC, "Starting for items after {0}", Component.printURI(ste.getHash()));
-									_currentRoot = ste;
-									nextRound();
-								} else
-									addPending(ste);
-							}
-						} while (null != data);
-						
-						// If we are starting at the "current root" we have to wait until we see a
-						// return from the root advise request (which will be "pending content") so that
-						// we know what the "current root" is.
-						if (null == _currentRoot ||  _currentRoot.getHash().length != 0) {
-							SyncTreeEntry ste = getPending();
-							if (null != ste) {
-								ste.setPos(0);
-								push(ste, _next);
+					byte[] data = null;
+					if (null != _startHash && _startHash.getHash().length != 0) {
+						_currentRoot = _startHash;
+						_startHash = null;
+					}
+					do {
+						data = getPendingContent();
+						if (null != data) {
+							SyncNodeComposite snc = new SyncNodeComposite();
+							snc.decode(data);
+							SyncTreeEntry ste = _pbsm.addHash(snc.getHash());
+							ste.setNode(snc);
+							if (null != _startHash) {  // has to be 0 length so start with "current"
 								_currentRoot = ste;
-								changeState(SyncCompareState.PRELOAD);
+								_startHash = null;
+							} else {	// No sense doing a compare with ourself!
+								addPending(ste);
 							}
 						}
-						if (getState() == SyncCompareState.INIT) {
-							changeState(SyncCompareState.DONE);
-							break;
-						} else {
-							if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
-								Log.info(Log.FAC_SYNC, "Starting new round with X = {0} and Y = {1}",
-										(null == getHead(_current) ? "null" : Component.printURI(getHead(_current).getHash())),
-										Component.printURI(getHead(_next).getHash()));
-						}
+					} while (null != data);
+					nextRound();
+					
+					SyncTreeEntry ste = getPending();
+					if (null != ste) {
+						ste.setPos(0);
+						push(ste, _next);
+						if (null == _currentRoot)
+							_currentRoot = ste;
+						changeState(SyncCompareState.PRELOAD);
+					}
+						
+					if (getState() == SyncCompareState.INIT) {
+						changeState(SyncCompareState.DONE);
+						break;
+					} else {
+						if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
+							Log.info(Log.FAC_SYNC, "Starting new round with X = {0} and Y = {1}",
+									(null == getHead(_current) ? "null" : Component.printURI(getHead(_current).getHash())),
+									Component.printURI(getHead(_next).getHash()));
 					}
 					// Fall through
 				case PRELOAD:	// Need to load data for the compare
