@@ -81,7 +81,7 @@ test: default keystore_check encodedecodetest ccnbtreetest
 	./encodedecodetest -o /dev/null
 	./ccnbtreetest
 	./ccnbtreetest - < q.dat
-	rm -R _bt_*
+	$(RM) -R _bt_*
 
 dtag_check: _always
 	@./gen_dtag_table 2>/dev/null | diff - ccn_dtag_table.c | grep '^[<]' >/dev/null && echo '*** Warning: ccn_dtag_table.c may be out of sync with tagnames.cvsdict' || :
@@ -96,7 +96,8 @@ new_keystore:
 	sleep 1 && sh ccn_initkeystore.sh && sleep 3 && mv .ccnx "$$HOME"
 
 libccn.a: $(LIB_OBJS)
-	ar crus $@ $(LIB_OBJS)
+	$(RM) $@
+	$(AR) crus $@ $(LIB_OBJS)
 
 shared: $(SHLIBNAME)
 
