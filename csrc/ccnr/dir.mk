@@ -24,7 +24,10 @@ DEBRIS =
 
 BROKEN_PROGRAMS = 
 CSRC = ccnr_dispatch.c ccnr_forwarding.c ccnr_init.c ccnr_internal_client.c ccnr_io.c ccnr_link.c ccnr_main.c ccnr_match.c ccnr_msg.c ccnr_net.c ccnr_proto.c ccnr_sendq.c ccnr_stats.c ccnr_store.c ccnr_sync.c ccnr_util.c
-HSRC = ccnr_private.h
+HSRC = ccnr_dispatch.h ccnr_forwarding.h ccnr_init.h ccnr_internal_client.h        \
+       ccnr_io.h ccnr_link.h ccnr_match.h ccnr_msg.h ccnr_net.h ccnr_private.h     \
+       ccnr_proto.h ccnr_sendq.h ccnr_stats.h ccnr_store.h ccnr_sync.h ccnr_util.h
+
 SCRIPTSRC = 
 
 default: $(PROGRAMS)
