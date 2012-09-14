@@ -27,7 +27,6 @@ import java.util.Vector;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNContentHandler;
-import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNSync;
 import org.ccnx.ccn.CCNSyncHandler;
 import org.ccnx.ccn.config.SystemConfiguration;
