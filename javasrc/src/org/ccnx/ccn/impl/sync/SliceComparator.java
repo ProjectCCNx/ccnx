@@ -21,9 +21,11 @@ import java.util.ArrayList;
 import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.Stack;
-import java.util.Timer;
+import java.util.TimerTask;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -32,7 +34,6 @@ import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNSync;
 import org.ccnx.ccn.CCNSyncHandler;
-import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.encoding.BinaryXMLDecoder;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
@@ -67,10 +68,11 @@ import org.ccnx.ccn.protocol.Interest;
  * timing out the handler by doing so. 
  *
  */
-public class SliceComparator implements Runnable {
+public class SliceComparator extends TimerTask {
 	public static final int DECODER_SIZE = 756;
 	public static enum SyncCompareState {INIT, PRELOAD, COMPARE, DONE};
 
+	public ScheduledThreadPoolExecutor _executor = (ScheduledThreadPoolExecutor) Executors.newScheduledThreadPool(1);
 	public final int COMPARE_INTERVAL = 100; // ms
 	protected BinaryXMLDecoder _decoder;
 	protected Object _timerLock = new Object();
@@ -79,7 +81,6 @@ public class SliceComparator implements Runnable {
 	
 	// Prevents the comparison task from being run more than once simultaneously
 	protected Semaphore _compareSemaphore = new Semaphore(1);
-	protected Timer _timer = new Timer(false);
 	protected NodeFetchHandler _nfh = new NodeFetchHandler();
 	protected Object _compareLock = new Object();
 	
@@ -239,7 +240,7 @@ public class SliceComparator implements Runnable {
 			if (! _comparing) {
 				_comparing = true;
 				_needToCompare = false;
-				SystemConfiguration._systemTimers.schedule(this, COMPARE_INTERVAL, TimeUnit.MILLISECONDS);
+				_executor.schedule(this, COMPARE_INTERVAL, TimeUnit.MILLISECONDS);
 			} else
 				_needToCompare = true;
 		}
