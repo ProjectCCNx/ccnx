@@ -73,7 +73,7 @@ public class CCNSyncTest extends CCNTestBase implements CCNSyncHandler, CCNConte
 		//need to delete the slices to clean up after the test.
 		for(ConfigSlice s: slices)
 			try {
-				s.deleteSlice(CCNHandle.getHandle());
+				s.deleteSlice(getHandle);
 			} catch (IOException e) {
 				Log.warning(Log.FAC_TEST, "failed to get handle to clean up sync slices:{0}", e.getMessage());
 			}
@@ -253,6 +253,7 @@ public class CCNSyncTest extends CCNTestBase implements CCNSyncHandler, CCNConte
 		CCNSync sync1 = new CCNSync();
 		prefix1 = prefix.append("slice7");
 		ConfigSlice slice7 = sync1.startSync(getHandle, topo, prefix1, this);
+		slices.add(slice7);
 		ContentName prefix1a = prefix1.append("round1");
 		Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1a);
 		int segments = writeFile(prefix1a, true, 0);
@@ -328,6 +329,7 @@ public class CCNSyncTest extends CCNTestBase implements CCNSyncHandler, CCNConte
 		
 		// We should start looking starting with segment 20
 		ConfigSlice slice8 = sync1.startSync(getHandle, topo, prefix1, null, null, startName, this);
+		slices.add(slice8);
 		int segmentCheck = checkCallbacks(prefix1, segments - 20, 20);
 		if (segmentCheck!=0)
 			Assert.fail("Did not receive all of the callbacks");
