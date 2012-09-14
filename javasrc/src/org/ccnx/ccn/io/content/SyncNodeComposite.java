@@ -117,7 +117,7 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 
 		@Override
 		public boolean validate() {
-			return false;
+			return true;
 		}
 	}
 	

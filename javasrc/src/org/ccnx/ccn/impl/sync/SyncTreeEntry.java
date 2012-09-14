@@ -24,18 +24,22 @@ import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.SyncNodeComposite;
+import org.ccnx.ccn.protocol.Component;
 
 /**
+ * Entry used for navigating trees of hashes
+ * 
  * IMPORTANT NOTE: For now we rely on external synchronization for access to internal values of this class
  */
 public class SyncTreeEntry {
 	// Flags values
-	protected final static long PENDING = 1;
-	protected final static long COVERED = 2;
+	protected final static long PENDING = 1; 	// Indicates a request for the node has been sent but not yet
+												// answered
+	protected final static long COVERED = 2;	// Indicates that all names covered by these references have been seen
 
 	protected long _flags;
-	protected byte[] _hash;
-	protected SyncNodeComposite _nodeX = null;
+	protected byte[] _hash = null;				// The hash associated with the node associated with this entry
+	protected SyncNodeComposite _node = null;
 	protected byte[] _rawContent = null;
 	protected int _position = 0;
 	
@@ -45,41 +49,62 @@ public class SyncTreeEntry {
 	}
 	
 	public void setNode(SyncNodeComposite snc) {
-		_nodeX = snc;
+		_node = snc;
 		if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
-			SyncNodeComposite.decodeLogging(_nodeX);
+			SyncNodeComposite.decodeLogging(_node);
 		}
 	}
 	
+	/**
+	 * This is used in the case where we have content for a SyncNodeComposite but
+	 * don't have its hash until we decode it.
+	 * 
+	 * @param content
+	 */
 	public void setRawContent(byte[] content) {
-		_nodeX = null;
+		_node = null;
 		_rawContent = content;
 		_position = 0;
 	}
 	
-	public SyncNodeComposite getNodeX(XMLDecoder decoder) {
-		if (null == _nodeX && null != _rawContent) {
-			_nodeX = new SyncNodeComposite();
+	/**
+	 * Decodes the hash if not yet done. Note that this should not be called from a
+	 * handler (unless we already know the node is decoded) because decoding is long and 
+	 * expensive and could stall the netmanager thread. We allow a separate decoder because
+	 * nodes typically contain more elements than are usually allowed by default by the
+	 * standard decoder. We can speed things up by preallocating more space.
+	 * 
+	 * @param decoder
+	 * @return
+	 */
+	public SyncNodeComposite getNode(XMLDecoder decoder) {
+		if (null == _node && null != _rawContent) {
+			_node = new SyncNodeComposite();
 			try {
-				_nodeX.decode(_rawContent, decoder);
+				_node.decode(_rawContent, decoder);
 			} catch (ContentDecodingException e) {
-				e.printStackTrace();
-				_nodeX = null;
+				Log.warning("Couldn't decode node {0} due to: {1}", (_hash == null ? "(unknown)"
+						: Component.printURI(_hash)), e.getMessage());
+				_node = null;
 				_rawContent = null;
 				return null;
 			}
 			_rawContent = null;
 			if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
-				SyncNodeComposite.decodeLogging(_nodeX);
+				SyncNodeComposite.decodeLogging(_node);
 			}
 		}
-		return _nodeX;
+		return _node;
 	}
 	
+	/**
+	 * Routines for getting and cycling through the references
+	 * @return
+	 */
 	public SyncNodeComposite.SyncNodeElement getCurrentElement() {
-		if (null == _nodeX)
+		if (null == _node)
 			return null;
-		return _nodeX.getElement(_position);
+		return _node.getElement(_position);
 	}
 	
 	public void incPos() {
@@ -95,9 +120,9 @@ public class SyncTreeEntry {
 	}
 	
 	public boolean lastPos() {
-		if (_nodeX == null)
+		if (_node == null)
 			return false;	// Needed to prompt a getNode
-		return (_position >= _nodeX.getRefs().size());
+		return (_position >= _node.getRefs().size());
 	}
 	
 	public byte[] getHash() {
