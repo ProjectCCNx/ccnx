@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.Stack;
-import java.util.TimerTask;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
@@ -68,7 +67,7 @@ import org.ccnx.ccn.protocol.Interest;
  * timing out the handler by doing so. 
  *
  */
-public class SliceComparator extends TimerTask {
+public class SliceComparator implements Runnable {
 	public static final int DECODER_SIZE = 756;
 	public static enum SyncCompareState {INIT, PRELOAD, COMPARE, DONE};
 
@@ -826,6 +825,7 @@ public class SliceComparator extends TimerTask {
 					if (null != _startHash && _startHash.getHash().length != 0) {
 						_currentRoot = _startHash;
 						_startHash = null;
+						nextRound();
 					}
 					do {
 						data = getPendingContent();
@@ -837,12 +837,12 @@ public class SliceComparator extends TimerTask {
 							if (null != _startHash) {  // has to be 0 length so start with "current"
 								_currentRoot = ste;
 								_startHash = null;
+								nextRound();
 							} else {	// No sense doing a compare with ourself!
 								addPending(ste);
 							}
 						}
 					} while (null != data);
-					nextRound();
 					
 					SyncTreeEntry ste = getPending();
 					if (null != ste) {
@@ -882,6 +882,7 @@ public class SliceComparator extends TimerTask {
 					break;
 				case DONE:	// Compare is done. Start over again if we have pending data
 							// for another compare
+					nextRound();
 					synchronized (this) {
 						if (_pendingEntries.size() > 0) {
 							changeState(SyncCompareState.INIT);
