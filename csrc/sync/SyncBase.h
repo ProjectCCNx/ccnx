@@ -22,8 +22,10 @@
 #define CCN_SyncBase
 
 #include <sys/types.h>
+#include <ccn/loglevels.h>
 #include <stdint.h>
-#include <ccnr/ccnr_private.h>
+
+#include "sync_plumbing.h"
 
 // Incomplete types for opaque structures.
 struct ccn_schedule;
@@ -34,14 +36,11 @@ struct SyncPrivate;
 // list of collections. 
 
 struct SyncBaseStruct {
+    struct sync_plumbing *sd;   // interface between client and sync
     struct SyncErrStruct *errList;  // private data for Sync
     struct SyncPrivate *priv;       // opaque data for Repo (from Repo)
-    void *client_handle;            // the ccnr/ccns handle to use (from Repo or Sync client)
-    struct ccn *ccn;                // the ccn handle to use (from Repo)
-    struct ccn_schedule *sched;     // the scheduler to use (from Repo)
     int debug;                      // higher gives more output, 0 gives none
     unsigned lastRootId;            // last root id assigned (0 is not used)
-    ccnr_hwm highWater;             // high water mark for accession numbers
 };
 
 // Error support
@@ -59,6 +58,10 @@ struct SyncErrStruct {
     int line;
 };
 
+
+// Logging support (veneer over sync_plumbing logging)
+void sync_msg(struct SyncBaseStruct *base, const char *fmt, ...);
+
 // add a new error record
 // this routine should be called from the SET_SYNC_ERR macro
 void SyncSetErrInner(struct SyncBaseStruct *base,
@@ -70,34 +73,10 @@ void SyncClearErr(struct SyncBaseStruct *base);
 
 // Basic object support
 
-// allocate and initialize a new sync base
+// allocate a new sync base
+// and fill in the sync methods in sd
 struct SyncBaseStruct *
-SyncNewBase(struct ccnr_handle *ccnr,
-            struct ccn *ccn,
-            struct ccn_schedule *sched);
+SyncNewBase(struct sync_plumbing *sd);
 
-// initialize a sync base
-void
-SyncInit(struct SyncBaseStruct *bp);
-
-// free up the resources for the sync base
-// called by Repo when shutting down
-// (no callbacks possible at this point)
-void
-SyncFreeBase(struct SyncBaseStruct **bp);
-
-// Enumeration support
-// called by Repo
-// name = NULL indicates end of enumeration
-// returns -1 to terminate, 0 to continue
-int
-SyncNotifyContent(struct SyncBaseStruct *base,
-                  int enumeration,
-                  ccnr_accession item,
-                  struct ccn_charbuf *name);
-
-// shutdown a sync base
-void
-SyncShutdown(struct SyncBaseStruct *bp);
 
 #endif

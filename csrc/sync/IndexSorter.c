@@ -120,6 +120,7 @@ IndexSorter_Free(IndexSorter_Base *basePtr) {
             void *indexes = base->indexes;
             if (indexes != NULL) free(indexes);
             free(base);
+            *basePtr = NULL;
         }
     }
 }

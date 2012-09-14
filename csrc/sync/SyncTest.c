@@ -81,164 +81,7 @@ struct SyncTestParms {
 // Dummy for ccnr routines (needed to avoid link errors)
 //////////////////////////////////////////////////////////////////////
 
-#include <ccnr/ccnr_private.h>
-
-#include <ccnr/ccnr_sync.h>
-
-
-// this one is a stub, but it actually produces output, too
-PUBLIC void
-ccnr_msg(struct ccnr_handle *h, const char *fmt, ...)
-{
-    struct timeval t;
-    va_list ap;
-    struct ccn_charbuf *b = ccn_charbuf_create();
-    ccn_charbuf_reserve(b, 1024);
-    gettimeofday(&t, NULL);
-    ccn_charbuf_putf(b, "%s\n", fmt);
-    char *fb = ccn_charbuf_as_string(b);
-    va_start(ap, fmt);
-    vfprintf(stdout, fb, ap);
-    va_end(ap);
-    fflush(stdout);
-    ccn_charbuf_destroy(&b);
-}
-
-PUBLIC int
-ccnr_msg_level_from_string(char *s) {
-    // like 
-    if (s == NULL)
-    return -1;
-    if (strcasecmp(s, "NONE") == 0)
-    return 0;
-    if (strcasecmp(s, "SEVERE") == 0)
-    return 3;
-    if (strcasecmp(s, "ERROR") == 0)
-    return 5;
-    if (strcasecmp(s, "WARNING") == 0)
-    return 7;
-    if (strcasecmp(s, "INFO") == 0)
-    return 9;
-    if (strcasecmp(s, "FINE") == 0)
-    return 11;
-    if (strcasecmp(s, "FINER") == 0)
-    return 13;
-    if (strcasecmp(s, "FINEST") == 0)
-    return 15;
-    return -1;
-}
-
-PUBLIC void
-r_sync_notify_after(struct ccnr_handle *ccnr, ccnr_hwm item)
-{
-    // TBD: fix this if the one in ccnr_sync.c changes!
-    ccnr->notify_after = (ccnr_accession) item;
-}
-
-PUBLIC int
-r_sync_enumerate(struct ccnr_handle *ccnr,
-                 struct ccn_charbuf *interest)
-{
-    int ans = -1;
-    return(ans);
-}
-
-
-PUBLIC int
-r_sync_lookup(struct ccnr_handle *ccnr,
-              struct ccn_charbuf *interest,
-              struct ccn_charbuf *content_ccnb)
-{
-    int ans = -1;
-    return(ans);
-}
-
-/**
- * Called when a content object is received by sync and needs to be
- * committed to stable storage by the repo.
- */
-PUBLIC enum ccn_upcall_res
-r_sync_upcall_store(struct ccnr_handle *ccnr,
-                    enum ccn_upcall_kind kind,
-                    struct ccn_upcall_info *info)
-{
-    enum ccn_upcall_res ans = CCN_UPCALL_RESULT_ERR;
-    return(ans);
-}
-
-/**
- * Called when a content object has been constructed locally by sync
- * and needs to be committed to stable storage by the repo.
- * returns 0 for success, -1 for error.
- */
-
-PUBLIC int
-r_sync_local_store(struct ccnr_handle *ccnr,
-                   struct ccn_charbuf *content)
-{
-    int ans = -1;
-    return(ans);
-}
-
-PUBLIC uintmax_t
-ccnr_accession_encode(struct ccnr_handle *ccnr, ccnr_accession a)
-{
-    return(a);
-}
-
-PUBLIC ccnr_accession
-ccnr_accession_decode(struct ccnr_handle *ccnr, uintmax_t encoded)
-{
-    return(encoded);
-}
-
-PUBLIC int
-ccnr_accession_compare(struct ccnr_handle *ccnr, ccnr_accession x, ccnr_accession y)
-{
-    if (x > y) return 1;
-    if (x == y) return 0;
-    if (x < y) return -1;
-    return CCNR_NOT_COMPARABLE;
-}
-
-PUBLIC uintmax_t
-ccnr_hwm_encode(struct ccnr_handle *ccnr, ccnr_hwm hwm)
-{
-    return(hwm);
-}
-
-PUBLIC ccnr_hwm
-ccnr_hwm_decode(struct ccnr_handle *ccnr, uintmax_t encoded)
-{
-    return(encoded);
-}
-
-PUBLIC int
-ccnr_acc_in_hwm(struct ccnr_handle *ccnr, ccnr_accession a, ccnr_hwm hwm)
-{
-    return(a <= hwm);
-}
-
-PUBLIC ccnr_hwm
-ccnr_hwm_update(struct ccnr_handle *ccnr, ccnr_hwm hwm, ccnr_accession a)
-{
-    return(a <= hwm ? hwm : a);
-}
-
-PUBLIC ccnr_hwm
-ccnr_hwm_merge(struct ccnr_handle *ccnr, ccnr_hwm x, ccnr_hwm y)
-{
-    return(x < y ? y : x);
-}
-
-PUBLIC int
-ccnr_hwm_compare(struct ccnr_handle *ccnr, ccnr_hwm x, ccnr_hwm y)
-{
-    if (x > y) return 1;
-    if (x == y) return 0;
-    if (x < y) return -1;
-    return CCNR_NOT_COMPARABLE;
-}
+#include "sync_plumbing.h"
 
 
 ////////////////////////////////////////
@@ -368,7 +211,8 @@ printTreeInner(struct SyncTreeWorkerHead *head,
         fprintf(f, "?? no cacheEntry ??\n");
         return;
     }
-    struct SyncNodeComposite *nc = ((head->remote > 0) ? ce->ncR : ce->ncL);
+    struct SyncNodeComposite *nc = ce->ncL;
+    if (nc == NULL) nc = ce->ncR;
     if (nc == NULL) {
         fprintf(f, "?? no cacheEntry->nc ??\n");
         return;
@@ -602,7 +446,7 @@ testReadBuilder(struct SyncTestParms *parms) {
             for (i = 0; i < root->namesToAdd->len; i++) {
                 SyncAccumHash(&longHash, root->namesToAdd->ents[i].name);
             }
-            SyncUpdateRoot(root);
+            // TBD: fix this -- SyncUpdateRoot(root);
             
             struct ccn_charbuf *hb = SyncLongHashToBuf(&longHash);
             struct ccn_charbuf *rb = root->currentHash;
@@ -619,7 +463,7 @@ testReadBuilder(struct SyncTestParms *parms) {
             ccn_charbuf_destroy(&hb);
             
             struct SyncHashCacheEntry *ce = SyncRootTopEntry(root);
-            struct SyncTreeWorkerHead *tw = SyncTreeWorkerCreate(root->ch, ce, 0);
+            struct SyncTreeWorkerHead *tw = SyncTreeWorkerCreate(root->ch, ce);
             switch (parms->mode) {
                 case 0: {
                     // no output
@@ -632,7 +476,7 @@ testReadBuilder(struct SyncTestParms *parms) {
                 }
                 case 2: {
                     // text output
-                    SyncTreeWorkerInit(tw, ce, 0);
+                    SyncTreeWorkerInit(tw, ce);
                     printTree(tw, stdout);
                     fprintf(stdout, "-----------------------\n");
                     break;
@@ -1623,14 +1467,75 @@ existingRootOp(struct SyncTestParms *parms,
     return res;
 }
 
+static void
+my_r_sync_msg(struct sync_plumbing *sd, const char *fmt, ...) {
+    if (sd != NULL && fmt != NULL) {
+        va_list ap;
+        va_start(ap, fmt);
+        vfprintf(stdout, fmt, ap);
+        va_end(ap);
+    }
+}
+
+struct sync_plumbing_client_methods client_methods = {
+    &my_r_sync_msg,
+    NULL,
+    NULL,
+    NULL,
+    NULL
+};
+
+static void
+SyncFreeBase(struct SyncBaseStruct *base) {
+    struct sync_plumbing *sd = base->sd;
+    struct ccn_charbuf *state_buf = ccn_charbuf_create();
+    sd->sync_methods->sync_stop(sd, state_buf);
+    ccn_charbuf_destroy(&state_buf);
+}
+
+// TBD: make this NOT cloned, but also not taken from ccnr!
+int
+ccnr_msg_level_from_string(const char *s)
+{
+    long v;
+    char *ep;
+    
+    if (s == NULL || s[0] == 0)
+        return(1);
+    if (0 == strcasecmp(s, "NONE"))
+        return(CCNL_NONE);
+    if (0 == strcasecmp(s, "SEVERE"))
+        return(CCNL_SEVERE);
+    if (0 == strcasecmp(s, "ERROR"))
+        return(CCNL_ERROR);
+    if (0 == strcasecmp(s, "WARNING"))
+        return(CCNL_WARNING);
+    if (0 == strcasecmp(s, "INFO"))
+        return(CCNL_INFO);
+    if (0 == strcasecmp(s, "FINE"))
+        return(CCNL_FINE);
+    if (0 == strcasecmp(s, "FINER"))
+        return(CCNL_FINER);
+    if (0 == strcasecmp(s, "FINEST"))
+        return(CCNL_FINEST);
+    v = strtol(s, &ep, 10);
+    if (v > CCNL_FINEST || v < 0 || ep[0] != 0)
+        return(-1);
+    return(v);
+}
+
 int
 main(int argc, char **argv) {
     int i = 1;
     int seen = 0;
     int res = 0;
+    struct sync_plumbing sdStruct;
+    struct sync_plumbing *sd = &sdStruct;
     struct SyncTestParms parmStore;
     struct SyncTestParms *parms = &parmStore;
-    struct SyncBaseStruct *base = SyncNewBase(NULL, NULL, NULL);
+    
+    sd->client_methods = &client_methods;
+    struct SyncBaseStruct *base = SyncNewBase(sd);
     
     memset(parms, 0, sizeof(parmStore));
     
@@ -1885,7 +1790,7 @@ main(int argc, char **argv) {
     }
     if (parms->splits != NULL) free(parms->splits);
     if (parms->root != NULL) SyncRemRoot(parms->root);
-    SyncFreeBase(&base);
+    SyncFreeBase(base);
     if (seen == 0 && res >= 0) {
         printf("usage: \n");
         printf("    -debug S        set debug level {NONE, SEVERE, ERROR, WARNING, INFO, FINE, FINER, FINEST}\n");

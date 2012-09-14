@@ -28,10 +28,8 @@
 
 extern void
 SyncTreeWorkerInit(struct SyncTreeWorkerHead *head,
-                   struct SyncHashCacheEntry *ent,
-                   int remote) {
+                   struct SyncHashCacheEntry *ent) {
     SyncTreeWorkerReset(head, 0);
-    head->remote = remote;
     if (ent != NULL) {
         struct SyncTreeWorkerEntry *sp = &head->stack[0];
         sp->pos = 0;
@@ -43,15 +41,14 @@ SyncTreeWorkerInit(struct SyncTreeWorkerHead *head,
 
 extern struct SyncTreeWorkerHead *
 SyncTreeWorkerCreate(struct SyncHashCacheHead *cache,
-                     struct SyncHashCacheEntry *ent,
-                     int remote) {
+                     struct SyncHashCacheEntry *ent) {
     struct SyncTreeWorkerHead * head = NEW_STRUCT(1, SyncTreeWorkerHead);
     int lim = 4;
     struct SyncTreeWorkerEntry * stack = NEW_STRUCT(lim, SyncTreeWorkerEntry);
     head->stack = stack;
     head->lim = lim;
     head->cache = cache;
-    SyncTreeWorkerInit(head, ent, remote);
+    SyncTreeWorkerInit(head, ent);
     return head;
 }
 
@@ -69,7 +66,8 @@ SyncTreeWorkerGetElem(struct SyncTreeWorkerHead *head) {
     if (ent == NULL) return NULL;
     struct SyncHashCacheEntry *ce = ent->cacheEntry;
     if (ce == NULL) return NULL;
-    struct SyncNodeComposite *nc = ((head->remote > 0) ? ce->ncR : ce->ncL);
+    struct SyncNodeComposite *nc = ce->ncL;
+    if (nc == NULL) nc = ce->ncR;
     if (nc == NULL) return NULL;
     int pos = ent->pos;
     if (pos < 0 || pos >= nc->refLen) return NULL;
@@ -84,7 +82,10 @@ SyncTreeWorkerPush(struct SyncTreeWorkerHead *head) {
         return NULL;
     struct SyncTreeWorkerEntry *ent = SyncTreeWorkerTop(head);
     struct SyncHashCacheEntry *ce = ent->cacheEntry;
-    struct SyncNodeComposite *nc = ((head->remote > 0) ? ce->ncR : ce->ncL);
+    if (ce == NULL) return NULL;
+    struct SyncNodeComposite *nc = ce->ncL;
+    if (nc == NULL) nc = ce->ncR;
+    if (nc == NULL) return NULL;
     struct ccn_buf_decoder cbd;
     struct ccn_buf_decoder *cb = SyncInitDecoderFromOffset(&cbd, nc,
                                                            ref->start,
@@ -169,16 +170,11 @@ SyncTreeLookupName(struct SyncTreeWorkerHead *head,
     enum SyncCompareResult cr = SCR_inside;
     while (head->level > minLevel) {
         struct SyncTreeWorkerEntry *ent = SyncTreeWorkerTop(head);
-        if (ent->cacheEntry == NULL) {
-            // probably a real bug!
-            return SCR_error;
-        }
         struct SyncHashCacheEntry *ce = ent->cacheEntry;
-        struct SyncNodeComposite *nc = ((head->remote > 0) ? ce->ncR : ce->ncL);
-        if (nc == NULL) {
-            // report desired node as missing
-            return SCR_missing;
-        }
+        if (ce == NULL) return SCR_error;
+        struct SyncNodeComposite *nc = ce->ncL;
+        if (nc == NULL) nc = ce->ncR;
+        if (nc == NULL) return SCR_missing;
         int lim = nc->refLen;
         if (ent->pos >= lim) {
             // done with the current level, go back to the previous level
@@ -223,16 +219,11 @@ SyncTreeGenerateNames(struct SyncTreeWorkerHead *head,
     
     while (head->level > minLevel) {
         struct SyncTreeWorkerEntry *ent = SyncTreeWorkerTop(head);
-        if (ent->cacheEntry == NULL) {
-            // probably a real bug!
-            return SCR_error;
-        }
         struct SyncHashCacheEntry *ce = ent->cacheEntry;
-        struct SyncNodeComposite *nc = ((head->remote > 0) ? ce->ncR : ce->ncL);
-        if (nc == NULL) {
-            // TBD: fetch node if not present
-            return SCR_missing;
-        }
+        if (ce == NULL) return SCR_error;
+        struct SyncNodeComposite *nc = ce->ncL;
+        if (nc == NULL) nc = ce->ncR;
+        if (nc == NULL) return SCR_missing;
         int lim = nc->refLen;
         if (ent->pos >= lim) {
             // done with the current level, go back to the previous level
@@ -279,7 +270,8 @@ SyncTreeMarkReachable(struct SyncTreeWorkerHead *head, int minLevel) {
         if (ce == NULL) break;
         ce->state |= SyncHashState_marked;
         count++;
-        struct SyncNodeComposite *nc = ((head->remote > 0) ? ce->ncR : ce->ncL);
+        struct SyncNodeComposite *nc = ce->ncL;
+        if (nc == NULL) nc = ce->ncR;
         if (nc == NULL) break;
         int lim = nc->refLen;
         if (ent->pos >= lim) {

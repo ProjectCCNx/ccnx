@@ -55,8 +55,8 @@
 #include <ccn/schedule.h>
 #include <ccn/reg_mgmt.h>
 #include <ccn/uri.h>
-
-#include <sync/SyncBase.h>
+#include <sync/sync_plumbing.h>
+#include <sync/SyncActions.h>
 
 #include "ccnr_private.h"
 
@@ -76,6 +76,16 @@
 
 static int load_policy(struct ccnr_handle *h);
 static int merge_files(struct ccnr_handle *h);
+
+static struct sync_plumbing_client_methods sync_client_methods = {
+    .r_sync_msg = &r_sync_msg,
+    .r_sync_fence = &r_sync_fence,
+    .r_sync_enumerate = &r_sync_enumerate,
+    .r_sync_lookup = &r_sync_lookup,
+    .r_sync_local_store = &r_sync_local_store,
+    .r_sync_upcall_store = &r_sync_upcall_store
+};
+
 
 /**
  * Read the contents of the repository config file
@@ -469,7 +479,7 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h = calloc(1, sizeof(*h));
     if (h == NULL)
         return(h);
-    h->notify_after = CCNR_MAX_ACCESSION;
+    h->notify_after = 0; //CCNR_MAX_ACCESSION;
     h->logger = logger;
     h->loggerdata = loggerdata;
     h->logpid = (int)getpid();
@@ -496,8 +506,8 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h->nameprefix_tab = hashtb_create(sizeof(struct nameprefix_entry), &param);
     param.finalize = 0; // PRUNED &r_fwd_finalize_propagating;
     h->propagating_tab = hashtb_create(sizeof(struct propagating_entry), &param);
-    param.finalize = 0;
-    h->enum_state_tab = hashtb_create(sizeof(struct enum_state), NULL); // XXX - do we need finalization? Perhaps
+    param.finalize = &r_proto_finalize_enum_state;
+    h->enum_state_tab = hashtb_create(sizeof(struct enum_state), &param);
     h->min_stale = ~0;
     h->max_stale = 0;
     h->unsol = ccn_indexbuf_create();
@@ -582,7 +592,14 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     }
     else
         ccn_disconnect(h->direct_client); // Apparently ccn_connect error case needs work.
-    h->sync_handle = SyncNewBase(h, h->direct_client, h->sched);
+    if (1 == r_init_confval(h, "CCNS_ENABLE", 0, 1, 1)) {
+        h->sync_plumbing = calloc(1, sizeof(struct sync_plumbing));
+        h->sync_plumbing->ccn = h->direct_client;
+        h->sync_plumbing->sched = h->sched;
+        h->sync_plumbing->client_methods = &sync_client_methods;
+        h->sync_plumbing->client_data = h;
+        h->sync_base = SyncNewBaseForActions(h->sync_plumbing);
+    }
     if (-1 == load_policy(h))
         goto Bail;
     r_net_listen_on(h, listen_on);
@@ -592,7 +609,21 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     if (merge_files(h) == -1)
         r_init_fail(h, __LINE__, "Unable to merge additional repository data files.", errno);
     if (h->running == -1) goto Bail;
-    SyncInit(h->sync_handle);
+    if (h->sync_plumbing) {
+        // Start sync running
+        // returns < 0 if a failure occurred
+        // returns 0 if the name updates should fully restart
+        // returns > 0 if the name updates should restart at last fence
+        res = h->sync_plumbing->sync_methods->sync_start(h->sync_plumbing, NULL);
+        if (res < 0) {
+            r_init_fail(h, __LINE__, "starting sync", res);
+            abort();
+        }
+        else if (res > 0) {
+            // XXX: need to work out details of starting from last fence.
+            // By examination of code, SyncActions won't take this path
+        }
+    }
 Bail:
     if (sockname)
         free(sockname);
@@ -606,8 +637,12 @@ Bail:
 void
 r_init_fail(struct ccnr_handle *ccnr, int line, const char *culprit, int err)
 {
-    ccnr_msg(ccnr, "Startup failure %d %s - %s", line, culprit,
-             (err > 0) ? strerror(err) : "");
+    if (err > 0)
+        ccnr_msg(ccnr, "Startup failure %d %s - %s", line, culprit,
+                 strerror(err));
+    else {
+        ccnr_msg(ccnr, "Startup failure %d %s - error %d", line, culprit, err);
+    }
     ccnr->running = -1;
 }
 
@@ -627,10 +662,16 @@ r_init_destroy(struct ccnr_handle **pccnr)
     ccn_schedule_destroy(&h->sched);
     hashtb_destroy(&h->propagating_tab);
     hashtb_destroy(&h->nameprefix_tab);
-    hashtb_destroy(&h->content_by_accession_tab);
     hashtb_destroy(&h->enum_state_tab);
-    
-    SyncFreeBase(&h->sync_handle);
+    hashtb_destroy(&h->content_by_accession_tab);
+
+    // SyncActions sync_stop method should be shutting down heartbeat
+    if (h->sync_plumbing) {
+        h->sync_plumbing->sync_methods->sync_stop(h->sync_plumbing, NULL);
+        free(h->sync_plumbing);
+        h->sync_plumbing = NULL;
+        h->sync_base = NULL; // freed by sync_stop ?
+    }
     
     r_store_final(h, stable);
     
@@ -659,7 +700,9 @@ r_init_destroy(struct ccnr_handle **pccnr)
         free(h->parsed_policy);
         h->parsed_policy = NULL;
     }
+    ccn_charbuf_destroy(&h->policy_name);
     ccn_charbuf_destroy(&h->policy_link_cob);
+    ccn_charbuf_destroy(&h->ccnr_keyid);
     free(h);
     *pccnr = NULL;
 }
@@ -1011,7 +1054,10 @@ CreateNewPolicy:
     policy_cob = ccnr_init_policy_cob(ccnr, ccnr->direct_client, basename,
                                       600, policy);
     // save the policy content object to the repository
-    r_sync_local_store(ccnr, policy_cob);
+    content = process_incoming_content(ccnr, ccnr->face0,
+                                       (void *)policy_cob->buf,
+                                       policy_cob->length, NULL);
+    r_store_commit_content(ccnr, content);
     ccn_charbuf_destroy(&policy_cob);
     // make a link to the policy content object
     ccn_charbuf_destroy(&ccnr->policy_link_cob);

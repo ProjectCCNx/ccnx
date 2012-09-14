@@ -30,7 +30,7 @@ CSRC = ccn_bloom.c \
        ccn_match.c ccn_reg_mgmt.c ccn_face_mgmt.c \
        ccn_merkle_path_asn1.c ccn_name_util.c ccn_schedule.c \
        ccn_seqwriter.c ccn_signing.c \
-       ccn_sockcreate.c ccn_sync.c ccn_traverse.c ccn_uri.c \
+       ccn_sockcreate.c ccn_traverse.c ccn_uri.c \
        ccn_verifysig.c ccn_versioning.c \
        ccn_header.c \
        ccn_fetch.c \
@@ -45,7 +45,7 @@ LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o \
        ccn_buf_decoder.o ccn_uri.o ccn_buf_encoder.o ccn_bloom.o \
        ccn_name_util.o ccn_face_mgmt.o ccn_reg_mgmt.o ccn_digest.o \
        ccn_interest.o ccn_keystore.o ccn_seqwriter.o ccn_signing.o \
-       ccn_sockcreate.o ccn_sync.o ccn_traverse.o \
+       ccn_sockcreate.o ccn_traverse.o \
        ccn_match.o hashtb.o ccn_merkle_path_asn1.o \
        ccn_sockaddrutil.o ccn_setup_sockaddr_un.o \
        ccn_bulkdata.o ccn_versioning.o ccn_header.o ccn_fetch.o \
@@ -56,22 +56,22 @@ default all: dtag_check lib $(PROGRAMS)
 # Don't try to build shared libs right now.
 # all: shlib
 
-all: basicparsetest ccn_verifysig
+all: ccn_verifysig
 
 install: install_headers
 install_headers:
-	@test -d $(INSTALL_INCLUDE) || (echo $(INSTALL_INCLUDE) does not exist.  Please mkdir -p $(INSTALL_INCLUDE) if this is what you intended. && exit 2)
-	mkdir -p $(INSTALL_INCLUDE)/ccn
+	@test -d $(DINST_INC) || (echo $(DINST_INC) does not exist.  Please mkdir -p $(DINST_INC) if this is what you intended. && exit 2)
+	mkdir -p $(DINST_INC)/ccn
 	for i in `cd ../include/ccn && echo *.h`; do                \
-	    cmp -s ../include/ccn/$$i $(INSTALL_INCLUDE)/ccn/$$i || \
-	        cp ../include/ccn/$$i $(INSTALL_INCLUDE)/ccn/$$i || \
+	    cmp -s ../include/ccn/$$i $(DINST_INC)/ccn/$$i || \
+	        cp ../include/ccn/$$i $(DINST_INC)/ccn/$$i || \
 	        exit 1;                                             \
 	done
 
 uninstall: uninstall_headers
 uninstall_headers:
-	test -L $(INSTALL_INCLUDE)/ccn && $(RM) $(INSTALL_INCLUDE)/ccn ||:
-	test -L $(INSTALL_INCLUDE) || $(RM) -r $(INSTALL_INCLUDE)/ccn
+	test -L $(DINST_INC)/ccn && $(RM) $(DINST_INC)/ccn ||:
+	test -L $(DINST_INC) || $(RM) -r $(DINST_INC)/ccn
 
 shlib: $(SHLIBNAME)
 
@@ -87,6 +87,7 @@ dtag_check: _always
 	@./gen_dtag_table 2>/dev/null | diff - ccn_dtag_table.c | grep '^[<]' >/dev/null && echo '*** Warning: ccn_dtag_table.c may be out of sync with tagnames.cvsdict' || :
 
 keystore_check: ccn_initkeystore.sh
+	test ! -z "$$HOME"
 	test -f "$$HOME/.ccnx/.ccnx_keystore" || $(MAKE) -f dir.mk new_keystore
 
 new_keystore:
@@ -131,9 +132,6 @@ ccn_signing.o:
 ccn_sockcreate.o:
 	$(CC) $(CFLAGS) -c ccn_sockcreate.c
 
-ccn_sync.o:
-	$(CC) $(CFLAGS) -I.. -c ccn_sync.c
-
 ccn_traverse.o:
 	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_traverse.c
 
@@ -170,22 +168,6 @@ ccnbtreetest: ccnbtreetest.o libccn.a
 clean:
 	rm -f *.o libccn.a libccn.1.$(SHEXT) $(PROGRAMS) depend
 	rm -rf *.dSYM $(DEBRIS) *% *~
-
-###############################
-# Dependencies here are NOT checked by depend target
-# and must be updated manually.
-###############################
-ccn_sync.o: \
-  ../sync/SyncActions.h ../sync/SyncBase.h ../ccnr/ccnr_private.h \
-  ../include/ccn/ccn_private.h ../include/ccn/reg_mgmt.h \
-  ../include/ccn/schedule.h ../include/ccn/seqwriter.h ../sync/SyncRoot.h \
-  ../sync/SyncUtil.h ../sync/IndexSorter.h ../sync/SyncNode.h \
-  ../sync/SyncMacros.h ../sync/SyncPrivate.h ../sync/SyncTreeWorker.h \
-  ../sync/SyncHashCache.h ../sync/IndexSorter.c ../sync/SyncBase.c \
-  ../sync/SyncActions.h ../sync/SyncPrivate.h ../ccnr/ccnr_msg.h \
-  ../ccnr/ccnr_private.h ../ccnr/ccnr_sync.h ../sync/SyncHashCache.c \
-  ../sync/SyncNode.h ../sync/SyncNode.c ../sync/SyncRoot.c \
-  ../sync/SyncTreeWorker.c ../sync/SyncTreeWorker.h ../sync/SyncUtil.c
 
 ###############################
 # Dependencies below here are checked by depend target
@@ -252,9 +234,6 @@ ccn_signing.o: ccn_signing.c ../include/ccn/merklepathasn1.h \
   ../include/ccn/indexbuf.h ../include/ccn/signing.h \
   ../include/ccn/random.h
 ccn_sockcreate.o: ccn_sockcreate.c ../include/ccn/sockcreate.h
-ccn_sync.o: ccn_sync.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
-  ../include/ccn/digest.h ../include/ccn/sync.h ../include/ccn/uri.h
 ccn_traverse.o: ccn_traverse.c ../include/ccn/bloom.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
@@ -274,6 +253,7 @@ ccn_header.o: ccn_header.c ../include/ccn/ccn.h ../include/ccn/coding.h \
 ccn_fetch.o: ccn_fetch.c ../include/ccn/fetch.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
+lned.o: lned.c ../include/ccn/lned.h
 encodedecodetest.o: encodedecodetest.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/bloom.h ../include/ccn/uri.h \

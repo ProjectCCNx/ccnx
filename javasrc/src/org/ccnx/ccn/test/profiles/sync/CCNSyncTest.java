@@ -58,6 +58,7 @@ public class CCNSyncTest extends CCNTestBase implements CCNSyncHandler, CCNConte
 	int maxBytes = 10 * BUF_SIZE;
 	Vector<ContentName> callbackNames = new Vector<ContentName>();
 	String errorMessage = null;
+
 	static Vector<ConfigSlice> slices = new Vector<ConfigSlice>();
 	
 	@Before
@@ -174,7 +175,6 @@ public class CCNSyncTest extends CCNTestBase implements CCNSyncHandler, CCNConte
 		//now close the callback interface
 		sync1.stopSync(this, slice4);
 		sync1.stopSync(this, slice5);
-
 			
 		Log.info(Log.FAC_TEST,"Finished running testSyncStop");
 	}
@@ -241,6 +241,7 @@ public class CCNSyncTest extends CCNTestBase implements CCNSyncHandler, CCNConte
 		
 		//now close the callback interface
 		sync1.stopSync(this, slice6b);
+
 			
 		Log.info(Log.FAC_TEST,"Finished running testSyncRestart");
 	}

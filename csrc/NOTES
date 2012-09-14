@@ -29,6 +29,19 @@ The csrc/conf/ directory contains the system-specific make fragments and scripts
 If you need to override the configured values, put them into a file
 named csrc/conf/local.mk before you execute ./configure in csrc/.
 
+It is also possible to define certain environment variables
+to modify default guesses of the ./configure script.
+The most useful of these are:
+- CFLAGS (default: -g)
+- INSTALL_BASE (default: /usr/local)
+- AR (default: leave unset to be supplied by make)
+- CC (default: leave unset to be supplied by make)
+- INSTALL (default: install)
+- CP (default: cp)
+- RM (default: rm -f)
+- SH (default: /bin/sh)
+- LS (default: /bin/ls)
+
 For convenience, there is a Makefile link placed into the subdirectories of
 csrc/ so that you can easily rebuild just part of the world.
 
@@ -38,6 +51,7 @@ After a successful make, you should do `make test` to check that things are
 working.  Then, if you wish, you can use `make install` to install into
 /usr/local (or elsewhere if you have defined an override in local.mk).
 Of course, the appropriate permissions are needed.
+
 
 */
 

@@ -12,19 +12,20 @@
 # FOR A PARTICULAR PURPOSE.
 #
 
-LDLIBS = -L../lib $(MORE_LDLIBS) -lccn
+LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn
 EXPATLIBS = -lexpat
 CCNLIBDIR = ../lib
+SYNCLIBS = -L../sync -lccnsync
 
 INSTALLED_PROGRAMS = \
-    ccn_ccnbtoxml ccn_splitccnb ccndumpnames ccnnamelist ccnrm \
+    ccn_ccnbtoxml ccn_splitccnb ccnc ccndumpnames ccnnamelist ccnrm \
     ccnls ccnslurp ccnbx ccncat ccnbasicconfig \
     ccnsendchunks ccncatchunks ccncatchunks2 \
     ccnpoke ccnpeek ccnhexdumpdata \
     ccnseqwriter ccnsimplecat \
     ccnfilewatch ccninitkeystore \
     ccnlibtest \
-	ccnsyncwatch ccnsyncslice \
+    ccnsyncwatch ccnsyncslice \
     $(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
 
 PROGRAMS = $(INSTALLED_PROGRAMS) \
@@ -40,7 +41,9 @@ BROKEN_PROGRAMS =
 DEBRIS =
 SCRIPTSRC = ccn_initkeystore.sh
 CSRC =  ccn_ccnbtoxml.c ccn_splitccnb.c ccn_xmltoccnb.c ccnbasicconfig.c \
-       ccnbuzz.c ccnbx.c ccncat.c ccnsimplecat.c ccncatchunks.c ccncatchunks2.c \
+       ccnbuzz.c ccnbx.c \
+       ccnc.c \
+       ccncat.c ccnsimplecat.c ccncatchunks.c ccncatchunks2.c \
        ccndumpnames.c ccndumppcap.c ccnfilewatch.c ccnpeek.c ccnhexdumpdata.c \
        ccninitkeystore.c ccnls.c ccnnamelist.c ccnpoke.c ccnrm.c ccnsendchunks.c \
        ccnseqwriter.c \
@@ -81,6 +84,9 @@ dataresponsetest: dataresponsetest.o
 
 encodedecodetest: encodedecodetest.o
 	$(CC) $(CFLAGS) -o $@ encodedecodetest.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+
+ccnc: ccnc.o
+	$(CC) $(CFLAGS) -o $@ ccnc.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccndumpnames: ccndumpnames.o
 	$(CC) $(CFLAGS) -o $@ ccndumpnames.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
@@ -173,10 +179,10 @@ ccnsnew: ccnsnew.o
 	$(CC) $(CFLAGS) -o $@ ccnsnew.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccnsyncwatch: ccnsyncwatch.o
-	$(CC) $(CFLAGS) -o $@ ccnsyncwatch.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+	$(CC) $(CFLAGS) -o $@ ccnsyncwatch.o $(SYNCLIBS) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccnsyncslice: ccnsyncslice.o
-	$(CC) $(CFLAGS) -o $@ ccnsyncslice.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+	$(CC) $(CFLAGS) -o $@ ccnsyncslice.o $(SYNCLIBS) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 clean:
 	rm -f *.o libccn.a libccn.1.$(SHEXT) $(PROGRAMS) depend
@@ -202,6 +208,9 @@ ccnbuzz.o: ccnbuzz.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccnbx.o: ccnbx.c ../include/ccn/charbuf.h ../include/ccn/coding.h \
   ../include/ccn/ccn.h ../include/ccn/indexbuf.h
+ccnc.o: ccnc.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
+  ../include/ccn/ccn_private.h ../include/ccn/lned.h ../include/ccn/uri.h
 ccncat.o: ccncat.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h \
   ../include/ccn/fetch.h

@@ -428,7 +428,7 @@ r_io_send(struct ccnr_handle *h,
           off_t *offsetp)
 {
     ssize_t res;
-    off_t offset;
+    off_t offset = -1;
     
     if (offsetp != NULL)
         *offsetp = (off_t)-1;

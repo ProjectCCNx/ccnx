@@ -21,11 +21,14 @@ import java.util.ArrayList;
 
 import junit.framework.Assert;
 
+import org.ccnx.ccn.CCNInterestHandler;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.RepositoryOutputStream;
 import org.ccnx.ccn.profiles.nameenum.BasicNameEnumeratorListener;
 import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.test.CCNTestBase;
 import org.ccnx.ccn.test.CCNTestHelper;
 import org.junit.Test;
@@ -50,6 +53,8 @@ public class NameEnumeratorTestRepo extends CCNTestBase implements BasicNameEnum
 		Log.info(Log.FAC_TEST, "Starting testSpanningEnumeration");
 
 		ContentName baseName = testHelper.getClassNamespace();
+		
+		putHandle.registerFilter(baseName, new DummyFilterListener());
 
 		for (int i = 0; i < NFILES; i++) {
 			RepositoryOutputStream ros = new RepositoryOutputStream(
@@ -64,7 +69,7 @@ public class NameEnumeratorTestRepo extends CCNTestBase implements BasicNameEnum
 		long startTime = System.currentTimeMillis();
 		synchronized (this) {
 			while (_NESize < NFILES && (System.currentTimeMillis() - startTime) < TIMEOUT) {
-				wait(TIMEOUT);
+				wait(SystemConfiguration.MEDIUM_TIMEOUT);
 			}
 		}
 		Assert.assertEquals("NameEnumeration returned incorrect number of files", NFILES, _NESize);
@@ -74,6 +79,7 @@ public class NameEnumeratorTestRepo extends CCNTestBase implements BasicNameEnum
 
 	public int handleNameEnumerator(ContentName prefix,
 			ArrayList<ContentName> names) {
+		int additions = 0;
 		Log.info(Log.FAC_TEST, "Saw NE response with {0} names", names.size());
 		for (ContentName incomingName : names) {
 			boolean nameSeen = false;
@@ -84,13 +90,22 @@ public class NameEnumeratorTestRepo extends CCNTestBase implements BasicNameEnum
 				}
 			}
 			if (!nameSeen) {
-				_NESize++;
+				additions++;
 				_seenNames.add(incomingName);
 			}
 		}
 		synchronized (this) {
-			notifyAll();
+			_NESize += additions;
+			if (_NESize >= NFILES) {
+				notifyAll();
+			}
 		}
 		return 0;
 	}
+	
+	class DummyFilterListener implements CCNInterestHandler {
+		public boolean handleInterest(Interest interest) {
+			return false;
+		}	
+	}	
 }
