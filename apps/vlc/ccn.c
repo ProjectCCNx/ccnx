@@ -48,8 +48,8 @@
 /*****************************************************************************
  * Module descriptor
  *****************************************************************************/
-#define CCN_FIFO_MAX_BLOCKS 1024
-#define CCN_VERSION_TIMEOUT 2000
+#define CCN_FIFO_MAX_BLOCKS 8
+#define CCN_VERSION_TIMEOUT 5000
 #define CCN_HEADER_TIMEOUT 1000
 #define CCN_DEFAULT_PREFETCH 12
 
@@ -232,26 +232,17 @@ CCNClose(vlc_object_t *p_this)
     vlc_mutex_unlock(&p_sys->lock);
     vlc_join(p_sys->thread, NULL);
 
-    
-    /* TODO: clean this up */
     if (p_sys->p_fifo) {
         block_FifoRelease(p_sys->p_fifo);
         p_sys->p_fifo = NULL;
-    }
-    if (p_sys->p_prefetch_template) {
-        ccn_charbuf_destroy(&p_sys->p_prefetch_template);
-    }
-    if (p_sys->p_data_template) {
-        ccn_charbuf_destroy(&p_sys->p_data_template);
     }
     if (p_sys->prefetch) {
         free(p_sys->prefetch);
         p_sys->prefetch = NULL;
     }
-    if (p_sys->p_name) {
-        ccn_charbuf_destroy(&p_sys->p_name);
-        p_sys->p_name = NULL;
-    }
+    ccn_charbuf_destroy(&p_sys->p_prefetch_template);
+    ccn_charbuf_destroy(&p_sys->p_data_template);
+    ccn_charbuf_destroy(&p_sys->p_name);
     vlc_mutex_destroy(&p_sys->lock);
     vlc_cond_destroy(&p_sys->cond);
     free(p_sys);
@@ -273,7 +264,6 @@ CCNBlock(access_t *p_access)
 
     if (p_sys->p_fifo == NULL)
         return NULL;
-
     p_block = block_FifoGet(p_sys->p_fifo);
     if (p_block == NULL || p_access->b_die)
         return NULL;
@@ -283,7 +273,6 @@ CCNBlock(access_t *p_access)
     } else {
         p_access->info.i_pos += p_block->i_buffer;
     }
-
     return (p_block);
 }
 
@@ -304,9 +293,12 @@ static int CCNSeek(access_t *p_access, uint64_t i_pos)
 {
     access_sys_t *p_sys = p_access->p_sys;
     struct ccn_charbuf *p_name;
-    int i;
+    int i, i_prefetch;
 
-    /* flush the FIFO in case the incoming content handler is blocked */
+    /* flush the FIFO in case the incoming content handler is blocked,
+     * which must be done without the lock held as the handler holds it
+     * while waiting for the fifo to have space available
+     */
     block_FifoEmpty(p_sys->p_fifo);
     vlc_mutex_lock(&p_sys->lock);
     if (p_access->b_die) {
@@ -319,20 +311,23 @@ static int CCNSeek(access_t *p_access, uint64_t i_pos)
         i_pos = 0;
     }
 #endif
-    /* flush the FIFO for real, restart from the specified point */
+    /* flush the FIFO for real, and restart from the requested point */
     block_FifoEmpty(p_sys->p_fifo);
     p_sys->incoming = calloc(1, sizeof(struct ccn_closure));
     if (p_sys->incoming == NULL) {
         vlc_mutex_unlock(&p_sys->lock);
         return (VLC_EGENERIC);
     }
-    msg_Dbg(p_access, "CCN.Seek to %"PRId64", closure %p",
-            i_pos, p_sys->incoming);
+    msg_Dbg(p_access, "CCN.Seek to %"PRId64", closure %p", i_pos, p_sys->incoming);
     p_sys->incoming->data = p_access; /* so CCN callbacks can find p_sys */
     p_sys->incoming->p = &incoming_content; /* the CCN callback */
     p_sys->i_pos = i_pos;
-    /* prefetch */
-    for (i = 0; i <= p_sys->i_prefetch; i++) {
+    /* prefetch, but only do full amount if going forward */
+    if (i_pos > p_access->info.i_pos)
+      i_prefetch = p_sys->i_prefetch;
+    else
+      i_prefetch = p_sys->i_prefetch / 2;
+    for (i = 0; i <= i_prefetch; i++) {
         p_name = sequenced_name(p_sys->p_name, i + p_sys->i_pos / p_sys->i_chunksize);
         ccn_express_interest(p_sys->ccn, p_name, p_sys->prefetch,
                                      p_sys->p_prefetch_template);
@@ -505,7 +500,7 @@ ccn_event_thread(void *p_this)
     i_ret = 0;
     msg_Info(p_access, "CCN.Input: entering input event loop");
     while (i_ret >= 0 && !p_access->b_die) {
-        i_ret = poll(fds, 1, 500);
+        i_ret = poll(fds, 1, 100);
         if (i_ret < 0 && errno != EINTR) {
             /* got a real error */
             break;
@@ -577,6 +572,7 @@ incoming_content(struct ccn_closure *selfp,
     const unsigned char *name_comp = NULL;
     size_t name_comp_size = 0;
     int res, i;
+    uint64_t i_nextpos;
     uint64_t segment;
     int result = CCN_UPCALL_RESULT_OK;
 
@@ -612,7 +608,7 @@ incoming_content(struct ccn_closure *selfp,
             goto exit;
         
         case CCN_UPCALL_CONTENT:
-            if (selfp != p_sys->incoming) {
+            if (selfp != p_sys->incoming || p_access->b_die) {
                 msg_Dbg(p_access, "CCN.Upcall content on dead closure %p", selfp);
                 goto exit;
             }
@@ -622,8 +618,6 @@ incoming_content(struct ccn_closure *selfp,
             result = CCN_UPCALL_RESULT_ERR;
             goto exit;
     }
-    if (p_access->b_die)
-        goto exit;
     ccnb = info->content_ccnb;
     ccnb_size = info->pco->offset[CCN_PCO_E];
     res = ccn_content_get_value(ccnb, ccnb_size, info->pco, &data, &data_size);
@@ -646,16 +640,29 @@ incoming_content(struct ccn_closure *selfp,
         msg_Err(p_access, "CCN.Upcall wrong data block for position %"PRId64" :: block start %"PRIu64,
                 p_sys->i_pos, segment * p_sys->i_chunksize);
 
-    /* something to process, make sure we have room */
-#if (VLCPLUGINVER < 10100)
-    /* block_FifoPace was not exported until 1.1.0, use a copy of it... */
-    s_block_FifoPace(p_sys->p_fifo, p_sys->i_fifo_max, SIZE_MAX);
-#else
-    block_FifoPace(p_sys->p_fifo, p_sys->i_fifo_max, SIZE_MAX);
-#endif
-    
+    /* something to process */
     if (data_size > 0) {
         start_offset = p_sys->i_pos % p_sys->i_chunksize;
+        /* Ask for next fragment as soon as possible */
+        if (!b_last) {
+            i_nextpos = p_sys->i_pos + (data_size - start_offset);
+            name = sequenced_name(p_sys->p_name, i_nextpos / p_sys->i_chunksize);
+            res = ccn_express_interest(info->h, name, selfp, p_sys->p_data_template);
+            ccn_charbuf_destroy(&name);
+            if (res < 0) abort();
+            /* and prefetch a fragment if it's not past the end */
+            if (p_sys->i_prefetch * p_sys->i_chunksize <= p_access->info.i_size - i_nextpos) {
+                name = sequenced_name(p_sys->p_name, p_sys->i_prefetch + i_nextpos / p_sys->i_chunksize);
+                res = ccn_express_interest(info->h, name, p_sys->prefetch, p_sys->p_prefetch_template);
+                ccn_charbuf_destroy(&name);
+            }
+        }
+#if (VLCPLUGINVER < 10100)
+        /* block_FifoPace was not exported until 1.1.0, use a copy of it... */
+        s_block_FifoPace(p_sys->p_fifo, p_sys->i_fifo_max, SIZE_MAX);
+#else
+        block_FifoPace(p_sys->p_fifo, p_sys->i_fifo_max, SIZE_MAX);
+#endif
         if (start_offset > data_size) {
             msg_Err(p_access, "CCN.Upcall start_offset %"PRId64" > data_size %zu", start_offset, data_size);
         } else {
@@ -664,29 +671,12 @@ incoming_content(struct ccn_closure *selfp,
             block_FifoPut(p_sys->p_fifo, p_block);
         }
     }
-
     /* Advance position */
     p_sys->i_pos += (data_size - start_offset);
-
-    /* if we're done, indicate so with a 0-byte block,
-     * and don't express an interest
-     */
-    if (b_last) {
+    /* if we're done, indicate so with a 0-byte block */
+    if (b_last)
         block_FifoPut(p_sys->p_fifo, block_New(p_access, 0));
-        goto exit;
-    }
 
-    /* Ask for the next fragment */
-    name = sequenced_name(p_sys->p_name, p_sys->i_pos / p_sys->i_chunksize);
-    res = ccn_express_interest(info->h, name, selfp, p_sys->p_data_template);
-    ccn_charbuf_destroy(&name);
-    if (res < 0) abort();
-    /* and prefetch a fragment if it's not past the end */
-    if (p_sys->i_prefetch * p_sys->i_chunksize <= p_access->info.i_size - p_sys->i_pos) {
-        name = sequenced_name(p_sys->p_name, p_sys->i_prefetch + p_sys->i_pos / p_sys->i_chunksize);
-        res = ccn_express_interest(info->h, name, p_sys->prefetch, p_sys->p_prefetch_template);
-        ccn_charbuf_destroy(&name);
-    }
 exit:
     return(result);
 }
