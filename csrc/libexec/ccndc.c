@@ -75,7 +75,7 @@
 }
 
 struct ccndc_data *
-ccndc_initialize(void) {
+ccndc_initialize_data(void) {
     struct ccndc_data *self;
     const char *msg = "Unable to initialize ccndc";
     int res;
@@ -102,11 +102,13 @@ ccndc_initialize(void) {
     self->no_name = ccn_charbuf_create();
     ON_ERROR_EXIT(ccn_name_init(self->no_name), msg);
     
+    self->lifetime = (~0U) >> 1;
+    
     return self;
 }
 
 void
-ccndc_destroy(struct ccndc_data **data) {
+ccndc_destroy_data(struct ccndc_data **data) {
     struct ccndc_data *self = *data;
     
     if (self != NULL) {
@@ -128,36 +130,43 @@ ccndc_dispatch_cmd(struct ccndc_data *ccndc,
                     int num_options)
 {
     if (strcasecmp(cmd, "add") == 0) {
-        if (num_options >= 0 && (num_options < 3 || num_options > 8))
-            return -99;
+        if (num_options >= 0 && (num_options < 3 || num_options > 7))
+            return INT_MIN;
         return ccndc_add(ccndc, check_only, options);
     }
     if (strcasecmp(cmd, "del") == 0) {
-        if (num_options >= 0 && (num_options < 3 || num_options > 9))
-            return -99;
-        return ccndc_del(ccndc, check_only, options, 0);
+        if (num_options >= 0 && (num_options < 3 || num_options > 7))
+            return INT_MIN;
+        return ccndc_del(ccndc, check_only, options);
+    }
+    if (strcasecmp(cmd, "create") == 0) {
+        if (num_options >= 0 && (num_options < 2 || num_options > 5))
+            return INT_MIN;
+        return ccndc_create(ccndc, check_only, options);
+    }
+    if (strcasecmp(cmd, "destroy") == 0) {
+        if (num_options >= 0 && (num_options < 2 || num_options > 5))
+            return INT_MIN;
+        return ccndc_destroy(ccndc, check_only, options);
+    }
+    if (strcasecmp(cmd, "destroyface") == 0) {
+        if (num_options >= 0 && num_options != 1)
+            return INT_MIN;
+        return ccndc_destroyface(ccndc, check_only, options);
     }
     if (strcasecmp(cmd, "srv") == 0) {
         // attempt to guess parameters using SRV record of a domain in search list
         if (num_options >= 0 && num_options != 0)
-            return -99;
+            return INT_MIN;
         if (check_only) return 0;
         return ccndc_srv(ccndc, NULL, 0);
     }
-    if (strcasecmp(cmd, "readd") == 0) {
-        if (num_options >= 0 && (num_options < 3 || num_options > 8))
-            return -99;
-        if (check_only)
-            return ccndc_add(ccndc, check_only, options);
-        ccndc_del(ccndc, check_only, options, 1);
-        return ccndc_add(ccndc, check_only, options);
+    if (strcasecmp(cmd, "renew") == 0) {
+        if (num_options >= 0 && (num_options < 3 || num_options > 7))
+            return INT_MIN;
+        return ccndc_renew(ccndc, check_only, options);
     }
-    if (strcasecmp(cmd, "destroyface") == 0) {
-        if (num_options >= 0 && num_options != 1)
-            return -99;
-        return ccndc_destroyface(ccndc, check_only, options);
-    }
-    return -99;
+    return INT_MIN;
 }
 
 
@@ -167,13 +176,14 @@ _token_var = strsep(&_cmd, " \t");             \
 
 /*
  *   uri (udp|tcp) host [port [flags [mcastttl [mcastif]]]])
+ *   uri face faceid
  */
 int
 ccndc_add(struct ccndc_data *self,
           int check_only,
           const char *cmd_orig)
 {
-    int ret_code = 0;
+    int ret_code = -1;
     char *cmd, *cmd_token;
     char *cmd_uri = NULL;
     char *cmd_proto = NULL;
@@ -206,46 +216,45 @@ ccndc_add(struct ccndc_data *self,
     GET_NEXT_TOKEN(cmd_token, cmd_mcastif);
     
     // perform sanity checking
-    
     face = parse_ccn_face_instance(self, cmd_proto, cmd_host, cmd_port,
                                    cmd_mcastttl, cmd_mcastif, (~0U) >> 1);
-    prefix = parse_ccn_forwarding_entry(self, cmd_uri, cmd_flags, (~0U) >> 1);
-    if (face == NULL || prefix == NULL) {
-        ret_code = -1;
+    prefix = parse_ccn_forwarding_entry(self, cmd_uri, cmd_flags, self->lifetime);
+    if (face == NULL || prefix == NULL)
         goto Cleanup;
-    }
     
     if (!check_only) {
-        newface = ccndc_do_face_action(self, "newface", face);
-        if (newface == NULL) {
-            ccndc_warn(__LINE__, "Cannot create/lookup face");
-            goto Cleanup;
+        if (0 != strcasecmp(cmd_proto, "face")) {
+            newface = ccndc_do_face_action(self, "newface", face);
+            if (newface == NULL) {
+                ccndc_warn(__LINE__, "Cannot create/lookup face");
+                goto Cleanup;
+            }
+            prefix->faceid = newface->faceid;
+            ccn_face_instance_destroy(&newface);
+        } else {
+            prefix->faceid = face->faceid;
         }
-        
-        prefix->faceid = newface->faceid;
-        ccn_face_instance_destroy(&newface);
-        
         ret_code = ccndc_do_prefix_action(self, "prefixreg", prefix);
         if (ret_code < 0) {
             ccndc_warn(__LINE__, "Cannot register prefix [%s]\n", cmd_uri);
+            goto Cleanup;
         }
     }  
-    
+    ret_code = 0;
 Cleanup:
     ccn_face_instance_destroy(&face);
     ccn_forwarding_entry_destroy(&prefix);
     free(cmd);
-    return ret_code;
+    return (ret_code);
 }
 
 
 int
 ccndc_del(struct ccndc_data *self,
           int check_only,
-          const char *cmd_orig,
-          int destroyface)
+          const char *cmd_orig)
 {
-    int ret_code = 0;
+    int ret_code = -1;
     char *cmd, *cmd_token;
     char *cmd_uri = NULL;
     char *cmd_proto = NULL;
@@ -254,10 +263,9 @@ ccndc_del(struct ccndc_data *self,
     char *cmd_flags = NULL;
     char *cmd_mcastttl = NULL;
     char *cmd_mcastif = NULL;
-    char *cmd_destroyface = NULL;
-    struct ccn_face_instance *face;
-    struct ccn_face_instance *newface;
-    struct ccn_forwarding_entry *prefix;
+    struct ccn_face_instance *face = NULL;
+    struct ccn_face_instance *newface = NULL;
+    struct ccn_forwarding_entry *prefix = NULL;
     
     if (cmd_orig == NULL) {
         ccndc_warn(__LINE__, "command error\n");
@@ -277,53 +285,249 @@ ccndc_del(struct ccndc_data *self,
     GET_NEXT_TOKEN(cmd_token, cmd_flags);
     GET_NEXT_TOKEN(cmd_token, cmd_mcastttl);
     GET_NEXT_TOKEN(cmd_token, cmd_mcastif);
-    GET_NEXT_TOKEN(cmd_token, cmd_destroyface);
     
     face = parse_ccn_face_instance(self, cmd_proto, cmd_host, cmd_port,
                                    cmd_mcastttl, cmd_mcastif, (~0U) >> 1);
     prefix = parse_ccn_forwarding_entry(self, cmd_uri, cmd_flags, (~0U) >> 1);
-    if (face == NULL || prefix == NULL) {
-        ret_code = -1;
-    }
+    if (face == NULL || prefix == NULL)
+        goto Cleanup;
     
-    if (ret_code == 0) { // do one more check
-        if (cmd_destroyface != NULL &&
-            strcasecmp(cmd_destroyface, "destroyface") != 0) {
-            ccndc_warn(__LINE__, "command format error\n");
-            ret_code = -1;
-        }
-    }
-    
-    if (ret_code == 0 && check_only == 0) {
-        newface = ccndc_do_face_action(self, "newface", face);
-        if (newface == NULL) {
-            ccndc_warn(__LINE__, "Cannot create/lookup face\n");
-            goto Cleanup;
-        }
-        
-        if (destroyface || cmd_destroyface != NULL) {
-            face->faceid = newface->faceid;
-            ccn_face_instance_destroy(&newface);
-            newface = ccndc_do_face_action(self, "destroyface", face);
+    if (!check_only) {
+        if (0 != strcasecmp(cmd_proto, "face")) {
+            newface = ccndc_do_face_action(self, "newface", face);
             if (newface == NULL) {
-                ccndc_warn(__LINE__, "Cannot destroy face\n");
+                ccndc_warn(__LINE__, "Cannot create/lookup face");
+                goto Cleanup;
             }
-            ccn_face_instance_destroy(&newface);
-        } else {
             prefix->faceid = newface->faceid;
             ccn_face_instance_destroy(&newface);
-            ret_code = ccndc_do_prefix_action(self, "unreg", prefix);
-            if (ret_code < 0) {
-                ccndc_warn(__LINE__, "Cannot unregister prefix [%s]\n", cmd_uri);
-            }
+        } else {
+            prefix->faceid = face->faceid;
+        }
+        ret_code = ccndc_do_prefix_action(self, "unreg", prefix);
+        if (ret_code < 0) {
+            ccndc_warn(__LINE__, "Cannot unregister prefix [%s]\n", cmd_uri);
+            goto Cleanup;
         }
     }
-    
+    ret_code = 0;
 Cleanup:
     ccn_face_instance_destroy(&face);
     ccn_forwarding_entry_destroy(&prefix);
     free(cmd);
+    return (ret_code);
+}
+
+/*
+ *   (udp|tcp) host [port [mcastttl [mcastif]]]
+ */
+int
+ccndc_create(struct ccndc_data *self,
+             int check_only,
+             const char *cmd_orig)
+{
+    int ret_code = -1;
+    char *cmd, *cmd_token;
+    char *cmd_proto = NULL;
+    char *cmd_host = NULL;
+    char *cmd_port = NULL;
+    char *cmd_mcastttl = NULL;
+    char *cmd_mcastif = NULL;
+    struct ccn_face_instance *face = NULL;
+    struct ccn_face_instance *newface = NULL;
+    
+    if (cmd_orig == NULL) {
+        ccndc_warn(__LINE__, "command error\n");
+        return -1;
+    }
+    
+    cmd = strdup(cmd_orig);
+    if (cmd == NULL) {
+        ccndc_warn(__LINE__, "Cannot allocate memory for copy of the command\n");
+        return -1;
+    }            
+    cmd_token = cmd;
+    GET_NEXT_TOKEN(cmd_token, cmd_proto);
+    GET_NEXT_TOKEN(cmd_token, cmd_host);
+    GET_NEXT_TOKEN(cmd_token, cmd_port);
+    GET_NEXT_TOKEN(cmd_token, cmd_mcastttl);
+    GET_NEXT_TOKEN(cmd_token, cmd_mcastif);
+    
+    // perform sanity checking
+    face = parse_ccn_face_instance(self, cmd_proto, cmd_host, cmd_port,
+                                   cmd_mcastttl, cmd_mcastif, self->lifetime);
+    if (face == NULL)
+        goto Cleanup;
+    
+    if (!check_only) {
+            newface = ccndc_do_face_action(self, "newface", face);
+            if (newface == NULL) {
+                ccndc_warn(__LINE__, "Cannot create/lookup face");
+                goto Cleanup;
+            }
+            ccn_face_instance_destroy(&newface);
+    }
+    ret_code = 0;
+Cleanup:
+    ccn_face_instance_destroy(&face);
+    free(cmd);
+    return (ret_code);
+}    
+
+/*
+ *   (udp|tcp) host [port [mcastttl [mcastif]]]
+ */
+int
+ccndc_destroy(struct ccndc_data *self,
+             int check_only,
+             const char *cmd_orig)
+{
+    int ret_code = -1;
+    char *cmd, *cmd_token;
+    char *cmd_proto = NULL;
+    char *cmd_host = NULL;
+    char *cmd_port = NULL;
+    char *cmd_mcastttl = NULL;
+    char *cmd_mcastif = NULL;
+    struct ccn_face_instance *face = NULL;
+    struct ccn_face_instance *newface = NULL;
+    
+    if (cmd_orig == NULL) {
+        ccndc_warn(__LINE__, "command error\n");
+        return -1;
+    }
+    
+    cmd = strdup(cmd_orig);
+    if (cmd == NULL) {
+        ccndc_warn(__LINE__, "Cannot allocate memory for copy of the command\n");
+        return -1;
+    }            
+    cmd_token = cmd;
+    GET_NEXT_TOKEN(cmd_token, cmd_proto);
+    GET_NEXT_TOKEN(cmd_token, cmd_host);
+    GET_NEXT_TOKEN(cmd_token, cmd_port);
+    GET_NEXT_TOKEN(cmd_token, cmd_mcastttl);
+    GET_NEXT_TOKEN(cmd_token, cmd_mcastif);
+    
+    // perform sanity checking
+    face = parse_ccn_face_instance(self, cmd_proto, cmd_host, cmd_port,
+                                   cmd_mcastttl, cmd_mcastif, (~0U) >> 1);
+    if (face == NULL)
+        goto Cleanup;
+    
+    if (!check_only) {
+        // TODO: should use queryface when implemented
+        if (0 != strcasecmp(cmd_proto, "face")) {
+            newface = ccndc_do_face_action(self, "newface", face);
+            if (newface == NULL) {
+                ccndc_warn(__LINE__, "Cannot create/lookup face");
+                goto Cleanup;
+            }
+            face->faceid = newface->faceid;
+            ccn_face_instance_destroy(&newface);
+        }
+        newface = ccndc_do_face_action(self, "destroyface", face);
+        if (newface == NULL) {
+            ccndc_warn(__LINE__, "Cannot destroy face %d or the face does not exist\n", face->faceid);
+            goto Cleanup;
+        }
+        ccn_face_instance_destroy(&newface);
+    }  
+    ret_code = 0;
+Cleanup:
+    ccn_face_instance_destroy(&face);
+    free(cmd);
     return ret_code;
+}    
+
+/*
+ *   (udp|tcp) host [port [mcastttl [mcastif]]]
+ */
+/*
+ *   uri (udp|tcp) host [port [flags [mcastttl [mcastif]]]])
+ *   uri face faceid
+ */
+int
+ccndc_renew(struct ccndc_data *self,
+          int check_only,
+          const char *cmd_orig)
+{
+    int ret_code = -1;
+    char *cmd, *cmd_token;
+    char *cmd_uri = NULL;
+    char *cmd_proto = NULL;
+    char *cmd_host = NULL;
+    char *cmd_port = NULL;
+    char *cmd_flags = NULL;
+    char *cmd_mcastttl = NULL;
+    char *cmd_mcastif = NULL;
+    struct ccn_face_instance *face = NULL;
+    struct ccn_face_instance *newface = NULL;
+    struct ccn_forwarding_entry *prefix = NULL;
+    
+    if (cmd_orig == NULL) {
+        ccndc_warn(__LINE__, "command error\n");
+        return -1;
+    }
+    
+    cmd = strdup(cmd_orig);
+    if (cmd == NULL) {
+        ccndc_warn(__LINE__, "Cannot allocate memory for copy of the command\n");
+        return -1;
+    }            
+    cmd_token = cmd;
+    GET_NEXT_TOKEN(cmd_token, cmd_uri);
+    GET_NEXT_TOKEN(cmd_token, cmd_proto);
+    GET_NEXT_TOKEN(cmd_token, cmd_host);
+    GET_NEXT_TOKEN(cmd_token, cmd_port);
+    GET_NEXT_TOKEN(cmd_token, cmd_flags);
+    GET_NEXT_TOKEN(cmd_token, cmd_mcastttl);
+    GET_NEXT_TOKEN(cmd_token, cmd_mcastif);
+    
+    // perform sanity checking
+    face = parse_ccn_face_instance(self, cmd_proto, cmd_host, cmd_port,
+                                   cmd_mcastttl, cmd_mcastif, (~0U) >> 1);
+    prefix = parse_ccn_forwarding_entry(self, cmd_uri, cmd_flags, self->lifetime);
+    if (face == NULL || prefix == NULL)
+        goto Cleanup;
+    
+    if (!check_only) {
+        // look up the old face ("queryface" would be useful)
+        newface = ccndc_do_face_action(self, "newface", face);
+        if (newface == NULL) {
+            ccndc_warn(__LINE__, "Cannot create/lookup face");
+            goto Cleanup;
+        }
+        face->faceid = newface->faceid;
+        ccn_face_instance_destroy(&newface);
+        // destroy the old face
+        newface = ccndc_do_face_action(self, "destroyface", face);
+        if (newface == NULL) {
+            ccndc_warn(__LINE__, "Cannot destroy face %d or the face does not exist\n", face->faceid);
+            goto Cleanup;
+        }
+        ccn_face_instance_destroy(&newface);
+        // recreate the face
+        newface = ccndc_do_face_action(self, "newface", face);
+        if (newface == NULL) {
+            ccndc_warn(__LINE__, "Cannot create/lookup face");
+            goto Cleanup;
+        }
+        prefix->faceid = newface->faceid;
+        ccn_face_instance_destroy(&newface);
+        // and add the prefix to it
+        ret_code = ccndc_do_prefix_action(self, "prefixreg", prefix);
+        if (ret_code < 0) {
+            ccndc_warn(__LINE__, "Cannot register prefix [%s]\n", cmd_uri);
+            goto Cleanup;
+        }
+    }  
+    ret_code = 0;
+Cleanup:
+    ccn_face_instance_destroy(&face);
+    ccn_forwarding_entry_destroy(&prefix);
+    free(cmd);
+    return (ret_code);
 }
 
 
@@ -408,7 +612,7 @@ ccndc_srv(struct ccndc_data *self,
                                    (~0U) >> 1);
     
     prefix = parse_ccn_forwarding_entry(self, ccn_charbuf_as_string(uri), NULL,
-                                        (~0U) >> 1);
+                                        self->lifetime);
     if (face == NULL || prefix == NULL) {
         res = -1;
         goto Cleanup;
@@ -517,7 +721,8 @@ ExitOnError:
 }
 
 
-// creates a full structure without action
+// creates a full structure without action, if proto == "face" only the
+// faceid (from cmd_host parameter) and lifetime will be filled in.
 struct ccn_face_instance *
 parse_ccn_face_instance(struct ccndc_data *self,
                          const char *cmd_proto,
@@ -561,6 +766,16 @@ parse_ccn_face_instance(struct ccndc_data *self,
     } else if (strcasecmp(cmd_proto, "tcp") == 0) {
         entry->descr.ipproto = IPPROTO_TCP;
         socktype = SOCK_STREAM;
+    } else if (strcasecmp(cmd_proto, "face") == 0) {
+        errno = 0;
+        unsigned long faceid = strtoul(cmd_host, (char **)NULL, 10);
+        if (errno == ERANGE || errno == EINVAL || faceid > UINT_MAX || faceid == 0) {
+            ccndc_warn(__LINE__, "command error, face number invalid or out of range '%s'\n", cmd_host);
+            goto ExitOnError;
+        }
+        entry->faceid = (unsigned) faceid;
+        entry->lifetime = freshness;
+        return (entry);
     } else {
         ccndc_warn(__LINE__, "command error, unrecognized address type '%s'\n", cmd_proto);
         goto ExitOnError;

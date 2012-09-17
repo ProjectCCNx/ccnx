@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <limits.h>
 #include <string.h>
 #include <strings.h>
 #include <errno.h>
@@ -36,26 +37,28 @@ static void
 usage(const char *progname)
 {
     fprintf(stderr,
-             "Usage:\n"
-             "   %s [-h] [-d] [-v] (-f <configfile> | COMMAND)\n"
-             "      -h print usage and exit\n"
-             "      -d enter dynamic mode and create FIB entries based on DNS SRV records\n"
-             "      -f <configfile> add or delete FIB entries based on the content of <configfile>\n"
-             "      -v increase logging level\n"
-             "\n"
-             "   COMMAND can be one of following:\n"
-             "      add <uri> (udp|tcp) <host> [<port> [<flags> [<mcastttl> [<mcastif>]]]])\n"
-             "         to add FIB entry\n"
-             "      readd <uri> (udp|tcp) <host> [<port> [<flags> [<mcastttl> [<mcastif>]]]])\n"
-             "         to delete and then re-add FIB entry\n"
-             "      del <uri> (udp|tcp) <host> [<port> [<flags> [<mcastttl> [<mcastif> [destroyface]]]]])\n"
-             "         to remove FIB entry and optionally an associated face\n"
-             "      destroyface <faceid>\n"
-             "         destroy face based on face number\n"
-             "      srv\n"
-             "         add FIB entry based on SRV record of a domain in search list\n"
-             ,
-             progname);
+            "Usage:\n"
+            "   %s [-h] [-d] [-v] [-t <lifetime>] (-f <configfile> | COMMAND)\n"
+            "       -h print usage and exit\n"
+            "       -d enter dynamic mode and create FIB entries based on DNS SRV records\n"
+            "       -f <configfile> add or delete FIB entries based on the content of <configfile>\n"
+            "       -t use value in seconds for lifetime of prefix registration\n"
+            "       -v increase logging level\n"
+            "\n"
+            "   COMMAND can be one of following:\n"
+            "       (add|del) <uri> (udp|tcp) <host> [<port> [<flags> [<mcastttl> [<mcastif>]]]])\n"
+            "           to add prefix to or delete prefix from face identified by parameters\n"
+            "       (add|del) <uri> face <faceid>\n"
+            "           to add prefix to or delete prefix from face identified by number\n"
+            "       (create|destroy) (udp|tcp) <host> [<port> [<mcastttl> [<mcastif>]]])\n"
+            "           create or destroy a face identified by parameters\n"
+            "       destroy face <faceid>\n"
+            "           destroy face identified by number\n"
+            "       srv\n"
+            "           add ccnx:/ prefix to face created from parameters in SRV\n"
+            "           record of a domain in DNS search list\n"
+            ,
+            progname);
 }
 
 char *
@@ -64,7 +67,7 @@ create_command_from_command_line(int argc, char **argv)
     int len = 0;
     char *out = NULL;
     int i;
-
+    
     if (argc == 0)
         return NULL;
     
@@ -76,7 +79,7 @@ create_command_from_command_line(int argc, char **argv)
     if (out == 0) {
         ccndc_fatal(__LINE__, "Cannot allocate memory\n");
     }
-
+    
     len = 0;
     for (i = 0; i < argc; i++) {
         memcpy(out+len, argv[i], strlen(argv[i]));
@@ -96,74 +99,70 @@ main(int argc, char **argv)
     struct ccndc_data *ccndc;
     const char *progname = NULL;
     const char *configfile = NULL;
-    int res = 0;
-    int opt;
+    int res = 1;
+    int opt, disp_res;
     char *cmd = NULL;
     int dynamic = 0;
-
-    progname = argv[0];
     
-    while ((opt = getopt(argc, argv, "hdvf:")) != -1) {
+    progname = argv[0];
+    ccndc = ccndc_initialize_data();
+    
+    while ((opt = getopt(argc, argv, "hdvt:f:")) != -1) {
         switch (opt) {
-        case 'f':
-            configfile = optarg;
-            break;
-        case 'v':
-            verbose++;
-            break;
-        case 'd':
-            dynamic++;
-            break;
-        case 'h':
-        default:
-            usage(progname);
-            return 1;
+            case 'f':
+                configfile = optarg;
+                break;
+            case 't':
+                ccndc->lifetime = atoi(optarg);
+                break;
+            case 'v':
+                verbose = 1;
+                break;
+            case 'd':
+                dynamic = 1;
+                break;
+            case 'h':
+            default:
+                usage(progname);
+		goto Cleanup;
         }
     }
-
+    
     if (configfile == NULL && !dynamic && optind == argc) {
         usage(progname);
-        return 1;
+	goto Cleanup;
     }
-    
-    ccndc = ccndc_initialize();
     
     if (optind < argc) {
         /* config file cannot be combined with command line */
         if (configfile != NULL) {
             ccndc_warn(__LINE__, "Config file cannot be combined with command line\n");
             usage(progname);
-            res = 1;
             goto Cleanup;
         }
         
         if (argc - optind < 0) {
             usage(progname);
-            res = 1;
             goto Cleanup;
         }
         
         cmd = create_command_from_command_line(argc-optind-1, &argv[optind+1]);
-        res = ccndc_dispatch_cmd(ccndc, 0, argv[optind], cmd, argc - optind - 1);
+        disp_res = ccndc_dispatch_cmd(ccndc, 0, argv[optind], cmd, argc - optind - 1);
         free(cmd);
-        
-        if (res == -99) {
+        if (disp_res == INT_MIN) {
             usage(progname);
-            res = 1;
             goto Cleanup;
         }
     }
-    
     if (configfile) {
         read_configfile(ccndc, configfile);
     }
-
     if (dynamic) {
         ccndc_daemonize(ccndc);
     }
-
- Cleanup:
-    ccndc_destroy(&ccndc);
+    res = 0;
+Cleanup:
+    ccndc_destroy_data(&ccndc);
     return res;
 }
 
@@ -177,81 +176,54 @@ main(int argc, char **argv)
 static int
 read_configfile(struct ccndc_data *ccndc, const char *filename)
 {
-    int configerrors = 0;
-    int lineno = 0;
-
+    int configerrors;
+    int lineno;
+    
     FILE *cfg;
     char buf[1024];
     char *cp = NULL;
-    int res = 0;
+    char *cmd, *rest_of_the_command;
+    int res;
+    int phase;
+    int retcode;
+    int len;
     
-    cfg = fopen(filename, "r");
-    if (cfg == NULL)
-        ccndc_fatal(__LINE__, "%s (%s)\n", strerror(errno), filename);
-    
-    while (fgets((char *)buf, sizeof(buf), cfg)) {
-        int len;
-        lineno++;
-        len = strlen(buf);
-        if (buf[0] == '#' || len == 0)
-            continue;
-        if (buf[len - 1] == '\n')
-            buf[len - 1] = '\0';
-        cp = index(buf, '#');
-        if (cp != NULL)
-            *cp = '\0';
-
-        char *cmd;
-        char *rest_of_the_command = buf;
-        do {
-            cmd = strsep(&rest_of_the_command, " \t");
-        } while (cmd != NULL && cmd[0] == 0);
-
-        if (cmd == NULL) /* blank line */
-            continue;
-        res = ccndc_dispatch_cmd(ccndc, 1, cmd, rest_of_the_command, -1);
-        if (res < 0) {
-            ccndc_warn(__LINE__, "Error: near line %d\n", lineno);
-            configerrors++;
+    for (phase = 1; phase >= 0; --phase) {
+        configerrors = 0;
+        retcode = 0;
+        lineno = 0;
+        cfg = fopen(filename, "r");
+        if (cfg == NULL)
+            ccndc_fatal(__LINE__, "%s (%s)\n", strerror(errno), filename);
+        
+        while (fgets((char *)buf, sizeof(buf), cfg)) {
+            lineno++;
+            len = strlen(buf);
+            if (buf[0] == '#' || len == 0)
+                continue;
+            if (buf[len - 1] == '\n')
+                buf[len - 1] = '\0';
+            cp = index(buf, '#');
+            if (cp != NULL)
+                *cp = '\0';
+            
+            rest_of_the_command = buf;
+            do {
+                cmd = strsep(&rest_of_the_command, " \t");
+            } while (cmd != NULL && cmd[0] == 0);
+            
+            if (cmd == NULL) /* blank line */
+                continue;
+            res = ccndc_dispatch_cmd(ccndc, phase, cmd, rest_of_the_command, -1);
+            retcode += res;
+            if (phase == 1 && res < 0) {
+                ccndc_warn(__LINE__, "Error: near line %d\n", lineno);
+                configerrors++;
+            }
         }
-    }
-    fclose(cfg);
-
-    if (configerrors != 0)
-        return (-configerrors);
-
-    //////////////////////////////////////////////////////////////////
-    // Same thing, but actually applying commands
-    //////////////////////////////////////////////////////////////////
-    
-    cfg = fopen(filename, "r");
-    if (cfg == NULL)
-        ccndc_fatal(__LINE__, "%s (%s)\n", strerror(errno), filename);
-
-    while (fgets((char *)buf, sizeof(buf), cfg)) {
-        int len;
-        lineno++;
-        len = strlen(buf);
-        if (buf[0] == '#' || len == 0)
-            continue;
-        if (buf[len - 1] == '\n')
-            buf[len - 1] = '\0';
-        cp = index(buf, '#');
-        if (cp != NULL)
-            *cp = '\0';
-
-        char *cmd;
-        char *rest_of_the_command = buf;
-        do {
-            cmd = strsep(&rest_of_the_command, " \t");
-        } while (cmd != NULL && cmd[0] == 0);
-
-        if (cmd == NULL) /* blank line */
-            continue;
-
-        res += ccndc_dispatch_cmd(ccndc, 0, cmd, rest_of_the_command, -1);
-    }
-    fclose(cfg);
-
-    return res;
+        fclose(cfg);
+        if (configerrors != 0)
+            return (-configerrors);
+    } 
+    return (retcode);
 }

@@ -33,9 +33,10 @@ struct ccn_face_instance;
  */
 struct ccndc_data
 {
-    struct ccn  *ccn_handle;
-    char    ccnd_id [32];       //id of local ccnd
-    size_t  ccnd_id_size;
+    struct ccn          *ccn_handle;
+    char                ccnd_id[32];       //id of local ccnd
+    size_t              ccnd_id_size;
+    int                 lifetime;
     struct ccn_charbuf  *local_scope_template; // scope 1 template
     struct ccn_charbuf  *no_name;   // an empty name
 };
@@ -45,14 +46,14 @@ struct ccndc_data
  * @returns "this" pointer
  */
 struct ccndc_data *
-ccndc_initialize(void);
+ccndc_initialize_data(void);
 
 /**
  * @brief Destroy internal data structures
  * @brief data pointer to "this"
  */
 void
-ccndc_destroy(struct ccndc_data **data);
+ccndc_destroy_data(struct ccndc_data **data);
 
 /**
  * @brief Select a correct command based on the supplied argument
@@ -93,24 +94,67 @@ ccndc_add(struct ccndc_data *self,
 /**
  * @brief Delete a FIB entry if it exists
  *
- * By default del command doesn't remove associated face. If it is indended, "destroyface" modifier
- * should be specified at the end of the command
- *
  * cmd format:
- *   uri (udp|tcp) host [port [flags [mcastttl [mcastif [destroyface]]]]])
+ *   uri (udp|tcp) host [port [flags [mcastttl [mcastif]]]])
  *
  * @param self          data pointer to "this"
  * @param check_only    flag indicating that only command checking is requested (nothing will be removed)
  * @param cmd           del command without leading 'del' component
- * @param destroyface   flag requesting destruction of an associate face (either command
- *                      line or this flag will activate face destruction)
  * @returns 0 on success
  */
 int
 ccndc_del(struct ccndc_data *self,
           int check_only,
-          const char *cmd,
-          int destroyface);
+          const char *cmd);
+
+/**
+ * @brief Delete a face and recreate it with the specified parameters and prefix
+ *
+ * cmd format:
+ *   uri (udp|tcp) host [port [flags [mcastttl [mcastif]]]])
+ *
+ * @param self          data pointer to "this"
+ * @param check_only    flag indicating that only command checking is requested (nothing will be created)
+ * @param cmd           add command without leading 'renew' component
+ * @returns 0 on success
+ */
+int
+ccndc_renew(struct ccndc_data *self,
+          int check_only,
+          const char *cmd);
+
+/**
+ * @brief Create a new face without adding any prefix to it
+ *
+ * cmd format:
+ *   (udp|tcp) host [port [flags [mcastttl [mcastif]]]])
+ *
+ * @param self          data pointer to "this"
+ * @param check_only    flag indicating that only command checking is requested (nothing will be created)
+ * @param cmd           create command without leading 'create' component
+ * @returns 0 on success
+ */
+int
+ccndc_create(struct ccndc_data *self,
+          int check_only,
+          const char *cmd);
+
+
+/**
+ * @brief Destroy a face
+ *
+ * cmd format:
+ *   (udp|tcp) host [port [flags [mcastttl [mcastif [destroyface]]]]])
+ *
+ * @param self          data pointer to "this"
+ * @param check_only    flag indicating that only command checking is requested (nothing will be removed)
+ * @param cmd           destroy command without leading 'destroy' component
+ * @returns 0 on success
+ */
+int
+ccndc_destroy(struct ccndc_data *self,
+          int check_only,
+          const char *cmd);
 
 /**
  * brief Add (and if exists recreated) FIB entry based on guess from SRV records for a specified domain
