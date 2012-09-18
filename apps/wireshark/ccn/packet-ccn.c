@@ -582,14 +582,16 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
                                   pco->offset[CCN_PCO_B_Name], l,
                                   ccn_charbuf_as_string(c));
     name_tree = proto_item_add_subtree(titem, ett_name);
-    ccn_charbuf_destroy(&c);
     
     /* Name Components */
     for (i = 0; i < comps->n - 1; i++) {
+        ccn_charbuf_reset(c);
         res = ccn_name_comp_get(ccnb, comps, i, &comp, &comp_size);
-        titem = proto_tree_add_item(name_tree, hf_ccn_name_components, tvb, comp - ccnb, comp_size, FALSE);
+        ccn_uri_append_percentescaped(c, comp, comp_size);
+        titem = proto_tree_add_string(name_tree, hf_ccn_name_components, tvb, comp - ccnb, comp_size, ccn_charbuf_as_string(c));
     }
-    
+    ccn_charbuf_destroy(&c);
+
     /* /Name */
     
     /* SignedInfo */
