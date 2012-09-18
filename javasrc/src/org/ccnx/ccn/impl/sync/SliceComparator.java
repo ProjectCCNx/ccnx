@@ -734,6 +734,9 @@ public class SliceComparator implements Runnable {
 					// single node was covered but we have more to add afterwards. We need to
 					// Add all the original names into ones to put into the new node. Those will
 					// be in origSte
+					if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
+						Log.finest(Log.FAC_SYNC, "Update: starting redo because of extra names at end starting with {0}", name);
+					}
 					SyncNodeComposite tsnc = origSte.getNode(_decoder);
 					if (null != tsnc) {
 						for (SyncNodeElement tsne: tsnc.getRefs()) {
@@ -757,10 +760,18 @@ public class SliceComparator implements Runnable {
 				nodeElements.add(new SyncNodeElement(newHead.getHash()));
 		}
 		if (redo && newHasNodes) {
-			SyncNodeComposite snc = new SyncNodeComposite(nodeElements, firstElement, newHead.getNode(_decoder).getMaxName());
-			newHead = _pbsm.addHash(snc.getHash());
-			newHead.setNode(snc);
-			newHead.setCovered(true);
+			SyncNodeElement lastNodeElement = nodeElements.get(nodeElements.size() - 1);
+			
+			// OK its a little bogus to use newHead for what really should be a temp variable here,
+			// but if we can't find the hash (which we actually always should) it works out right
+			// with the rest of the code and if we find it, we reset newHead to the proper value.
+			newHead = _pbsm.getHash(lastNodeElement.getData());
+			if (null != newHead) {
+				SyncNodeComposite snc = new SyncNodeComposite(nodeElements, firstElement, newHead.getNode(_decoder).getMaxName());
+				newHead = _pbsm.addHash(snc.getHash());
+				newHead.setNode(snc);
+				newHead.setCovered(true);
+			}
 		}
 		_current.clear();
 		if (null != newHead) {
