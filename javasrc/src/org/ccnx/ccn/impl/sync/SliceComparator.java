@@ -31,13 +31,11 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.CCNSync;
 import org.ccnx.ccn.CCNSyncHandler;
 import org.ccnx.ccn.impl.encoding.BinaryXMLDecoder;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ConfigSlice;
-import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.io.content.SyncNodeComposite;
 import org.ccnx.ccn.io.content.SyncNodeComposite.SyncNodeElement;
 import org.ccnx.ccn.io.content.SyncNodeComposite.SyncNodeType;
@@ -285,30 +283,8 @@ public class SliceComparator implements Runnable {
 		synchronized (this) {
 			if (tsrt.getNode(_decoder) == null && !tsrt.getPending()) {
 				tsrt.setPending(true);
-				ret = getHash(hash);
+				ret = ProtocolBasedSyncMonitor.requestNode(_slice, hash, _handle, _nfh);
 			}
-		}
-		return ret;
-	}
-	
-	/**
-	 * Output interest to request a node
-	 * @param hash
-	 * @return
-	 * @throws IOException 
-	 */
-	private boolean getHash(byte[] hash) throws SyncException {
-		boolean ret = false;
-		Interest interest = new Interest(new ContentName(_slice.topo, Sync.SYNC_NODE_FETCH_MARKER, _slice.getHash(), hash));
-		interest.scope(1);	
-		if (Log.isLoggable(Log.FAC_SYNC, Level.FINE))
-			Log.fine(Log.FAC_TEST, "Requesting node for hash: {0}", interest.name());
-		try {
-			_handle.expressInterest(interest, _nfh);
-			ret = true;
-		} catch (IOException e) {
-			Log.warning(Log.FAC_SYNC, "Node request failed: {0}", e.getMessage());
-			throw new SyncException(e.getMessage());
 		}
 		return ret;
 	}
@@ -750,7 +726,8 @@ public class SliceComparator implements Runnable {
 		}
 		
 		while (neededNames.size() > 0) {
-			newHead = newLeafNode(neededNames);
+			newHead = SyncTreeEntry.newLeafNode(neededNames);
+			_pbsm.addHash(newHead.getHash());
 			if (null == firstElement)
 				firstElement = newHead.getCurrentElement();
 			if (neededNames.size() > 0) {	// Need to split
@@ -783,41 +760,6 @@ public class SliceComparator implements Runnable {
 			origSte.setPos(0);
 			push(origSte, _current);  // Should already be _currentRoot
 		}
-	}
-	
-	/**
-	 * Create a new leaf node from the names entered. We create just one node here, using as
-	 * many names as will fit in one node.
-	 * 
-	 * @param names
-	 * @return
-	 */
-	private SyncTreeEntry newLeafNode(TreeSet<ContentName> names) {
-		ArrayList<SyncNodeComposite.SyncNodeElement> refs = new ArrayList<SyncNodeComposite.SyncNodeElement>();
-		ArrayList<ContentName> removes = new ArrayList<ContentName>();
-		int total = 0;
-		boolean atLeastOneAdded = false;
-		for (ContentName tname : names) {
-			SyncNodeElement sne = new SyncNodeComposite.SyncNodeElement(tname);
-			byte[] lengthTest;
-			try {
-				lengthTest = sne.encode();
-				total += lengthTest.length;
-			} catch (ContentEncodingException e) {} // Shouldn't happen because we built the data
-			if (atLeastOneAdded && total > CCNSync.NODE_SPLIT_TRIGGER)
-				break;
-			atLeastOneAdded = true;
-			refs.add(sne);
-			removes.add(tname);
-		}
-		for (ContentName tname : removes) {
-			names.remove(tname);
-		}
-		SyncNodeComposite snc = new SyncNodeComposite(refs, refs.get(0), refs.get(refs.size() - 1));
-		SyncTreeEntry ste = _pbsm.addHash(snc.getHash());
-		ste.setNode(snc);
-		ste.setCovered(true);
-		return ste;
 	}
 	
 	/**

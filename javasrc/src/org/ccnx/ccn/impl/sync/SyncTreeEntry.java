@@ -17,14 +17,20 @@
 
 package org.ccnx.ccn.impl.sync;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.TreeSet;
 import java.util.logging.Level;
 
+import org.ccnx.ccn.CCNSync;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.io.content.SyncNodeComposite;
+import org.ccnx.ccn.io.content.SyncNodeComposite.SyncNodeElement;
 import org.ccnx.ccn.protocol.Component;
+import org.ccnx.ccn.protocol.ContentName;
 
 /**
  * Entry used for navigating trees of hashes
@@ -79,6 +85,8 @@ public class SyncTreeEntry {
 	 */
 	public SyncNodeComposite getNode(XMLDecoder decoder) {
 		if (null == _node && null != _rawContent) {
+			if (null == decoder)
+				return null;
 			_node = new SyncNodeComposite();
 			try {
 				_node.decode(_rawContent, decoder);
@@ -95,6 +103,76 @@ public class SyncTreeEntry {
 			}
 		}
 		return _node;
+	}
+	
+	public SyncNodeComposite getNode() {
+		return getNode(null);
+	}
+	
+	/**
+	 * Create a new composite node based on the input set of content names in
+	 * canonical order.
+	 * 
+	 * @param names
+	 * @return entry for the new node or null if none
+	 */
+	public static SyncTreeEntry newNode(TreeSet<ContentName> names) {
+		ArrayList<SyncNodeElement> snes = new ArrayList<SyncNodeElement>();
+		SyncTreeEntry ourEntry = null;
+		SyncNodeElement firstElement = null;
+		SyncNodeElement lastElement = null; 
+		while (names.size() > 0) {
+			ourEntry = newLeafNode(names);
+			if (names.size() > 0) {
+				if (null == firstElement)
+					firstElement = ourEntry.getNode().getRefs().get(0);
+				int nRefs = ourEntry.getNode().getRefs().size();
+				lastElement = ourEntry.getNode().getRefs().get(nRefs - 1);
+				snes.add(new SyncNodeElement(ourEntry.getHash()));
+			} else if (snes.size() > 0) {
+				snes.add(new SyncNodeElement(ourEntry.getHash()));
+			}
+		}
+		if (snes.size() > 0) {
+			SyncNodeComposite snc = new SyncNodeComposite(snes, firstElement, lastElement);
+			ourEntry.setNode(snc);
+		}
+		return ourEntry;
+	}
+	
+	/**
+	 * Create a new leaf node from the names entered. We use only as many names as will fit into
+	 * the node, and remove those names from the input list so that after this has completed, the
+	 * list contains the remaining names which are not yet in a node.
+	 * 
+	 * @param names - the set of names in canonical order
+	 * @return
+	 */
+	public static SyncTreeEntry newLeafNode(TreeSet<ContentName> names) {
+		ArrayList<SyncNodeComposite.SyncNodeElement> refs = new ArrayList<SyncNodeComposite.SyncNodeElement>();
+		ArrayList<ContentName> removes = new ArrayList<ContentName>();
+		int total = 0;
+		boolean atLeastOneAdded = false;
+		for (ContentName tname : names) {
+			SyncNodeElement sne = new SyncNodeComposite.SyncNodeElement(tname);
+			byte[] lengthTest;
+			try {
+				lengthTest = sne.encode();
+				total += lengthTest.length;
+			} catch (ContentEncodingException e) {} // Shouldn't happen because we built the data
+			if (atLeastOneAdded && total > CCNSync.NODE_SPLIT_TRIGGER)
+				break;
+			atLeastOneAdded = true;
+			refs.add(sne);
+			removes.add(tname);
+		}
+		for (ContentName tname : removes) {
+			names.remove(tname);
+		}
+		SyncNodeComposite snc = new SyncNodeComposite(refs, refs.get(0), refs.get(refs.size() - 1));
+		SyncTreeEntry ste = new SyncTreeEntry(snc.getHash());
+		ste.setNode(snc);
+		return ste;
 	}
 	
 	/**

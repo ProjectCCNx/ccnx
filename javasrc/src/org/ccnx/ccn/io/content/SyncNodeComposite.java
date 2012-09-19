@@ -119,6 +119,26 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 		public boolean validate() {
 			return true;
 		}
+		
+		@Override
+		public boolean equals(Object obj) {
+			if (obj == null)
+				return false;
+			if (! (obj instanceof SyncNodeElement)) {
+					return false;
+			}
+			SyncNodeElement other = (SyncNodeElement) obj;
+			if (_type != other._type)
+				return false;
+			if (_type == SyncNodeType.LEAF) {
+				if (!_name.equals(other._name))
+					return false;
+			} else {
+				if (!Arrays.equals(_data, other._data))
+					return false;
+			}
+			return true;
+		}
 	}
 	
 	public int _version;
@@ -138,6 +158,8 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 		_minName = minName;
 		_maxName = maxName;
 		computeHash();
+		
+		_version = Sync.SYNC_VERSION;
 		
 		// TODO: For now we just support trees here that are 1 or 2 nodes deep
 		_treeDepth = 1;
@@ -195,6 +217,39 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 
 	public void encode(XMLEncoder encoder) throws ContentEncodingException {
 		// No current need to encode this - will add if needed
+	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (obj == null)
+			return false;
+		if (! (obj instanceof SyncNodeComposite)) {
+				return false;
+		}
+		SyncNodeComposite other = (SyncNodeComposite) obj;
+		if (_version != other._version)
+			return false;
+		if (_refs.size() != other._refs.size())
+			return false;
+		for (int i = 0; i < _refs.size(); i++) {
+			if (! _refs.get(i).equals(other._refs.get(i)))
+				return false;
+		}
+		if (_minName.equals(other._minName))
+			return false;
+		if (_maxName.equals(other._maxName))
+			return false;
+		if (!Arrays.equals(_longhash, other._longhash))
+			return false;
+		if (_kind == other._kind)
+			return false;
+		if (_leafCount == other._leafCount)
+			return false;
+		if (_treeDepth == other._treeDepth)
+			return false;
+		if (_byteCount == other._byteCount)
+			return false;
+		return true;
 	}
 
 	public long getElementLabel() {

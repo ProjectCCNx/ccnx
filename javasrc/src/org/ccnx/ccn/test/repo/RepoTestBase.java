@@ -30,8 +30,6 @@ import org.ccnx.ccn.test.LibraryTestBase;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 
-
-
 /**
  * 
  * A base class for repository-specific tests. 

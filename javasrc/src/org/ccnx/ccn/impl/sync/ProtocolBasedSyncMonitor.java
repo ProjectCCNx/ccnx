@@ -128,6 +128,29 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 			return _hashes.get(new SyncHashEntry(hash));
 		}
 	}
+	
+	/**
+	 * Output interest to request a node
+	 * @param hash
+	 * @return
+	 * @throws IOException 
+	 */
+	public static boolean requestNode(ConfigSlice slice, byte[] hash, CCNHandle handle, CCNContentHandler handler) throws SyncException {
+		boolean ret = false;
+		Interest interest = new Interest(new ContentName(slice.topo, Sync.SYNC_NODE_FETCH_MARKER, slice.getHash(), hash));
+		interest.scope(1);	
+		if (Log.isLoggable(Log.FAC_SYNC, Level.FINE))
+			Log.fine(Log.FAC_TEST, "Requesting node for hash: {0}", interest.name());
+		try {
+			handle.expressInterest(interest, handler);
+			ret = true;
+		} catch (IOException e) {
+			Log.warning(Log.FAC_SYNC, "Node request failed: {0}", e.getMessage());
+			throw new SyncException(e.getMessage());
+		}
+		return ret;
+	}
+	
 
 	/**
 	 * Start sync hash compare process after receiving content back from the
