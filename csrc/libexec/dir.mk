@@ -18,14 +18,14 @@ CCNLIBDIR = ../lib
 INSTALLED_PROGRAMS = ccndc
 DEBRIS = ccndc-inject
 PROGRAMS = $(INSTALLED_PROGRAMS) udplink
-CSRC = ccndc.c udplink.c
+CSRC = ccndc-log.c ccndc-main.c ccndc-srv.c ccndc.c udplink.c
 
 default all: $(PROGRAMS)
 
 $(PROGRAMS): $(CCNLIBDIR)/libccn.a
 
-ccndc: ccndc.o
-	$(CC) $(CFLAGS) -o $@ ccndc.o $(LDLIBS) $(OPENSSL_LIBS) $(RESOLV_LIBS) -lcrypto
+ccndc: ccndc-log.o ccndc-srv.o ccndc.o ccndc-main.o
+	$(CC) $(CFLAGS) -o $@ ccndc-log.o ccndc-srv.o ccndc.o ccndc-main.o $(LDLIBS) $(OPENSSL_LIBS) $(RESOLV_LIBS) -lcrypto
 
 udplink: udplink.o
 	$(CC) $(CFLAGS) -o $@ udplink.o $(LDLIBS)  $(OPENSSL_LIBS) -lcrypto
@@ -41,11 +41,18 @@ test:
 # Dependencies below here are checked by depend target
 # but must be updated manually.
 ###############################
-ccndc.o: ccndc.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/ccnd.h ../include/ccn/uri.h \
+ccndc-log.o: ccndc-log.c
+ccndc-main.o: ccndc-main.c ccndc.h ../include/ccn/charbuf.h ccndc-log.h \
+  ccndc-srv.h
+ccndc-srv.o: ccndc-srv.c ccndc.h ../include/ccn/charbuf.h ccndc-srv.h \
+  ccndc-log.h ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/indexbuf.h ../include/ccn/uri.h \
+  ../include/ccn/reg_mgmt.h
+ccndc.o: ccndc.c ccndc.h ../include/ccn/charbuf.h ccndc-log.h ccndc-srv.h \
+  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/indexbuf.h \
+  ../include/ccn/ccnd.h ../include/ccn/uri.h ../include/ccn/signing.h \
   ../include/ccn/face_mgmt.h ../include/ccn/sockcreate.h \
-  ../include/ccn/reg_mgmt.h ../include/ccn/signing.h
+  ../include/ccn/reg_mgmt.h
 udplink.o: udplink.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
   ../include/ccn/ccnd.h

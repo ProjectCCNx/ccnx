@@ -4,7 +4,7 @@
  *
  * A CCNx program.
  *
- * Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -17,6 +17,12 @@
  * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
+
+#include "ccndc.h"
+#include "ccndc-log.h"
+#include "ccndc-srv.h"
+
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -28,292 +34,956 @@
 #include <sys/time.h>
 #include <netdb.h>
 #include <netinet/in.h>
+
 #define BIND_8_COMPAT
 #include <arpa/nameser.h>
 #include <resolv.h>
 #include <errno.h>
-#include <ccn/bloom.h>
-#include <ccn/ccn.h>
-#include <ccn/ccnd.h>
-#include <ccn/charbuf.h>
-#include <ccn/uri.h>
-#include <ccn/face_mgmt.h>
-#include <ccn/reg_mgmt.h>
-#include <ccn/sockcreate.h>
-#include <ccn/signing.h>
-
 #if defined(NEED_GETADDRINFO_COMPAT)
 #include "getaddrinfo.h"
 #include "dummyin6.h"
 #endif
-
 #ifndef AI_ADDRCONFIG
 #define AI_ADDRCONFIG 0 /*IEEE Std 1003.1-2001/Cor 1-2002, item XSH/TC1/D6/20*/
 #endif
 
-#ifndef NS_MAXMSG
-#define NS_MAXMSG 65535
-#endif
+#include <ccn/ccn.h>
+#include <ccn/ccnd.h>
+#include <ccn/uri.h>
+#include <ccn/signing.h>
+#include <ccn/face_mgmt.h>
+#include <ccn/reg_mgmt.h>
 
-#ifndef NS_MAXDNAME
-#ifdef MAXDNAME
-#define NS_MAXDNAME MAXDNAME
-#endif
-#endif
-
-#ifndef T_SRV
-#define T_SRV 33
-#endif
-
-#define OP_REG  0
-#define OP_UNREG 1
-
-/*
- * private types
- */
-struct prefix_face_list_item {
-    struct ccn_charbuf *prefix;
-    struct ccn_face_instance *fi;
-    int flags;
-    struct prefix_face_list_item *next;
-};
-
-/*
- * global constant (but not staticly initializable) data
- */
-static struct ccn_charbuf *local_scope_template = NULL;
-static struct ccn_charbuf *no_name = NULL;
-static unsigned char ccndid_storage[32] = {0};
-static const unsigned char *ccndid = ccndid_storage;
-static size_t ccndid_size = 0;
-
-/*
- * Global data
- */
-int verbose = 0;
-
-
-static void
-usage(const char *progname)
-{
-    fprintf(stderr,
-            "%s [-d] [-v] (-f configfile | (add|del) uri (udp|tcp) host [port [flags [mcastttl [mcastif]]]])\n"
-            "   -d enter dynamic mode and create FIB entries based on DNS SRV records\n"
-            "   -f configfile add or delete FIB entries based on contents of configfile\n"
-            "   -v increase logging level\n"
-            "	add|del add or delete FIB entry based on parameters\n"
-            "%s [-v] destroyface faceid\n"
-            "   destroy face based on face number\n",
-            progname,
-            progname);
-    exit(1);
+#define ON_ERROR_CLEANUP(resval) {                                      \
+    if ((resval) < 0) {                                                 \
+        if (verbose > 0) ccndc_warn(__LINE__, "OnError cleanup\n");    \
+    goto Cleanup;                                                   \
+    }                                                                   \
 }
 
-void
-ccndc_warn(int lineno, const char *format, ...)
-{
-    struct timeval t;
-    va_list ap;
-    va_start(ap, format);
-    gettimeofday(&t, NULL);
-    fprintf(stderr, "%d.%06d ccndc[%d]:%d: ", (int)t.tv_sec, (unsigned)t.tv_usec, (int)getpid(), lineno);
-    vfprintf(stderr, format, ap);
-    va_end(ap);
+#define ON_NULL_CLEANUP(resval) {                                       \
+    if ((resval) == NULL) {                                             \
+        if (verbose > 0) ccndc_warn(__LINE__, "OnNull cleanup\n");      \
+    goto Cleanup;                                                   \
+    }                                                                   \
 }
 
-void
-ccndc_fatal(int line, const char *format, ...)
-{
-    struct timeval t;
-    va_list ap;
-    va_start(ap, format);
-    gettimeofday(&t, NULL);
-    fprintf(stderr, "%d.%06d ccndc[%d]:%d: ", (int)t.tv_sec, (unsigned)t.tv_usec, (int)getpid(), line);
-    vfprintf(stderr, format, ap);
-    va_end(ap);
-    exit(1);
+#define ON_ERROR_EXIT(resval, msg) {                                    \
+    int _resval = (resval);                                             \
+    if (_resval < 0)                                                     \
+        ccndc_fatal(__LINE__, "fatal error, res = %d, %s\n", _resval, msg);  \
 }
 
-#define ON_ERROR_EXIT(resval, msg) on_error_exit((resval), __LINE__, msg)
-
-static void
-on_error_exit(int res, int lineno, const char *msg)
-{
-    if (res >= 0)
-        return;
-    ccndc_fatal(lineno, "fatal error, res = %d, %s\n", res, msg);
-}
-
-#define ON_ERROR_CLEANUP(resval) \
-{ 			\
-if ((resval) < 0) { \
-if (verbose > 0) ccndc_warn (__LINE__, "OnError cleanup\n"); \
-goto Cleanup; \
-} \
-}
-
-#define ON_NULL_CLEANUP(resval) \
-{ 			\
-if ((resval) == NULL) { \
-if (verbose > 0) ccndc_warn(__LINE__, "OnNull cleanup\n"); \
-goto Cleanup; \
-} \
-}
-
-static void
-initialize_global_data(void) {
-    const char *msg = "Unable to initialize global data.";
-    /* Set up an Interest template to indicate scope 1 (Local) */
-    local_scope_template = ccn_charbuf_create();
-    if (local_scope_template == NULL) {
-        ON_ERROR_EXIT(-1, msg);
+struct ccndc_data *
+ccndc_initialize_data(void) {
+    struct ccndc_data *self;
+    const char *msg = "Unable to initialize ccndc";
+    int res;
+    
+    self = calloc(1, sizeof(*self));
+    if (self == NULL) {
+        ON_ERROR_EXIT (-1, msg);
     }
     
-    ON_ERROR_EXIT(ccn_charbuf_append_tt(local_scope_template, CCN_DTAG_Interest, CCN_DTAG), msg);
-    ON_ERROR_EXIT(ccn_charbuf_append_tt(local_scope_template, CCN_DTAG_Name, CCN_DTAG), msg);
-    ON_ERROR_EXIT(ccn_charbuf_append_closer(local_scope_template), msg);	/* </Name> */
-    ON_ERROR_EXIT(ccnb_tagged_putf(local_scope_template, CCN_DTAG_Scope, "1"), msg);
-    ON_ERROR_EXIT(ccn_charbuf_append_closer(local_scope_template), msg);	/* </Interest> */
+    self->ccn_handle = ccn_create();
+    ON_ERROR_EXIT(ccn_connect(self->ccn_handle, NULL), "Unable to connect to local ccnd");
+    ON_ERROR_EXIT(ccndc_get_ccnd_id(self), "Unable to obtain ID of local ccnd");
+    
+    /* Set up an Interest template to indicate scope 1 (Local) */
+    self->local_scope_template = ccn_charbuf_create();
+    res = ccnb_element_begin(self->local_scope_template, CCN_DTAG_Interest);
+    res |= ccnb_element_begin(self->local_scope_template, CCN_DTAG_Name);
+    res |= ccnb_element_end(self->local_scope_template);	/* </Name> */
+    res |= ccnb_tagged_putf(self->local_scope_template, CCN_DTAG_Scope, "1");
+    res |= ccnb_element_end(self->local_scope_template);	/* </Interest> */
+    ON_ERROR_EXIT(res, msg);
     
     /* Create a null name */
-    no_name = ccn_charbuf_create();
-    if (no_name == NULL) {
-        ON_ERROR_EXIT(-1, msg);
+    self->no_name = ccn_charbuf_create();
+    ON_ERROR_EXIT(ccn_name_init(self->no_name), msg);
+    
+    self->lifetime = (~0U) >> 1;
+    
+    return self;
+}
+
+void
+ccndc_destroy_data(struct ccndc_data **data) {
+    struct ccndc_data *self = *data;
+    
+    if (self != NULL) {
+        ccn_charbuf_destroy(&self->no_name);
+        ccn_charbuf_destroy(&self->local_scope_template);
+        ccn_disconnect(self->ccn_handle);
+        ccn_destroy(&self->ccn_handle);
+        free(self);
+        *data = NULL;
     }
-    ON_ERROR_EXIT(ccn_name_init(no_name), msg);
+}
+
+
+int
+ccndc_dispatch_cmd(struct ccndc_data *ccndc,
+                    int check_only,
+                    const char *cmd,
+                    const char *options,
+                    int num_options)
+{
+    if (strcasecmp(cmd, "add") == 0) {
+        if (num_options >= 0 && (num_options < 3 || num_options > 7))
+            return INT_MIN;
+        return ccndc_add(ccndc, check_only, options);
+    }
+    if (strcasecmp(cmd, "del") == 0) {
+        if (num_options >= 0 && (num_options < 3 || num_options > 7))
+            return INT_MIN;
+        return ccndc_del(ccndc, check_only, options);
+    }
+    if (strcasecmp(cmd, "create") == 0) {
+        if (num_options >= 0 && (num_options < 2 || num_options > 5))
+            return INT_MIN;
+        return ccndc_create(ccndc, check_only, options);
+    }
+    if (strcasecmp(cmd, "destroy") == 0) {
+        if (num_options >= 0 && (num_options < 2 || num_options > 5))
+            return INT_MIN;
+        return ccndc_destroy(ccndc, check_only, options);
+    }
+    if (strcasecmp(cmd, "destroyface") == 0) {
+        if (num_options >= 0 && num_options != 1)
+            return INT_MIN;
+        return ccndc_destroyface(ccndc, check_only, options);
+    }
+    if (strcasecmp(cmd, "srv") == 0) {
+        // attempt to guess parameters using SRV record of a domain in search list
+        if (num_options >= 0 && num_options != 0)
+            return INT_MIN;
+        if (check_only) return 0;
+        return ccndc_srv(ccndc, NULL, 0);
+    }
+    if (strcasecmp(cmd, "renew") == 0) {
+        if (num_options >= 0 && (num_options < 3 || num_options > 7))
+            return INT_MIN;
+        return ccndc_renew(ccndc, check_only, options);
+    }
+    return INT_MIN;
+}
+
+
+#define GET_NEXT_TOKEN(_cmd, _token_var) do {       \
+_token_var = strsep(&_cmd, " \t");             \
+} while (_token_var != NULL && _token_var[0] == 0);
+
+/*
+ *   uri (udp|tcp) host [port [flags [mcastttl [mcastif]]]])
+ *   uri face faceid
+ */
+int
+ccndc_add(struct ccndc_data *self,
+          int check_only,
+          const char *cmd_orig)
+{
+    int ret_code = -1;
+    char *cmd, *cmd_token;
+    char *cmd_uri = NULL;
+    char *cmd_proto = NULL;
+    char *cmd_host = NULL;
+    char *cmd_port = NULL;
+    char *cmd_flags = NULL;
+    char *cmd_mcastttl = NULL;
+    char *cmd_mcastif = NULL;
+    struct ccn_face_instance *face = NULL;
+    struct ccn_face_instance *newface = NULL;
+    struct ccn_forwarding_entry *prefix = NULL;
+    
+    if (cmd_orig == NULL) {
+        ccndc_warn(__LINE__, "command error\n");
+        return -1;
+    }
+    
+    cmd = strdup(cmd_orig);
+    if (cmd == NULL) {
+        ccndc_warn(__LINE__, "Cannot allocate memory for copy of the command\n");
+        return -1;
+    }            
+    cmd_token = cmd;
+    GET_NEXT_TOKEN(cmd_token, cmd_uri);
+    GET_NEXT_TOKEN(cmd_token, cmd_proto);
+    GET_NEXT_TOKEN(cmd_token, cmd_host);
+    GET_NEXT_TOKEN(cmd_token, cmd_port);
+    GET_NEXT_TOKEN(cmd_token, cmd_flags);
+    GET_NEXT_TOKEN(cmd_token, cmd_mcastttl);
+    GET_NEXT_TOKEN(cmd_token, cmd_mcastif);
+    
+    // perform sanity checking
+    face = parse_ccn_face_instance(self, cmd_proto, cmd_host, cmd_port,
+                                   cmd_mcastttl, cmd_mcastif, (~0U) >> 1);
+    prefix = parse_ccn_forwarding_entry(self, cmd_uri, cmd_flags, self->lifetime);
+    if (face == NULL || prefix == NULL)
+        goto Cleanup;
+    
+    if (!check_only) {
+        if (0 != strcasecmp(cmd_proto, "face")) {
+            newface = ccndc_do_face_action(self, "newface", face);
+            if (newface == NULL) {
+                ccndc_warn(__LINE__, "Cannot create/lookup face");
+                goto Cleanup;
+            }
+            prefix->faceid = newface->faceid;
+            ccn_face_instance_destroy(&newface);
+        } else {
+            prefix->faceid = face->faceid;
+        }
+        ret_code = ccndc_do_prefix_action(self, "prefixreg", prefix);
+        if (ret_code < 0) {
+            ccndc_warn(__LINE__, "Cannot register prefix [%s]\n", cmd_uri);
+            goto Cleanup;
+        }
+    }  
+    ret_code = 0;
+Cleanup:
+    ccn_face_instance_destroy(&face);
+    ccn_forwarding_entry_destroy(&prefix);
+    free(cmd);
+    return (ret_code);
+}
+
+
+int
+ccndc_del(struct ccndc_data *self,
+          int check_only,
+          const char *cmd_orig)
+{
+    int ret_code = -1;
+    char *cmd, *cmd_token;
+    char *cmd_uri = NULL;
+    char *cmd_proto = NULL;
+    char *cmd_host = NULL;
+    char *cmd_port = NULL;
+    char *cmd_flags = NULL;
+    char *cmd_mcastttl = NULL;
+    char *cmd_mcastif = NULL;
+    struct ccn_face_instance *face = NULL;
+    struct ccn_face_instance *newface = NULL;
+    struct ccn_forwarding_entry *prefix = NULL;
+    
+    if (cmd_orig == NULL) {
+        ccndc_warn(__LINE__, "command error\n");
+        return -1;
+    }
+    
+    cmd = strdup(cmd_orig);
+    if (cmd == NULL) {
+        ccndc_warn(__LINE__, "Cannot allocate memory for copy of the command\n");
+        return -1;
+    }            
+    cmd_token = cmd;
+    GET_NEXT_TOKEN(cmd_token, cmd_uri);
+    GET_NEXT_TOKEN(cmd_token, cmd_proto);
+    GET_NEXT_TOKEN(cmd_token, cmd_host);
+    GET_NEXT_TOKEN(cmd_token, cmd_port);
+    GET_NEXT_TOKEN(cmd_token, cmd_flags);
+    GET_NEXT_TOKEN(cmd_token, cmd_mcastttl);
+    GET_NEXT_TOKEN(cmd_token, cmd_mcastif);
+    
+    face = parse_ccn_face_instance(self, cmd_proto, cmd_host, cmd_port,
+                                   cmd_mcastttl, cmd_mcastif, (~0U) >> 1);
+    prefix = parse_ccn_forwarding_entry(self, cmd_uri, cmd_flags, (~0U) >> 1);
+    if (face == NULL || prefix == NULL)
+        goto Cleanup;
+    
+    if (!check_only) {
+        if (0 != strcasecmp(cmd_proto, "face")) {
+            newface = ccndc_do_face_action(self, "newface", face);
+            if (newface == NULL) {
+                ccndc_warn(__LINE__, "Cannot create/lookup face");
+                goto Cleanup;
+            }
+            prefix->faceid = newface->faceid;
+            ccn_face_instance_destroy(&newface);
+        } else {
+            prefix->faceid = face->faceid;
+        }
+        ret_code = ccndc_do_prefix_action(self, "unreg", prefix);
+        if (ret_code < 0) {
+            ccndc_warn(__LINE__, "Cannot unregister prefix [%s]\n", cmd_uri);
+            goto Cleanup;
+        }
+    }
+    ret_code = 0;
+Cleanup:
+    ccn_face_instance_destroy(&face);
+    ccn_forwarding_entry_destroy(&prefix);
+    free(cmd);
+    return (ret_code);
 }
 
 /*
- * this should eventually be used as the basis for a library function
- *    ccn_get_ccndid(...)
- * which would retrieve a copy of the ccndid from the
- * handle, where it should be cached.
+ *   (udp|tcp) host [port [mcastttl [mcastif]]]
  */
-static int
-get_ccndid(struct ccn *h, const unsigned char *ccndid, size_t ccndid_storage_size)
+int
+ccndc_create(struct ccndc_data *self,
+             int check_only,
+             const char *cmd_orig)
 {
+    int ret_code = -1;
+    char *cmd, *cmd_token;
+    char *cmd_proto = NULL;
+    char *cmd_host = NULL;
+    char *cmd_port = NULL;
+    char *cmd_mcastttl = NULL;
+    char *cmd_mcastif = NULL;
+    struct ccn_face_instance *face = NULL;
+    struct ccn_face_instance *newface = NULL;
     
+    if (cmd_orig == NULL) {
+        ccndc_warn(__LINE__, "command error\n");
+        return -1;
+    }
+    
+    cmd = strdup(cmd_orig);
+    if (cmd == NULL) {
+        ccndc_warn(__LINE__, "Cannot allocate memory for copy of the command\n");
+        return -1;
+    }            
+    cmd_token = cmd;
+    GET_NEXT_TOKEN(cmd_token, cmd_proto);
+    GET_NEXT_TOKEN(cmd_token, cmd_host);
+    GET_NEXT_TOKEN(cmd_token, cmd_port);
+    GET_NEXT_TOKEN(cmd_token, cmd_mcastttl);
+    GET_NEXT_TOKEN(cmd_token, cmd_mcastif);
+    
+    // perform sanity checking
+    face = parse_ccn_face_instance(self, cmd_proto, cmd_host, cmd_port,
+                                   cmd_mcastttl, cmd_mcastif, self->lifetime);
+    if (face == NULL)
+        goto Cleanup;
+    
+    if (!check_only) {
+            newface = ccndc_do_face_action(self, "newface", face);
+            if (newface == NULL) {
+                ccndc_warn(__LINE__, "Cannot create/lookup face");
+                goto Cleanup;
+            }
+            ccn_face_instance_destroy(&newface);
+    }
+    ret_code = 0;
+Cleanup:
+    ccn_face_instance_destroy(&face);
+    free(cmd);
+    return (ret_code);
+}    
+
+/*
+ *   (udp|tcp) host [port [mcastttl [mcastif]]]
+ */
+int
+ccndc_destroy(struct ccndc_data *self,
+             int check_only,
+             const char *cmd_orig)
+{
+    int ret_code = -1;
+    char *cmd, *cmd_token;
+    char *cmd_proto = NULL;
+    char *cmd_host = NULL;
+    char *cmd_port = NULL;
+    char *cmd_mcastttl = NULL;
+    char *cmd_mcastif = NULL;
+    struct ccn_face_instance *face = NULL;
+    struct ccn_face_instance *newface = NULL;
+    
+    if (cmd_orig == NULL) {
+        ccndc_warn(__LINE__, "command error\n");
+        return -1;
+    }
+    
+    cmd = strdup(cmd_orig);
+    if (cmd == NULL) {
+        ccndc_warn(__LINE__, "Cannot allocate memory for copy of the command\n");
+        return -1;
+    }            
+    cmd_token = cmd;
+    GET_NEXT_TOKEN(cmd_token, cmd_proto);
+    GET_NEXT_TOKEN(cmd_token, cmd_host);
+    GET_NEXT_TOKEN(cmd_token, cmd_port);
+    GET_NEXT_TOKEN(cmd_token, cmd_mcastttl);
+    GET_NEXT_TOKEN(cmd_token, cmd_mcastif);
+    
+    // perform sanity checking
+    face = parse_ccn_face_instance(self, cmd_proto, cmd_host, cmd_port,
+                                   cmd_mcastttl, cmd_mcastif, (~0U) >> 1);
+    if (face == NULL)
+        goto Cleanup;
+    
+    if (!check_only) {
+        // TODO: should use queryface when implemented
+        if (0 != strcasecmp(cmd_proto, "face")) {
+            newface = ccndc_do_face_action(self, "newface", face);
+            if (newface == NULL) {
+                ccndc_warn(__LINE__, "Cannot create/lookup face");
+                goto Cleanup;
+            }
+            face->faceid = newface->faceid;
+            ccn_face_instance_destroy(&newface);
+        }
+        newface = ccndc_do_face_action(self, "destroyface", face);
+        if (newface == NULL) {
+            ccndc_warn(__LINE__, "Cannot destroy face %d or the face does not exist\n", face->faceid);
+            goto Cleanup;
+        }
+        ccn_face_instance_destroy(&newface);
+    }  
+    ret_code = 0;
+Cleanup:
+    ccn_face_instance_destroy(&face);
+    free(cmd);
+    return ret_code;
+}    
+
+/*
+ *   (udp|tcp) host [port [mcastttl [mcastif]]]
+ */
+/*
+ *   uri (udp|tcp) host [port [flags [mcastttl [mcastif]]]])
+ *   uri face faceid
+ */
+int
+ccndc_renew(struct ccndc_data *self,
+          int check_only,
+          const char *cmd_orig)
+{
+    int ret_code = -1;
+    char *cmd, *cmd_token;
+    char *cmd_uri = NULL;
+    char *cmd_proto = NULL;
+    char *cmd_host = NULL;
+    char *cmd_port = NULL;
+    char *cmd_flags = NULL;
+    char *cmd_mcastttl = NULL;
+    char *cmd_mcastif = NULL;
+    struct ccn_face_instance *face = NULL;
+    struct ccn_face_instance *newface = NULL;
+    struct ccn_forwarding_entry *prefix = NULL;
+    
+    if (cmd_orig == NULL) {
+        ccndc_warn(__LINE__, "command error\n");
+        return -1;
+    }
+    
+    cmd = strdup(cmd_orig);
+    if (cmd == NULL) {
+        ccndc_warn(__LINE__, "Cannot allocate memory for copy of the command\n");
+        return -1;
+    }            
+    cmd_token = cmd;
+    GET_NEXT_TOKEN(cmd_token, cmd_uri);
+    GET_NEXT_TOKEN(cmd_token, cmd_proto);
+    GET_NEXT_TOKEN(cmd_token, cmd_host);
+    GET_NEXT_TOKEN(cmd_token, cmd_port);
+    GET_NEXT_TOKEN(cmd_token, cmd_flags);
+    GET_NEXT_TOKEN(cmd_token, cmd_mcastttl);
+    GET_NEXT_TOKEN(cmd_token, cmd_mcastif);
+    
+    // perform sanity checking
+    face = parse_ccn_face_instance(self, cmd_proto, cmd_host, cmd_port,
+                                   cmd_mcastttl, cmd_mcastif, (~0U) >> 1);
+    prefix = parse_ccn_forwarding_entry(self, cmd_uri, cmd_flags, self->lifetime);
+    if (face == NULL || prefix == NULL)
+        goto Cleanup;
+    
+    if (!check_only) {
+        // look up the old face ("queryface" would be useful)
+        newface = ccndc_do_face_action(self, "newface", face);
+        if (newface == NULL) {
+            ccndc_warn(__LINE__, "Cannot create/lookup face");
+            goto Cleanup;
+        }
+        face->faceid = newface->faceid;
+        ccn_face_instance_destroy(&newface);
+        // destroy the old face
+        newface = ccndc_do_face_action(self, "destroyface", face);
+        if (newface == NULL) {
+            ccndc_warn(__LINE__, "Cannot destroy face %d or the face does not exist\n", face->faceid);
+            goto Cleanup;
+        }
+        ccn_face_instance_destroy(&newface);
+        // recreate the face
+        newface = ccndc_do_face_action(self, "newface", face);
+        if (newface == NULL) {
+            ccndc_warn(__LINE__, "Cannot create/lookup face");
+            goto Cleanup;
+        }
+        prefix->faceid = newface->faceid;
+        ccn_face_instance_destroy(&newface);
+        // and add the prefix to it
+        ret_code = ccndc_do_prefix_action(self, "prefixreg", prefix);
+        if (ret_code < 0) {
+            ccndc_warn(__LINE__, "Cannot register prefix [%s]\n", cmd_uri);
+            goto Cleanup;
+        }
+    }  
+    ret_code = 0;
+Cleanup:
+    ccn_face_instance_destroy(&face);
+    ccn_forwarding_entry_destroy(&prefix);
+    free(cmd);
+    return (ret_code);
+}
+
+
+int
+ccndc_destroyface(struct ccndc_data *self,
+                  int check_only,
+                  const char *cmd_orig)
+{
+    int ret_code = 0;
+    char *cmd, *cmd_token;
+    char *cmd_faceid = NULL;
+    struct ccn_face_instance *face;
+    struct ccn_face_instance *newface;
+    
+    if (cmd_orig == NULL) {
+        ccndc_warn(__LINE__, "command error\n");
+        return -1;
+    }
+    
+    cmd = strdup(cmd_orig);
+    if (cmd == NULL) {
+        ccndc_warn(__LINE__, "Cannot allocate memory for copy of the command\n");
+        return -1;
+    }            
+    
+    cmd_token = cmd;    
+    GET_NEXT_TOKEN(cmd_token, cmd_faceid);
+    
+    face = parse_ccn_face_instance_from_face(self, cmd_faceid);
+    if (face == NULL) {
+        ret_code = -1;
+    }
+    
+    if (ret_code == 0 && check_only == 0) {
+        newface = ccndc_do_face_action(self, "destroyface", face);
+        if (newface == NULL) {
+            ccndc_warn(__LINE__, "Cannot destroy face %d or the face does not exist\n", face->faceid);        
+        }
+        ccn_face_instance_destroy(&newface);
+    }
+    
+    ccn_face_instance_destroy(&face);
+    free(cmd);
+    return ret_code;
+}
+
+
+int
+ccndc_srv(struct ccndc_data *self,
+           const unsigned char *domain,
+           size_t domain_size)
+{
+    char *proto = NULL;
+    char *host = NULL;
+    int port = 0;
+    char port_str[10];
+    struct ccn_charbuf *uri;
+    struct ccn_face_instance *face;
+    struct ccn_face_instance *newface;
+    struct ccn_forwarding_entry *prefix;
+    int res;
+    
+    res = ccndc_query_srv(domain, domain_size, &host, &port, &proto);
+    if (res < 0) {
+        return -1;
+    }
+    
+    uri = ccn_charbuf_create();
+    ccn_charbuf_append_string(uri, "ccnx:/");
+    if (domain_size != 0) {
+        ccn_uri_append_percentescaped(uri, domain, domain_size);
+    }
+    
+    snprintf (port_str, sizeof(port_str), "%d", port);
+    
+    /* now process the results */
+    /* pflhead, lineno=0, "add" "ccnx:/asdfasdf.com/" "tcp|udp", host, portstring, NULL NULL NULL */
+    
+    ccndc_note(__LINE__, " >>> trying:   add %s %s %s %s <<<\n", ccn_charbuf_as_string(uri), proto, host, port_str);
+    
+    face = parse_ccn_face_instance(self, proto, host, port_str, NULL, NULL,
+                                   (~0U) >> 1);
+    
+    prefix = parse_ccn_forwarding_entry(self, ccn_charbuf_as_string(uri), NULL,
+                                        self->lifetime);
+    if (face == NULL || prefix == NULL) {
+        res = -1;
+        goto Cleanup;
+    }
+    
+    // crazy operation
+    // First. "Create" face, which will do nothing if face already exists
+    // Second. Destroy the face
+    // Third. Create face for real
+    
+    newface = ccndc_do_face_action(self, "newface", face);
+    if (newface == NULL) {
+        ccndc_warn(__LINE__, "Cannot create/lookup face");
+        res = -1;
+        goto Cleanup;
+    }
+    
+    face->faceid = newface->faceid;
+    ccn_face_instance_destroy(&newface);
+    
+    newface = ccndc_do_face_action(self, "destroyface", face);
+    if (newface == NULL) {
+        ccndc_warn(__LINE__, "Cannot destroy face");
+    } else {
+        ccn_face_instance_destroy(&newface);
+    }
+    
+    newface = ccndc_do_face_action(self, "newface", face);
+    if (newface == NULL) {
+        ccndc_warn(__LINE__, "Cannot create/lookup face");
+        res = -1;
+        goto Cleanup;
+    }
+    
+    prefix->faceid = newface->faceid;
+    ccn_face_instance_destroy(&newface);
+    
+    res = ccndc_do_prefix_action(self, "prefixreg", prefix);
+    if (res < 0) {
+        ccndc_warn(__LINE__, "Cannot register prefix [%s]\n", ccn_charbuf_as_string(uri));
+    }
+    
+Cleanup:
+    free(uri);
+    free(host);
+    ccn_face_instance_destroy(&face);
+    ccn_forwarding_entry_destroy(&prefix);
+    return res;
+}
+
+
+struct ccn_forwarding_entry *
+parse_ccn_forwarding_entry(struct ccndc_data *self,
+                           const char *cmd_uri,
+                           const char *cmd_flags,
+                           int freshness)
+{
+    int res = 0;
+    struct ccn_forwarding_entry *entry;
+    
+    entry= calloc(1, sizeof(*entry));
+    if (entry == NULL) {
+        ccndc_warn(__LINE__, "Fatal error: memory allocation failed");
+        goto ExitOnError;
+    }
+    
+    entry->name_prefix = ccn_charbuf_create();
+    if (entry->name_prefix == NULL) {
+        ccndc_warn(__LINE__, "Fatal error: memory allocation failed");
+        goto ExitOnError;
+    }
+    
+    // copy static info
+    entry->ccnd_id = (const unsigned char *)self->ccnd_id;
+    entry->ccnd_id_size = self->ccnd_id_size;
+    
+    /* we will be creating the face to either add/delete a prefix on it */
+    if (cmd_uri == NULL) {
+        ccndc_warn(__LINE__, "command erro, missing CCNx URI\n");
+        goto ExitOnError;
+    }
+    
+    res = ccn_name_from_uri(entry->name_prefix, cmd_uri);
+    if (res < 0) {
+        ccndc_warn(__LINE__, "command error, bad CCNx URI '%s'\n", cmd_uri);
+        goto ExitOnError;
+    }
+    
+    entry->flags = -1;
+    if (cmd_flags != NULL && cmd_flags[0] != 0) {
+        char *endptr;
+        entry->flags = strtol(cmd_flags, &endptr, 10);
+        if ((endptr != &cmd_flags[strlen(cmd_flags)]) ||
+            (entry->flags & ~CCN_FORW_PUBMASK) != 0) {
+            ccndc_warn(__LINE__, "command error, invalid flags %s\n", cmd_flags);
+            goto ExitOnError;
+        }
+    }
+    
+    entry->lifetime = freshness;
+    return (entry);
+    
+ExitOnError:
+    ccn_forwarding_entry_destroy(&entry);
+    return (NULL);
+}
+
+
+// creates a full structure without action, if proto == "face" only the
+// faceid (from cmd_host parameter) and lifetime will be filled in.
+struct ccn_face_instance *
+parse_ccn_face_instance(struct ccndc_data *self,
+                         const char *cmd_proto,
+                         const char *cmd_host,     const char *cmd_port,
+                         const char *cmd_mcastttl, const char *cmd_mcastif,
+                         int freshness)
+{
+    struct ccn_face_instance *entry;
+    struct addrinfo hints = {.ai_family = AF_UNSPEC, .ai_flags = (AI_ADDRCONFIG)};
+    struct addrinfo mcasthints = {.ai_family = AF_UNSPEC, .ai_flags = (AI_ADDRCONFIG | AI_NUMERICHOST)};
+    struct addrinfo *raddrinfo = NULL;
+    struct addrinfo *mcastifaddrinfo = NULL;
+    char rhostnamebuf [NI_MAXHOST];
+    char rhostportbuf [NI_MAXSERV];
+    int off_address = -1, off_port = -1, off_source_address = -1;
+    int res;
+    int socktype;
+    
+    entry = calloc(1, sizeof(*entry));
+    if (entry == NULL) {
+        ccndc_warn(__LINE__, "Fatal error: memory allocation failed");
+        goto ExitOnError;
+    }
+    // allocate storage for Face data
+    entry->store = ccn_charbuf_create();
+    if (entry->store == NULL) {
+        ccndc_warn(__LINE__, "Fatal error: memory allocation failed");
+        goto ExitOnError;
+    }
+    // copy static info
+    entry->ccnd_id = (const unsigned char *)self->ccnd_id;
+    entry->ccnd_id_size = self->ccnd_id_size;
+    
+    if (cmd_proto == NULL) {
+        ccndc_warn(__LINE__, "command error, missing address type\n");
+        goto ExitOnError;
+    }
+    if (strcasecmp(cmd_proto, "udp") == 0) {
+        entry->descr.ipproto = IPPROTO_UDP;
+        socktype = SOCK_DGRAM;
+    } else if (strcasecmp(cmd_proto, "tcp") == 0) {
+        entry->descr.ipproto = IPPROTO_TCP;
+        socktype = SOCK_STREAM;
+    } else if (strcasecmp(cmd_proto, "face") == 0) {
+        errno = 0;
+        unsigned long faceid = strtoul(cmd_host, (char **)NULL, 10);
+        if (errno == ERANGE || errno == EINVAL || faceid > UINT_MAX || faceid == 0) {
+            ccndc_warn(__LINE__, "command error, face number invalid or out of range '%s'\n", cmd_host);
+            goto ExitOnError;
+        }
+        entry->faceid = (unsigned) faceid;
+        entry->lifetime = freshness;
+        return (entry);
+    } else {
+        ccndc_warn(__LINE__, "command error, unrecognized address type '%s'\n", cmd_proto);
+        goto ExitOnError;
+    }
+    
+    if (cmd_host == NULL) {
+        ccndc_warn(__LINE__, "command error, missing hostname\n");
+        goto ExitOnError;
+    }
+    
+    if (cmd_port == NULL || cmd_port[0] == 0)
+        cmd_port = CCN_DEFAULT_UNICAST_PORT;
+    
+    hints.ai_socktype = socktype;
+    res = getaddrinfo(cmd_host, cmd_port, &hints, &raddrinfo);
+    if (res != 0 || raddrinfo == NULL) {
+        ccndc_warn(__LINE__, "command error, getaddrinfo for host [%s] port [%s]: %s\n", cmd_host, cmd_port, gai_strerror(res));
+        goto ExitOnError;
+    }
+    res = getnameinfo(raddrinfo->ai_addr, raddrinfo->ai_addrlen,
+                      rhostnamebuf, sizeof(rhostnamebuf),
+                      rhostportbuf, sizeof(rhostportbuf),
+                      NI_NUMERICHOST | NI_NUMERICSERV);
+    freeaddrinfo(raddrinfo);
+    if (res != 0) {
+        ccndc_warn(__LINE__, "command error, getnameinfo: %s\n", gai_strerror(res));
+        goto ExitOnError;
+    }
+    
+    off_address = entry->store->length;
+    res = ccn_charbuf_append(entry->store, rhostnamebuf, strlen(rhostnamebuf)+1);
+    if (res != 0) {
+        ccndc_warn(__LINE__, "Cannot append to charbuf");
+        goto ExitOnError;
+    }
+    
+    off_port = entry->store->length;
+    res = ccn_charbuf_append(entry->store, rhostportbuf, strlen(rhostportbuf)+1);
+    if (res != 0) {
+        ccndc_warn(__LINE__, "Cannot append to charbuf");
+        goto ExitOnError;
+    }
+    
+    entry->descr.mcast_ttl = -1;
+    if (cmd_mcastttl != NULL) {
+        char *endptr;
+        entry->descr.mcast_ttl = strtol(cmd_mcastttl, &endptr, 10); 
+        if ((endptr != &cmd_mcastttl[strlen(cmd_mcastttl)]) ||
+            entry->descr.mcast_ttl < 0 || entry->descr.mcast_ttl > 255) {
+            ccndc_warn(__LINE__, "command error, invalid multicast ttl: %s\n", cmd_mcastttl);
+            goto ExitOnError;
+        }
+    }
+    
+    if (cmd_mcastif != NULL) {
+        res = getaddrinfo(cmd_mcastif, NULL, &mcasthints, &mcastifaddrinfo);
+        if (res != 0) {
+            ccndc_warn(__LINE__, "command error, incorrect multicat interface [%s]: "
+                       "mcastifaddr getaddrinfo: %s\n", cmd_mcastif, gai_strerror(res));
+            goto ExitOnError;
+        }
+        
+        res = getnameinfo(mcastifaddrinfo->ai_addr, mcastifaddrinfo->ai_addrlen,
+                          rhostnamebuf, sizeof(rhostnamebuf),
+                          NULL, 0,
+                          NI_NUMERICHOST | NI_NUMERICSERV);
+        freeaddrinfo(mcastifaddrinfo);
+        if (res != 0) {
+            ccndc_warn(__LINE__, "command error, getnameinfo: %s\n", gai_strerror(res));
+            goto ExitOnError;
+        }
+        
+        off_source_address = entry->store->length;
+        res = ccn_charbuf_append(entry->store, rhostnamebuf, strlen(rhostnamebuf)+1);
+        if (res != 0) {
+            ccndc_warn(__LINE__, "Cannot append to charbuf");
+            goto ExitOnError;
+        }
+    }
+    
+    entry->descr.address = (const char *)(entry->store->buf + off_address);
+    entry->descr.port = (const char *)(entry->store->buf + off_port);
+    if (off_source_address >= 0) {
+        entry->descr.source_address = (const char *)(entry->store->buf + off_source_address);
+    }
+    
+    entry->lifetime = freshness;
+    
+    return entry;
+    
+ExitOnError:
+    ccn_face_instance_destroy(&entry);
+    return (NULL);
+}
+
+struct ccn_face_instance *
+parse_ccn_face_instance_from_face(struct ccndc_data *self,
+                                   const char *cmd_faceid)
+{
+    struct ccn_face_instance *entry = calloc(1, sizeof(*entry));
+    
+    // allocate storage for Face data
+    entry->store = ccn_charbuf_create();
+    
+    // copy static info
+    entry->ccnd_id = (const unsigned char *)self->ccnd_id;
+    entry->ccnd_id_size = self->ccnd_id_size;
+    
+    /* destroy a face - the URI field will hold the face number */
+    if (cmd_faceid == NULL) {
+        ccndc_warn(__LINE__, "command error, missing face number for destroyface\n");
+        goto ExitOnError;
+    }
+    
+    char *endptr;
+    int facenumber = strtol(cmd_faceid, &endptr, 10);
+    if ((endptr != &cmd_faceid[strlen(cmd_faceid)]) ||
+        facenumber < 0) {
+        ccndc_warn(__LINE__, "command error invalid face number for destroyface: %d\n", facenumber);
+        goto ExitOnError;
+    }
+    
+    entry->faceid = facenumber;
+    
+    return entry;
+    
+ExitOnError:
+    ccn_face_instance_destroy(&entry);
+    return (NULL);
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+// "private section
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+int
+ccndc_get_ccnd_id(struct ccndc_data *self)
+{
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *resultbuf = NULL;
     struct ccn_parsed_ContentObject pcobuf = {0};
     char ccndid_uri[] = "ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnd/KEY";
     const unsigned char *ccndid_result;
-    static size_t ccndid_result_size;
-    int res;
+    int res = 0;
     
     name = ccn_charbuf_create();
     if (name == NULL) {
-        ON_ERROR_EXIT(-1, "Unable to allocate storage for service locator name charbuf");
+        ccndc_warn(__LINE__, "Unable to allocate storage for service locator name charbuf\n");
+        return -1;
     }
     
     resultbuf = ccn_charbuf_create();
     if (resultbuf == NULL) {
-        ON_ERROR_EXIT(-1, "Unable to allocate storage for result charbuf");
+        ccndc_warn(__LINE__, "Unable to allocate storage for result charbuf");
+        res = -1;
+        goto Cleanup;
     }
     
+    res = ccn_name_from_uri(name, ccndid_uri);
+    if (res < 0) {
+        ccndc_warn(__LINE__, "Unable to parse service locator URI for ccnd key");
+        goto Cleanup;
+    }
     
-    ON_ERROR_EXIT(ccn_name_from_uri(name, ccndid_uri), "Unable to parse service locator URI for ccnd key");
-    ON_ERROR_EXIT(ccn_get(h, name, local_scope_template, 4500, resultbuf, &pcobuf, NULL, 0), "Unable to get key from ccnd");
-    res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest,
-                              resultbuf->buf,
-                              pcobuf.offset[CCN_PCO_B_PublisherPublicKeyDigest],
-                              pcobuf.offset[CCN_PCO_E_PublisherPublicKeyDigest],
-                              &ccndid_result, &ccndid_result_size);
-    ON_ERROR_EXIT(res, "Unable to parse ccnd response for ccnd id");
-    if (ccndid_result_size > ccndid_storage_size)
-        ON_ERROR_EXIT(-1, "Incorrect size for ccnd id in response");
-    memcpy((void *)ccndid, ccndid_result, ccndid_result_size);
+    res = ccn_get(self->ccn_handle,
+                   name,
+                   self->local_scope_template,
+                   4500, resultbuf, &pcobuf, NULL, 0);
+    if (res < 0) {
+        ccndc_warn(__LINE__, "Unable to get key from ccnd");
+        goto Cleanup;
+    }
+    
+    res = ccn_ref_tagged_BLOB (CCN_DTAG_PublisherPublicKeyDigest,
+                               resultbuf->buf,
+                               pcobuf.offset[CCN_PCO_B_PublisherPublicKeyDigest],
+                               pcobuf.offset[CCN_PCO_E_PublisherPublicKeyDigest],
+                               &ccndid_result, &self->ccnd_id_size);
+    if (res < 0) {
+        ccndc_warn(__LINE__, "Unable to parse ccnd response for ccnd id");
+        goto Cleanup;
+    }
+    
+    if (self->ccnd_id_size > sizeof (self->ccnd_id))
+    {
+        ccndc_warn(__LINE__, "Incorrect size for ccnd id in response");
+        goto Cleanup;
+    }
+    
+    memcpy(self->ccnd_id, ccndid_result, self->ccnd_id_size);
+    
+Cleanup:
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&resultbuf);
-    return (ccndid_result_size);
+    return (res);
 }
 
-static struct prefix_face_list_item *prefix_face_list_item_create(struct ccn_charbuf *prefix,
-                                                                  int ipproto,
-                                                                  int mcast_ttl,
-                                                                  char *host,
-                                                                  char *port,
-                                                                  char *mcastif,
-                                                                  int lifetime,
-                                                                  int flags,
-                                                                  int create,
-                                                                  unsigned faceid)
-{
-    struct prefix_face_list_item *pfl = calloc(1, sizeof(struct prefix_face_list_item));
-    struct ccn_face_instance *fi = calloc(1, sizeof(*fi));
-    struct ccn_charbuf *store = ccn_charbuf_create();
-    int host_off = -1;
-    int port_off = -1;
-    int mcast_off = -1;
-    
-    if (pfl == NULL || fi == NULL || store == NULL) {
-        if (pfl) free(pfl);
-        if (fi) ccn_face_instance_destroy(&fi);
-        if (store) ccn_charbuf_destroy(&store);
-        return (NULL);
-    }
-    pfl->fi = fi;
-    pfl->fi->store = store;
-    
-    pfl->prefix = prefix;
-    pfl->fi->descr.ipproto = ipproto;
-    pfl->fi->descr.mcast_ttl = mcast_ttl;
-    pfl->fi->lifetime = lifetime;
-    if (faceid > 0)
-        pfl->fi->faceid = faceid;
-    pfl->flags = flags;
-    
-    if (create) {
-        ccn_charbuf_append(store, "newface", strlen("newface") + 1);
-    }
-    else {
-        ccn_charbuf_append(store, "destroyface", strlen("destroyface") + 1);
-    }
-    
-    host_off = store->length;
-    ccn_charbuf_append(store, host, strlen(host) + 1);
-    port_off = store->length;
-    ccn_charbuf_append(store, port, strlen(port) + 1);
-    if (mcastif != NULL) {
-        mcast_off = store->length;
-        ccn_charbuf_append(store, mcastif, strlen(mcastif) + 1);
-    }
-    // appending to a charbuf may move it, so we must wait until we have
-    // finished appending before calculating the pointers into the store.
-    char *b = (char *)store->buf;
-    pfl->fi->action = b;
-    pfl->fi->descr.address = b + host_off;
-    pfl->fi->descr.port = b + port_off;
-    pfl->fi->descr.source_address = (mcast_off == -1) ? NULL : b + mcast_off;
-    
-    return (pfl);
-}
 
-static void prefix_face_list_destroy(struct prefix_face_list_item **pflpp)
-{
-    struct prefix_face_list_item *pflp = *pflpp;
-    struct prefix_face_list_item *next;
-    
-    if (pflp == NULL) return;
-    while (pflp) {
-        ccn_face_instance_destroy(&pflp->fi);
-        ccn_charbuf_destroy(&pflp->prefix);
-        next = pflp->next;
-        free(pflp);
-        pflp = next;
-    }
-    *pflpp = NULL;
-}
-
-/**
- *  @brief Create or delete a face based on the face attributes
- *  @param h  the ccnd handle
- *  @param face_instance  the parameters of the face to be created
- *  @param flags
- *  @result returns new face_instance representing the face created/deleted
- */
-static struct ccn_face_instance *
-do_face_action(struct ccn *h, struct ccn_face_instance *face_instance)
+struct ccn_face_instance *
+ccndc_do_face_action(struct ccndc_data *self,
+                     const char *action,
+                     struct ccn_face_instance *face_instance)
 {
     struct ccn_charbuf *newface = NULL;
     struct ccn_charbuf *signed_info = NULL;
@@ -326,14 +996,16 @@ do_face_action(struct ccn *h, struct ccn_face_instance *face_instance)
     size_t length = 0;
     int res = 0;
     
+    face_instance->action = action;
+    
     /* Encode the given face instance */
     newface = ccn_charbuf_create();
     ON_NULL_CLEANUP(newface);
     ON_ERROR_CLEANUP(ccnb_append_face_instance(newface, face_instance));
-
+    
     temp = ccn_charbuf_create();
     ON_NULL_CLEANUP(temp);
-    res = ccn_sign_content(h, temp, no_name, NULL, newface->buf, newface->length);
+    res = ccn_sign_content(self->ccn_handle, temp, self->no_name, NULL, newface->buf, newface->length);
     ON_ERROR_CLEANUP(res);
     resultbuf = ccn_charbuf_create();
     ON_NULL_CLEANUP(resultbuf);
@@ -346,7 +1018,8 @@ do_face_action(struct ccn *h, struct ccn_face_instance *face_instance)
     ON_ERROR_CLEANUP(ccn_name_append(name, face_instance->ccnd_id, face_instance->ccnd_id_size));
     ON_ERROR_CLEANUP(ccn_name_append_str(name, face_instance->action));
     ON_ERROR_CLEANUP(ccn_name_append(name, temp->buf, temp->length));
-    res = ccn_get(h, name, local_scope_template, 1000, resultbuf, &pcobuf, NULL, 0);
+    
+    res = ccn_get(self->ccn_handle, name, self->local_scope_template, 1000, resultbuf, &pcobuf, NULL, 0);
     ON_ERROR_CLEANUP(res);
     
     ON_ERROR_CLEANUP(ccn_content_get_value(resultbuf->buf, resultbuf->length, &pcobuf, &ptr, &length));
@@ -368,20 +1041,15 @@ Cleanup:
     ccn_face_instance_destroy(&new_face_instance);
     return (NULL);
 }
-/**
- *  @brief Register an interest prefix as being routed to a given face
- *  @param h  the ccnd handle
- *  @param name_prefix  the prefix to be registered
- *  @param face_instance  the face to which the interests with the prefix should be routed
- *  @param flags
- *  @result returns (positive) faceid on success, -1 on error
- */
-static int
-register_unregister_prefix(struct ccn *h,
-                           int operation,
-                           struct ccn_charbuf *name_prefix,
-                           struct ccn_face_instance *face_instance,
-                           int flags)
+
+// /**
+//  *  @brief Register an interest prefix as being routed to a given face
+//  *  @result returns (positive) faceid on success, -1 on error
+//  */
+int
+ccndc_do_prefix_action(struct ccndc_data *self,
+                       const char *action,
+                       struct ccn_forwarding_entry *forwarding_entry)
 {
     struct ccn_charbuf *temp = NULL;
     struct ccn_charbuf *resultbuf = NULL;
@@ -389,45 +1057,37 @@ register_unregister_prefix(struct ccn *h,
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *prefixreg = NULL;
     struct ccn_parsed_ContentObject pcobuf = {0};
-    struct ccn_forwarding_entry forwarding_entry_storage = {0};
-    struct ccn_forwarding_entry *forwarding_entry = &forwarding_entry_storage;
-    struct ccn_forwarding_entry *new_forwarding_entry;
+    struct ccn_forwarding_entry *new_forwarding_entry = NULL;
+    
     const unsigned char *ptr = NULL;
     size_t length = 0;
     int res;
     
-    /* Register or unregister the prefix */
-    forwarding_entry->action = (operation == OP_REG) ? "prefixreg" : "unreg";
-    forwarding_entry->name_prefix = name_prefix;
-    forwarding_entry->ccnd_id = face_instance->ccnd_id;
-    forwarding_entry->ccnd_id_size = face_instance->ccnd_id_size;
-    forwarding_entry->faceid = face_instance->faceid;
-    forwarding_entry->flags = flags;
-    forwarding_entry->lifetime = (~0U) >> 1;
+    forwarding_entry->action = action;
     
     prefixreg = ccn_charbuf_create();
     ON_NULL_CLEANUP(prefixreg);
     ON_ERROR_CLEANUP(ccnb_append_forwarding_entry(prefixreg, forwarding_entry));
     temp = ccn_charbuf_create();
     ON_NULL_CLEANUP(temp);
-    res = ccn_sign_content(h, temp, no_name, NULL, prefixreg->buf, prefixreg->length);
+    res = ccn_sign_content(self->ccn_handle, temp, self->no_name, NULL, prefixreg->buf, prefixreg->length);
     ON_ERROR_CLEANUP(res);    
     resultbuf = ccn_charbuf_create();
     ON_NULL_CLEANUP(resultbuf);
     name = ccn_charbuf_create();
     ON_ERROR_CLEANUP(ccn_name_init(name));
     ON_ERROR_CLEANUP(ccn_name_append_str(name, "ccnx"));
-    ON_ERROR_CLEANUP(ccn_name_append(name, face_instance->ccnd_id, face_instance->ccnd_id_size));
-    ON_ERROR_CLEANUP(ccn_name_append_str(name, (operation == OP_REG) ? "prefixreg" : "unreg"));
+    ON_ERROR_CLEANUP(ccn_name_append(name, forwarding_entry->ccnd_id, forwarding_entry->ccnd_id_size));
+    ON_ERROR_CLEANUP(ccn_name_append_str(name, forwarding_entry->action));
     ON_ERROR_CLEANUP(ccn_name_append(name, temp->buf, temp->length));
-    res = ccn_get(h, name, local_scope_template, 1000, resultbuf, &pcobuf, NULL, 0);
+    res = ccn_get(self->ccn_handle, name, self->local_scope_template, 1000, resultbuf, &pcobuf, NULL, 0);
     ON_ERROR_CLEANUP(res);
     ON_ERROR_CLEANUP(ccn_content_get_value(resultbuf->buf, resultbuf->length, &pcobuf, &ptr, &length));
     new_forwarding_entry = ccn_forwarding_entry_parse(ptr, length);
     ON_NULL_CLEANUP(new_forwarding_entry);
     
     res = new_forwarding_entry->faceid;
-
+    
     ccn_forwarding_entry_destroy(&new_forwarding_entry);
     ccn_charbuf_destroy(&signed_info);
     ccn_charbuf_destroy(&temp);
@@ -448,510 +1108,4 @@ Cleanup:
     ccn_charbuf_destroy(&prefixreg);
     
     return (-1);
-}
-
-static int
-process_command_tokens(struct prefix_face_list_item *pfltail,
-                       int lineno,
-                       char *cmd,
-                       char *uri,
-                       char *proto,
-                       char *host,
-                       char *port,
-                       char *flags,
-                       char *mcastttl,
-                       char *mcastif)
-{
-    int lifetime = 0;
-    struct ccn_charbuf *prefix = NULL;
-    int ipproto = 0;
-    int socktype = 0;
-    int iflags = 0;
-    int imcastttl = 0;
-    int createface = 0;
-    int facenumber = 0;
-    char rhostnamebuf[NI_MAXHOST];
-    char rhostportbuf[NI_MAXSERV];
-    struct addrinfo hints = {.ai_family = AF_UNSPEC, .ai_flags = (AI_ADDRCONFIG)};
-    struct addrinfo mcasthints = {.ai_family = AF_UNSPEC, .ai_flags = (AI_ADDRCONFIG | AI_NUMERICHOST)};
-    struct addrinfo *raddrinfo = NULL;
-    struct addrinfo *mcastifaddrinfo = NULL;
-    struct prefix_face_list_item *pflp = NULL;
-    int res;
-    
-    if (cmd == NULL) {
-        ccndc_warn(__LINE__, "command error (line %d), missing command\n", lineno);
-        return (-1);
-    }
-    createface = 1;
-    if (strcasecmp(cmd, "add") == 0)
-        lifetime = (~0U) >> 1;
-    else if (strcasecmp(cmd, "del") == 0)
-        lifetime = 0;
-    else if (strcasecmp(cmd, "destroyface") == 0)
-        createface = 0;
-    else {
-        ccndc_warn(__LINE__, "command error (line %d), unrecognized command '%s'\n", lineno, cmd);
-        return (-1);
-    }
-    if (createface) {
-        /* we will be creating the face to either add/delete a prefix on it */
-        if (uri == NULL) {
-            ccndc_warn(__LINE__, "command error (line %d), missing CCNx URI\n", lineno);
-            return (-1);
-        }   
-        prefix = ccn_charbuf_create();
-        res = ccn_name_from_uri(prefix, uri);
-        if (res < 0) {
-            ccndc_warn(__LINE__, "command error (line %d), bad CCNx URI '%s'\n", lineno, uri);
-            return (-1);
-        }
-        
-        if (proto == NULL) {
-            ccndc_warn(__LINE__, "command error (line %d), missing address type\n", lineno);
-            return (-1);
-        }
-        if (strcasecmp(proto, "udp") == 0) {
-            ipproto = IPPROTO_UDP;
-            socktype = SOCK_DGRAM;
-        }
-        else if (strcasecmp(proto, "tcp") == 0) {
-            ipproto = IPPROTO_TCP;
-            socktype = SOCK_STREAM;
-        }
-        else {
-            ccndc_warn(__LINE__, "command error (line %d), unrecognized address type '%s'\n", lineno, proto);
-            return (-1);
-        }
-        
-        if (host == NULL) {
-            ccndc_warn(__LINE__, "command error (line %d), missing hostname\n", lineno);
-            return (-1);
-        }
-        
-        if (port == NULL || port[0] == 0)
-            port = CCN_DEFAULT_UNICAST_PORT;
-        
-        hints.ai_socktype = socktype;
-        res = getaddrinfo(host, port, &hints, &raddrinfo);
-        if (res != 0 || raddrinfo == NULL) {
-            ccndc_warn(__LINE__, "command error (line %d), getaddrinfo: %s\n", lineno, gai_strerror(res));
-            return (-1);
-        }
-        res = getnameinfo(raddrinfo->ai_addr, raddrinfo->ai_addrlen,
-                          rhostnamebuf, sizeof(rhostnamebuf),
-                          rhostportbuf, sizeof(rhostportbuf),
-                          NI_NUMERICHOST | NI_NUMERICSERV);
-        freeaddrinfo(raddrinfo);
-        if (res != 0) {
-            ccndc_warn(__LINE__, "command error (line %d), getnameinfo: %s\n", lineno, gai_strerror(res));
-            return (-1);
-        }
-        
-        iflags = -1;
-        if (flags != NULL && flags[0] != 0) {
-            iflags = atoi(flags);
-            if ((iflags & ~CCN_FORW_PUBMASK) != 0) {
-                ccndc_warn(__LINE__, "command error (line %d), invalid flags 0x%x\n", lineno, iflags);
-                return (-1);
-            }
-        }
-        
-        imcastttl = -1;
-        if (mcastttl != NULL) {
-            imcastttl = atoi(mcastttl);
-            if (imcastttl < 0 || imcastttl > 255) {
-                ccndc_warn(__LINE__, "command error (line %d), invalid multicast ttl: %s\n", lineno, mcastttl);
-                return (-1);
-            }
-        }
-        
-        if (mcastif != NULL) {
-            res = getaddrinfo(mcastif, NULL, &mcasthints, &mcastifaddrinfo);
-            if (res != 0) {
-                ccndc_warn(__LINE__, "command error (line %d), mcastifaddr getaddrinfo: %s\n", lineno, gai_strerror(res));
-                return (-1);
-            }
-        }
-    } else {
-        /* destroy a face - the URI field will hold the face number */
-        if (uri == NULL) {
-            ccndc_warn(__LINE__, "command error (line %d), missing face number for destroyface\n", lineno);
-            return (-1);
-        }
-        facenumber = atoi(uri);
-        if (facenumber < 0) {
-            ccndc_warn(__LINE__, "command error (line %d), invalid face number for destroyface: %d\n", lineno, facenumber);
-            return (-1);
-        }
-        
-    }
-    /* we have successfully parsed a command line */
-    pflp = prefix_face_list_item_create(prefix, ipproto, imcastttl, rhostnamebuf,
-                                        rhostportbuf, mcastif, lifetime, iflags,
-                                        createface, facenumber);
-    if (pflp == NULL) {
-        ccndc_fatal(__LINE__, "Unable to allocate prefix_face_list_item\n");
-    }
-    pfltail->next = pflp;
-    return (0);
-}
-
-static int
-read_configfile(const char *filename, struct prefix_face_list_item *pfltail)
-{
-    int configerrors = 0;
-    int lineno = 0;
-    char *cmd;
-    char *uri;
-    char *proto;
-    char *host;
-    char *port;
-    char *flags;
-    char *mcastttl;
-    char *mcastif;
-    FILE *cfg;
-    char buf[1024];
-    const char *seps = " \t\n";
-    char *cp = NULL;
-    char *last = NULL;
-    int res;
-    
-    cfg = fopen(filename, "r");
-    if (cfg == NULL)
-        ccndc_fatal(__LINE__, "%s (%s)\n", strerror(errno), filename);
-    
-    while (fgets((char *)buf, sizeof(buf), cfg)) {
-        int len;
-        lineno++;
-        len = strlen(buf);
-        if (buf[0] == '#' || len == 0)
-            continue;
-        if (buf[len - 1] == '\n')
-            buf[len - 1] = '\0';
-        cp = index(buf, '#');
-        if (cp != NULL)
-            *cp = '\0';
-        
-        cmd = strtok_r(buf, seps, &last);
-        if (cmd == NULL)	/* blank line */
-            continue;
-        uri = strtok_r(NULL, seps, &last);
-        proto = strtok_r(NULL, seps, &last);
-        host = strtok_r(NULL, seps, &last);
-        port = strtok_r(NULL, seps, &last);
-        flags = strtok_r(NULL, seps, &last);
-        mcastttl = strtok_r(NULL, seps, &last);
-        mcastif = strtok_r(NULL, seps, &last);
-        res = process_command_tokens(pfltail, lineno, cmd, uri, proto, host, port, flags, mcastttl, mcastif);
-        if (res < 0) {
-            configerrors--;
-        } else {
-            pfltail = pfltail->next;
-        }
-    }
-    fclose(cfg);
-    return (configerrors);
-}
-int query_srv(const unsigned char *domain, int domain_size,
-              char **hostp, int *portp, char **proto)
-{
-    union {
-        HEADER header;
-        unsigned char buf[NS_MAXMSG];
-    } ans;
-    ssize_t ans_size;
-    char srv_name[NS_MAXDNAME];
-    int qdcount, ancount, i;
-    unsigned char *msg, *msgend;
-    unsigned char *end;
-    int type = 0, class = 0, ttl = 0, size = 0, priority = 0, weight = 0, port = 0, minpriority;
-    char host[NS_MAXDNAME];
-    
-    res_init();
-    
-    /* Step 1: construct the SRV record name, and see if there's a ccn service gateway.
-     * 	       Prefer TCP service over UDP, though this might change.
-     */
-    
-    *proto = "tcp";
-    snprintf(srv_name, sizeof(srv_name), "_ccnx._tcp.%.*s", (int)domain_size, domain);
-    ans_size = res_query(srv_name, C_IN, T_SRV, ans.buf, sizeof(ans.buf));
-    if (ans_size < 0) {
-        *proto = "udp";
-        snprintf(srv_name, sizeof(srv_name), "_ccnx._udp.%.*s", (int)domain_size, domain);
-        ans_size = res_query(srv_name, C_IN, T_SRV, ans.buf, sizeof(ans.buf));
-        if (ans_size < 0)
-            return (-1);
-    }
-    if (ans_size > sizeof(ans.buf))
-        return (-1);
-    
-    /* Step 2: skip over the header and question sections */
-    qdcount = ntohs(ans.header.qdcount);
-    ancount = ntohs(ans.header.ancount);
-    msg = ans.buf + sizeof(ans.header);
-    msgend = ans.buf + ans_size;
-    
-    for (i = qdcount; i > 0; --i) {
-        if ((size = dn_skipname(msg, msgend)) < 0)
-            return (-1);
-        msg = msg + size + QFIXEDSZ;
-    }
-    /* Step 3: process the answer section
-     *  return only the most desirable entry.
-     *  TODO: perhaps return a list of the decoded priority/weight/port/target
-     */
-    
-    minpriority = INT_MAX;
-    for (i = ancount; i > 0; --i) {
-        size = dn_expand(ans.buf, msgend, msg, srv_name, sizeof (srv_name));
-        if (size < 0) 
-            return (CCN_UPCALL_RESULT_ERR);
-        msg = msg + size;
-        GETSHORT(type, msg);
-        GETSHORT(class, msg);
-        GETLONG(ttl, msg);
-        GETSHORT(size, msg);
-        if ((end = msg + size) > msgend)
-            return (-1);
-        
-        if (type != T_SRV) {
-            msg = end;
-            continue;
-        }
-        
-        /* if the priority is numerically lower (more desirable) then remember
-         * everything -- note that priority is destroyed, but we don't use it
-         * when we register a prefix so it doesn't matter -- only the host
-         * and port are necessary.
-         */
-        GETSHORT(priority, msg);
-        if (priority < minpriority) {
-            minpriority = priority;
-            GETSHORT(weight, msg);
-            GETSHORT(port, msg);
-            size = dn_expand(ans.buf, msgend, msg, host, sizeof (host));
-            if (size < 0)
-                return (-1);
-        }
-        msg = end;
-    }
-    if (hostp) {
-        size = strlen(host);
-        *hostp = calloc(1, size);
-        if (!*hostp)
-            return (-1);
-        strncpy(*hostp, host, size);
-    }
-    if (portp) {
-        *portp = port;
-    }
-    return (0);
-}
-
-void
-process_prefix_face_list_item(struct ccn *h,
-                              struct prefix_face_list_item *pfl) 
-{
-    struct ccn_face_instance *nfi;
-    struct ccn_charbuf *temp;
-    int op;
-    int createface;
-    int res;
-    
-    op = (pfl->fi->lifetime > 0) ? OP_REG : OP_UNREG;
-    pfl->fi->ccnd_id = ccndid;
-    pfl->fi->ccnd_id_size = ccndid_size;
-    createface = 0 == strcmp(pfl->fi->action, "newface");
-    nfi = do_face_action(h, pfl->fi);
-    if (!createface) {
-        if (nfi == NULL) {
-            ccndc_warn(__LINE__, "Unable to destroy face %d\n",
-                       pfl->fi->faceid);
-            return;
-        }
-    } else {
-        if (nfi == NULL) {
-            temp = ccn_charbuf_create();
-            ccn_uri_append(temp, pfl->prefix->buf, pfl->prefix->length, 1);
-            ccndc_warn(__LINE__, "Unable to create face for %s %s %s %s %s\n",
-                       (op == OP_REG) ? "add" : "del", ccn_charbuf_as_string(temp),
-                       (pfl->fi->descr.ipproto == IPPROTO_UDP) ? "udp" : "tcp",
-                       pfl->fi->descr.address,
-                       pfl->fi->descr.port);
-            ccn_charbuf_destroy(&temp);
-            return;
-        }
-        res = register_unregister_prefix(h, op, pfl->prefix, nfi, pfl->flags);
-        if (res < 0) {
-            temp = ccn_charbuf_create();
-            ccn_uri_append(temp, pfl->prefix->buf, pfl->prefix->length, 1);
-            ccndc_warn(__LINE__, "Unable to %sregister prefix on face %d for %s %s %s %s %s\n",
-                       (op == OP_UNREG) ? "un" : "", nfi->faceid,
-                       (op == OP_REG) ? "add" : "del",
-                       ccn_charbuf_as_string(temp),
-                       (pfl->fi->descr.ipproto == IPPROTO_UDP) ? "udp" : "tcp",
-                       pfl->fi->descr.address,
-                       pfl->fi->descr.port);
-            ccn_charbuf_destroy(&temp);
-        }
-    }
-    ccn_face_instance_destroy(&nfi);
-    return;
-}
-
-enum ccn_upcall_res
-incoming_interest(
-                  struct ccn_closure *selfp,
-                  enum ccn_upcall_kind kind,
-                  struct ccn_upcall_info *info)
-{
-    const unsigned char *ccnb = info->interest_ccnb;
-    struct ccn_indexbuf *comps = info->interest_comps;
-    const unsigned char *comp0 = NULL;
-    size_t comp0_size = 0;
-    struct prefix_face_list_item pfl_storage = {0};
-    struct prefix_face_list_item *pflhead = &pfl_storage;
-    struct ccn_charbuf *uri;
-    int port;
-    char portstring[10];
-    char *host;
-    char *proto;
-    int res;
-    
-    if (kind == CCN_UPCALL_FINAL)
-        return (CCN_UPCALL_RESULT_OK);
-    if (kind != CCN_UPCALL_INTEREST)
-        return (CCN_UPCALL_RESULT_ERR);
-    if (comps->n < 1)
-        return (CCN_UPCALL_RESULT_OK);
-    
-    
-    res = ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb, comps->buf[0], comps->buf[1],
-                              &comp0, &comp0_size);
-    if (res < 0 || comp0_size > (NS_MAXDNAME - 12))
-        return (CCN_UPCALL_RESULT_OK);
-    if (memchr(comp0, '.', comp0_size) == NULL)
-        return (CCN_UPCALL_RESULT_OK);
-    
-    host = NULL;
-    port = 0;
-    res = query_srv(comp0, comp0_size, &host, &port, &proto);
-    if (res < 0) {
-        free(host);
-        return (CCN_UPCALL_RESULT_ERR);
-    }
-    
-    uri = ccn_charbuf_create();
-    ccn_charbuf_append_string(uri, "ccnx:/");
-    ccn_uri_append_percentescaped(uri, comp0, comp0_size);
-    snprintf(portstring, sizeof(portstring), "%d", port);
-    
-    /* now process the results */
-    /* pflhead, lineno=0, "add" "ccnx:/asdfasdf.com/" "tcp|udp", host, portstring, NULL NULL NULL */
-    res = process_command_tokens(pflhead, 0,
-                                 "add",
-                                 ccn_charbuf_as_string(uri),
-                                 proto,
-                                 host,
-                                 portstring,
-                                 NULL, NULL, NULL);
-    if (res < 0)
-        return (CCN_UPCALL_RESULT_ERR);
-
-    process_prefix_face_list_item(info->h, pflhead->next);
-    prefix_face_list_destroy(&pflhead->next);
-    return(CCN_UPCALL_RESULT_OK);
-}
-
-
-int
-main(int argc, char **argv)
-{
-    struct ccn *h = NULL;
-    struct ccn_charbuf *temp = NULL;
-    const char *progname = NULL;
-    const char *configfile = NULL;
-    struct prefix_face_list_item pfl_storage = {0};
-    struct prefix_face_list_item *pflhead = &pfl_storage;
-    struct prefix_face_list_item *pfl;
-    int dynamic = 0;
-    struct ccn_closure interest_closure = {.p=&incoming_interest};
-    int res;
-    int opt;
-    
-    initialize_global_data();
-    
-    progname = argv[0];
-    while ((opt = getopt(argc, argv, "hf:dv")) != -1) {
-        switch (opt) {
-            case 'f':
-                configfile = optarg;
-                break;
-            case 'd':
-                dynamic = 1;
-                break;
-            case 'v':
-                verbose++;
-                break;
-            case 'h':
-            default:
-                usage(progname);
-        }
-    }
-    
-    if (optind < argc) {
-        /* config file cannot be combined with command line */
-        if (configfile != NULL) {
-            usage(progname);
-        }
-        /* (add|delete) uri type host [port [flags [mcast-ttl [mcast-if]]]] */
-        
-        if (argc - optind < 2 || argc - optind > 8)
-            usage(progname);
-        
-        res = process_command_tokens(pflhead, 0,
-                                     argv[optind],
-                                     argv[optind+1],
-                                     (optind + 2) < argc ? argv[optind+2] : NULL,
-                                     (optind + 3) < argc ? argv[optind+3] : NULL,
-                                     (optind + 4) < argc ? argv[optind+4] : NULL,
-                                     (optind + 5) < argc ? argv[optind+5] : NULL,
-                                     (optind + 6) < argc ? argv[optind+6] : NULL,
-                                     (optind + 7) < argc ? argv[optind+7] : NULL);
-        if (res < 0)
-            usage(progname);
-    }
-    
-    if (configfile) {
-        read_configfile(configfile, pflhead);
-    }
-    
-    h = ccn_create();
-    res = ccn_connect(h, NULL);
-    if (res < 0) {
-        ccn_perror(h, "ccn_connect");
-        exit(1);
-    }
-    
-    if (pflhead->next) {        
-        ccndid_size = get_ccndid(h, ccndid, sizeof(ccndid_storage));
-        for (pfl = pflhead->next; pfl != NULL; pfl = pfl->next) {
-            process_prefix_face_list_item(h, pfl);
-        }
-        prefix_face_list_destroy(&pflhead->next);
-    }
-    if (dynamic) {
-        temp = ccn_charbuf_create();
-        if (ccndid_size == 0) ccndid_size = get_ccndid(h, ccndid, sizeof(ccndid_storage));
-        /* Set up a handler for interests */
-        ccn_name_init(temp);
-        ccn_set_interest_filter_with_flags(h, temp, &interest_closure,
-                                           CCN_FORW_ACTIVE | CCN_FORW_CHILD_INHERIT | CCN_FORW_LAST);
-        ccn_charbuf_destroy(&temp);
-        ccn_run(h, -1);
-    }
-    ccn_destroy(&h);
-    exit(res < 0);
 }
