@@ -4,7 +4,7 @@
  *
  * A CCNx program.
  *
- * Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -88,7 +88,7 @@ encode_message(struct ccn_charbuf *message, struct path * name_path,
     }
 
     ccn_charbuf_destroy(&path);
-    return (res);
+    return(res);
 }
 
 int
@@ -191,7 +191,8 @@ static const char *all_chars_percent_encoded_canon =
  "%F0%F1%F2%F3%F4%F5%F6%F7%F8%F9%FA%FB%FC%FD%FE%FF";
 
 int
-main (int argc, char *argv[]) {
+main(int argc, char *argv[])
+{
     struct ccn_charbuf *buffer = ccn_charbuf_create();
     struct ccn_charbuf *signed_info = ccn_charbuf_create();
     struct ccn_skeleton_decoder dd = {0};
@@ -232,38 +233,27 @@ main (int argc, char *argv[]) {
         }
     }
 
+    if (keystore_name == NULL)
+      keystore_name = tmpnam(NULL); // should be ok, there is just single thread
 
-    if (keystore_name == NULL) {
-      keystore_name = tmpnam (NULL); // should be ok, there is just single thread
-    }
-
-    if (keystore_password == NULL) {
+    if (keystore_password == NULL)
       keystore_password = "Th1s1sn0t8g00dp8ssw0rd.";
-    }
 
-    res = ccn_keystore_init (keystore, keystore_name, keystore_password);
-    if (res != 0)
-      {
+    res = ccn_keystore_init(keystore, keystore_name, keystore_password);
+    if (res != 0) {
         printf ("Initializing keystore in %s\n", keystore_name);
-
-        res = ccn_keystore_file_init (keystore_name, keystore_password,
-                                      "ccnxuser", 0, 3650); // create a key valid for 10 years
+        res = ccn_keystore_file_init(keystore_name, keystore_password,
+                                     "ccnxuser", 0, 3650);
         if (res != 0) {
-          fprintf (stderr, "Cannot create keystore [%s]", keystore_name);
-          return res;
+            fprintf (stderr, "Cannot create keystore [%s]", keystore_name);
+            return res;
         }
-
-        // init again
         res = ccn_keystore_init(keystore, keystore_name, keystore_password);
         if (res != 0) {
-          printf("Failed to initialize keystore\n");
-          exit(1);
+            printf("Failed to initialize keystore\n");
+            exit(1);
         }
-      }
-
-
-
-
+    }
 
     printf("Creating signed_info\n");
     res = ccn_signed_info_create(signed_info,
