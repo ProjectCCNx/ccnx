@@ -45,26 +45,26 @@ LIBS = libccnsync.a
 LIB_OBJS = IndexSorter.o SyncBase.o SyncHashCache.o SyncNode.o SyncRoot.o \
        SyncTreeWorker.o SyncUtil.o SyncActions.o sync_diff.o sync_api.o
 
-default all: $(PROGRAMS) lib
+default all: $(PROGRAMS) $(LIBS)
 all: $(BROKEN_PROGRAMS)
 
 test: default
 
-$(PROGRAMS): $(CCNLIBDIR)/libccn.a
+$(PROGRAMS): $(CCNLIBDIR)/libccn.a $(LIBS)
 
-lib:	libccnsync.a
+lib:	$(LIBS)
 
 libccnsync.a:	$(LIB_OBJS)
-	rm -f $@
-	ar crus $@ $(LIB_OBJS)
+	$(RM) $@
+	$(AR) crus $@ $(LIB_OBJS)
 
 SyncTest_OBJ = SyncTest.o
-SyncTest: $(SyncTest_OBJ) lib
+SyncTest: $(SyncTest_OBJ)
 	$(CC) $(CFLAGS) -o $@ $(SyncTest_OBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 clean:
-	rm -f *.o *.a $(PROGRAMS) $(BROKEN_PROGRAMS) depend
-	rm -rf *.dSYM *.gcov *.gcda *.gcno $(DEBRIS)
+	$(RM) *.o *.a $(PROGRAMS) $(BROKEN_PROGRAMS) depend
+	$(RM) -r *.dSYM *.gcov *.gcda *.gcno $(DEBRIS)
 
 check test: SyncTest $(SCRIPTSRC)
 	@echo No sync_exp tests hooked up yet.
