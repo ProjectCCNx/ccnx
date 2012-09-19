@@ -7,33 +7,39 @@ ccndc - manipulate CCNx forwarding table
 
 SYNOPSIS
 --------
-*ccndc* [-v] -d 
+*ccndc* [-v] [-t 'lifetime'] -d 
 
-*ccndc* [-v] -f 'configfile' 
+*ccndc* [-v] [-t 'lifetime'] -f 'configfile' 
 
-*ccndc* [-v] add 'uri' (udp|tcp) 'host' ['port' [flags [mcastttl [mcastif]]]])
+*ccndc* [-v] [-t 'lifetime'] (add|del|renew) 'uri' (udp|tcp) 'host' ['port' ['flags' ['mcastttl' ['mcastif']]]]
 
-*ccndc* [-v] del 'uri' (udp|tcp) 'host' ['port' [flags [mcastttl [mcastif]]]])]
+*ccndc* [-v] [-t 'lifetime'] (add|del) 'uri' face 'faceid'
+
+*ccndc* [-v] (create|destroy) (udp|tcp) 'host' ['port' ['flags' ['mcastttl' ['mcastif']]]]
+
+*ccndc* [-v] destroy face 'faceid'
 
 *ccndc* [-v] destroyface 'faceid'
+
+*ccndc* [-v] [-t 'lifetime'] srv
 
 DESCRIPTION
 -----------
 *ccndc* is a simple routing utility/daemon that configures the forwarding
 table (FIB) in a *ccnd(1)*. It may be used either as a command to add
-or remove static entries in the CCNx FIB (roughly analogous to
-the *route(8)* utility for manipulating an IP routing table). It may
-also run as a daemon that will dynamically create Faces and FIB
+or delete static entries in the CCNx FIB (roughly analogous to
+the *route(8)* utility for manipulating an IP routing table).
+Where a face is specified it may either be by the parameters ('host', 'port', etc.)
+or by face number.  Faces can be created or destroyed without reference to a
+prefix, or will be created automatically if the parameters are given.
+*ccndc* may also run as a daemon that will dynamically create Faces and FIB
 entries to forward certain CCNx Interests based upon DNS SRV
 records. The Interests that can be dynamically routed in this way are
 those have an initial name component that is a legal DNS name, for
 which there is a DNS SRV record pointing to an endpoint for tunneling
 CCNx protocol traffic over the Internet.
-*ccndc* can also send a destroyface operation to ccnd, destroying a face
-by the numeric faceid.
 
-*ccndc* also supports configuration files containing sets of `add` and
- `del` commands.
+*ccndc* also supports configuration files containing sets of commands.
 
 
 OPTIONS
@@ -45,23 +51,49 @@ OPTIONS
 *-f*:: 
        add or delete FIB entries based on contents of 'configfile'
 
+*-t*:: 
+       lifetime (seconds) of prefix entries created by subsequent operations
+       including those created by dynamic mode and "srv" command.
+
 *-v*:: 
        increase logging level
 
-*add* 'uri' (udp|tcp) 'host' ['port' [flags [mcastttl [mcastif]]]])::
-      add a FIB entry based on the parameters
+*add* 'uri' (udp|tcp) 'host' ['port' [flags [mcastttl [mcastif]]]]::
+      add a FIB entry based on the parameters, creating the face if necessary.
 
-*del* 'uri' (udp|tcp) 'host' ['port' [flags [mcastttl [mcastif]]]])::
-      delete a FIB entry based on the parameters
+*renew* 'uri' (udp|tcp) 'host' ['port' [flags [mcastttl [mcastif]]]]::
+      destroy any matching face then recreate with the given parameters and
+      add a FIB entry.
 
+*add* 'uri' face 'faceid'::
+      add a FIB entry to the specified face.
+      
+*del* 'uri' (udp|tcp) 'host' ['port' [flags [mcastttl [mcastif]]]]::
+      delete a FIB entry from the face specified by the parameters.
+
+*del* 'uri' face 'faceid'::
+      remove a FIB entry from the specified face number.
+
+*create* (udp|tcp) 'host' ['port' [mcastttl [mcastif]]]::
+      create a face based on the parameters. No FIB entry is made.
+      
+*destroy* (udp|tcp) 'host' ['port' [mcastttl [mcastif]]]::
+      remove a face based on the parameters.
+
+*destroy* face 'faceid'
 *destroyface* 'faceid'
       destroy a face based on the numeric faceid.
+
+*srv*
+      create a face and FIB entry (for ccnx:/) based on the results of an
+      SRV lookup using the default DNS search rules.  Queries _ccnx._tcp and
+      _ccnx._udp.
 
 CONFIGURATION FILE
 ------------------
 
 *ccndc* will process a configuration file if specified with the *-f*
-flag. The configuration file may contain a sequence of `add` and `del`
+flag. The configuration file may contain a sequence of
 commands with the same parameters as may be specified on the *ccndc*
 command-line.  Comments in the file are prefixed with `#`.  Here is a
 sample:
