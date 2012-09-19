@@ -55,6 +55,7 @@ lib/libccn.a
 lib/matrixtest
 lib/signbenchtest
 lib/skel_decode_test
+lib/test.keystore
 lib/ccnbtreetest
 libexec/Makefile
 libexec/ccndc

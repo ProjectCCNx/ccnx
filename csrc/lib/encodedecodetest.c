@@ -234,10 +234,10 @@ main(int argc, char *argv[])
     }
 
     if (keystore_name == NULL)
-      keystore_name = tmpnam(NULL); // should be ok, there is just single thread
+        keystore_name = "test.keystore";
 
     if (keystore_password == NULL)
-      keystore_password = "Th1s1sn0t8g00dp8ssw0rd.";
+        keystore_password = "Th1s1sn0t8g00dp8ssw0rd.";
 
     res = ccn_keystore_init(keystore, keystore_name, keystore_password);
     if (res != 0) {

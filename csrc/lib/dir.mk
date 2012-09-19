@@ -20,7 +20,7 @@ PROGRAMS = hashtbtest skel_decode_test \
     encodedecodetest signbenchtest basicparsetest ccnbtreetest
 
 BROKEN_PROGRAMS =
-DEBRIS = ccn_verifysig _bt_*
+DEBRIS = ccn_verifysig _bt_* test.keystore
 CSRC = ccn_bloom.c \
        ccn_btree.c ccn_btree_content.c ccn_btree_store.c \
        ccn_buf_decoder.c ccn_buf_encoder.c ccn_bulkdata.c \
