@@ -22,6 +22,7 @@
 #include "ccndc-srv.h"
 #include "ccndc-log.h"
 
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
