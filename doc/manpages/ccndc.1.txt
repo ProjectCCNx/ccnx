@@ -80,11 +80,12 @@ OPTIONS
 *destroy* (udp|tcp) 'host' ['port' [mcastttl [mcastif]]]::
       remove a face based on the parameters.
 
-*destroy* face 'faceid'
-*destroyface* 'faceid'
+*destroy* face 'faceid'::
+
+*destroyface* 'faceid'::
       destroy a face based on the numeric faceid.
 
-*srv*
+*srv*::
       create a face and FIB entry (for ccnx:/) based on the results of an
       SRV lookup using the default DNS search rules.  Queries _ccnx._tcp and
       _ccnx._udp.

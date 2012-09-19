@@ -108,10 +108,16 @@ create a face based on the parameters\&. No FIB entry is made\&.
 .RS 4
 remove a face based on the parameters\&.
 .RE
-.sp
-\fBdestroy\fR face \fIfaceid\fR \fBdestroyface\fR \fIfaceid\fR destroy a face based on the numeric faceid\&.
-.sp
-\fBsrv\fR create a face and FIB entry (for ccnx:/) based on the results of an SRV lookup using the default DNS search rules\&. Queries _ccnx\&._tcp and _ccnx\&._udp\&.
+.PP
+\fBdestroy\fR face \fIfaceid\fR, \fBdestroyface\fR \fIfaceid\fR
+.RS 4
+destroy a face based on the numeric faceid\&.
+.RE
+.PP
+\fBsrv\fR
+.RS 4
+create a face and FIB entry (for ccnx:/) based on the results of an SRV lookup using the default DNS search rules\&. Queries _ccnx\&._tcp and _ccnx\&._udp\&.
+.RE
 .SH "CONFIGURATION FILE"
 .sp
 \fBccndc\fR will process a configuration file if specified with the \fB\-f\fR flag\&. The configuration file may contain a sequence of commands with the same parameters as may be specified on the \fBccndc\fR command\-line\&. Comments in the file are prefixed with #\&. Here is a sample:
