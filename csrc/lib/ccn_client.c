@@ -177,36 +177,6 @@ ccn_perror(struct ccn *h, const char *s)
                         h->errline, (int)getpid(), h->err, dlm, s);
 }
 
-/**
- * Produce message on standard error output describing the last
- * error encountered during a call using the given handle.
- *
- * Same as ccn_perror, but supports variadic parameters
- *
- * @param h is the ccn handle - may not be NULL.
- * @param s is a client-supplied message; if NULL a message will be supplied
- *        where available.
- */
-void
-ccn_perror2(struct ccn *h, const char *s, ...)
-{
-    const char *dlm = ": ";
-    va_list ap;
-    va_start(ap, s);
-
-    if (s == NULL) {
-        if (h->err > 0)
-            s = strerror(h->err);
-        else
-            dlm = s = "";
-    }
-    // XXX - time stamp
-    fprintf(stderr, "ccn_client.c:%d[%d] - error %d%s",
-            h->errline, (int)getpid(), h->err, dlm);
-    vfprintf(stderr, s, ap);
-    fprintf(stderr, "\n");
-}
-
 static int
 ccn_note_err(struct ccn *h)
 {
@@ -2517,6 +2487,8 @@ ccn_load_default_key(struct ccn *h,
     if (h->default_pubid != NULL)
         return(NOTE_ERR(h, EINVAL));
     default_pubid = ccn_charbuf_create();
+    if (default_pubid == NULL)
+        return(NOTE_ERRNO(h));
     res = ccn_load_private_key(h,
                                keystore_path,
                                keystore_passphrase,
@@ -2592,60 +2564,87 @@ ccn_get_public_key(struct ccn *h,
     return(res);
 }
 
-int
-ccn_load_key_or_create(struct ccn *h,
+static int
+ccn_load_or_create_key(struct ccn *h,
                        const char *keystore,
-                       struct ccn_charbuf *default_pubid,
-                       size_t key_size)
+                       struct ccn_charbuf *pubid)
 {
-  const char *password = NULL;
-  int res = 0;
-
-  password = getenv ("CCNX_KEYSTORE_PASSWORD");
-  if (password == 0) {
-    password = "Th1s1sn0t8g00dp8ssw0rd.";
-  }
-
-  res = ccn_load_private_key(h,
-                             keystore,
-                             password,
-                             default_pubid);
-
-  if (res != 0 || default_pubid->length != key_size) {
-    // two cases, either file exists and we password is wrong or file does not exist
-
-    if (access (keystore, R_OK) == 0) {
-      ccn_perror2 (h, "Keystore file [%s] exists, but private key cannot be loaded.  "
-                  "Check if CCNX_KEYSTORE_PASSWORD is set to a correct password, "
-                  "otherwise remove [%s] and it will be automatically created.",
-                  keystore, keystore);
-      res = NOTE_ERR (h, -1);
-      return res;
-    }
-
-    ccn_perror2 (h, "Keystore [%s] does not exist and will be automatically created", keystore);
-
-    res = ccn_keystore_file_init ((char*)keystore, (char*)password,
-                                  "ccnxuser", 0, 3650); // create a key valid for 10 years
+    const char *password;
+    int res;
+    
+    password = getenv("CCNX_KEYSTORE_PASSWORD");
+    if (password == 0)
+        password = "Th1s1sn0t8g00dp8ssw0rd.";
+    res = ccn_load_private_key(h, keystore, password, pubid);
     if (res != 0) {
-      ccn_perror2 (h, "Cannot create keystore [%s]", keystore);
-      res = NOTE_ERRNO (h);
-      return res;
+        /* Either file exists and password is wrong or file does not exist */
+        if (access(keystore, R_OK) == 0) {
+            fprintf(stderr,
+               "Keystore file [%s] exists, but private key cannot be loaded.\n"
+               "Check if CCNX_KEYSTORE_PASSWORD is set to a correct password,\n"
+               "otherwise remove [%s] and it will be automatically created.\n",
+               keystore, keystore);
+            return(res);
+        }
+        fprintf(stderr,
+            "Keystore [%s] does not exist and will be automatically created\n",
+            keystore);
+        res = ccn_keystore_file_init((char*)keystore, (char*)password,
+                "ccnxuser", 0, 3650); /* create a key valid for 10 years */
+        if (res != 0) {
+            fprintf(stderr, "Cannot create keystore [%s]\n", keystore);
+            res = NOTE_ERRNO(h);
+            return(res);
+        }
+        res = ccn_load_private_key(h, keystore, password, pubid);
     }
+    return(res);
+}
 
-    res = ccn_load_private_key(h,
-                               keystore,
-                               password,
-                               default_pubid);
-    if (res != 0 || default_pubid->length != key_size) {
-      // this definitely should not happen
-      ccn_perror2 (h, "Cannot load keystore [%s] just after it has been created", keystore);
-      res = NOTE_ERRNO (h);
-      return res;
+static int
+ccn_load_or_create_default_key(struct ccn *h)
+{
+    const char *s = NULL;
+    struct ccn_charbuf *path = NULL;
+    struct ccn_charbuf *default_pubid = NULL;
+    int res = 0;
+    
+    if (h->default_pubid != NULL)
+        return(0);
+    
+    path = ccn_charbuf_create();
+    default_pubid = ccn_charbuf_create();
+    if (default_pubid == NULL || path == NULL)
+        return(NOTE_ERRNO(h));
+    s = getenv("CCNX_DIR");
+    if (s != NULL && s[0] != 0)
+        ccn_charbuf_putf(path, "%s", s);
+    else {
+        s = getenv("HOME");
+        if (s != NULL && s[0] != 0) {
+            ccn_charbuf_putf(path, "%s/.ccnx", s);
+            res = mkdir(ccn_charbuf_as_string(path), S_IRWXU);
+            if (res == -1) {
+                if (errno == EEXIST)
+                    res = 0;
+                else
+                    res = NOTE_ERRNO(h);
+            }
+        }
+        else
+            res = NOTE_ERR(h, -1);
     }
-  }
-
-  return res;
+    ccn_charbuf_putf(path, "/%s", ".ccnx_keystore");
+    res = ccn_load_or_create_key(h,
+                                 ccn_charbuf_as_string(path),
+                                 default_pubid);
+    if (res == 0) {
+        h->default_pubid = default_pubid;
+        default_pubid = NULL;
+    }
+    ccn_charbuf_destroy(&default_pubid);
+    ccn_charbuf_destroy(&path);
+    return(res);
 }
 
 /**
@@ -2660,15 +2659,10 @@ ccn_chk_signing_params(struct ccn *h,
                        struct ccn_charbuf **pfinalblockid,
                        struct ccn_charbuf **pkeylocator)
 {
-    struct ccn_charbuf *default_pubid = NULL;
-    struct ccn_charbuf *temp = NULL;
-    const char *home = NULL;
-    const char *ccnx_dir = NULL;
     int res = 0;
     int i;
     int conflicting;
     int needed;
-    struct stat sb;
 
     if (params != NULL)
         *result = *params;
@@ -2690,69 +2684,12 @@ ccn_chk_signing_params(struct ccn *h,
         continue;
     if (i == sizeof(result->pubid)) {
         if (h->default_pubid == NULL) {
-            default_pubid = ccn_charbuf_create();
-            temp = ccn_charbuf_create();
-            if (default_pubid == NULL || temp == NULL)
-                return(NOTE_ERRNO(h));
-
-            res = -1;
-
-            // check CCNX_DIR
-            ccnx_dir = getenv("CCNX_DIR");
-            if (ccnx_dir != NULL && ccnx_dir[0] != 0) {
-              ccn_charbuf_reset(temp);
-              ccn_charbuf_putf(temp, "%s/.ccnx_keystore", ccnx_dir);
-
-              res = ccn_load_key_or_create (h,
-                                            ccn_charbuf_as_string (temp),
-                                            default_pubid,
-                                            sizeof(result->pubid));
-            }
-
-            if (res < 0) {
-              // check HOME
-              home = getenv("HOME");
-              if (home != NULL) {
-                // step 1. Check if home directory exists
-                ccn_charbuf_reset(temp);
-                ccn_charbuf_putf(temp, "%s/.ccnx", home);
-
-                res = stat (ccn_charbuf_as_string (temp), &sb);
-                if (res != 0 || !(sb.st_mode & S_IFDIR))
-                  {
-                    res = mkdir (ccn_charbuf_as_string (temp), S_IRWXU);
-                    if (res != 0)
-                      {
-                        ccn_perror2 (h, "Failed to create directory [%s]", ccn_charbuf_as_string (temp));
-                      }
-                  }
-
-                ccn_charbuf_reset(temp);
-                ccn_charbuf_putf(temp, "%s/.ccnx/.ccnx_keystore", home);
-
-                res = ccn_load_key_or_create (h,
-                                              ccn_charbuf_as_string (temp),
-                                              default_pubid,
-                                              sizeof(result->pubid));
-              }
-            }
-
-            if (res == 0) {
-                h->default_pubid = default_pubid;
-                default_pubid = NULL;
-            }
-            else {
-              ccn_perror(h, "Fail to load private key from keystore");
-              res = NOTE_ERRNO (h);
-            }
+            res = ccn_load_or_create_default_key(h);
+            if (res < 0)
+                return(res);
         }
-        if (h->default_pubid == NULL)
-            res = NOTE_ERRNO(h);
-        else
-            memcpy(result->pubid, h->default_pubid->buf, sizeof(result->pubid));
+        memcpy(result->pubid, h->default_pubid->buf, sizeof(result->pubid));
     }
-    ccn_charbuf_destroy(&default_pubid);
-    ccn_charbuf_destroy(&temp);
     needed = result->sp_flags & (CCN_SP_TEMPL_TIMESTAMP      |
                                  CCN_SP_TEMPL_FINAL_BLOCK_ID |
                                  CCN_SP_TEMPL_FRESHNESS      |
