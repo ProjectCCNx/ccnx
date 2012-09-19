@@ -604,6 +604,7 @@ ccn_destroy(struct ccn **hp)
     ccn_indexbuf_destroy(&h->scratch_indexbuf);
     ccn_charbuf_destroy(&h->default_pubid);
     ccn_charbuf_destroy(&h->ccndid);
+    ccn_charbuf_destroy(&h->connect_type);
     if (h->tap != -1)
         close(h->tap);
     free(h);

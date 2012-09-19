@@ -33,6 +33,7 @@
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/ccn_private.h>
+#include <ccn/hashtb.h>
 #include <ccn/schedule.h>
 #include <ccn/sockaddrutil.h>
 #include <ccn/uri.h>
@@ -554,8 +555,10 @@ r_proto_policy_update(struct ccn_schedule *sched,
         goto Bail;
     }
     policy_link_cob = ccnr_init_policy_link_cob(ccnr, ccnr->direct_client, name);
-    if (policy_link_cob != NULL)
+    if (policy_link_cob != NULL) {
+        ccn_charbuf_destroy(&ccnr->policy_link_cob);
         ccnr->policy_link_cob = policy_link_cob;
+    }
     policyFileName = ccn_charbuf_create();
     ccn_charbuf_putf(policyFileName, "%s/repoPolicy", ccnr->directory);
     fd = open(ccn_charbuf_as_string(policyFileName), O_WRONLY | O_CREAT, 0666);
@@ -810,6 +813,7 @@ r_proto_start_write_checked(struct ccn_closure *selfp,
     ccn_charbuf_destroy(&interest);
     ccn_indexbuf_destroy(&comps);
     if (content == NULL) {
+        ccn_charbuf_destroy(&name);
         if (CCNSHOULDLOG(ccnr, LM_128, CCNL_FINE))
             ccnr_msg(ccnr, "r_proto_start_write_checked: NOT PRESENT");
         // XXX - dropping into the start_write case means we do not check the provided digest when fetching, so this is not completely right.
@@ -918,6 +922,21 @@ Bail:
     return(ans);
 }
 
+void
+r_proto_finalize_enum_state(struct hashtb_enumerator *e)
+{
+    struct enum_state *es = e->data;
+    unsigned i;
+    
+    ccn_charbuf_destroy(&es->name);
+    ccn_charbuf_destroy(&es->interest); // unnecessary?
+    ccn_charbuf_destroy(&es->reply_body);
+    ccn_indexbuf_destroy(&es->interest_comps);
+    for (i = 0; i < ENUM_N_COBS; i++)
+        ccn_charbuf_destroy(&(es->cob[i]));
+    return;
+}
+
 #define ENUMERATION_STATE_TICK_MICROSEC 1000000
 /**
  * Remove expired enumeration table entries
@@ -932,7 +951,6 @@ reap_enumerations(struct ccn_schedule *sched,
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     struct enum_state *es = NULL;
-    int i;
     
     if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
         ccnr->reap_enumerations = NULL;
@@ -946,13 +964,7 @@ reap_enumerations(struct ccn_schedule *sched,
                 if (CCNSHOULDLOG(ccnr, LM_8, CCNL_FINER))
                     ccnr_debug_ccnb(ccnr, __LINE__, "reap enumeration state", NULL,
                                     es->name->buf, es->name->length);            
-                ccn_charbuf_destroy(&es->name);
-                ccn_charbuf_destroy(&es->interest); // unnecessary?
-                ccn_charbuf_destroy(&es->reply_body);
-                ccn_indexbuf_destroy(&es->interest_comps);
-                for (i = 0; i < ENUM_N_COBS; i++)
-                    ccn_charbuf_destroy(&(es->cob[i]));
-                // remove the entry from the hash table
+                // remove the entry from the hash table, finalization frees data
                 hashtb_delete(e);
             }
         hashtb_next(e);
@@ -1579,7 +1591,7 @@ r_proto_initiate_key_fetch(struct ccnr_handle *ccnr,
     }
     ccn_charbuf_append_closer(templ); /* </Interest> */
     /* See if we already have it - if so we declare we are done. */
-    if (r_sync_lookup(ccnr, templ, NULL) == 0) {
+    if (r_lookup(ccnr, templ, NULL) == 0) {
         res = 1;
         // Note - it might be that the thing we found is not really the thing
         // we were after.  For now we don't check.

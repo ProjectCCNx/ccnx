@@ -15,7 +15,14 @@
 SUBDIRS = lib ccnd sync ccnr libexec cmd util tests exttests
 OBJTREE = build
 MAKEF =  -f ../conf.mk -f dir.mk -f ../subr.mk
-CFLAGS = -g
+CFLAGS = $(COPT)
+
+default:
+
+conf.mk:
+	./configure
+
+include conf.mk
 
 default all clean depend coverage test check shared install uninstall config_subdir: conf.mk subr.mk generic.mk _always
 	test -d include/ccn || (test -d ../include/ccn && mkdir -p include && ln -s ../../include/ccn include/ccn)
@@ -27,9 +34,6 @@ default all clean depend coverage test check shared install uninstall config_sub
 
 subr.mk generic.mk:
 	test -f ./$(SRCDIR)/$@ && ln -s ./$(SRCDIR)/$@
-
-conf.mk:
-	./configure
 
 test check: default
 

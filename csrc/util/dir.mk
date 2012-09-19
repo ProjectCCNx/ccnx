@@ -13,7 +13,8 @@
 #
 
 SCRIPTSRC = shebang \
-	ccndstart.sh ccndstop.sh ccndstatus.sh ccndlogging.sh ccnget.sh ccnput.sh
+	ccndstart.sh ccndstop.sh ccndstatus.sh ccndlogging.sh ccnget.sh ccnput.sh \
+	ccntestloop-trampoline
 PROGRAMS = ccndstart ccndstop ccndstatus ccntestloop ccndlogging ccnget ccnput
 INSTALLED_PROGRAMS = $(PROGRAMS)
 

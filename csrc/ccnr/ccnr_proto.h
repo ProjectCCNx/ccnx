@@ -78,4 +78,5 @@ int r_proto_initiate_key_fetch(struct ccnr_handle *ccnr,
                                struct ccn_parsed_ContentObject *pco,
                                int use_link,
                                ccnr_cookie a);
+void r_proto_finalize_enum_state(struct hashtb_enumerator *e);
 #endif

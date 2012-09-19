@@ -9,5 +9,14 @@
 		<item>@string/debug_finest</item>
 		<item>@string/debug_none</item>
 	</string-array>
+	<string-array name="env_ccns_debug">
+		<item>@string/debug_warning</item>
+		<item>@string/debug_severe</item>
+		<item>@string/debug_error</item>
+		<item>@string/debug_fine</item>
+		<item>@string/debug_finer</item>
+		<item>@string/debug_finest</item>
+		<item>@string/debug_none</item>
+	</string-array>
 </resources>
 

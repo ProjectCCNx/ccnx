@@ -193,9 +193,26 @@ SyncNameForIndexbuf(const unsigned char *buf, struct ccn_indexbuf *comps);
 struct ccn_charbuf *
 SyncUriForName(struct ccn_charbuf *name);
 
+/**
+ * Convenience routine to make a Sync protocol command prefix for a marker.
+ * The returned name includes the topo prefix, the marker, and the slice hash.
+ * The storage for the returned charbuf is owned by the caller.
+ * @returns the charbuf with the uri for the name (NULL if an error)
+ */
+struct ccn_charbuf *
+SyncConstructCommandPrefix(struct SyncRootStruct *root, char *marker);
+
 /////////////////////////////////////////////////////////////////
 // Routines for dealing with hashes.
 /////////////////////////////////////////////////////////////////
+
+
+struct SyncHashInfoList {
+    struct SyncHashInfoList *next;
+    struct SyncHashCacheEntry *ce;
+    int64_t lastSeen;
+    int64_t lastReplied;
+};
 
 /**
  * finds the hash code, storing the pointer to *xp and the length to *xs
@@ -209,9 +226,21 @@ void
 SyncGetHashPtr(const struct ccn_buf_decoder *hd,
                const unsigned char **xp, ssize_t *xs);
 
-ssize_t
+/**
+ * compares two hash codes in charbufs
+ * @returns < 0 for X < Y, 0 for X = Y, > 0 for X > Y
+ */
+int
 SyncCmpHashesRaw(const unsigned char *xp, ssize_t xs,
                  const unsigned char *yp, ssize_t ys);
+
+/**
+ * compares two hash codes in charbufs
+ * @returns < 0 for X < Y, 0 for X = Y, > 0 for X > Y
+ */
+int
+SyncCompareHash(struct ccn_charbuf *hashX, struct ccn_charbuf *hashY);
+
 
 // accumulates a simple hash code into the hash accumulator
 // hash code is raw bytes
@@ -233,7 +262,7 @@ void
 SyncAccumHash(struct SyncLongHashStruct *hp, const struct ccn_charbuf *cb);
 
 // convert long hash to charbuf
-extern struct ccn_charbuf *
+struct ccn_charbuf *
 SyncLongHashToBuf(const struct SyncLongHashStruct *hp);
 
 // makes a small, unsigned hash code from a full hash
@@ -241,6 +270,17 @@ SyncLongHashToBuf(const struct SyncLongHashStruct *hp);
 uint32_t
 SyncSmallHash(const unsigned char * xp, ssize_t xs);
 
+// maintains a hash info list, sorted by most recent first (lastSeen)
+struct SyncHashInfoList *
+SyncNoteHash(struct SyncHashInfoList *head, struct SyncHashCacheEntry *ce);
+
+// accumulates exceptions from list into acc
+// acc == NULL
+// returns new accum, not sorted
+struct SyncNameAccum *
+SyncExclusionsFromHashList(struct SyncRootStruct *root,
+                           struct SyncNameAccum *acc,
+                           struct SyncHashInfoList *list);
 
 /////////////////////////////////////////////////////////////////
 // Routines for appending numbers, hashes and names to a charbuf.
@@ -311,6 +351,11 @@ struct SyncNameAccum {
     struct SyncNameAccumEntry *ents;
 };
 
+struct SyncNameAccumList {
+    struct SyncNameAccumList *next;
+    struct SyncNameAccum *accum;
+};
+
 /**
  * @returns a new name accum with at least lim space for names
  */
@@ -372,6 +417,23 @@ SyncFreeNodeAccum(struct SyncNodeAccum *na);
 
 void
 SyncAccumNode(struct SyncNodeAccum *na, struct SyncNodeComposite *nc);
+
+/**
+ * Adds the given name to any applicable roots.
+ * Use seq_num == 0 to ignore sequence number.
+ * @returns < 0 for failure, number of additions to roots for success.
+ */
+int
+SyncAddName(struct SyncBaseStruct *base, struct ccn_charbuf *name, uint64_t seq_num);
+
+/**
+ * takes a list of names and sort them, removing duplicates
+ * names are transfered to the return accum, so src is left empty
+ * @returns an accum with the sorted names
+ */
+extern struct SyncNameAccum *
+SyncSortNames(struct SyncRootStruct *root, struct SyncNameAccum *src);
+
 
 ///////////////////////////////////////////////////////
 // Routines for simple interest creation

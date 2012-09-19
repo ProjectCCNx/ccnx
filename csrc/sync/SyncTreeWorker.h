@@ -40,7 +40,6 @@ struct SyncTreeWorkerHead {
     struct SyncHashCacheHead *cache;
     enum SyncTreeWorkerState state;
     intmax_t visits;
-    int remote;
     int level;
     int lim;
     struct SyncTreeWorkerEntry *stack;
@@ -61,8 +60,7 @@ struct SyncTreeWorkerEntry {
  */
 struct SyncTreeWorkerHead *
 SyncTreeWorkerCreate(struct SyncHashCacheHead *cache,
-                     struct SyncHashCacheEntry *ent,
-                     int remote);
+                     struct SyncHashCacheEntry *ent);
 
 /**
  * initialize an existing worker from the cache entry
@@ -70,8 +68,7 @@ SyncTreeWorkerCreate(struct SyncHashCacheHead *cache,
  */
 void
 SyncTreeWorkerInit(struct SyncTreeWorkerHead *head,
-                   struct SyncHashCacheEntry *ent,
-                   int remote);
+                   struct SyncHashCacheEntry *ent);
 
 /**
  * requires that the node be present
