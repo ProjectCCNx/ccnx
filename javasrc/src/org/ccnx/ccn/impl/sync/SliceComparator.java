@@ -610,8 +610,7 @@ public class SliceComparator implements Runnable {
 			Log.finest(Log.FAC_SYNC, "Starting update from hash {0}", Component.printURI(ste.getHash()));
 		ArrayList<SyncNodeElement> nodeElements = new ArrayList<SyncNodeElement>();
 		SyncNodeElement thisHashElement = null;
-		SyncNodeElement firstElement = null;
-
+		
 		for (ContentName name : _updateNames) {
 			SyncNodeComposite snc = null;
 			SyncNodeElement sne = null;
@@ -634,8 +633,6 @@ public class SliceComparator implements Runnable {
 					switch (sne.getType()) {
 					case HASH:
 						newHasNodes = true;
-						if (null == firstElement)
-							firstElement = snc.getMinName();
 						SyncTreeEntry entry = _pbsm.getHash(sne.getData());
 						if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
 							Log.finest(Log.FAC_SYNC, "Update compare - moving to: {0}", entry == null ? null : Component.printURI(entry.getHash()));
@@ -683,8 +680,6 @@ public class SliceComparator implements Runnable {
 							// We've have to redo everything starting from here (which means the start of this
 							// original node).
 							redo = true;
-							if (nodeElements.size() == 0)  // If we are restarting from the first node, just recalculate the first element
-								firstElement = null;
 							if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
 								Log.finest(Log.FAC_SYNC, "Update: starting redo of names because of {0} at {1}", name, snc.getMinName().getName());
 							}
@@ -728,8 +723,6 @@ public class SliceComparator implements Runnable {
 		while (neededNames.size() > 0) {
 			newHead = SyncTreeEntry.newLeafNode(neededNames);
 			_pbsm.addHash(newHead.getHash());
-			if (null == firstElement)
-				firstElement = newHead.getCurrentElement();
 			if (neededNames.size() > 0) {	// Need to split
 				newHasNodes = true;
 			}
@@ -737,17 +730,22 @@ public class SliceComparator implements Runnable {
 				nodeElements.add(new SyncNodeElement(newHead.getHash()));
 		}
 		if (redo && newHasNodes) {
-			SyncNodeElement lastNodeElement = nodeElements.get(nodeElements.size() - 1);
-			
 			// OK its a little bogus to use newHead for what really should be a temp variable here,
-			// but if we can't find the hash (which we actually always should) it works out right
+			// but if we can't find a hash (which we actually always should) it works out right
 			// with the rest of the code and if we find it, we reset newHead to the proper value.
-			newHead = _pbsm.getHash(lastNodeElement.getData());
+			SyncNodeElement firstNodeElement = nodeElements.get(0);
+			newHead = _pbsm.getHash(firstNodeElement.getData());
 			if (null != newHead) {
-				SyncNodeComposite snc = new SyncNodeComposite(nodeElements, firstElement, newHead.getNode(_decoder).getMaxName());
-				newHead = _pbsm.addHash(snc.getHash());
-				newHead.setNode(snc);
-				newHead.setCovered(true);
+				SyncNodeElement minElement = newHead.getNode().getMinName();
+				SyncNodeElement lastNodeElement = nodeElements.get(nodeElements.size() - 1);
+				newHead = _pbsm.getHash(lastNodeElement.getData());
+				if (null != newHead) {
+					SyncNodeElement maxElement = newHead.getNode().getMaxName();
+					SyncNodeComposite snc = new SyncNodeComposite(nodeElements, minElement, maxElement);
+					newHead = _pbsm.addHash(snc.getHash());
+					newHead.setNode(snc);
+					newHead.setCovered(true);
+				}
 			}
 		}
 		_current.clear();
