@@ -48,23 +48,17 @@
 /*****************************************************************************
  * Module descriptor
  *****************************************************************************/
-#define CCN_FIFO_MAX_BLOCKS 128
-#define CCN_DEFAULT_CHUNK_SIZE 4096
-#define CCN_FIFO_BLOCK_SIZE (6 * CCN_DEFAULT_CHUNK_SIZE)
-#define CCN_VERSION_TIMEOUT 1000
+#define CCN_FIFO_MAX_BLOCKS 8
+#define CCN_VERSION_TIMEOUT 5000
 #define CCN_HEADER_TIMEOUT 1000
-#define CCN_DEFAULT_PREFETCH 5
+#define CCN_DEFAULT_PREFETCH 12
 
-#define CCN_LIFETIME (1<<12)
+#define CCN_PREFETCH_LIFETIME 1023
+#define CCN_DATA_LIFETIME 1024
 
 #define MAX_FIFO_TEXT N_("FIFO max blocks")
 #define MAX_FIFO_LONGTEXT N_(						\
 "Maximum number of blocks held in FIFO "			\
-"used by content fetcher.")
-
-#define BLOCK_FIFO_TEXT N_("FIFO block size")
-#define BLOCK_FIFO_LONGTEXT N_(						\
-"Size of blocks held in FIFO "			\
 "used by content fetcher.")
 #define PREFETCH_TEXT N_("Prefetch offset")
 #define PREFETCH_LONGTEXT N_(                                          \
@@ -94,20 +88,16 @@ set_subcategory(SUBCAT_INPUT_ACCESS);
 #if (VLCPLUGINVER < 10200)
 add_integer("ccn-fifo-maxblocks", CCN_FIFO_MAX_BLOCKS, NULL,
             MAX_FIFO_TEXT, MAX_FIFO_LONGTEXT, true);
-add_integer("ccn-fifo-blocksize", CCN_FIFO_BLOCK_SIZE, NULL,
-            BLOCK_FIFO_TEXT, BLOCK_FIFO_LONGTEXT, true);
 add_integer("ccn-prefetch", CCN_DEFAULT_PREFETCH, NULL,
             PREFETCH_TEXT, PREFETCH_LONGTEXT, true);
-add_bool( "ccn-streams-seekable", true, NULL,
+add_bool("ccn-streams-seekable", true, NULL,
          SEEKABLE_TEXT, SEEKABLE_LONGTEXT, true )
 #else
 add_integer("ccn-fifo-maxblocks", CCN_FIFO_MAX_BLOCKS,
             MAX_FIFO_TEXT, MAX_FIFO_LONGTEXT, true);
-add_integer("ccn-fifo-blocksize", CCN_FIFO_BLOCK_SIZE,
-            BLOCK_FIFO_TEXT, BLOCK_FIFO_LONGTEXT, true);
 add_integer("ccn-prefetch", CCN_DEFAULT_PREFETCH,
             PREFETCH_TEXT, PREFETCH_LONGTEXT, true);
-add_bool( "ccn-streams-seekable", true,
+add_bool("ccn-streams-seekable", true,
          SEEKABLE_TEXT, SEEKABLE_LONGTEXT, true )
 #endif
 change_safe();
@@ -124,42 +114,42 @@ struct access_sys_t
 {
     vlc_mutex_t lock;       /**< mutex protecting data shared between CCNSeek and incoming_content */
     vlc_cond_t cond;        /**< condition variable used to signal from the CCN thread */
-    bool b_state_changed;   /**< indicates */
+    bool b_state_changed;   /**< indicates change in i_state */
     int i_state;            /**< values returned from the CCN thread */
     vlc_thread_t thread;    /**< thread that is running ccn_run loop */
     int64_t i_pos;          /**< byte offset in stream of next bytes to arrive over net */
-    int i_bufsize;          /**< size of intermediate buffer */
-    int i_bufoffset;        /**< offset in intermediate buffer for next bytes to arrive over net */
     int i_chunksize;        /**< size of CCN ContentObject data blocks */
     int timeouts;           /**< number of timeouts without good data received */
     int i_fifo_max;         /**< maximum number of blocks in FIFO */
     int i_prefetch;         /**< offset for prefetching */
     block_fifo_t *p_fifo;   /**< FIFO for blocks delivered to VLC */
-    unsigned char *buf;     /**< intermediate buffer */
     struct ccn *ccn;        /**< CCN handle */
     struct ccn_closure *incoming;   /**< current closure for incoming content handling */
     struct ccn_closure *prefetch;   /**< closure for handling prefetch content */
     struct ccn_charbuf *p_name;     /**< base name for stream including version */
-    struct ccn_charbuf *p_template; /**< interest expression template */
+    struct ccn_charbuf *p_prefetch_template; /**< interest expression template */
+    struct ccn_charbuf *p_data_template; /**< interest expression template */
 };
 
-enum ccn_upcall_res
+static enum ccn_upcall_res
 incoming_content(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
                  struct ccn_upcall_info *info);
-enum ccn_upcall_res
+static enum ccn_upcall_res
 discard_content(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
                  struct ccn_upcall_info *info);
 static struct ccn_charbuf *
 sequenced_name(struct ccn_charbuf *basename, uintmax_t seq);
 
-struct ccn_charbuf *make_data_template();
+static struct ccn_charbuf *make_prefetch_template();
+static struct ccn_charbuf *make_data_template();
 
 /*****************************************************************************
  * CCNOpen: 
  *****************************************************************************/
-static int CCNOpen(vlc_object_t *p_this)
+static int
+CCNOpen(vlc_object_t *p_this)
 {
     access_t     *p_access = (access_t *)p_this;
     access_sys_t *p_sys = NULL;
@@ -168,7 +158,7 @@ static int CCNOpen(vlc_object_t *p_this)
     
     /* Init p_access */
     access_InitFields(p_access);
-    msg_Info(p_access, "CCN.open called");
+    msg_Info(p_access, "CCN.Open called");
     ACCESS_SET_CALLBACKS(NULL, CCNBlock, CCNControl, CCNSeek);
     p_sys = calloc(1, sizeof(access_sys_t));
     if (p_sys == NULL) {
@@ -184,10 +174,8 @@ static int CCNOpen(vlc_object_t *p_this)
     }
     p_sys->i_chunksize = -1;
     p_sys->i_fifo_max = var_CreateGetInteger(p_access, "ccn-fifo-maxblocks");
-    p_sys->i_bufsize = var_CreateGetInteger(p_access, "ccn-fifo-blocksize");
     p_sys->i_prefetch = var_CreateGetInteger(p_access, "ccn-prefetch");
-    msg_Info(p_access, "CCN.Open: ccn-fifo-maxblocks %d, ccn-fifo-blocksize %d",
-             p_sys->i_fifo_max, p_sys->i_bufsize);
+    msg_Info(p_access, "CCN.Open: ccn-fifo-maxblocks %d", p_sys->i_fifo_max);
     p_access->info.i_size = LLONG_MAX;	/* don't know yet, but bigger is better */
     vlc_mutex_init(&p_sys->lock);
     vlc_cond_init(&p_sys->cond);
@@ -223,7 +211,8 @@ exit:
 /*****************************************************************************
  * CCNClose: free unused data structures
  *****************************************************************************/
-static void CCNClose(vlc_object_t *p_this)
+static void
+CCNClose(vlc_object_t *p_this)
 {
     access_t     *p_access = (access_t *)p_this;
     access_sys_t *p_sys = p_access->p_sys;
@@ -243,37 +232,27 @@ static void CCNClose(vlc_object_t *p_this)
     vlc_mutex_unlock(&p_sys->lock);
     vlc_join(p_sys->thread, NULL);
 
-    
-    /* TODO: clean this up */
     if (p_sys->p_fifo) {
         block_FifoRelease(p_sys->p_fifo);
         p_sys->p_fifo = NULL;
-    }
-    if (p_sys->p_template) {
-        ccn_charbuf_destroy(&p_sys->p_template);
     }
     if (p_sys->prefetch) {
         free(p_sys->prefetch);
         p_sys->prefetch = NULL;
     }
-    if (p_sys->p_name) {
-        ccn_charbuf_destroy(&p_sys->p_name);
-        p_sys->p_name = NULL;
-    }
+    ccn_charbuf_destroy(&p_sys->p_prefetch_template);
+    ccn_charbuf_destroy(&p_sys->p_data_template);
+    ccn_charbuf_destroy(&p_sys->p_name);
     vlc_mutex_destroy(&p_sys->lock);
     vlc_cond_destroy(&p_sys->cond);
-    if (p_sys->buf) {
-        free(p_sys->buf);
-        p_sys->buf = NULL;
-    }
-
     free(p_sys);
 }
 
 /*****************************************************************************
  * CCNBlock:
  *****************************************************************************/
-static block_t *CCNBlock(access_t *p_access)
+static block_t *
+CCNBlock(access_t *p_access)
 {
     access_sys_t *p_sys = p_access->p_sys;
     block_t *p_block = NULL;
@@ -285,16 +264,14 @@ static block_t *CCNBlock(access_t *p_access)
 
     if (p_sys->p_fifo == NULL)
         return NULL;
-
     p_block = block_FifoGet(p_sys->p_fifo);
     if (p_block == NULL || p_access->b_die)
         return NULL;
-
-    msg_Dbg(p_access, "CCNBlock %zu bytes @ %"PRId64, p_block->i_buffer, p_access->info.i_pos);
-    p_access->info.i_pos += p_block->i_buffer;
     if (p_block->i_buffer == 0) {
         p_access->info.i_size = p_access->info.i_pos;
         p_access->info.b_eof = true;
+    } else {
+        p_access->info.i_pos += p_block->i_buffer;
     }
     return (p_block);
 }
@@ -316,9 +293,12 @@ static int CCNSeek(access_t *p_access, uint64_t i_pos)
 {
     access_sys_t *p_sys = p_access->p_sys;
     struct ccn_charbuf *p_name;
-    int i;
+    int i, i_prefetch;
 
-    /* flush the FIFO in case the incoming content handler is blocked */
+    /* flush the FIFO in case the incoming content handler is blocked,
+     * which must be done without the lock held as the handler holds it
+     * while waiting for the fifo to have space available
+     */
     block_FifoEmpty(p_sys->p_fifo);
     vlc_mutex_lock(&p_sys->lock);
     if (p_access->b_die) {
@@ -327,34 +307,36 @@ static int CCNSeek(access_t *p_access, uint64_t i_pos)
     }
 #if (VLCPLUGINVER < 10100)
     if (i_pos < 0) {
-        msg_Warn(p_access, "Attempting to seek before the beginning %"PRId64".", i_pos);
+        msg_Warn(p_access, "CCN.Seek attempting to seek before the beginning %"PRId64".", i_pos);
         i_pos = 0;
     }
 #endif
-    /* flush the FIFO for real, restart from the specified point */
+    /* flush the FIFO for real, and restart from the requested point */
     block_FifoEmpty(p_sys->p_fifo);
-    /* forget any data in the intermediate buffer */
-    p_sys->i_bufoffset = 0;
     p_sys->incoming = calloc(1, sizeof(struct ccn_closure));
     if (p_sys->incoming == NULL) {
         vlc_mutex_unlock(&p_sys->lock);
         return (VLC_EGENERIC);
     }
-    msg_Dbg(p_access, "CCN.Seek to %"PRId64", closure %p",
-            i_pos, p_sys->incoming);
+    msg_Dbg(p_access, "CCN.Seek to %"PRId64", closure %p", i_pos, p_sys->incoming);
     p_sys->incoming->data = p_access; /* so CCN callbacks can find p_sys */
     p_sys->incoming->p = &incoming_content; /* the CCN callback */
     p_sys->i_pos = i_pos;
-    p_name = sequenced_name(p_sys->p_name, p_sys->i_pos / p_sys->i_chunksize);
-    ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming, p_sys->p_template);
-    ccn_charbuf_destroy(&p_name);
-
-    for (i = 1; i <= p_sys->i_prefetch; i++) {
+    /* prefetch, but only do full amount if going forward */
+    if (i_pos > p_access->info.i_pos)
+      i_prefetch = p_sys->i_prefetch;
+    else
+      i_prefetch = p_sys->i_prefetch / 2;
+    for (i = 0; i <= i_prefetch; i++) {
         p_name = sequenced_name(p_sys->p_name, i + p_sys->i_pos / p_sys->i_chunksize);
         ccn_express_interest(p_sys->ccn, p_name, p_sys->prefetch,
-                                     p_sys->p_template);
+                                     p_sys->p_prefetch_template);
         ccn_charbuf_destroy(&p_name);        
     }
+    /* and fetch */
+    p_name = sequenced_name(p_sys->p_name, p_sys->i_pos / p_sys->i_chunksize);
+    ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming, p_sys->p_data_template);
+    ccn_charbuf_destroy(&p_name);
     
     p_access->info.i_pos = i_pos;
     p_access->info.b_eof = false;
@@ -364,7 +346,8 @@ static int CCNSeek(access_t *p_access, uint64_t i_pos)
 /*****************************************************************************
  * Control:
  *****************************************************************************/
-static int CCNControl(access_t *p_access, int i_query, va_list args)
+static int
+CCNControl(access_t *p_access, int i_query, va_list args)
 {
     bool   *pb_bool;
     int64_t      *pi_64;
@@ -404,7 +387,7 @@ static int CCNControl(access_t *p_access, int i_query, va_list args)
             return VLC_EGENERIC;
         
         default:
-            msg_Warn(p_access, "CCN unimplemented query in control - %d", i_query);
+            msg_Warn(p_access, "CCN.Control unimplemented query in control - %d", i_query);
             return VLC_EGENERIC;
         
     }
@@ -414,7 +397,8 @@ static int CCNControl(access_t *p_access, int i_query, va_list args)
 #define CHECK_NOMEM(x, msg) if ((x) == NULL) {\
     i_err = VLC_ENOMEM; msg_Err(p_access, msg); goto exit; }
 
-static void *ccn_event_thread(void *p_this)
+static void *
+ccn_event_thread(void *p_this)
 {
     access_t *p_access = (access_t *)p_this;
     access_sys_t *p_sys = p_access->p_sys;
@@ -426,14 +410,14 @@ static void *ccn_event_thread(void *p_this)
     struct pollfd fds[1];
     int i_ret = 0;
     
-    p_sys->buf = calloc(1, p_sys->i_bufsize);
-    CHECK_NOMEM(p_sys->buf, "CCN.Input failed: no memory for buffer");
     p_sys->incoming = calloc(1, sizeof(struct ccn_closure));
-    CHECK_NOMEM(p_sys->incoming, "CCN.Iput failed: no memory for ccn_closure");
+    CHECK_NOMEM(p_sys->incoming, "CCN.Input failed: no memory for ccn_closure");
     p_sys->prefetch = calloc(1, sizeof(struct ccn_closure));
     CHECK_NOMEM(p_sys->prefetch, "CCN.Input failed: no memory for prefetch ccn_closure");
-    p_sys->p_template = make_data_template();
-    CHECK_NOMEM(p_sys->p_template, "CCN.Input failed: no memory for template");
+    p_sys->p_prefetch_template = make_prefetch_template();
+    CHECK_NOMEM(p_sys->p_prefetch_template, "CCN.Input failed: no memory for prefetch template");
+    p_sys->p_data_template = make_data_template();
+    CHECK_NOMEM(p_sys->p_data_template, "CCN.Input failed: no memory for data template");
     
 #if (VLCPLUGINVER >= 10200)
     msg_Dbg(p_access, "CCN.Input %s, closure %p",
@@ -477,30 +461,32 @@ static void *ccn_event_thread(void *p_this)
             p_access->info.i_size = p_header->length;
             ccn_header_destroy(&p_header);
         }
-        msg_Dbg(p_access, "Set length %"PRId64, p_access->info.i_size);
+        msg_Dbg(p_access, "CCN.Input set length %"PRId64, p_access->info.i_size);
     }
     ccn_charbuf_destroy(&p_name);
+
+    for (i=0; i <= p_sys->i_prefetch; i++) {
+        p_name = sequenced_name(p_sys->p_name, i);
+        i_ret = ccn_express_interest(p_sys->ccn, p_name, p_sys->prefetch,
+                                     p_sys->p_prefetch_template);
+        ccn_charbuf_destroy(&p_name);        
+    }
+
     p_co = ccn_charbuf_create();
     CHECK_NOMEM(p_co, "CCN.Input failed: no memory for initial content");
     p_name = sequenced_name(p_sys->p_name, 0);
-    i_ret = ccn_get(p_sys->ccn, p_name, p_sys->p_template, 5000, p_co, NULL, NULL, 0);
+    i_ret = ccn_get(p_sys->ccn, p_name, p_sys->p_data_template, 5000, p_co, NULL, NULL, 0);
     ccn_charbuf_destroy(&p_co);
     if (i_ret < 0) {
         msg_Err(p_access, "CCN.Input failed: unable to locate specified input");
         goto exit;
     }
     i_ret = ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming,
-                                 p_sys->p_template);
+                                 p_sys->p_data_template);
     ccn_charbuf_destroy(&p_name);
     if (i_ret < 0) {
         msg_Err(p_access, "CCN.Input failed: unable to express interest");
         goto exit;
-    }
-    for (i=1; i <= p_sys->i_prefetch; i++) {
-        p_name = sequenced_name(p_sys->p_name, i);
-        i_ret = ccn_express_interest(p_sys->ccn, p_name, p_sys->prefetch,
-                                     p_sys->p_template);
-        ccn_charbuf_destroy(&p_name);        
     }
 
     vlc_mutex_lock(&p_sys->lock);
@@ -514,7 +500,7 @@ static void *ccn_event_thread(void *p_this)
     i_ret = 0;
     msg_Info(p_access, "CCN.Input: entering input event loop");
     while (i_ret >= 0 && !p_access->b_die) {
-        i_ret = poll(fds, 1, 500);
+        i_ret = poll(fds, 1, 100);
         if (i_ret < 0 && errno != EINTR) {
             /* got a real error */
             break;
@@ -531,10 +517,6 @@ static void *ccn_event_thread(void *p_this)
 exit:
     ccn_destroy(&(p_sys->ccn));
     ccn_charbuf_destroy(&p_sys->p_name);
-    if (p_sys->buf) {
-        free(p_sys->buf);
-        p_sys->buf = NULL;
-    }
     if (p_sys->incoming) {
         free(p_sys->incoming);
         p_sys->incoming = NULL;
@@ -543,7 +525,8 @@ exit:
         free(p_sys->prefetch);
         p_sys->prefetch = NULL;
     }
-    ccn_charbuf_destroy(&p_sys->p_template);
+    ccn_charbuf_destroy(&p_sys->p_prefetch_template);
+    ccn_charbuf_destroy(&p_sys->p_data_template);
     p_sys->i_state = i_err;
     p_sys->b_state_changed = true;
     vlc_cond_signal(&p_sys->cond);
@@ -571,7 +554,7 @@ s_block_FifoPace (block_fifo_t *fifo, size_t max_depth, size_t max_size)
 }
 #endif
 
-enum ccn_upcall_res
+static enum ccn_upcall_res
 incoming_content(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
                  struct ccn_upcall_info *info)
@@ -586,31 +569,28 @@ incoming_content(struct ccn_closure *selfp,
     size_t ccnb_size = 0;
     const unsigned char *data = NULL;
     size_t data_size = 0;
-    int res;
+    const unsigned char *name_comp = NULL;
+    size_t name_comp_size = 0;
+    int res, i;
+    uint64_t i_nextpos;
+    uint64_t segment;
     int result = CCN_UPCALL_RESULT_OK;
-
-#if (VLCPLUGINVER < 10100)
-    /* block_FifoPace was not exported until 1.1.0, use a copy of it... */
-    s_block_FifoPace(p_sys->p_fifo, p_sys->i_fifo_max, SIZE_MAX);
-#else
-    block_FifoPace(p_sys->p_fifo, p_sys->i_fifo_max, SIZE_MAX);
-#endif
 
     switch (kind) {
         case CCN_UPCALL_FINAL:
-            msg_Dbg(p_access, "CCN upcall final %p", selfp);
+            msg_Dbg(p_access, "CCN.Upcall final, closure %p", selfp);
             if (selfp == p_sys->incoming)
                 p_sys->incoming = NULL;
             free(selfp);
             goto exit;
         case CCN_UPCALL_INTEREST_TIMED_OUT:
             if (selfp != p_sys->incoming) {
-                msg_Dbg(p_access, "CCN Interest timed out on dead closure %p", selfp);
+                msg_Dbg(p_access, "CCN.Upcall interest timed out on dead closure %p", selfp);
                 goto exit;
             }
-            msg_Dbg(p_access, "CCN upcall reexpress -- timed out");
-            if (p_sys->timeouts > 5) {
-                msg_Dbg(p_access, "CCN upcall reexpress -- too many reexpressions");
+            msg_Dbg(p_access, "CCN.Upcall reexpress -- timed out, closure %p", selfp);
+            if (p_sys->timeouts > 100) {
+                msg_Dbg(p_access, "CCN.Upcall reexpress -- too many reexpressions");
                 p_access->b_die = true;
                 if (p_sys->p_fifo)
                     block_FifoWake(p_sys->p_fifo);
@@ -621,25 +601,23 @@ incoming_content(struct ccn_closure *selfp,
             goto exit;
         case CCN_UPCALL_CONTENT_UNVERIFIED:
             if (selfp != p_sys->incoming) {
-                msg_Dbg(p_access, "CCN unverified content on dead closure %p", selfp);
+                msg_Dbg(p_access, "CCN.Upcall unverified content on dead closure %p", selfp);
                 goto exit;
             }
             result = CCN_UPCALL_RESULT_VERIFY;
             goto exit;
         
         case CCN_UPCALL_CONTENT:
-            if (selfp != p_sys->incoming) {
-                msg_Dbg(p_access, "CCN content on dead closure %p", selfp);
+            if (selfp != p_sys->incoming || p_access->b_die) {
+                msg_Dbg(p_access, "CCN.Upcall content on dead closure %p", selfp);
                 goto exit;
             }
             break;
         default:
-            msg_Warn(p_access, "CCN upcall result error");
+            msg_Warn(p_access, "CCN.Upcall result error, closure %p", selfp);
             result = CCN_UPCALL_RESULT_ERR;
             goto exit;
     }
-    if (p_access->b_die)
-        goto exit;
     ccnb = info->content_ccnb;
     ccnb_size = info->pco->offset[CCN_PCO_E];
     res = ccn_content_get_value(ccnb, ccnb_size, info->pco, &data, &data_size);
@@ -652,57 +630,58 @@ incoming_content(struct ccn_closure *selfp,
     /* was this the last block? */
     if (ccn_is_final_block(info) || data_size < p_sys->i_chunksize)
         b_last = true;
+    /* check that this is actually the block we expected */
+    res = ccn_name_comp_get(ccnb, info->content_comps, info->pco->name_ncomps - 1,
+                            &name_comp, &name_comp_size);
+    for (i = 1, segment = name_comp[0]; i < name_comp_size; i++)
+        segment = (segment << 8) | name_comp[i];
+    if (p_sys->i_pos < segment * p_sys->i_chunksize ||
+        p_sys->i_pos >= (segment + 1) * p_sys->i_chunksize)
+        msg_Err(p_access, "CCN.Upcall wrong data block for position %"PRId64" :: block start %"PRIu64,
+                p_sys->i_pos, segment * p_sys->i_chunksize);
 
     /* something to process */
     if (data_size > 0) {
         start_offset = p_sys->i_pos % p_sys->i_chunksize;
-        if (start_offset > data_size) {
-            msg_Err(p_access, "start_offset %"PRId64" > data_size %zu", start_offset, data_size);
-        } else {
-            if ((data_size - start_offset) + p_sys->i_bufoffset > p_sys->i_bufsize) {
-                /* won't fit in buffer, release the buffer upstream */
-                p_block = block_New(p_access, p_sys->i_bufoffset);
-                memcpy(p_block->p_buffer, p_sys->buf, p_sys->i_bufoffset);
-                block_FifoPut(p_sys->p_fifo, p_block);
-                p_sys->i_bufoffset = 0;
+        /* Ask for next fragment as soon as possible */
+        if (!b_last) {
+            i_nextpos = p_sys->i_pos + (data_size - start_offset);
+            name = sequenced_name(p_sys->p_name, i_nextpos / p_sys->i_chunksize);
+            res = ccn_express_interest(info->h, name, selfp, p_sys->p_data_template);
+            ccn_charbuf_destroy(&name);
+            if (res < 0) abort();
+            /* and prefetch a fragment if it's not past the end */
+            if (p_sys->i_prefetch * p_sys->i_chunksize <= p_access->info.i_size - i_nextpos) {
+                name = sequenced_name(p_sys->p_name, p_sys->i_prefetch + i_nextpos / p_sys->i_chunksize);
+                res = ccn_express_interest(info->h, name, p_sys->prefetch, p_sys->p_prefetch_template);
+                ccn_charbuf_destroy(&name);
             }
-            /* will fit in buffer */
-            memcpy(p_sys->buf + p_sys->i_bufoffset, data + start_offset, data_size - start_offset);
-            p_sys->i_bufoffset += (data_size - start_offset);
+        }
+#if (VLCPLUGINVER < 10100)
+        /* block_FifoPace was not exported until 1.1.0, use a copy of it... */
+        s_block_FifoPace(p_sys->p_fifo, p_sys->i_fifo_max, SIZE_MAX);
+#else
+        block_FifoPace(p_sys->p_fifo, p_sys->i_fifo_max, SIZE_MAX);
+#endif
+        if (start_offset > data_size) {
+            msg_Err(p_access, "CCN.Upcall start_offset %"PRId64" > data_size %zu", start_offset, data_size);
+        } else {
+            p_block = block_New(p_access, data_size - start_offset);
+            memcpy(p_block->p_buffer, data + start_offset, data_size - start_offset);
+            block_FifoPut(p_sys->p_fifo, p_block);
         }
     }
     /* Advance position */
     p_sys->i_pos += (data_size - start_offset);
-
-    /* if we're done, indicate so with a 0-byte block, release any buffered data upstream,
-     * and don't express an interest
-     */
-    if (b_last) {
-        if (p_sys->i_bufoffset > 0) {
-            p_block = block_New(p_access, p_sys->i_bufoffset);
-            memcpy(p_block->p_buffer, p_sys->buf, p_sys->i_bufoffset);
-            block_FifoPut(p_sys->p_fifo, p_block);
-            p_sys->i_bufoffset = 0;
-        }
+    /* if we're done, indicate so with a 0-byte block */
+    if (b_last)
         block_FifoPut(p_sys->p_fifo, block_New(p_access, 0));
-        goto exit;
-    }
-
-    /* Ask for the next fragment */
-    name = sequenced_name(p_sys->p_name, p_sys->i_pos / p_sys->i_chunksize);
-    res = ccn_express_interest(info->h, name, selfp, p_sys->p_template);
-    ccn_charbuf_destroy(&name);
-    if (res < 0) abort();
-    
-    name = sequenced_name(p_sys->p_name, p_sys->i_prefetch + p_sys->i_pos / p_sys->i_chunksize);
-    res = ccn_express_interest(info->h, name, p_sys->prefetch, p_sys->p_template);
-    ccn_charbuf_destroy(&name);
 
 exit:
     return(result);
 }
 
-enum ccn_upcall_res
+static enum ccn_upcall_res
 discard_content(struct ccn_closure *selfp,
                 enum ccn_upcall_kind kind,
                 struct ccn_upcall_info *info)
@@ -733,7 +712,22 @@ append_tagged_binary_number(struct ccn_charbuf *cb, enum ccn_dtag dtag, uintmax_
     return(res);
 }
 
-struct ccn_charbuf *
+static struct ccn_charbuf *
+make_prefetch_template()
+{
+    struct ccn_charbuf *templ = ccn_charbuf_create_n(16);
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
+    ccn_charbuf_append_closer(templ); /* </Name> */
+    ccn_charbuf_append_tt(templ, CCN_DTAG_MaxSuffixComponents, CCN_DTAG);
+    ccnb_append_number(templ, 1);
+    ccn_charbuf_append_closer(templ); /* </MaxSuffixComponents> */
+    append_tagged_binary_number(templ, CCN_DTAG_InterestLifetime, CCN_PREFETCH_LIFETIME);
+    ccn_charbuf_append_closer(templ); /* </Interest> */
+    return(templ);
+}
+
+static struct ccn_charbuf *
 make_data_template()
 {
     struct ccn_charbuf *templ = ccn_charbuf_create_n(16);
@@ -743,7 +737,7 @@ make_data_template()
     ccn_charbuf_append_tt(templ, CCN_DTAG_MaxSuffixComponents, CCN_DTAG);
     ccnb_append_number(templ, 1);
     ccn_charbuf_append_closer(templ); /* </MaxSuffixComponents> */
-    append_tagged_binary_number(templ, CCN_DTAG_InterestLifetime, CCN_LIFETIME);
+    append_tagged_binary_number(templ, CCN_DTAG_InterestLifetime, CCN_DATA_LIFETIME);
     ccn_charbuf_append_closer(templ); /* </Interest> */
     return(templ);
 }
