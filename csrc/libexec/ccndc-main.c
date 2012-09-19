@@ -1,5 +1,5 @@
 /**
- * @file ccndc.c
+ * @file ccndc-main.c
  * @brief Bring up a link to another ccnd.
  *
  * A CCNx program.

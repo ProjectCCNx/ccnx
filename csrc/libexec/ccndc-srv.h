@@ -1,7 +1,6 @@
-/* -*- mode: C; c-file-style: "gnu"; c-basic-offset: 4; indent-tabs-mode:nil; -*- */
 /**
  * @file ccndc-srv.h
- * @brief Daemon part of ccndc command
+ * @brief ccndc handling of SRV record lookup
  *
  * A CCNx program.
  *

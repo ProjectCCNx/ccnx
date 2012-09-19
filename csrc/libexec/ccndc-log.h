@@ -1,4 +1,3 @@
-/* -*- mode: C; c-file-style: "gnu"; c-basic-offset: 4; indent-tabs-mode:nil; -*- */
 /**
  * @file ccndc-log.h
  * @brief logging functions for ccndc.

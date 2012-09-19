@@ -1,10 +1,10 @@
 /**
- * @file ccndc.c
- * @brief Bring up a link to another ccnd.
+ * @file ccndc-srv.c
+ * @brief ccndc handling of SRV lookups 
  *
  * A CCNx program.
  *
- * Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -25,8 +25,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <arpa/inet.h>
 #define BIND_8_COMPAT
 #include <arpa/nameser.h>
+#include <netinet/in.h>
+#include <sys/types.h>
 #include <resolv.h>
 
 #include <ccn/ccn.h>
