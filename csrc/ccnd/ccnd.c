@@ -349,20 +349,17 @@ use_i:
 static int
 choose_face_delay(struct ccnd_handle *h, struct face *face, enum cq_delay_class c)
 {
-    int shift = (c == CCN_CQ_SLOW) ? 2 : 0;
+    int micros;
+    int shift;
+    
     if (c == CCN_CQ_ASAP)
         return(1);
-    if ((face->flags & CCN_FACE_LINK) != 0) /* udplink or such, delay more */
-        return((h->data_pause_microsec) << shift);
-    if ((face->flags & CCN_FACE_LOCAL) != 0)
-        return(5); /* local stream, answer quickly */
-    if ((face->flags & CCN_FACE_MCAST) != 0)
-        return((h->data_pause_microsec) << shift); /* multicast, delay more */
-    if ((face->flags & CCN_FACE_GG) != 0)
-        return(100 << shift); /* localhost, delay just a little */
-    if ((face->flags & CCN_FACE_DGRAM) != 0)
-        return(500 << shift); /* udp, delay just a little */
-    return(100); /* probably tcp to a different machine */
+    if ((face->flags & CCN_FACE_MCAST) != 0) {
+        shift = (c == CCN_CQ_SLOW) ? 2 : 0;
+        micros = (h->data_pause_microsec) << shift;
+        return(micros); /* multicast, delay more */
+    }
+    return(1);
 }
 
 /**
