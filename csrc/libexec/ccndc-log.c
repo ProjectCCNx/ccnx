@@ -1,8 +1,6 @@
 /**
- * @file ccndc-log.h
+ * @file ccndc-log.c
  * @brief Logging utilities for ccndc.
- *
- * A CCNx program.
  *
  * Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
  *

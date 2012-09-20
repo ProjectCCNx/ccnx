@@ -22,23 +22,18 @@
 #include "ccndc-log.h"
 #include "ccndc-srv.h"
 
-#include <string.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <limits.h>
+#include <netdb.h>
+#include <netinet/in.h>
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/time.h>
-#include <netdb.h>
-#include <netinet/in.h>
-
-#define BIND_8_COMPAT
-#include <arpa/nameser.h>
-#include <resolv.h>
-#include <errno.h>
 #if defined(NEED_GETADDRINFO_COMPAT)
 #include "getaddrinfo.h"
 #include "dummyin6.h"
@@ -1042,10 +1037,6 @@ Cleanup:
     return (NULL);
 }
 
-// /**
-//  *  @brief Register an interest prefix as being routed to a given face
-//  *  @result returns (positive) faceid on success, -1 on error
-//  */
 int
 ccndc_do_prefix_action(struct ccndc_data *self,
                        const char *action,

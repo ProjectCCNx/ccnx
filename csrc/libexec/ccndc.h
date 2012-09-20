@@ -1,6 +1,5 @@
-/* -*- mode: C; c-file-style: "gnu"; c-basic-offset: 4; indent-tabs-mode:nil; -*- */
 /**
- * @file ccndc-ccnb.h
+ * @file ccndc.h
  * @brief Bring up a link to another ccnd.
  *
  * A CCNx program.
