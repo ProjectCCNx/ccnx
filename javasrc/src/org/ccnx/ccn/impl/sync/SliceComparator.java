@@ -722,7 +722,7 @@ public class SliceComparator implements Runnable {
 		
 		while (neededNames.size() > 0) {
 			newHead = SyncTreeEntry.newLeafNode(neededNames);
-			_pbsm.addHash(newHead.getHash());
+			_pbsm.putHashEntry(newHead);
 			if (neededNames.size() > 0) {	// Need to split
 				newHasNodes = true;
 			}
@@ -736,15 +736,31 @@ public class SliceComparator implements Runnable {
 			SyncNodeElement firstNodeElement = nodeElements.get(0);
 			newHead = _pbsm.getHash(firstNodeElement.getData());
 			if (null != newHead) {
-				SyncNodeElement minElement = newHead.getNode().getMinName();
-				SyncNodeElement lastNodeElement = nodeElements.get(nodeElements.size() - 1);
-				newHead = _pbsm.getHash(lastNodeElement.getData());
+				SyncNodeComposite snc = newHead.getNode();
+				if (null == snc) {
+					Log.warning(Log.FAC_SYNC, "Couldn't get first node in update for {0} - shouldn't happen", 
+							Component.printURI(newHead.getHash()));
+					newHead = null;
+				}
 				if (null != newHead) {
-					SyncNodeElement maxElement = newHead.getNode().getMaxName();
-					SyncNodeComposite snc = new SyncNodeComposite(nodeElements, minElement, maxElement);
-					newHead = _pbsm.addHash(snc.getHash());
-					newHead.setNode(snc);
-					newHead.setCovered(true);
+					SyncNodeElement minElement = snc.getMinName();
+					SyncNodeElement lastNodeElement = nodeElements.get(nodeElements.size() - 1);
+					newHead = _pbsm.getHash(lastNodeElement.getData());
+					if (null != newHead) {
+						snc = newHead.getNode();
+						if (null == snc) {
+							Log.warning(Log.FAC_SYNC, "Couldn't get last node in update for {0} - shouldn't happen", 
+									Component.printURI(newHead.getHash()));
+							newHead = null;
+						}
+						if (null != newHead) {
+							SyncNodeElement maxElement = snc.getMaxName();
+							snc = new SyncNodeComposite(nodeElements, minElement, maxElement);
+							newHead = _pbsm.addHash(snc.getHash());
+							newHead.setNode(snc);
+							newHead.setCovered(true);
+						}
+					}
 				}
 			}
 		}

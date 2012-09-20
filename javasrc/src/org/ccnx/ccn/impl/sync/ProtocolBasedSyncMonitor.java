@@ -130,6 +130,19 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 	}
 	
 	/**
+	 * Put a specific entry in for a hash
+	 */
+	public void putHashEntry(SyncTreeEntry entry) {
+		SyncHashEntry she = new SyncHashEntry(entry.getHash());
+		synchronized (this) {
+			SyncTreeEntry tste = _hashes.get(she);
+			if (null != tste)
+				_hashes.remove(she);
+			_hashes.put(she, entry);
+		}
+	}
+	
+	/**
 	 * Output interest to request a node
 	 * @param hash
 	 * @return
