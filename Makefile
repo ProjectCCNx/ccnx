@@ -22,11 +22,10 @@ BLDMSG = printf '=== %s ' 'Building $@ in' && pwd
 # Default target:
 default:
 
-# If csrc/conf.mk is missing, we need to run configure.
+# If csrc/conf.mk is missing or old, we need to run configure.
 # Some versions of make will do this automatically,
-# with other versions the documented recipie must
-# be used.
-csrc/conf.mk:
+# with other versions the documented recipie must be used.
+csrc/conf.mk: Makefile csrc/Makefile javasrc/Makefile
 	./configure
 
 # Include build parameters.

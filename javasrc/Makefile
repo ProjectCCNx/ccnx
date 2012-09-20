@@ -12,6 +12,11 @@
 # FOR A PARTICULAR PURPOSE.
 #
 
+default:
+
+../csrc/conf.mk: Makefile
+	false - top-level ./configure is needed
+
 include ../csrc/conf.mk   # if missing, top-level ./configure is needed
 
 JAR = ccn.jar
