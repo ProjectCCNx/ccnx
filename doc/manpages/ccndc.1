@@ -1,13 +1,13 @@
 '\" t
 .\"     Title: ccndc
 .\"    Author: [see the "AUTHOR" section]
-.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
-.\"      Date: 08/10/2012
+.\" Generator: DocBook XSL Stylesheets v1.76.1 <http://docbook.sf.net/>
+.\"      Date: 09/19/2012
 .\"    Manual: \ \&
 .\"    Source: \ \& 0.6.1
 .\"  Language: English
 .\"
-.TH "CCNDC" "1" "08/10/2012" "\ \& 0\&.6\&.1" "\ \&"
+.TH "CCNDC" "1" "09/19/2012" "\ \& 0\&.6\&.1" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -31,20 +31,26 @@
 ccndc \- manipulate CCNx forwarding table
 .SH "SYNOPSIS"
 .sp
-\fBccndc\fR [\-v] \-d
+\fBccndc\fR [\fB\-v\fR] [\fB\-t\fR \fIlifetime\fR] \fB\-d\fR
 .sp
-\fBccndc\fR [\-v] \-f \fIconfigfile\fR
+\fBccndc\fR [\fB\-v\fR] [\fB\-t\fR \fIlifetime\fR] \fB\-f\fR \fIconfigfile\fR
 .sp
-\fBccndc\fR [\-v] add \fIuri\fR (udp|tcp) \fIhost\fR [\fIport\fR [flags [mcastttl [mcastif]]]])
+\fBccndc\fR [\fB\-v\fR] [\fB\-t\fR \fIlifetime\fR] (\fBadd\fR|\fBdel\fR|\fBrenew\fR) \fIuri\fR (\fBudp\fR|\fBtcp\fR) \fIhost\fR [\fIport\fR [\fIflags\fR [\fImcastttl\fR [\fImcastif\fR]]]]
 .sp
-\fBccndc\fR [\-v] del \fIuri\fR (udp|tcp) \fIhost\fR [\fIport\fR [flags [mcastttl [mcastif]]]])]
+\fBccndc\fR [\fB\-v\fR] [\fB\-t\fR \fIlifetime\fR] (\fBadd\fR|\fBdel\fR) \fIuri\fR \fBface\fR \fIfaceid\fR
 .sp
-\fBccndc\fR [\-v] destroyface \fIfaceid\fR
+\fBccndc\fR [\fB\-v\fR] (\fBcreate\fR|\fBdestroy\fR) (\fBudp\fR|\fBtcp\fR) \fIhost\fR [\fIport\fR [\fIflags\fR [\fImcastttl\fR [\fImcastif\fR]]]]
+.sp
+\fBccndc\fR [\fB\-v\fR] \fBdestroy\fR \fBface\fR \fIfaceid\fR
+.sp
+\fBccndc\fR [\fB\-v\fR] \fBdestroyface\fR \fIfaceid\fR
+.sp
+\fBccndc\fR [\fB\-v\fR] [\fB\-t\fR \fIlifetime\fR] \fBsrv\fR
 .SH "DESCRIPTION"
 .sp
-\fBccndc\fR is a simple routing utility/daemon that configures the forwarding table (FIB) in a \fBccnd(1)\fR\&. It may be used either as a command to add or remove static entries in the CCNx FIB (roughly analogous to the \fBroute(8)\fR utility for manipulating an IP routing table)\&. It may also run as a daemon that will dynamically create Faces and FIB entries to forward certain CCNx Interests based upon DNS SRV records\&. The Interests that can be dynamically routed in this way are those have an initial name component that is a legal DNS name, for which there is a DNS SRV record pointing to an endpoint for tunneling CCNx protocol traffic over the Internet\&. \fBccndc\fR can also send a destroyface operation to ccnd, destroying a face by the numeric faceid\&.
+\fBccndc\fR is a simple routing utility/daemon that configures the forwarding table (FIB) in a \fBccnd(1)\fR\&. It may be used either as a command to add or delete static entries in the CCNx FIB (roughly analogous to the \fBroute(8)\fR utility for manipulating an IP routing table)\&. Where a face is specified it may either be by the parameters (\fIhost\fR, \fIport\fR, etc\&.) or by face number\&. Faces can be created or destroyed without reference to a prefix, or will be created automatically if the parameters are given\&. \fBccndc\fR may also run as a daemon that will dynamically create Faces and FIB entries to forward certain CCNx Interests based upon DNS SRV records\&. The Interests that can be dynamically routed in this way are those have an initial name component that is a legal DNS name, for which there is a DNS SRV record pointing to an endpoint for tunneling CCNx protocol traffic over the Internet\&.
 .sp
-\fBccndc\fR also supports configuration files containing sets of add and del commands\&.
+\fBccndc\fR also supports configuration files containing sets of commands\&.
 .SH "OPTIONS"
 .PP
 \fB\-d\fR
@@ -58,25 +64,63 @@ add or delete FIB entries based on contents of
 \fIconfigfile\fR
 .RE
 .PP
+\fB\-t\fR
+.RS 4
+lifetime (seconds) of prefix entries created by subsequent operations including those created by dynamic mode and "srv" command\&.
+.RE
+.PP
 \fB\-v\fR
 .RS 4
 increase logging level
 .RE
 .PP
-\fBadd\fR \fIuri\fR (udp|tcp) \fIhost\fR [\fIport\fR [flags [mcastttl [mcastif]]]])
+\fBadd\fR \fIuri\fR (\fBudp\fR|\fBtcp\fR) \fIhost\fR [\fIport\fR [\fIflags\fR [\fImcastttl\fR [\fImcastif\fR]]]]
 .RS 4
-add a FIB entry based on the parameters
+add a FIB entry based on the parameters, creating the face if necessary\&.
 .RE
 .PP
-\fBdel\fR \fIuri\fR (udp|tcp) \fIhost\fR [\fIport\fR [flags [mcastttl [mcastif]]]])
+\fBrenew\fR \fIuri\fR (\fBudp\fR|\fBtcp\fR) \fIhost\fR [\fIport\fR [\fIflags\fR [\fImcastttl\fR [\fImcastif\fR]]]]
 .RS 4
-delete a FIB entry based on the parameters
+destroy any matching face then recreate with the given parameters and add a FIB entry\&.
 .RE
-.sp
-\fBdestroyface\fR \fIfaceid\fR destroy a face based on the numeric faceid\&.
+.PP
+\fBadd\fR \fIuri\fR \fBface\fR \fIfaceid\fR
+.RS 4
+add a FIB entry to the specified face\&.
+.RE
+.PP
+\fBdel\fR \fIuri\fR (\fBudp\fR|\fBtcp\fR) \fIhost\fR [\fIport\fR [\fIflags\fR [\fImcastttl\fR [\fImcastif\fR]]]]
+.RS 4
+delete a FIB entry from the face specified by the parameters\&.
+.RE
+.PP
+\fBdel\fR \fIuri\fR \fBface\fR \fIfaceid\fR
+.RS 4
+remove a FIB entry from the specified face number\&.
+.RE
+.PP
+\fBcreate\fR (\fBudp\fR|\fBtcp\fR) \fIhost\fR [\fIport\fR [\fImcastttl\fR [\fImcastif\fR]]]
+.RS 4
+create a face based on the parameters\&. No FIB entry is made\&.
+.RE
+.PP
+\fBdestroy\fR (\fBudp\fR|\fBtcp\fR) \fIhost\fR [\fIport\fR [\fImcastttl\fR [\fImcastif\fR]]]
+.RS 4
+remove a face based on the parameters\&.
+.RE
+.PP
+\fBdestroy\fR \fBface\fR \fIfaceid\fR, \fBdestroyface\fR \fIfaceid\fR
+.RS 4
+destroy a face based on the numeric faceid\&.
+.RE
+.PP
+\fBsrv\fR
+.RS 4
+create a face and FIB entry (for ccnx:/) based on the results of an SRV lookup using the default DNS search rules\&. Queries _ccnx\&._tcp and _ccnx\&._udp\&.
+.RE
 .SH "CONFIGURATION FILE"
 .sp
-\fBccndc\fR will process a configuration file if specified with the \fB\-f\fR flag\&. The configuration file may contain a sequence of add and del commands with the same parameters as may be specified on the \fBccndc\fR command\-line\&. Comments in the file are prefixed with #\&. Here is a sample:
+\fBccndc\fR will process a configuration file if specified with the \fB\-f\fR flag\&. The configuration file may contain a sequence of commands with the same parameters as may be specified on the \fBccndc\fR command\-line\&. Comments in the file are prefixed with #\&. Here is a sample:
 .sp
 .if n \{\
 .RS 4
