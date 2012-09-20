@@ -3,7 +3,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -12,14 +12,18 @@
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.
 #
-# Create a ccn keystore without relying on java
+# Create a ccn keystore without relying on java or libccn
+#
+# This script is no longer needed, but it is retained as an example of how
+# to construct a keystore using only common command-line tools.
+#
 : ${RSA_KEYSIZE:=1024}
 : ${CCN_USER:=`id -n -u`}
 Fail () {
   echo '*** Failed' "$*"
   exit 1
 }
-test -d .ccnx && rm -rf .ccnx
+test -d .ccnx && Fail .ccnx directory already exists
 test $RSA_KEYSIZE -ge 512 || Fail \$RSA_KEYSIZE too small to sign CCN content
 (umask 077 && mkdir .ccnx) || Fail $0 Unable to create .ccnx directory
 cd .ccnx
