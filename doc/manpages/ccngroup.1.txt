@@ -73,7 +73,7 @@ EXIT STATUS
 
 AUTHOR
 ------
-Philippe Golle <pgolle@parc.com>
+Philippe Golle
 
 
 

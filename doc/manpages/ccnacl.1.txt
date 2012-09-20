@@ -83,4 +83,4 @@ FILES
 
 AUTHOR
 ------
-Philippe Golle <pgolle@parc.com>
+Philippe Golle

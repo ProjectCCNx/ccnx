@@ -49,4 +49,4 @@ the file stuff.ccnb:
 
 AUTHOR
 ------
-Michael Plass <plass@parc.com>
+Michael Plass

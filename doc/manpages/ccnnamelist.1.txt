@@ -40,5 +40,5 @@ SEE ALSO
 --------
 *ccn_splitccnb*(1)
 
-Nick Briggs <briggs@parc.com>
+Nick Briggs
 

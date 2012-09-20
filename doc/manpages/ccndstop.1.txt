@@ -32,4 +32,4 @@ EXIT STATUS
 
 AUTHOR
 ------
-Michael Plass <plass@parc.com>
+Michael Plass

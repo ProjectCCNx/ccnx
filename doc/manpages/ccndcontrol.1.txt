@@ -41,4 +41,4 @@ EXIT STATUS
 
 AUTHOR
 ------
-Tim Diebert <diebert@parc.com>
+Tim Diebert

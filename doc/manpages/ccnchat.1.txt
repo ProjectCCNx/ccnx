@@ -37,4 +37,4 @@ EXIT STATUS
 
 AUTHOR
 ------
-Priya Mahadevan, <priya.mahadevan@parc.com>
+Priya Mahadevan,

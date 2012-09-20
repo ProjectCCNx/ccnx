@@ -52,6 +52,6 @@ EXIT STATUS
 
 AUTHOR
 ------
-Rebecca Braynard <rbraynar@parc.com>
+Rebecca Braynard
 
-Philippe Golle <pgolle@parc.com>
+Philippe Golle

@@ -72,5 +72,5 @@ SEE ALSO
 --------
 *ccndstop*(1), *ccndstatus*(1)
 
-Michael Plass <plass@parc.com>
+Michael Plass
 

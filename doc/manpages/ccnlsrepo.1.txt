@@ -47,4 +47,4 @@ EXIT STATUS
 
 AUTHOR
 ------
-Rebecca Braynard <rbraynar@parc.com>
+Rebecca Braynard
