@@ -131,6 +131,6 @@ EXIT STATUS
 
 AUTHOR
 ------
-Paul Rasmussen <rasmussen@parc.com>
-Rebecca Braynard <rbraynar@parc.com>
-Jim Thornton <jthornto@parc.com>
+Paul Rasmussen
+Rebecca Braynard
+Jim Thornton

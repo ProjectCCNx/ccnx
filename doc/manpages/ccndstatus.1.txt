@@ -32,4 +32,4 @@ port number (9695) is used.
 
 AUTHOR
 ------
-Michael Plass <plass@parc.com>
+Michael Plass

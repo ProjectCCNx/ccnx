@@ -134,4 +134,4 @@ EXIT STATUS
 
 AUTHOR
 ------
-Michael Plass <plass@parc.com> Nick Briggs <briggs@parc.com>
+Michael Plass, Nick Briggs

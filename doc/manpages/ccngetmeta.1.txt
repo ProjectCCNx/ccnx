@@ -90,4 +90,4 @@ with the latest version of ccnx content "ccnx:/mydocument" and places it into th
 
 AUTHOR
 ------
-Paul Rasmussen, <rasmussen@parc.com>
+Paul Rasmussen,

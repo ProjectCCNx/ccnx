@@ -53,5 +53,5 @@ SEE ALSO
 --------
 *ccn_ccnbtoxml*(1)
 
-Michael Plass <plass@parc.com>
+Michael Plass
 

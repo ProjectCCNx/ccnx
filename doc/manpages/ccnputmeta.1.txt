@@ -105,6 +105,6 @@ adds the file "image.png" as thumbnail metadata for it
 
 AUTHOR
 ------
-Paul Rasmussen <rasmussen@parc.com>
+Paul Rasmussen
 
 

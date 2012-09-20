@@ -65,4 +65,4 @@ EXIT STATUS
 
 AUTHOR
 ------
-Nick Briggs <briggs@parc.com>
+Nick Briggs

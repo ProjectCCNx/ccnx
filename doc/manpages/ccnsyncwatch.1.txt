@@ -42,4 +42,4 @@ SEE ALSO
 
 AUTHOR
 ------
-Nick Briggs <briggs@parc.com>
+Nick Briggs

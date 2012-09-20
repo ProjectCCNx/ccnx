@@ -7,7 +7,7 @@ util - some text
 
 SYNOPSIS
 --------
-*util* [-flag 'value'] 'arg1' 'arg2'
+*util* [*-flag* 'value'] 'arg1' 'arg2'
 
 DESCRIPTION
 -----------
@@ -28,7 +28,7 @@ EXIT STATUS
 
 AUTHOR
 ------
-someone <someone@parc.com>
+someone
 
 
 
