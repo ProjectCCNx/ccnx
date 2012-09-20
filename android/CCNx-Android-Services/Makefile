@@ -36,7 +36,7 @@ TARGET = $(BIN)/$(APK_NAME)
 
 default all: $(TARGET) 
 
-honeycomb: clean bcprov default
+with-bcp: clean bcprov default
 
 bcprov:
 	./download.sh libs http://repo2.maven.org/maven2/org/bouncycastle/bcprov-jdk16/1.43 bcprov-jdk16-1.43.jar
