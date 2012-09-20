@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -19,6 +19,7 @@ INSTALLED_PROGRAMS = ccndc
 DEBRIS = ccndc-inject
 PROGRAMS = $(INSTALLED_PROGRAMS) udplink
 CSRC = ccndc-log.c ccndc-main.c ccndc-srv.c ccndc.c udplink.c
+HSRC = ccndc-log.h ccndc-srv.h ccndc.h
 
 default all: $(PROGRAMS)
 
