@@ -50,6 +50,8 @@ objtree: conf.mk _always
 	done
 	cd $(OBJTREE) && ../configure
 
+html: _always
+
 documentation: _always
 	doxygen
 

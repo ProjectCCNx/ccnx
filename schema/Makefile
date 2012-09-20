@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -19,9 +19,8 @@ default all clean depend coverage check test shared testinstall install uninstal
 	  (cd "$$i" && pwd && $(MAKE) $@) || break;			\
 	done
 
-documentation: _always
-
-dist-docs: _always
+documentation dist-docs html: _always
+	@:
 
 _always: 
 

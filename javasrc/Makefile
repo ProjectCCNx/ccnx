@@ -50,7 +50,7 @@ uninstall:
 jar test: _always
 	$(ANT) -k -DTEST_PORT=$${CCN_LOCAL_PORT_BASE:-63000} $@
 
-clean: _always
+clean: _always 
 	$(ANT) -k clean
 	rm -f _always $(JAR)
 
@@ -69,7 +69,7 @@ dist-docs: _always
 testinstall:
 	@echo No $@ target for `pwd`
  
-default all clean depend test check shared install uninstall: _always
+default all clean depend test check shared install uninstall html: _always
 
 _always:
 

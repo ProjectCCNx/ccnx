@@ -54,7 +54,7 @@ DTDSRC = $(SCHEMA)/ccnx.dtd $(SCHEMA)/repository.dtd $(SCHEMA)/security.dtd
 default:
 	: To build the documentation: $(MAKE) documentation
 
-all documentation dist-docs: $(DERIVED_HTML) $(DERIVED_INDEX)
+all documentation dist-docs html: $(DERIVED_HTML) $(DERIVED_INDEX)
 
 clean-documentation: _always
 	rm -f $(DERIVED_HTML) $(DERIVED_INDEX) $(DEBRIS)
@@ -163,7 +163,7 @@ index.txt: $(INDEXED_HTML) .genindex.sh
 	rm -f index.html
 	sh .genindex.sh $(INDEXED_HTML) > index.txt
 
-default all clean depend test check shared documentation dist-docs testinstall install uninstall: _always
+default html all clean depend test check shared documentation dist-docs testinstall install uninstall: _always
 
 _always:
 
