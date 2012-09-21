@@ -80,10 +80,11 @@ main(int argc, char **argv)
     struct ccn_face_instance *face_instance = &face_instance_storage;
     struct ccn_forwarding_entry forwarding_entry_storage = {0};
     struct ccn_forwarding_entry *forwarding_entry = &forwarding_entry_storage;
-    struct ccn_charbuf *signed_info = NULL;
-    struct ccn_charbuf *keylocator = NULL;
+    struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
+    struct ccn_charbuf *keylocator_templ = NULL;
     struct ccn_keystore *keystore = NULL;
     long expire = -1;
+    int ipproto;
     unsigned char ccndid_storage[32] = {0};
     const unsigned char *ccndid = NULL;
     size_t ccndid_size = 0;
@@ -122,7 +123,8 @@ main(int argc, char **argv)
     newface = ccn_charbuf_create();
     temp = ccn_charbuf_create();
     templ = ccn_charbuf_create();
-    signed_info = ccn_charbuf_create();
+    keylocator_templ = ccn_charbuf_create();
+    
     resultbuf = ccn_charbuf_create();
     name_prefix = ccn_charbuf_create();
     null_name = ccn_charbuf_create();
@@ -130,8 +132,39 @@ main(int argc, char **argv)
 
     keystore = ccn_keystore_create();
         
+    /* We need to figure out our local ccnd's CCIDID */
+    /* Set up our Interest template to indicate scope 1 */
+    ccn_charbuf_reset(templ);
+    ccnb_element_begin(templ, CCN_DTAG_Interest);
+    ccnb_element_begin(templ, CCN_DTAG_Name);
+    ccnb_element_end(templ);	/* </Name> */
+    ccnb_tagged_putf(templ, CCN_DTAG_Scope, "1");
+    ccnb_element_end(templ);	/* </Interest> */
+    
+    ccn_charbuf_reset(name);
+    CHKRES(res = ccn_name_from_uri(name, "ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnd/KEY"));
+    CHKRES(res = ccn_get(h, name, templ, 200, resultbuf, &pcobuf, NULL, 0));
+    res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest,
+                              resultbuf->buf,
+                              pcobuf.offset[CCN_PCO_B_PublisherPublicKeyDigest],
+                              pcobuf.offset[CCN_PCO_E_PublisherPublicKeyDigest],
+                              &ccndid, &ccndid_size);
+    CHKRES(res);
+    if (ccndid_size > sizeof(ccndid_storage))
+        CHKRES(-1);
+    memcpy(ccndid_storage, ccndid, ccndid_size);
+    ccndid = ccndid_storage;
+    
     face_instance->action = "newface";
-    face_instance->descr.ipproto = atoi(argv[optind + 1]); // XXX - 6 = tcp or 17 = udp
+    face_instance->ccnd_id = ccndid;
+    face_instance->ccnd_id_size = ccndid_size;
+    if (strcmp(argv[optind + 1], "tcp") == 0)
+        ipproto = 6;
+    else if (strcmp(argv[optind + 1], "udp") == 0)
+        ipproto = 17;
+    else
+        ipproto = atoi(argv[optind + 1]);
+    face_instance->descr.ipproto = ipproto; // XXX - 6 = tcp or 17 = udp
     face_instance->descr.address = argv[optind + 2];
     face_instance->descr.port = argv[optind + 3];
     if (face_instance->descr.port == NULL)
@@ -147,58 +180,20 @@ main(int argc, char **argv)
                             "Th1s1sn0t8g00dp8ssw0rd.");
     CHKRES(res);
 
-    /* Construct a key locator containing the key itself */
-    keylocator = ccn_charbuf_create();
-    ccn_charbuf_append_tt(keylocator, CCN_DTAG_KeyLocator, CCN_DTAG);
-    ccn_charbuf_append_tt(keylocator, CCN_DTAG_Key, CCN_DTAG);
-    CHKRES(ccn_append_pubkey_blob(keylocator, ccn_keystore_public_key(keystore)));
-    ccn_charbuf_append_closer(keylocator);	/* </Key> */
-    ccn_charbuf_append_closer(keylocator);	/* </KeyLocator> */
-    res = ccn_signed_info_create(signed_info,
-                                 /* pubkeyid */ ccn_keystore_public_key_digest(keystore),
-                                 /* publisher_key_id_size */ ccn_keystore_public_key_digest_length(keystore),
-                                 /* datetime */ NULL,
-                                 /* type */ CCN_CONTENT_DATA,
-                                 /* freshness */ expire,
-                                 /* finalblockid */ NULL,
-                                 keylocator);
-    if (res < 0) {
-        fprintf(stderr, "Failed to create signed_info (res == %d)\n", res);
-        exit(1);
-    }
-    
-    temp->length = 0;
-    res = ccn_encode_ContentObject(temp,
-                                   null_name,
-                                   signed_info,
-                                   newface->buf,
-                                   newface->length,
-                                   ccn_keystore_digest_algorithm(keystore),
-                                   ccn_keystore_private_key(keystore));
+    ccnb_element_begin(keylocator_templ, CCN_DTAG_SignedInfo);
+    ccnb_element_begin(keylocator_templ, CCN_DTAG_KeyLocator);
+    ccnb_element_begin(keylocator_templ, CCN_DTAG_Key);
+    CHKRES(ccn_append_pubkey_blob(keylocator_templ, ccn_keystore_public_key(keystore)));
+    ccnb_element_end(keylocator_templ);	/* </Key> */
+    ccnb_element_end(keylocator_templ);	/* </KeyLocator> */
+    ccnb_element_end(keylocator_templ);    /* </SignedInfo> */
+    sp.template_ccnb = keylocator_templ;
+    sp.sp_flags |= CCN_SP_TEMPL_KEY_LOCATOR;
+    sp.freshness = expire;
+    ccn_charbuf_reset(temp);
+    res = ccn_sign_content(h, temp, null_name, &sp,
+                           newface->buf, newface->length);
     CHKRES(res);
-    
-    /* Set up our Interest template to indicate scope 1 */
-        templ->length = 0;
-        ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
-        ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
-        ccn_charbuf_append_closer(templ);	/* </Name> */
-        ccnb_tagged_putf(templ, CCN_DTAG_Scope, "1");
-        ccn_charbuf_append_closer(templ);	/* </Interest> */
-
-    /* We need to figure out our local ccnd's CCIDID */
-    name->length = 0;
-    CHKRES(res = ccn_name_from_uri(name, "ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnd/KEY"));
-    CHKRES(res = ccn_get(h, name, templ, 200, resultbuf, &pcobuf, NULL, 0));
-    res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest,
-                        resultbuf->buf,
-                        pcobuf.offset[CCN_PCO_B_PublisherPublicKeyDigest],
-                        pcobuf.offset[CCN_PCO_E_PublisherPublicKeyDigest],
-                        &ccndid, &ccndid_size);
-    CHKRES(res);
-    if (ccndid_size > sizeof(ccndid_storage))
-        CHKRES(-1);
-    memcpy(ccndid_storage, ccndid, ccndid_size);
-    ccndid = ccndid_storage;
     
     /* Create the new face */
     CHKRES(ccn_name_init(name));
@@ -221,22 +216,20 @@ main(int argc, char **argv)
     CHKRES(face_instance->faceid);
     
     /* Finally, register the prefix */
-    name_prefix->length = 0;
+    ccn_charbuf_reset(name_prefix);
     CHKRES(ccn_name_from_uri(name_prefix, arg));
     forwarding_entry->action = "prefixreg";
     forwarding_entry->name_prefix = name_prefix;
+    forwarding_entry->ccnd_id = ccndid;
+    forwarding_entry->ccnd_id_size = ccndid_size;
     forwarding_entry->faceid = face_instance->faceid;
+    forwarding_entry->flags = -1; /* let ccnd decide */
     forwarding_entry->lifetime = (~0U) >> 1;
     prefixreg = ccn_charbuf_create();
     CHKRES(res = ccnb_append_forwarding_entry(prefixreg, forwarding_entry));
-    temp->length = 0;
-    res = ccn_encode_ContentObject(temp,
-                                   null_name,
-                                   signed_info,
-                                   prefixreg->buf,
-                                   prefixreg->length,
-                                   ccn_keystore_digest_algorithm(keystore),
-                                   ccn_keystore_private_key(keystore));
+    ccn_charbuf_reset(temp);
+    res = ccn_sign_content(h, temp, null_name, &sp,
+                           prefixreg->buf, prefixreg->length);
     CHKRES(res);
     CHKRES(ccn_name_init(name));
     CHKRES(ccn_name_append_str(name, "ccnx"));
