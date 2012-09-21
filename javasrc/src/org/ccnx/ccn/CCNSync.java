@@ -33,6 +33,7 @@ public class CCNSync {
 	
 	public static final int SYNC_HASH_LENGTH = 32;
 	public static final int NODE_SPLIT_TRIGGER = 4000; // bytes
+	public static final int HASH_SPLIT_TRIGGER = 17; // bytes
 	
 	protected SyncMonitor syncMon = null;
 	

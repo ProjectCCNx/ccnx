@@ -153,10 +153,11 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 	
 	public SyncNodeComposite() {}
 	
-	public SyncNodeComposite(ArrayList<SyncNodeElement> refs, SyncNodeElement minName, SyncNodeElement maxName) {
+	public SyncNodeComposite(ArrayList<SyncNodeElement> refs, SyncNodeElement minName, SyncNodeElement maxName, int byteCount) {
 		_refs = refs;
 		_minName = minName;
 		_maxName = maxName;
+		_byteCount = byteCount;
 		computeHash();
 		
 		_version = Sync.SYNC_VERSION;
@@ -169,6 +170,10 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 				break;
 			}
 		}
+		
+		// TODO (but maybe never) we don't support trees with mixed hashes & leaves
+		if (_treeDepth == 1)
+			_leafCount = refs.size();
 	}
 	
 	public ArrayList<SyncNodeElement> getRefs() {

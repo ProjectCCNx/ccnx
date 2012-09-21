@@ -1185,6 +1185,22 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		System.arraycopy(_components, start, result._components, 0, end-start);
 		return result;
 	}
+	
+	/**
+	 * Return the number of components that match
+	 */
+	public int matchLength(ContentName name) {
+		int length = 0;
+		int otherLength = name.count() - 1;
+		for (int i = 0; i < count(); i++) {
+			if (otherLength < i)
+				break;
+			if (!Arrays.equals(_components[i], name.component(i)))
+				break;
+			length++;
+		}
+		return length;
+	}
 
 	/**
 	 * Return the remainder of this name after the prefix, if the prefix

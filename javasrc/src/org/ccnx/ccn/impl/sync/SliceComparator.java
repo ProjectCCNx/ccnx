@@ -755,7 +755,7 @@ public class SliceComparator implements Runnable {
 						}
 						if (null != newHead) {
 							SyncNodeElement maxElement = snc.getMaxName();
-							snc = new SyncNodeComposite(nodeElements, minElement, maxElement);
+							snc = new SyncNodeComposite(nodeElements, minElement, maxElement, 0);
 							newHead = _pbsm.addHash(snc.getHash());
 							newHead.setNode(snc);
 							newHead.setCovered(true);

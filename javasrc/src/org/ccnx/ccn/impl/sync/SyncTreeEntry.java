@@ -134,7 +134,7 @@ public class SyncTreeEntry {
 			}
 		}
 		if (snes.size() > 0) {
-			SyncNodeComposite snc = new SyncNodeComposite(snes, firstElement, lastElement);
+			SyncNodeComposite snc = new SyncNodeComposite(snes, firstElement, lastElement, 0);
 			ourEntry.setNode(snc);
 		}
 		return ourEntry;
@@ -152,16 +152,47 @@ public class SyncTreeEntry {
 		ArrayList<SyncNodeComposite.SyncNodeElement> refs = new ArrayList<SyncNodeComposite.SyncNodeElement>();
 		ArrayList<ContentName> removes = new ArrayList<ContentName>();
 		int total = 0;
+		int limit = CCNSync.NODE_SPLIT_TRIGGER - CCNSync.NODE_SPLIT_TRIGGER/8;
+		int minLen = CCNSync.NODE_SPLIT_TRIGGER/2;
+		int maxLen = 0;
+		int prevMatch = 0;
 		boolean atLeastOneAdded = false;
 		for (ContentName tname : names) {
 			SyncNodeElement sne = new SyncNodeComposite.SyncNodeElement(tname);
-			byte[] lengthTest;
-			try {
-				lengthTest = sne.encode();
-				total += lengthTest.length;
-			} catch (ContentEncodingException e) {} // Shouldn't happen because we built the data
-			if (atLeastOneAdded && total > CCNSync.NODE_SPLIT_TRIGGER)
-				break;
+			ContentName nextName = names.higher(tname);
+			if (null != nextName) {
+				byte[] lengthTest;
+				try {
+					lengthTest = tname.encode();
+					int nameLen = lengthTest.length + 8;
+					if (nameLen > maxLen) maxLen = nameLen;
+					total += (nameLen + ((maxLen - nameLen) * 2));
+				} catch (ContentEncodingException e) {} // Shouldn't happen because we built the data
+				int match = tname.matchLength(nextName);
+				if (total > minLen) {
+					if (match < prevMatch || match > prevMatch + 1) {
+						if (Log.isLoggable(Log.FAC_SYNC, Level.FINE)) {
+							Log.fine("Node split due to level change - nbytes {0}, match {1}, prev {2}", 
+									total, match, prevMatch);
+						}
+						prevMatch = match;
+						break;
+					}
+					byte[] lc = tname.lastComponent();
+					if (lc.length > 8) {
+						int c = (int)lc[lc.length - 9];
+						if (c < CCNSync.HASH_SPLIT_TRIGGER) {
+							if (Log.isLoggable(Log.FAC_SYNC, Level.FINE)) {
+								Log.fine("Node split due to hash split - nbytes {0}", total);
+							}
+							break;
+						}
+					}
+				}
+				prevMatch = match;
+				if (atLeastOneAdded && total > limit)
+					break;
+			}
 			atLeastOneAdded = true;
 			refs.add(sne);
 			removes.add(tname);
@@ -169,7 +200,7 @@ public class SyncTreeEntry {
 		for (ContentName tname : removes) {
 			names.remove(tname);
 		}
-		SyncNodeComposite snc = new SyncNodeComposite(refs, refs.get(0), refs.get(refs.size() - 1));
+		SyncNodeComposite snc = new SyncNodeComposite(refs, refs.get(0), refs.get(refs.size() - 1), total);
 		SyncTreeEntry ste = new SyncTreeEntry(snc.getHash());
 		ste.setNode(snc);
 		return ste;
