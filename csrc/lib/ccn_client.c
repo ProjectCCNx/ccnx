@@ -265,7 +265,7 @@ ccn_replace_handler(struct ccn *h,
  * The new handle is not yet connected.
  * On error, returns NULL and sets errno.
  * Errors: ENOMEM
- */ 
+ */
 struct ccn *
 ccn_create(void)
 {
@@ -323,7 +323,7 @@ ccn_create(void)
  * of CCN_UPCALL_RESULT_VERIFY.
  *
  * Calling this while there are interests outstanding is not recommended.
- * 
+ *
  * This call is available beginning with CCN_API_VERSION 4004.
  *
  * @param defer is 0 to verify, 1 to defer, -1 to leave unchanged.
@@ -353,7 +353,7 @@ ccn_defer_verification(struct ccn *h, int defer)
  *      and CCN_LOCAL_PORT if there is no port specified,
  *      or CCN_LOCAL_SOCKNAME and CCN_LOCAL_PORT.
  * @returns the fd for the connection, or -1 for error.
- */ 
+ */
 int
 ccn_connect(struct ccn *h, const char *name)
 {
@@ -367,7 +367,6 @@ ccn_connect(struct ccn *h, const char *name)
 #ifndef CCN_LOCAL_TCP
     const char *s;
 #endif
-    
     if (h == NULL)
         return(-1);
     h->err = 0;
@@ -636,7 +635,7 @@ ccn_construct_interest(struct ccn *h,
     size_t start;
     size_t size;
     int res;
-    
+
     dest->lifetime_us = CCN_INTEREST_LIFETIME_MICROSEC;
     c->length = 0;
     ccn_charbuf_append_tt(c, CCN_DTAG_Interest, CCN_DTAG);
@@ -761,7 +760,7 @@ ccn_set_interest_filter_with_flags(struct ccn *h, struct ccn_charbuf *namebuf,
     struct hashtb_enumerator *e = &ee;
     int res;
     struct interest_filter *entry;
-    
+
     if (h->interest_filters == NULL) {
         struct hashtb_param param = {0};
         param.finalize = &finalize_interest_filter;
@@ -799,7 +798,7 @@ ccn_set_interest_filter_with_flags(struct ccn *h, struct ccn_charbuf *namebuf,
  * Note that this may have undesirable effects in applications that share
  * the same handle for independently operating subcomponents.
  * See ccn_set_interest_filter_with_flags() for a way to deal with this.
- * 
+ *
  * The contents of namebuf are copied as needed.
  *
  * The handler should return CCN_UPCALL_RESULT_INTEREST_CONSUMED as a
@@ -886,7 +885,7 @@ update_multifilt(struct ccn *h,
     int flags;
     int i;
     int n = 0;
-    
+
     if (action->p == &handle_multifilt) {
         /* This should never happen. */
         abort();
@@ -967,7 +966,7 @@ build_multifilt_array(struct ccn *h,
     struct multifilt_item *a = NULL; /* old array */
     struct multifilt_item *c = NULL; /* new array */
     int i, j, m;
-    
+
     a = *ap;
     /* Determine how many slots we will need */
     for (m = 0, i = 0; i < n; i++) {
@@ -1006,7 +1005,7 @@ destroy_multifilt_array(struct ccn *h, struct multifilt_item **ap, int n)
 {
     struct multifilt_item *a;
     int i;
-    
+
     a = *ap;
     if (a != NULL) {
         for (i = 0; i < n; i++)
@@ -1029,7 +1028,7 @@ handle_multifilt(struct ccn_closure *selfp,
     enum ccn_upcall_res ans;
     enum ccn_upcall_res res;
     int i, n;
-    
+
     md = selfp->data;
     if (kind == CCN_UPCALL_FINAL) {
         destroy_multifilt_array(info->h, &md->a, md->n);
@@ -1196,7 +1195,7 @@ ccn_digest_Content(const unsigned char *content_object,
     struct ccn_digest *d = NULL;
     const unsigned char *content = NULL;
     size_t content_bytes = 0;
-    
+
     if (pc->magic < 20080000) abort();
     if (digest_bytes == sizeof(digest))
         return;
@@ -1379,7 +1378,7 @@ ccn_append_link_name(struct ccn_charbuf *name, const unsigned char *data, size_t
     struct ccn_buf_decoder *d;
     size_t start = 0;
     size_t end = 0;
-    
+
     d = ccn_buf_decoder_start(&decoder, data, data_size);
     if (ccn_buf_match_dtag(d, CCN_DTAG_Link)) {
         ccn_buf_advance(d);
@@ -1416,7 +1415,7 @@ handle_key(struct ccn_closure *selfp,
     int res;
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *templ = NULL;
-    
+
     switch(kind) {
         case CCN_UPCALL_FINAL:
             free(selfp);
@@ -1495,7 +1494,7 @@ ccn_initiate_key_fetch(struct ccn *h,
     const unsigned char *pkeyid = NULL;
     size_t pkeyid_size = 0;
     struct ccn_charbuf *templ = NULL;
-    
+
     if (trigger_interest != NULL) {
         /* Arrange a wakeup when the key arrives */
         if (trigger_interest->wanted_pub == NULL)
@@ -1524,7 +1523,7 @@ ccn_initiate_key_fetch(struct ccn *h,
         return (NOTE_ERRNO(h));
     key_closure->p = &handle_key;
     key_closure->intdata = CCN_MAX_KEY_LINK_CHAIN; /* to limit how many links we will resolve */
-    
+
     key_name = ccn_charbuf_create();
     res = ccn_charbuf_append(key_name,
                              msg + pco->offset[CCN_PCO_B_KeyName_Name],
@@ -1581,7 +1580,7 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
     int i;
     int res;
     enum ccn_upcall_res ures;
-    
+
     h->running++;
     info.h = h;
     info.pi = &pi;
@@ -2061,7 +2060,7 @@ handle_simple_incoming_content(
 {
     struct simple_get_data *md = selfp->data;
     struct ccn *h = info->h;
-    
+
     if (kind == CCN_UPCALL_FINAL) {
         if (selfp != &md->closure)
             abort();
@@ -2130,7 +2129,7 @@ ccn_get(struct ccn *h,
     struct hashtb *saved_keys = NULL;
     int res;
     struct simple_get_data *md;
-    
+
     if ((flags & ~((int)CCN_GET_NOKEYWAIT)) != 0)
         return(-1);
     if (h == NULL || h->running) {
@@ -2189,7 +2188,7 @@ handle_ccndid_response(struct ccn_closure *selfp,
     const unsigned char *ccndid = NULL;
     size_t size = 0;
     struct ccn *h = info->h;
-    
+
     if (kind == CCN_UPCALL_FINAL) {
         free(selfp);
         return(CCN_UPCALL_RESULT_OK);
@@ -2232,7 +2231,7 @@ ccn_initiate_ccndid_fetch(struct ccn *h)
 {
     struct ccn_charbuf *name = NULL;
     struct ccn_closure *action = NULL;
-    
+
     name = ccn_charbuf_create();
     ccn_name_from_uri(name, "ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnd/KEY");
     action = calloc(1, sizeof(*action));
@@ -2391,7 +2390,7 @@ ccn_verify_content(struct ccn *h,
     struct ccn_pkey *pubkey = NULL;
     int res;
     unsigned char *buf = (unsigned char *)msg; /* XXX - discard const */
-    
+
     res = ccn_locate_key(h, msg, pco, &pubkey);
     if (res == 0) {
         /* we have the pubkey, use it to verify the msg */
@@ -2424,7 +2423,7 @@ ccn_load_private_key(struct ccn *h,
     struct ccn_charbuf *pubid_store = NULL;
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
-    
+
     if (pubid == NULL)
         pubid = pubid_store = ccn_charbuf_create();
     if (pubid == NULL) {
@@ -2484,10 +2483,12 @@ ccn_load_default_key(struct ccn *h,
 {
     struct ccn_charbuf *default_pubid = NULL;
     int res;
-    
+
     if (h->default_pubid != NULL)
         return(NOTE_ERR(h, EINVAL));
     default_pubid = ccn_charbuf_create();
+    if (default_pubid == NULL)
+        return(NOTE_ERRNO(h));
     res = ccn_load_private_key(h,
                                keystore_path,
                                keystore_passphrase,
@@ -2563,6 +2564,89 @@ ccn_get_public_key(struct ccn *h,
     return(res);
 }
 
+static int
+ccn_load_or_create_key(struct ccn *h,
+                       const char *keystore,
+                       struct ccn_charbuf *pubid)
+{
+    const char *password;
+    int res;
+    
+    password = getenv("CCNX_KEYSTORE_PASSWORD");
+    if (password == 0)
+        password = "Th1s1sn0t8g00dp8ssw0rd.";
+    res = ccn_load_private_key(h, keystore, password, pubid);
+    if (res != 0) {
+        /* Either file exists and password is wrong or file does not exist */
+        if (access(keystore, R_OK) == 0) {
+            fprintf(stderr,
+               "Keystore file [%s] exists, but private key cannot be loaded.\n"
+               "Check if CCNX_KEYSTORE_PASSWORD is set to a correct password,\n"
+               "otherwise remove [%s] and it will be automatically created.\n",
+               keystore, keystore);
+            return(res);
+        }
+        fprintf(stderr,
+            "Keystore [%s] does not exist and will be automatically created\n",
+            keystore);
+        res = ccn_keystore_file_init((char*)keystore, (char*)password,
+                "ccnxuser", 0, 3650); /* create a key valid for 10 years */
+        if (res != 0) {
+            fprintf(stderr, "Cannot create keystore [%s]\n", keystore);
+            res = NOTE_ERRNO(h);
+            return(res);
+        }
+        res = ccn_load_private_key(h, keystore, password, pubid);
+    }
+    return(res);
+}
+
+static int
+ccn_load_or_create_default_key(struct ccn *h)
+{
+    const char *s = NULL;
+    struct ccn_charbuf *path = NULL;
+    struct ccn_charbuf *default_pubid = NULL;
+    int res = 0;
+    
+    if (h->default_pubid != NULL)
+        return(0);
+    
+    path = ccn_charbuf_create();
+    default_pubid = ccn_charbuf_create();
+    if (default_pubid == NULL || path == NULL)
+        return(NOTE_ERRNO(h));
+    s = getenv("CCNX_DIR");
+    if (s != NULL && s[0] != 0)
+        ccn_charbuf_putf(path, "%s", s);
+    else {
+        s = getenv("HOME");
+        if (s != NULL && s[0] != 0) {
+            ccn_charbuf_putf(path, "%s/.ccnx", s);
+            res = mkdir(ccn_charbuf_as_string(path), S_IRWXU);
+            if (res == -1) {
+                if (errno == EEXIST)
+                    res = 0;
+                else
+                    res = NOTE_ERRNO(h);
+            }
+        }
+        else
+            res = NOTE_ERR(h, -1);
+    }
+    ccn_charbuf_putf(path, "/%s", ".ccnx_keystore");
+    res = ccn_load_or_create_key(h,
+                                 ccn_charbuf_as_string(path),
+                                 default_pubid);
+    if (res == 0) {
+        h->default_pubid = default_pubid;
+        default_pubid = NULL;
+    }
+    ccn_charbuf_destroy(&default_pubid);
+    ccn_charbuf_destroy(&path);
+    return(res);
+}
+
 /**
  * This is mostly for use within the library,
  * but may be useful for some clients.
@@ -2575,15 +2659,11 @@ ccn_chk_signing_params(struct ccn *h,
                        struct ccn_charbuf **pfinalblockid,
                        struct ccn_charbuf **pkeylocator)
 {
-    struct ccn_charbuf *default_pubid = NULL;
-    struct ccn_charbuf *temp = NULL;
-    const char *home = NULL;
-    const char *ccnx_dir = NULL;
     int res = 0;
     int i;
     int conflicting;
     int needed;
-    
+
     if (params != NULL)
         *result = *params;
     if ((result->sp_flags & ~(CCN_SP_TEMPL_TIMESTAMP      |
@@ -2604,35 +2684,12 @@ ccn_chk_signing_params(struct ccn *h,
         continue;
     if (i == sizeof(result->pubid)) {
         if (h->default_pubid == NULL) {
-            default_pubid = ccn_charbuf_create();
-            temp = ccn_charbuf_create();
-            if (default_pubid == NULL || temp == NULL)
-                return(NOTE_ERRNO(h));
-            ccnx_dir = getenv("CCNX_DIR");
-            if (ccnx_dir == NULL || ccnx_dir[0] == 0) {
-                home = getenv("HOME");
-                if (home == NULL)
-                    home = "";
-                ccn_charbuf_putf(temp, "%s/.ccnx/.ccnx_keystore", home);
-            }
-            else
-                ccn_charbuf_putf(temp, "%s/.ccnx_keystore", ccnx_dir);
-            res = ccn_load_private_key(h,
-                                       ccn_charbuf_as_string(temp),
-                                       "Th1s1sn0t8g00dp8ssw0rd.",
-                                       default_pubid);
-            if (res == 0 && default_pubid->length == sizeof(result->pubid)) {
-                h->default_pubid = default_pubid;
-                default_pubid = NULL;
-            }
+            res = ccn_load_or_create_default_key(h);
+            if (res < 0)
+                return(res);
         }
-        if (h->default_pubid == NULL)
-            res = NOTE_ERRNO(h);
-        else
-            memcpy(result->pubid, h->default_pubid->buf, sizeof(result->pubid));
+        memcpy(result->pubid, h->default_pubid->buf, sizeof(result->pubid));
     }
-    ccn_charbuf_destroy(&default_pubid);
-    ccn_charbuf_destroy(&temp);
     needed = result->sp_flags & (CCN_SP_TEMPL_TIMESTAMP      |
                                  CCN_SP_TEMPL_FINAL_BLOCK_ID |
                                  CCN_SP_TEMPL_FRESHNESS      |
@@ -2742,7 +2799,7 @@ ccn_sign_content(struct ccn *h,
     struct ccn_charbuf *finalblockid = NULL;
     struct ccn_charbuf *keylocator = NULL;
     int res;
-    
+
     res = ccn_chk_signing_params(h, params, &p,
                                  &timestamp, &finalblockid, &keylocator);
     if (res < 0)
@@ -2767,7 +2824,7 @@ ccn_sign_content(struct ccn *h,
             struct ccn_indexbuf *ndx;
             const unsigned char *comp = NULL;
             size_t size = 0;
-            
+
             ndx = ccn_indexbuf_create();
             ncomp = ccn_name_split(name_prefix, ndx);
             if (ncomp < 0)

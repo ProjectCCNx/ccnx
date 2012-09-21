@@ -4,7 +4,7 @@
  *
  * A CCNx program.
  *
- * Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -17,7 +17,7 @@
  * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
- 
+
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,17 +45,17 @@ struct path * path_create(char * strpath) {
     struct path * path;
 
     if (strlen(strpath) < 1) {
-	return NULL;
+        return NULL;
     }
     while (*p != '\0') {
-	if (*p++ == '/') slash_count++;
+        if (*p++ == '/') slash_count++;
     }
     path = malloc(sizeof(int) + sizeof(char *)*(slash_count+1));
     path->comps[0] = strtok(strdup(strpath), "/");
     path->count = 0;
     while (path->comps[i++]) {
-	path->comps[i] = strtok(NULL, "/");
-	path->count++;
+        path->comps[i] = strtok(NULL, "/");
+        path->count++;
     }
     return path;
 }
@@ -64,7 +64,7 @@ void path_destroy(struct path **path) {
     *path = NULL;
 }
 
-int 
+int
 encode_message(struct ccn_charbuf *message, struct path * name_path,
                char *data, size_t len, struct ccn_charbuf *signed_info,
                const void *pkey, const char *digest_algorithm) {
@@ -73,64 +73,64 @@ encode_message(struct ccn_charbuf *message, struct path * name_path,
     int res;
 
     if (path == NULL || ccn_name_init(path) == -1) {
-	fprintf(stderr, "Failed to allocate or initialize content path\n");
-	return -1;
+        fprintf(stderr, "Failed to allocate or initialize content path\n");
+        return -1;
     }
 
     for (i = 0; i < name_path->count; i++) {
-	ccn_name_append_str(path, name_path->comps[i]);
+        ccn_name_append_str(path, name_path->comps[i]);
     }
 
     res = ccn_encode_ContentObject(message, path, signed_info, data, len, digest_algorithm, pkey);
 
     if (res != 0) {
-	fprintf(stderr, "Failed to encode ContentObject\n");
+        fprintf(stderr, "Failed to encode ContentObject\n");
     }
 
     ccn_charbuf_destroy(&path);
-    return (res);
+    return(res);
 }
 
-int 
+int
 decode_message(struct ccn_charbuf *message, struct path * name_path, char *data, size_t len,
                const void *verkey) {
     struct ccn_parsed_ContentObject content;
     struct ccn_indexbuf *comps = ccn_indexbuf_create();
     const unsigned char * content_value;
     size_t content_length;
-    
+
     int res = 0;
     int i;
-    
+
     memset(&content, 0x33, sizeof(content));
 
     if (ccn_parse_ContentObject(message->buf, message->length, &content, comps) != 0) {
-	printf("Decode failed to parse object\n");
-	res = -1;
+        printf("Decode failed to parse object\n");
+        res = -1;
     }
 
     if (comps->n-1 != name_path->count) {
-	printf("Decode got wrong number of path components: %d vs. %d\n", 
-	       (int)(comps->n-1), name_path->count);
-	res = -1;
+        printf("Decode got wrong number of path components: %d vs. %d\n",
+            (int)(comps->n-1), name_path->count);
+        res = -1;
     }
     for (i=0; i<name_path->count; i++) {
-	if (ccn_name_comp_strcmp(message->buf, comps, i, name_path->comps[i]) != 0) {
-	    printf("Decode mismatch on path component %d\n", i);
-	    res = -1;
-	}
+        if (ccn_name_comp_strcmp(message->buf, comps, i, name_path->comps[i]) != 0) {
+            printf("Decode mismatch on path component %d\n", i);
+            res = -1;
+        }
     }
     if (ccn_content_get_value(message->buf, message->length, &content,
-			      &content_value, &content_length) != 0) {
-	printf("Cannot retrieve content value\n");
-	res = -1;
+        &content_value, &content_length) != 0) {
+        printf("Cannot retrieve content value\n");
+        res = -1;
     } else if (content_length != len) {
-	printf("Decode mismatch on content length %d vs. %d\n", 
-	       (int)content_length, (int)len);
-	res = -1;
+        printf("Decode mismatch on content length %d vs. %d\n",
+            (int)content_length, (int)len);
+        res = -1;
     } else if (memcmp(content_value, data, len) != 0) {
-	printf("Decode mismatch of content\n");
-	res = -1;
+        printf("Decode mismatch of content\n");
+        res = -1;
     }
 
     if (ccn_verify_signature(message->buf, message->length, &content, verkey) != 1) {
@@ -140,7 +140,7 @@ decode_message(struct ccn_charbuf *message, struct path * name_path, char *data,
 
     ccn_indexbuf_destroy(&comps);
     return res;
-    
+
 }
 
 int
@@ -191,7 +191,8 @@ static const char *all_chars_percent_encoded_canon =
  "%F0%F1%F2%F3%F4%F5%F6%F7%F8%F9%FA%FB%FC%FD%FE%FF";
 
 int
-main (int argc, char *argv[]) {
+main(int argc, char *argv[])
+{
     struct ccn_charbuf *buffer = ccn_charbuf_create();
     struct ccn_charbuf *signed_info = ccn_charbuf_create();
     struct ccn_skeleton_decoder dd = {0};
@@ -199,7 +200,7 @@ main (int argc, char *argv[]) {
     char *outname = NULL;
     int fd;
     int result = 0;
-    char * contents[] = {"INVITE sip:foo@parc.com SIP/2.0\nVia: SIP/2.0/UDP 127.0.0.1:5060;rport;branch=z9hG4bK519044721\nFrom: <sip:jthornto@13.2.117.52>;tag=2105643453\nTo: Test User <sip:foo@parc.com>\nCall-ID: 119424355@127.0.0.1\nCSeq: 20 INVITE\nContact: <sip:jthornto@127.0.0.1:5060>\nMax-Forwards: 70\nUser-Agent: Linphone-1.7.1/eXosip\nSubject: Phone call\nExpires: 120\nAllow: INVITE, ACK, CANCEL, BYE, OPTIONS, REFER, SUBSCRIBE, NOTIFY, MESSAGE\nContent-Type: application/sdp\nContent-Length:   448\n\nv=0\no=jthornto 123456 654321 IN IP4 127.0.0.1\ns=A conversation\nc=IN IP4 127.0.0.1\nt=0 0\nm=audio 7078 RTP/AVP 111 110 0 3 8 101\na=rtpmap:111 speex/16000/1\na=rtpmap:110 speex/8000/1\na=rtpmap:0 PCMU/8000/1\na=rtpmap:3 GSM/8000/1\na=rtpmap:8 PCMA/8000/1\na=rtpmap:101 telephone-event/8000\na=fmtp:101 0-11\nm=video 9078 RTP/AVP 97 98 99\na=rtpmap:97 theora/90000\na=rtpmap:98 H263-1998/90000\na=fmtp:98 CIF=1;QCIF=1\na=rtpmap:99 MP4V-ES/90000\n", 
+    char * contents[] = {"INVITE sip:foo@parc.com SIP/2.0\nVia: SIP/2.0/UDP 127.0.0.1:5060;rport;branch=z9hG4bK519044721\nFrom: <sip:jthornto@13.2.117.52>;tag=2105643453\nTo: Test User <sip:foo@parc.com>\nCall-ID: 119424355@127.0.0.1\nCSeq: 20 INVITE\nContact: <sip:jthornto@127.0.0.1:5060>\nMax-Forwards: 70\nUser-Agent: Linphone-1.7.1/eXosip\nSubject: Phone call\nExpires: 120\nAllow: INVITE, ACK, CANCEL, BYE, OPTIONS, REFER, SUBSCRIBE, NOTIFY, MESSAGE\nContent-Type: application/sdp\nContent-Length:   448\n\nv=0\no=jthornto 123456 654321 IN IP4 127.0.0.1\ns=A conversation\nc=IN IP4 127.0.0.1\nt=0 0\nm=audio 7078 RTP/AVP 111 110 0 3 8 101\na=rtpmap:111 speex/16000/1\na=rtpmap:110 speex/8000/1\na=rtpmap:0 PCMU/8000/1\na=rtpmap:3 GSM/8000/1\na=rtpmap:8 PCMA/8000/1\na=rtpmap:101 telephone-event/8000\na=fmtp:101 0-11\nm=video 9078 RTP/AVP 97 98 99\na=rtpmap:97 theora/90000\na=rtpmap:98 H263-1998/90000\na=fmtp:98 CIF=1;QCIF=1\na=rtpmap:99 MP4V-ES/90000\n",
  
 			 "Quaer #%2d zjduer  badone",
                          "",
@@ -210,16 +211,18 @@ main (int argc, char *argv[]) {
                        NULL};
     struct path * cur_path = NULL;
     struct ccn_keystore *keystore = ccn_keystore_create();
-    char *home = getenv("HOME");
-    char *keystore_suffix = "/.ccnx/.ccnx_keystore";
     char *keystore_name = NULL;
+    char *keystore_password = NULL;
 
     int i;
 
-    while ((i = getopt(argc, argv, "k:o:")) != -1) {
+    while ((i = getopt(argc, argv, "k:p:o:")) != -1) {
         switch (i) {
             case 'k':
                 keystore_name = optarg;
+                break;
+            case 'p':
+                keystore_password = optarg;
                 break;
             case 'o':
                 outname = optarg;
@@ -229,21 +232,27 @@ main (int argc, char *argv[]) {
                 exit(1);
         }
     }
-    
 
-    if (keystore_name == NULL && home == NULL) {
-        printf("Unable to determine home directory for keystore\n");
-        exit(1);
-    }
-    if (keystore_name == NULL) {
-        keystore_name = calloc(1, strlen(home) + strlen(keystore_suffix) + 1);
-        strcat(keystore_name, home);
-        strcat(keystore_name, keystore_suffix);
-    }
+    if (keystore_name == NULL)
+        keystore_name = "test.keystore";
 
-    if (0 != ccn_keystore_init(keystore, keystore_name, "Th1s1sn0t8g00dp8ssw0rd.")) {
-        printf("Failed to initialize keystore\n");
-        exit(1);
+    if (keystore_password == NULL)
+        keystore_password = "Th1s1sn0t8g00dp8ssw0rd.";
+
+    res = ccn_keystore_init(keystore, keystore_name, keystore_password);
+    if (res != 0) {
+        printf ("Initializing keystore in %s\n", keystore_name);
+        res = ccn_keystore_file_init(keystore_name, keystore_password,
+                                     "ccnxuser", 0, 3650);
+        if (res != 0) {
+            fprintf (stderr, "Cannot create keystore [%s]", keystore_name);
+            return res;
+        }
+        res = ccn_keystore_init(keystore, keystore_name, keystore_password);
+        if (res != 0) {
+            printf("Failed to initialize keystore\n");
+            exit(1);
+        }
     }
 
     printf("Creating signed_info\n");
@@ -258,7 +267,7 @@ main (int argc, char *argv[]) {
     if (res < 0) {
         printf("Failed to create signed_info!\n");
     }
-    
+
     res = ccn_skeleton_decode(&dd, signed_info->buf, signed_info->length);
     if (!(res == signed_info->length && dd.state == 0)) {
         printf("Failed to decode signed_info!  Result %d State %d\n", (int)res, dd.state);
@@ -271,56 +280,56 @@ main (int argc, char *argv[]) {
     cur_path = path_create(paths[0]);
     if (encode_message(buffer, cur_path, contents[0], strlen(contents[0]), signed_info,
                        ccn_keystore_private_key(keystore), ccn_keystore_digest_algorithm(keystore))) {
-	printf("Failed to encode message!\n");
+        printf("Failed to encode message!\n");
     } else {
-	printf("Encoded sample message length is %d\n", (int)buffer->length);
+        printf("Encoded sample message length is %d\n", (int)buffer->length);
 
-	res = ccn_skeleton_decode(&dd, buffer->buf, buffer->length);
-	if (!(res == buffer->length && dd.state == 0)) {
-	    printf("Failed to decode!  Result %d State %d\n", (int)res, dd.state);
-	    result = 1;
-	}
+        res = ccn_skeleton_decode(&dd, buffer->buf, buffer->length);
+        if (!(res == buffer->length && dd.state == 0)) {
+            printf("Failed to decode!  Result %d State %d\n", (int)res, dd.state);
+            result = 1;
+        }
         if (outname != NULL) {
             fd = open(outname, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU);
             if (fd == -1)
                 perror(outname);
             res = write(fd, buffer->buf, buffer->length);
             close(fd);
-	}
+        }
         if (decode_message(buffer, cur_path, contents[0], strlen(contents[0]), ccn_keystore_public_key(keystore)) != 0) {
-	    result = 1;
-	}
+            result = 1;
+        }
         printf("Expect signature verification failure: ");
         if (buffer->length >= 20)
             buffer->buf[buffer->length - 20] += 1;
-	if (decode_message(buffer, cur_path, contents[0], strlen(contents[0]), ccn_keystore_public_key(keystore)) == 0) {
-	    result = 1;
-	}
+        if (decode_message(buffer, cur_path, contents[0], strlen(contents[0]), ccn_keystore_public_key(keystore)) == 0) {
+            result = 1;
+        }
     }
     path_destroy(&cur_path);
     ccn_charbuf_destroy(&buffer);
     printf("Done with sample message\n");
-    
+
     /* Now exercise as unit tests */
-    
+
     for (i = 0; paths[i] != NULL && contents[i] != NULL; i++) {
-	printf("Unit test case %d\n", i);
-	cur_path = path_create(paths[i]);
-	buffer = ccn_charbuf_create();
-	if (encode_message(buffer, cur_path, contents[i], strlen(contents[i]), signed_info,
+        printf("Unit test case %d\n", i);
+        cur_path = path_create(paths[i]);
+        buffer = ccn_charbuf_create();
+        if (encode_message(buffer, cur_path, contents[i], strlen(contents[i]), signed_info,
                        ccn_keystore_private_key(keystore), ccn_keystore_digest_algorithm(keystore))) {
-	    printf("Failed encode\n");
+            printf("Failed encode\n");
             result = 1;
-	} else if (decode_message(buffer, cur_path, contents[i], strlen(contents[i]), ccn_keystore_public_key(keystore))) {
-	    printf("Failed decode\n");
+        } else if (decode_message(buffer, cur_path, contents[i], strlen(contents[i]), ccn_keystore_public_key(keystore))) {
+            printf("Failed decode\n");
             result = 1;
-	}
-	path_destroy(&cur_path);
-	ccn_charbuf_destroy(&buffer);
+        }
+        path_destroy(&cur_path);
+        ccn_charbuf_destroy(&buffer);
     }
-    
+
     /* Test the uri encode / decode routines */
-        
+
     init_all_chars_percent_encoded();
     const char *uri_tests[] = {
         "_+4", "ccnx:/this/is/a/test",       "",     "ccnx:/this/is/a/test",
@@ -516,10 +525,10 @@ main (int argc, char *argv[]) {
         struct ccn_bloom *b2 = NULL;
         int j, k, t1, t2;
         unsigned short us;
-        
+
         printf("Unit test case %d\n", i++);
         b1 = ccn_bloom_create(13, seed1);
-        
+
         for (j = 0; j < 13; j++)
             if (ccn_bloom_match(b1, a[j], strlen(a[j]))) break;
         if (j < 13) {
@@ -576,7 +585,7 @@ main (int argc, char *argv[]) {
         struct ccn_signing_params sparm = CCN_SIGNING_PARAMS_INIT;
         struct ccn_parsed_ContentObject pco = {0};
         struct ccn_charbuf *name = ccn_charbuf_create();
-        
+
         printf("Unit test case %d\n", i++);
         ccn_name_from_uri(name, "ccnx:/test/data/%00%42");
         res = ccn_sign_content(h, co, name, NULL, "DATA", 4);
@@ -629,8 +638,8 @@ main (int argc, char *argv[]) {
         if (res != 3 /* components in name */) {
             printf("Failed: ccn_parse_Link res == %d\n", (int)res);
             result = 1;
-        }        
+        }
     } while (0);
-    
+
     exit(result);
 }

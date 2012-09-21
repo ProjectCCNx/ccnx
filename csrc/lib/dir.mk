@@ -20,8 +20,7 @@ PROGRAMS = hashtbtest skel_decode_test \
     encodedecodetest signbenchtest basicparsetest ccnbtreetest
 
 BROKEN_PROGRAMS =
-DEBRIS = ccn_verifysig _bt_*
-SCRIPTSRC = ccn_initkeystore.sh
+DEBRIS = ccn_verifysig _bt_* test.keystore
 CSRC = ccn_bloom.c \
        ccn_btree.c ccn_btree_content.c ccn_btree_store.c \
        ccn_buf_decoder.c ccn_buf_encoder.c ccn_bulkdata.c \
@@ -77,7 +76,7 @@ shlib: $(SHLIBNAME)
 
 lib: libccn.a
 
-test: default keystore_check encodedecodetest ccnbtreetest
+test: default encodedecodetest ccnbtreetest
 	./encodedecodetest -o /dev/null
 	./ccnbtreetest
 	./ccnbtreetest - < q.dat
@@ -85,15 +84,6 @@ test: default keystore_check encodedecodetest ccnbtreetest
 
 dtag_check: _always
 	@./gen_dtag_table 2>/dev/null | diff - ccn_dtag_table.c | grep '^[<]' >/dev/null && echo '*** Warning: ccn_dtag_table.c may be out of sync with tagnames.cvsdict' || :
-
-keystore_check: ccn_initkeystore.sh
-	test ! -z "$$HOME"
-	test -f "$$HOME/.ccnx/.ccnx_keystore" || $(MAKE) -f dir.mk new_keystore
-
-new_keystore:
-	@echo === CCNx Keystore not found in your home directory
-	@echo === I will create one for you now '(^C to abort)'
-	sleep 1 && sh ccn_initkeystore.sh && sleep 3 && mv .ccnx "$$HOME"
 
 libccn.a: $(LIB_OBJS)
 	$(RM) $@
