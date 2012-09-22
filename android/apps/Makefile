@@ -29,9 +29,9 @@ install uninstall:
 		(cd "$$f" && pwd && $(MAKE) $@) || exit 1; \
 	done
 
-honeycomb:
+with-bcp:
 	for f in $(SUBDIRS); do \
-		(cd "$$f" && pwd && $(MAKE) honeycomb $@) || exit 1; \
+		(cd "$$f" && pwd && $(MAKE) with-bcp $@) || exit 1; \
 	done
 
 clean distclean:

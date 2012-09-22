@@ -111,7 +111,7 @@ distfile: tar
 	ls -l ccnx-$(VERSION).tar.gz
 
 fixupversions: _always
-	Fix1 () { sed -e '/^PROJECT_NUMBER/s/=.*$$/= $(VERSION)/' $$1 > DTemp && mv DTemp $$1; } && Fix1 csrc/Doxyfile && Fix1 csrc/Doxyfile.dist && Fix1 csrc/Doxyfile.latex && Fix1 javasrc/Doxyfile && Fix1 javasrc/Doxyfile.dist && Fix1 javasrc/Doxyfile.latex && Fix1 doc/manpages/Makefile && Fix1 android/Doxyfile && Fix1 android/Doxyfile.dist && Fix1 android/Doxyfile.latex 
+	Fix1 () { sed -e '/^PROJECT_NUMBER/s/=.*$$/= $(VERSION)/' $$1 > DTemp && mv DTemp $$1; } && Fix1 csrc/Doxyfile && Fix1 csrc/Doxyfile.dist && Fix1 csrc/Doxyfile.latex && Fix1 javasrc/Doxyfile && Fix1 javasrc/Doxyfile.dist && Fix1 javasrc/Doxyfile.latex && Fix1 doc/manpages/Makefile && Fix1 android/Doxyfile && cp android/CCNx-Android-Services/strings.xml.tpl android/CCNx-Android-Services/res/values/strings.xml && sed -e "s/PROJECT_NUMBER/$(VERSION)/g" android/CCNx-Android-Services/strings.xml.tpl > android/CCNx-Android-Services/res/values/strings.xml && Fix1 android/Doxyfile.dist && Fix1 android/Doxyfile.latex 
 
 IGNORELINKS = -e android/CCNx-Android-Services/jni/csrc -e android/CCNx-Android-Services/jni/openssl/openssl-armv5
 MD5: _always
