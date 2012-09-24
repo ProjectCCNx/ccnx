@@ -111,9 +111,7 @@ main(int argc, char **argv)
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *temp = NULL;
     struct ccn_charbuf *templ = NULL;
-    struct ccn_charbuf *templ_signing = NULL;
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
-    struct ccn_keystore *keystore = NULL;
     long expire = -1;
     long blocksize = 1024;
     int i;
@@ -161,22 +159,9 @@ main(int argc, char **argv)
     name = ccn_charbuf_create();
     temp = ccn_charbuf_create();
     templ = ccn_charbuf_create();
-    templ_signing = ccn_charbuf_create();
-    keystore = ccn_keystore_create();
-    ccn_charbuf_reset(temp);
-    ccn_charbuf_putf(temp, "%s/.ccnx/.ccnx_keystore", getenv("HOME"));
-    res = ccn_keystore_init(keystore,
-                            ccn_charbuf_as_string(temp),
-                            "Th1s1sn0t8g00dp8ssw0rd.");
-    if (res != 0) {
-        printf("Failed to initialize keystore\n");
-        exit(1);
-    }
-    
-    ccn_charbuf_reset(name);
-    ccn_charbuf_append(name, root->buf, root->length);
-    
+
     /* Set up a handler for interests */
+    ccn_charbuf_append(name, root->buf, root->length);
     ccn_set_interest_filter(ccn, name, &in_interest);
     
     /* Initiate check to see whether there is already something there. */
@@ -193,20 +178,6 @@ main(int argc, char **argv)
     res = ccn_express_interest(ccn, name, &in_content, templ);
     if (res < 0) abort();
     
-    /* Construct a signing template with key locator containing the key itself */
-    res |= ccnb_element_begin(templ_signing, CCN_DTAG_SignedInfo);
-    res |= ccnb_element_begin(templ_signing, CCN_DTAG_KeyLocator);
-    res |= ccnb_element_begin(templ_signing, CCN_DTAG_Key);
-    ccn_append_pubkey_blob(templ_signing, ccn_keystore_public_key(keystore));
-    res |= ccnb_element_end(templ_signing);	/* </Key> */
-    res |= ccnb_element_end(templ_signing);	/* </KeyLocator> */
-    res |= ccnb_element_end(templ_signing);    /* </SignedInfo> */
-    if (res != 0) {
-        fprintf(stderr, "Failed to construct signing template\n");
-        exit(1);
-    }
-    sp.template_ccnb = templ_signing;
-    sp.sp_flags |= CCN_SP_TEMPL_KEY_LOCATOR;
     sp.freshness = expire;
     for (i = 0;; i++) {
         read_res = read_full(0, buf, blocksize);
@@ -232,7 +203,6 @@ main(int argc, char **argv)
             exit(1);
         }
         /* Put the keylocator in the first block only. */
-        sp.sp_flags &= ~CCN_SP_TEMPL_KEY_LOCATOR;
         sp.sp_flags |= CCN_SP_OMIT_KEY_LOCATOR;
         if (i == 0) {
             /* Finish check for old content */
@@ -267,7 +237,6 @@ main(int argc, char **argv)
     ccn_charbuf_destroy(&root);
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&temp);
-    ccn_keystore_destroy(&keystore);
     ccn_destroy(&ccn);
     exit(status);
 }
