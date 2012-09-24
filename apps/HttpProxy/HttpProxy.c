@@ -3454,11 +3454,17 @@ main(int argc, string *argv) {
 				mb->maxConn = n;
 			} else {
 				fprintf(stdout, "** bad arg: %s\n", arg);
+                fprintf(stdout, "Usage: %s -remProxy -remHost -keepProxy -keepHost -noDebug -addTime\n"
+                        "          -resolveHigh -resolveHighest -hostFromGet\n"
+                        "          -keepAlive <n> -timeoutSecs <n> -usePort <n> -custom <txt> -maxConn <n>\n",
+                        argv[0]);
                 res = -1;
                 break;
 			}
 		}
     }
+    if (res < 0)
+        exit(1);
     
     res = ExecMainBase(mb);
 	
