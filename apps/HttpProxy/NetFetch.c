@@ -391,7 +391,7 @@ FillTempSegments(FileNode fn, void *buf, int n) {
 				fprintf(stdout,
 						"-- FillTempSegments, fd %d, n %d, rem %d, vic %d, seg %jd, off %d\n",
 						fn->fd, n, rem, vic, seg, off);
-
+                
 			}
 			off = off + rem;
 			seg = seg + (off / CCN_CHUNK_SIZE);
@@ -2119,7 +2119,7 @@ main(int argc, char **argv) {
 	status = init_internal_keystore(md);
 	if (status >= 0)
 		status = MainLoop(md);
-		
+    
 	md = CloseMainData(md);
 	ccn_disconnect(h);
 	ccn_destroy(&h);
