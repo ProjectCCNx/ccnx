@@ -55,6 +55,8 @@
 	<property name="USE_KEY_CONFIG_KEY" value="org.ccnx.config.UseKeyConfiguration"/>
 	<property name="USE_KEY_CONFIG_VAL" value="false"/>
     <property name="CHATTY" value="INFO"/>
+	<!-- to allow extra noisy logging for sync while we test it better -->
+    <property name="SYNC_NOISY" value="FINEST"/>
 	<!-- To enable remote debugging, the incantation is 
 	"-Xdebug -Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=n" -->
 	<property name="DEBUG_OPTIONS" value=""/>
@@ -420,15 +422,7 @@
 	
 	<target name="test-impl-with-sync" depends="jar, ccnd, repo" if="${repo2}">
 			<mkdir dir="${testout}"/>
-			<delete verbose="true">
-				<fileset dir="${REPO_ROOT}">
-			    	<include name="newnames"/>
-	    			<include name="names"/>
-					<include name="sync.lock"/>
-					<include name="diffNames.*"/>
-				</fileset>
-			</delete>
-
+			
 			<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}" maxmemory="1g">
 				<classpath>
 					<path refid="classpath-run"/>
@@ -438,15 +432,14 @@
 				<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 				<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 	            <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
-				<sysproperty key="org.ccnx.ccn.LogLevel.Sync" value="FINE"/>
-				<sysproperty key="org.ccnx.ccn.LogLevel.Test" value="FINE"/>
-				<sysproperty key="org.ccnx.ccn.LogLevel.IO" value="FINE"/>
+				<sysproperty key="org.ccnx.ccn.LogLevel.Sync" value="${SYNC_NOISY}"/>
+				<sysproperty key="org.ccnx.ccn.LogLevel.Test" value="${SYNC_NOISY}"/>
 	            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 				<env key="CCNR_DIRECTORY" value="${REPO_ROOT}"/>
 				<env key="PATH" value="${env.PATH}:${cmddir}"/>
 				<batchtest todir="${testout}">
 					<fileset dir="${build}">
-	                    <include name="org/ccnx/ccn/test/profiles/sync/*Test.class"/>
+	                    <include name="org/ccnx/ccn/test/profiles/sync/*TestRepo.class"/>
 					</fileset>
 				</batchtest>
 			</junit>

@@ -8,8 +8,6 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
-import java.util.ArrayList;
-import java.util.HashMap;
 
 import org.ccnx.ccn.CCNSyncHandler;
 import org.ccnx.ccn.config.ConfigurationException;
@@ -20,7 +18,7 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 
-public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
+public class FileBasedSyncMonitor extends SyncMonitor implements Runnable{
 	
 	//this is a temporary implementation allowing the java library to fake handling of sync control traffic to glean new names from the repository.
 	//This implementation temporarily will utilize bash commands to make and copy backend repository files
@@ -31,9 +29,7 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 	int runInterval = 2000;
 	private static Boolean isRunning = false;
 	private static boolean shutDown = false;
-	
-	private static HashMap<ConfigSlice, ArrayList<CCNSyncHandler>> callbacks = new HashMap<ConfigSlice, ArrayList<CCNSyncHandler>>();
-	
+		
 	private static FileChannel fileChannel;
 	
 	private static String filename;
@@ -275,35 +271,13 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 				}
 			}
 			//now we need to register the callback...  check the prefix
-			ArrayList<CCNSyncHandler> cb = callbacks.get(slice);
-			if (cb != null) {
-				//the slice is already registered...  add handler if not there
-				if (cb.contains(syncHandler)) {
-					Log.fine(Log.FAC_SYNC, "the handler is already registered!");
-				} else {
-					cb.add(syncHandler);
-					Log.fine(Log.FAC_SYNC, "the handler has been added!");
-				}
-			} else {
-				//the slice is not there...  adding now!
-				cb = new ArrayList<CCNSyncHandler>();
-				cb.add(syncHandler);
-				callbacks.put(slice, cb);
-			}
+			registerCallbackInternal(syncHandler, slice);
 		}
 	}
 	
 	private void processRemoveCallback(CCNSyncHandler syncHandler, ConfigSlice slice) {
 		synchronized(callbacks) {
-			ArrayList<CCNSyncHandler> cb = callbacks.get(slice);
-			if (cb.contains(syncHandler)) {
-				Log.fine(Log.FAC_SYNC, "found the callback to remove");
-				cb.remove(syncHandler);
-				if (cb.isEmpty()) {
-					//no callbacks left for the slice, go ahead and remove it.
-					callbacks.remove(slice);
-				}
-			}
+			removeCallbackInternal(syncHandler, slice);
 			if (callbacks.isEmpty()) {
 				Log.fine(Log.FAC_SYNC, "all callbacks are removed, shutting down sync");
 				//we don't have any registered callbacks, we can go ahead and stop running.
@@ -315,7 +289,7 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 	}
 	
 	
-	public void registerCallback(CCNSyncHandler syncHandler, ConfigSlice slice) {
+	public void registerCallback(CCNSyncHandler syncHandler, ConfigSlice slice, byte[] startHash, ContentName startName) {
 		//start monitoring the namespace, if not already monitored...  if so, add to the callback list
 		processCallback(syncHandler, slice);
 	}

@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011, 2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -461,6 +461,21 @@ public class CCNHandle implements CCNBase {
 
 		// Will add the interest to the listener.
 		getNetworkManager().expressInterest(this, interest, handler);
+	}
+	
+	public void registerInterest(
+			Interest interest,
+			final CCNContentHandler handler) throws IOException {
+		if( Log.isLoggable(Level.FINE) )
+			Log.fine(Log.FAC_NETMANAGER, formatMessage("expressInterest " + interest.name().toString()));
+
+		synchronized(_openLock) {
+			if( !_isOpen )
+				throw new IOException(formatMessage("Handle is closed"));
+		}
+
+		// Will add the interest to the listener.
+		getNetworkManager().registerInterest(this, interest, handler);
 	}
 	
 	@Deprecated
