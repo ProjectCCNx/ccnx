@@ -103,9 +103,9 @@ main(int argc, char **argv)
     int opt, disp_res;
     char *cmd = NULL;
     int dynamic = 0;
+    int lifetime = -1;
     
     progname = argv[0];
-    ccndc = ccndc_initialize_data();
     
     while ((opt = getopt(argc, argv, "hdvt:f:")) != -1) {
         switch (opt) {
@@ -113,7 +113,11 @@ main(int argc, char **argv)
                 configfile = optarg;
                 break;
             case 't':
-                ccndc->lifetime = atoi(optarg);
+                lifetime = atoi(optarg);
+                if (lifetime <= 0) {
+                    usage(progname);
+                    goto Cleanup;
+                }
                 break;
             case 'v':
                 verbose = 1;
@@ -124,15 +128,18 @@ main(int argc, char **argv)
             case 'h':
             default:
                 usage(progname);
-		goto Cleanup;
+                goto Cleanup;
         }
     }
     
     if (configfile == NULL && !dynamic && optind == argc) {
         usage(progname);
-	goto Cleanup;
+        goto Cleanup;
     }
     
+    ccndc = ccndc_initialize_data();
+    if (lifetime > 0)
+        ccndc->lifetime = lifetime;
     if (optind < argc) {
         /* config file cannot be combined with command line */
         if (configfile != NULL) {

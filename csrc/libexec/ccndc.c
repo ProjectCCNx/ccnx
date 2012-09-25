@@ -50,23 +50,23 @@
 #include <ccn/reg_mgmt.h>
 
 #define ON_ERROR_CLEANUP(resval) {                                      \
-    if ((resval) < 0) {                                                 \
-        if (verbose > 0) ccndc_warn(__LINE__, "OnError cleanup\n");    \
-    goto Cleanup;                                                   \
-    }                                                                   \
+if ((resval) < 0) {                                                 \
+if (verbose > 0) ccndc_warn(__LINE__, "OnError cleanup\n");    \
+goto Cleanup;                                                   \
+}                                                                   \
 }
 
 #define ON_NULL_CLEANUP(resval) {                                       \
-    if ((resval) == NULL) {                                             \
-        if (verbose > 0) ccndc_warn(__LINE__, "OnNull cleanup\n");      \
-    goto Cleanup;                                                   \
-    }                                                                   \
+if ((resval) == NULL) {                                             \
+if (verbose > 0) ccndc_warn(__LINE__, "OnNull cleanup\n");      \
+goto Cleanup;                                                   \
+}                                                                   \
 }
 
 #define ON_ERROR_EXIT(resval, msg) {                                    \
-    int _resval = (resval);                                             \
-    if (_resval < 0)                                                     \
-        ccndc_fatal(__LINE__, "fatal error, res = %d, %s\n", _resval, msg);  \
+int _resval = (resval);                                             \
+if (_resval < 0)                                                     \
+ccndc_fatal(__LINE__, "fatal error, res = %d, %s\n", _resval, msg);  \
 }
 
 struct ccndc_data *
@@ -119,10 +119,10 @@ ccndc_destroy_data(struct ccndc_data **data) {
 
 int
 ccndc_dispatch_cmd(struct ccndc_data *ccndc,
-                    int check_only,
-                    const char *cmd,
-                    const char *options,
-                    int num_options)
+                   int check_only,
+                   const char *cmd,
+                   const char *options,
+                   int num_options)
 {
     if (strcasecmp(cmd, "add") == 0) {
         if (num_options >= 0 && (num_options < 3 || num_options > 7))
@@ -355,12 +355,12 @@ ccndc_create(struct ccndc_data *self,
         goto Cleanup;
     
     if (!check_only) {
-            newface = ccndc_do_face_action(self, "newface", face);
-            if (newface == NULL) {
-                ccndc_warn(__LINE__, "Cannot create/lookup face");
-                goto Cleanup;
-            }
-            ccn_face_instance_destroy(&newface);
+        newface = ccndc_do_face_action(self, "newface", face);
+        if (newface == NULL) {
+            ccndc_warn(__LINE__, "Cannot create/lookup face");
+            goto Cleanup;
+        }
+        ccn_face_instance_destroy(&newface);
     }
     ret_code = 0;
 Cleanup:
@@ -374,8 +374,8 @@ Cleanup:
  */
 int
 ccndc_destroy(struct ccndc_data *self,
-             int check_only,
-             const char *cmd_orig)
+              int check_only,
+              const char *cmd_orig)
 {
     int ret_code = -1;
     char *cmd, *cmd_token;
@@ -444,8 +444,8 @@ Cleanup:
  */
 int
 ccndc_renew(struct ccndc_data *self,
-          int check_only,
-          const char *cmd_orig)
+            int check_only,
+            const char *cmd_orig)
 {
     int ret_code = -1;
     char *cmd, *cmd_token;
@@ -572,8 +572,8 @@ ccndc_destroyface(struct ccndc_data *self,
 
 int
 ccndc_srv(struct ccndc_data *self,
-           const unsigned char *domain,
-           size_t domain_size)
+          const unsigned char *domain,
+          size_t domain_size)
 {
     char *proto = NULL;
     char *host = NULL;
@@ -720,10 +720,10 @@ ExitOnError:
 // faceid (from cmd_host parameter) and lifetime will be filled in.
 struct ccn_face_instance *
 parse_ccn_face_instance(struct ccndc_data *self,
-                         const char *cmd_proto,
-                         const char *cmd_host,     const char *cmd_port,
-                         const char *cmd_mcastttl, const char *cmd_mcastif,
-                         int freshness)
+                        const char *cmd_proto,
+                        const char *cmd_host,     const char *cmd_port,
+                        const char *cmd_mcastttl, const char *cmd_mcastif,
+                        int freshness)
 {
     struct ccn_face_instance *entry;
     struct addrinfo hints = {.ai_family = AF_UNSPEC, .ai_flags = (AI_ADDRCONFIG)};
@@ -868,7 +868,7 @@ ExitOnError:
 
 struct ccn_face_instance *
 parse_ccn_face_instance_from_face(struct ccndc_data *self,
-                                   const char *cmd_faceid)
+                                  const char *cmd_faceid)
 {
     struct ccn_face_instance *entry = calloc(1, sizeof(*entry));
     
@@ -942,9 +942,9 @@ ccndc_get_ccnd_id(struct ccndc_data *self)
     }
     
     res = ccn_get(self->ccn_handle,
-                   name,
-                   self->local_scope_template,
-                   4500, resultbuf, &pcobuf, NULL, 0);
+                  name,
+                  self->local_scope_template,
+                  4500, resultbuf, &pcobuf, NULL, 0);
     if (res < 0) {
         ccndc_warn(__LINE__, "Unable to get key from ccnd");
         goto Cleanup;

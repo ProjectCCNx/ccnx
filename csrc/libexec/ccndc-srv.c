@@ -86,7 +86,7 @@ ccndc_daemonize(struct ccndc_data *ccndc)
 
 int
 ccndc_query_srv(const unsigned char *domain, int domain_size,
-                 char **hostp, int *portp, char **proto)
+                char **hostp, int *portp, char **proto)
 {
     union {
         HEADER header;
