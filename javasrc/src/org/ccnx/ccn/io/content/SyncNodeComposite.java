@@ -143,21 +143,21 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 	
 	public int _version;
 	public ArrayList<SyncNodeElement> _refs = new ArrayList<SyncNodeElement>();
-	public byte[] _longhash;
+	public byte[] _longhash = null;
 	public SyncNodeElement _minName;
 	public SyncNodeElement _maxName;
 	public int _kind;
 	public int _leafCount;
 	public int _treeDepth;
-	public int _byteCount;
+	public int _byteCount = 0;
 	
 	public SyncNodeComposite() {}
 	
-	public SyncNodeComposite(ArrayList<SyncNodeElement> refs, SyncNodeElement minName, SyncNodeElement maxName, int byteCount) {
+	public SyncNodeComposite(ArrayList<SyncNodeElement> refs, SyncNodeElement minName, SyncNodeElement maxName, int leafCount) {
 		_refs = refs;
 		_minName = minName;
 		_maxName = maxName;
-		_byteCount = byteCount;
+		_leafCount = leafCount;
 		computeHash();
 		
 		_version = Sync.SYNC_VERSION;
@@ -170,10 +170,6 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 				break;
 			}
 		}
-		
-		// TODO (but maybe never) we don't support trees with mixed hashes & leaves
-		if (_treeDepth == 1)
-			_leafCount = refs.size();
 	}
 	
 	public ArrayList<SyncNodeElement> getRefs() {
@@ -224,6 +220,12 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 		// No current need to encode this - will add if needed
 	}
 	
+	/**
+	 * Note we are purposely not comparing byte counts - this is too complicated
+	 * to figure out accurately for us and since we won't be transmitting nodes, the
+	 * place where it is important to be accurate are in the other values (actually
+	 * depth isn't really important either but that's easy - I think - to compute)
+	 */
 	@Override
 	public boolean equals(Object obj) {
 		if (obj == null)
@@ -240,19 +242,17 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 			if (! _refs.get(i).equals(other._refs.get(i)))
 				return false;
 		}
-		if (_minName.equals(other._minName))
+		if (! _minName.equals(other._minName))
 			return false;
-		if (_maxName.equals(other._maxName))
+		if (! _maxName.equals(other._maxName))
 			return false;
 		if (!Arrays.equals(_longhash, other._longhash))
 			return false;
-		if (_kind == other._kind)
+		if (_kind != other._kind)
 			return false;
-		if (_leafCount == other._leafCount)
+		if (_leafCount != other._leafCount)
 			return false;
-		if (_treeDepth == other._treeDepth)
-			return false;
-		if (_byteCount == other._byteCount)
+		if (_treeDepth != other._treeDepth)
 			return false;
 		return true;
 	}
@@ -277,6 +277,10 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 		return _longhash;
 	}
 	
+	public int getLeafCount() {
+		return _leafCount;
+	}
+	
 	public static void decodeLogging(SyncNodeComposite node) {
 		Log.finest(Log.FAC_SYNC, "decode node for {0} depth = {1} refs = {2}", Component.printURI(node._longhash), 
 				node._treeDepth, node.getRefs().size());
@@ -291,35 +295,55 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 	 * believe that digests are always 32 bytes, I'm not worrying about that for now...
 	 */
 	private void computeHash() {
-		_longhash = new byte[CCNSync.SYNC_HASH_LENGTH];
-		Arrays.fill(_longhash, (byte)0);
-		int xs = CCNSync.SYNC_HASH_LENGTH;
+		byte[] tmpHash = new byte[CCNSync.SYNC_HASH_MAX_LENGTH];
 		for (SyncNodeElement sne : _refs) {
 			switch (sne.getType()) {
 			case LEAF:
 				ContentName name = sne.getName();
 				byte[] nc = name.lastComponent();
-				if (null != nc && nc.length >= CCNSync.SYNC_HASH_LENGTH) { // Should always be true
-					accumHash(xs, nc);
+				if (null != nc) { // Should always be true
+					accumHash(nc, tmpHash);
 				}
 				break;
 			case HASH:
-				accumHash(xs, sne.getData());
+				accumHash(sne.getData(), tmpHash);
 				break;
 			default:
 				break;
 			}
 		}
+		int hashLength = CCNSync.SYNC_HASH_MAX_LENGTH;
+		for (int i = 0; i < tmpHash.length; i++) {
+			if (tmpHash[i] == 0)
+				hashLength--;
+			else
+				break;
+		}
+		_longhash = new byte[hashLength];
+		System.arraycopy(tmpHash, CCNSync.SYNC_HASH_MAX_LENGTH - hashLength, _longhash, 0, hashLength);
 	}
 	
-	private void accumHash(int xs, byte[] toAdd) {
+	private void accumHash(byte[] toAdd, byte[] hash) {
 		int c = 0;
-		while (xs > 0) {
+		int as = hash.length;
+		int xs = toAdd.length;
+		
+		// first accum from digest until no more bytes
+		while (xs > 0 && as > 0) {
 			xs--;
+			as--;
 			int val = c;
-			val = val + _longhash[xs] + toAdd[xs];
+			val = val + (hash[as] & 255) + (toAdd[xs] & 255);
 			c = (val >> 8) & 255;
-			_longhash[xs] = (byte)(val & 255);
+			hash[as] = (byte)(val & 255);
+		}
+		
+		// Now propagate the carry (if any)
+		while (c > 0 && as > 0) {
+			as--;
+			c += hash[as];
+			hash[as] = (byte)(c & 255);
+			c = (c >> 8) & 255;
 		}
 	}
 }

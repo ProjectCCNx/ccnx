@@ -92,6 +92,7 @@ public class SyncInternalTestNotYet extends CCNTestBase implements CCNContentHan
 				assert(receivedNode != null);
 				SyncNodeComposite snc = new SyncNodeComposite();
 				snc.decode(receivedNode.content());
+				SyncNodeComposite.decodeLogging(snc);
 				for (SyncNodeElement tsne : snc.getRefs()) {
 					Assert.assertTrue(tsne.getType() == SyncNodeType.LEAF);
 					names.add(tsne.getName());

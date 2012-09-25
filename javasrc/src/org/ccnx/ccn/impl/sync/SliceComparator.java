@@ -602,6 +602,8 @@ public class SliceComparator implements Runnable {
 	 */
 	protected void updateCurrent() {
 		TreeSet<ContentName> neededNames = new TreeSet<ContentName>();
+		int leafCount = 0;
+		int tmpLeafCount = 0;
 		boolean newHasNodes = false;
 		boolean redo = false;
 		SyncTreeEntry ste = getHead(_current);
@@ -650,6 +652,7 @@ public class SliceComparator implements Runnable {
 							}
 						} else {
 							thisHashStartName = entry.getNode().getMinName().getName();
+							tmpLeafCount = entry.getNode().getLeafCount();
 							push(entry, _current);
 							ste = entry;
 							ste.setPos(0);
@@ -673,6 +676,7 @@ public class SliceComparator implements Runnable {
 										Log.finest(Log.FAC_SYNC, "Shortcut in update - popping last node");
 								}
 								if (thisHashElement != null && thisHashStartName != null) {
+									leafCount += snc.getLeafCount();
 									nodeElements.put(thisHashStartName, thisHashElement);
 								}
 								continue;
@@ -693,8 +697,10 @@ public class SliceComparator implements Runnable {
 							ste = pop(_current);
 						} else  {
 							ste.incPos();
-							if (ste.lastPos() && thisHashElement != null && thisHashStartName != null)
+							if (ste.lastPos() && thisHashElement != null && thisHashStartName != null) {
+								leafCount += tmpLeafCount;
 								nodeElements.put(thisHashStartName, thisHashElement);
+							}
 						}
 						break;
 					default:
@@ -734,6 +740,7 @@ public class SliceComparator implements Runnable {
 				nodeElements.put(firstName, new SyncNodeElement(newHead.getHash()));
 		}
 		if (redo && newHasNodes) {
+			leafCount += neededNames.size();
 			// OK its a little bogus to use newHead for what really should be a temp variable here,
 			// but if we can't find a hash (which we actually always should) it works out right
 			// with the rest of the code and if we find it, we reset newHead to the proper value.
@@ -745,8 +752,7 @@ public class SliceComparator implements Runnable {
 					Log.warning(Log.FAC_SYNC, "Couldn't get first node in update for {0} - shouldn't happen", 
 							Component.printURI(newHead.getHash()));
 					newHead = null;
-				}
-				if (null != newHead) {
+				} else {
 					SyncNodeElement minElement = snc.getMinName();
 					SyncNodeElement lastNodeElement = nodeElements.get(nodeElements.lastKey());
 					newHead = _pbsm.getHash(lastNodeElement.getData());
@@ -756,15 +762,14 @@ public class SliceComparator implements Runnable {
 							Log.warning(Log.FAC_SYNC, "Couldn't get last node in update for {0} - shouldn't happen", 
 									Component.printURI(newHead.getHash()));
 							newHead = null;
-						}
-						if (null != newHead) {
+						} else {
 							// Have to make sure the refs are in correct order
 							ArrayList<SyncNodeElement> refs = new ArrayList<SyncNodeElement>();
 							for (ContentName tname : nodeElements.keySet()) {
 								refs.add(nodeElements.get(tname));
 							}
 							SyncNodeElement maxElement = snc.getMaxName();
-							snc = new SyncNodeComposite(refs, minElement, maxElement, 0);
+							snc = new SyncNodeComposite(refs, minElement, maxElement, leafCount);
 							newHead = _pbsm.addHash(snc.getHash());
 							newHead.setNode(snc);
 							newHead.setCovered(true);

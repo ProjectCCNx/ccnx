@@ -118,23 +118,26 @@ public class SyncTreeEntry {
 	 */
 	public static SyncTreeEntry newNode(TreeSet<ContentName> names) {
 		ArrayList<SyncNodeElement> snes = new ArrayList<SyncNodeElement>();
+		int leafCount = names.size();
 		SyncTreeEntry ourEntry = null;
 		SyncNodeElement firstElement = null;
 		SyncNodeElement lastElement = null; 
 		while (names.size() > 0) {
 			ourEntry = newLeafNode(names);
+			SyncNodeElement sne = new SyncNodeElement(ourEntry.getHash());
 			if (names.size() > 0) {
 				if (null == firstElement)
 					firstElement = ourEntry.getNode().getRefs().get(0);
+				snes.add(sne);
+			} else if (snes.size() > 0) {
 				int nRefs = ourEntry.getNode().getRefs().size();
 				lastElement = ourEntry.getNode().getRefs().get(nRefs - 1);
-				snes.add(new SyncNodeElement(ourEntry.getHash()));
-			} else if (snes.size() > 0) {
-				snes.add(new SyncNodeElement(ourEntry.getHash()));
+				snes.add(sne);
 			}
 		}
 		if (snes.size() > 0) {
-			SyncNodeComposite snc = new SyncNodeComposite(snes, firstElement, lastElement, 0);
+			SyncNodeComposite snc = new SyncNodeComposite(snes, firstElement, lastElement, leafCount);
+			ourEntry = new SyncTreeEntry(snc.getHash());
 			ourEntry.setNode(snc);
 		}
 		return ourEntry;
@@ -156,7 +159,6 @@ public class SyncTreeEntry {
 		int minLen = CCNSync.NODE_SPLIT_TRIGGER/2;
 		int maxLen = 0;
 		int prevMatch = 0;
-		boolean atLeastOneAdded = false;
 		for (ContentName tname : names) {
 			SyncNodeElement sne = new SyncNodeComposite.SyncNodeElement(tname);
 			ContentName nextName = names.higher(tname);
@@ -172,7 +174,7 @@ public class SyncTreeEntry {
 				if (total > minLen) {
 					if (match < prevMatch || match > prevMatch + 1) {
 						if (Log.isLoggable(Log.FAC_SYNC, Level.FINE)) {
-							Log.fine("Node split due to level change - nbytes {0}, match {1}, prev {2}", 
+							Log.fine(Log.FAC_SYNC, "Node split due to level change - nbytes {0}, match {1}, prev {2}", 
 									total, match, prevMatch);
 						}
 						prevMatch = match;
@@ -180,27 +182,26 @@ public class SyncTreeEntry {
 					}
 					byte[] lc = tname.lastComponent();
 					if (lc.length > 8) {
-						int c = (int)lc[lc.length - 9];
+						int c = (int)(lc[lc.length - 7] & 255);
 						if (c < CCNSync.HASH_SPLIT_TRIGGER) {
 							if (Log.isLoggable(Log.FAC_SYNC, Level.FINE)) {
-								Log.fine("Node split due to hash split - nbytes {0}", total);
+								Log.fine(Log.FAC_SYNC, "Node split due to hash split - nbytes {0}, val {1}", total, c);
 							}
 							break;
 						}
 					}
 				}
 				prevMatch = match;
-				if (atLeastOneAdded && total > limit)
+				if (total > limit)
 					break;
 			}
-			atLeastOneAdded = true;
 			refs.add(sne);
 			removes.add(tname);
 		}
 		for (ContentName tname : removes) {
 			names.remove(tname);
 		}
-		SyncNodeComposite snc = new SyncNodeComposite(refs, refs.get(0), refs.get(refs.size() - 1), total);
+		SyncNodeComposite snc = new SyncNodeComposite(refs, refs.get(0), refs.get(refs.size() - 1), refs.size());
 		SyncTreeEntry ste = new SyncTreeEntry(snc.getHash());
 		ste.setNode(snc);
 		return ste;
