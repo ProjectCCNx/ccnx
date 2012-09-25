@@ -114,6 +114,10 @@ main(int argc, char **argv)
                 break;
             case 't':
                 lifetime = atoi(optarg);
+                if (lifetime <= 0) {
+                    usage(progname);
+                    goto Cleanup;
+                }
                 break;
             case 'v':
                 verbose = 1;
