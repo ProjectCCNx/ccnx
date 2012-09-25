@@ -4902,6 +4902,9 @@ ccnd_send(struct ccnd_handle *h,
           const void *data, size_t size)
 {
     ssize_t res;
+    int fd;
+    int bcast = 0;
+    
     if ((face->flags & CCN_FACE_NOSEND) != 0)
         return;
     face->surplus++;
@@ -4917,9 +4920,28 @@ ccnd_send(struct ccnd_handle *h,
     }
     if ((face->flags & CCN_FACE_DGRAM) == 0)
         res = send(face->recv_fd, data, size, 0);
-    else
-        res = sendto(sending_fd(h, face), data, size, 0,
-                     face->addr, face->addrlen);
+    else {
+        fd = sending_fd(h, face);
+        if ((face->flags & CCN_FACE_BC) != 0) {
+            bcast = 1;
+            setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &bcast, sizeof(bcast));
+        }
+        res = sendto(fd, data, size, 0, face->addr, face->addrlen);
+        if (res == -1 && errno == EACCES &&
+            (face->flags & (CCN_FACE_BC | CCN_FACE_NBC)) == 0) {
+            bcast = 1;
+            setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &bcast, sizeof(bcast));
+            res = sendto(fd, data, size, 0, face->addr, face->addrlen);
+            if (res == -1)
+                face->flags |= CCN_FACE_NBC; /* did not work, do not try */
+            else
+                face->flags |= CCN_FACE_BC; /* remember for next time */
+        }
+        if (bcast != 0) {
+            bcast = 0;
+            setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &bcast, sizeof(bcast));
+        }
+    }
     if (res > 0)
         ccnd_meter_bump(h, face->meter[FM_BYTO], res);
     if (res == size)
