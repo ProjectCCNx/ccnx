@@ -124,13 +124,13 @@ main(int argc, char **argv)
             case 'h':
             default:
                 usage(progname);
-		goto Cleanup;
+                goto Cleanup;
         }
     }
     
     if (configfile == NULL && !dynamic && optind == argc) {
         usage(progname);
-	goto Cleanup;
+        goto Cleanup;
     }
     
     ccndc = ccndc_initialize_data();
