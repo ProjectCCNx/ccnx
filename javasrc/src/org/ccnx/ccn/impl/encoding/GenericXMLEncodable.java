@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -68,12 +68,19 @@ public abstract class GenericXMLEncodable implements XMLEncodable {
 	}
  	
 	public void decode(byte [] content) throws ContentDecodingException {
-		decode(content, null);
+		decode(content, (String)null);
 	}
 
 	public void decode(byte [] content, String codec) throws ContentDecodingException {
  		ByteArrayInputStream bais = new ByteArrayInputStream(content);
  		decode(bais, codec);
+ 	}
+	
+	public void decode(byte [] content, XMLDecoder decoder) throws ContentDecodingException {
+ 		ByteArrayInputStream bais = new ByteArrayInputStream(content);
+ 		decoder.beginDecoding(bais);
+		decode(decoder);
+		decoder.endDecoding();
  	}
 	
 	public void encode(OutputStream ostream) throws ContentEncodingException {

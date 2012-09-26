@@ -22,7 +22,7 @@ CCNx 0.6.1.
     service startup to print useful diagnostics to the user, and avoid problems that may prevent
     startup and proper functioning of CCNx.  Added About menu item to get CCNx version information
     and added a Reset menu item to clear error states and clear startup/shutdown errors.
-
+    
   * Issues Resolved:
 	* Bug #100321: Improve efficiency interest suppression
 	* Bug #100358: DataUtils getBytesFromFile and large files

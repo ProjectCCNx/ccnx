@@ -120,6 +120,12 @@ public class CommandMarker implements ContentName.ComponentProvider {
 	 * Repository "marker"
 	 */
 	public static final String REPOSITORY_NAMESPACE = "R";
+	
+	/**
+	 * Sync marker
+	 */
+	public static final String SYNC_NAMESPACE = "S";
+	
 	/**
 	 * Start write command.
 	 */

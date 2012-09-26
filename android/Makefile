@@ -50,7 +50,7 @@ install uninstall:
 	(cd CCNx-Android-Services && $(MAKE) $@)
 	(cd apps && $(MAKE) $@)
 
-honeycomb:
+with-bcp:
 	(cd external && $(MAKE) -j 1)
 	(cd CCNx-Android-Lib && $(MAKE))
 	(cd CCNx-Android-Services && $(MAKE) $@)

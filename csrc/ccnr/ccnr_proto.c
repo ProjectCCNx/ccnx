@@ -963,8 +963,7 @@ reap_enumerations(struct ccn_schedule *sched,
                            ccnr->sec, ccnr->usec) <= 0) {
                 if (CCNSHOULDLOG(ccnr, LM_8, CCNL_FINER))
                     ccnr_debug_ccnb(ccnr, __LINE__, "reap enumeration state", NULL,
-                                    es->name->buf, es->name->length);            
-                // remove the entry from the hash table, finalization frees data
+                                    es->name->buf, es->name->length);            		// remove the entry from the hash table, finalization frees data
                 hashtb_delete(e);
             }
         hashtb_next(e);

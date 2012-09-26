@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011, 2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -68,8 +68,10 @@ public class CCNTestBase {
 	
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
-		putHandle.close();
-		getHandle.close();
+		if (null != putHandle)
+			putHandle.close();
+		if (null != getHandle)
+			getHandle.close();
 		KeyManager.closeDefaultKeyManager();
 	}
 }
