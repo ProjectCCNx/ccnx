@@ -61,7 +61,7 @@ struct sync_plumbing_sync_methods {
     // returns 0 if the name updates should fully restart
     // returns > 0 if the name updates should restart at last fence
     int (* sync_start)(struct sync_plumbing *sd,
-                        struct ccn_charbuf *state_buf);
+                       struct ccn_charbuf *state_buf);
     
     // call to add a name to the sync trees
     // from r_sync_enumerate (if enum_index > 0)
