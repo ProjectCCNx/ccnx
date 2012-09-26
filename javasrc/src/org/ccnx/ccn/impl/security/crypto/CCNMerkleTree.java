@@ -99,7 +99,8 @@ public class CCNMerkleTree extends MerkleTree {
 		initializeTree(contentObjects);
 		_rootSignature = computeRootSignature(root(), signingKey);
 		setSignatures();
-		Log.info("CCNMerkleTree: built a tree of " + contentObjects.length + " objects.");
+		if (Log.isLoggable(Log.FAC_SIGNING, Level.FINE))
+			Log.fine(Log.FAC_SIGNING, "CCNMerkleTree: built a tree of " + contentObjects.length + " objects.");
 	}
 
 	/**
@@ -235,8 +236,8 @@ public class CCNMerkleTree extends MerkleTree {
 				byte [] blockDigest = CCNDigestHelper.digest(co.prepareContent()); 
 				_tree[leafNodeIndex(i)-1] = new DEROctetString(blockDigest);
 				
-				if (Log.isLoggable(Log.FAC_SIGNING, Level.INFO)) {
-					Log.info("offset: " + 0 + " block length: " + co.contentLength() + " blockDigest " + 
+				if (Log.isLoggable(Log.FAC_SIGNING, Level.FINER)) {
+					Log.finer(Log.FAC_SIGNING, "offset: " + 0 + " block length: " + co.contentLength() + " blockDigest " + 
 							DataUtils.printBytes(blockDigest) + " content digest: " + 
 							DataUtils.printBytes(CCNDigestHelper.digest(co.content(), 0, co.contentLength())));
 				}
