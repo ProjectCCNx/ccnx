@@ -1,3 +1,36 @@
+Changes between 0.6.1 and 0.6.2:
+--------------------------------
+This highlights some important changes since the most recent numbered release.
+Refer to http://redmine.ccnx.org/projects/ccn/versions/12 for more details on
+CCNx 0.6.2.
+
+  * Issues Resolved:
+	* Feature #100772: Provide proper support for sync notification in the java library
+	* Feature #100785: Refactor some of Sync
+	* Feature #100789: Java binary decoder should allow preset of element size
+	* Bug #100804: Reduce the number of prefix registrations in the java tests
+	* Bug #100809: java sync test code needs to delete slices when complete
+	* Bug #100810: Memory leaks in ccnr/sync and client library
+	* Bug #100812: mistyped long in ccnd_handle
+	* Bug #100817: CCNx Android Service missing some CCNS_ defaults, and should provide CCNS_DEBUG
+	as a configurable setting, utility api to add routes.
+	* Feature #100820: Extension of ccndc
+	* Feature #100821: Corrections and extensions for Makefile and configure scripts
+	* Feature #100822: Automatic keystore creation by C-API
+	* Support #100823: Update targets and naming used Android app makefiles
+	* Feature #100824: It should be possible to register to receive a ContentObject in the java lib
+	without writing an interest
+	* Support #100825: Prepare for ccnx-0.6.2 release
+	* Bug #100826: Missing dependency
+	* Bug #100827: face delays in ccnd should be reduced, esp. for datagram faces
+	* Bug #100828: Update VLC plugin
+	* Bug #100830: wireshark plugin displays name components as raw UTF-8 strings instead of
+	%-escaping them
+	* Support #100831: Update ccndc man page to reflect new features
+	* Support #100832: Remove email address from man pages
+	* Bug #100838: Broadcast for neighbor discovery
+	* Bug #100839: if ccnd is not running, ccndc does not show help
+
 Changes between 0.6.0 and 0.6.1:
 --------------------------------
 This highlights some important changes since the most recent numbered release.
