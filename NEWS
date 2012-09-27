@@ -30,6 +30,9 @@ CCNx 0.6.2.
 	* Support #100832: Remove email address from man pages
 	* Bug #100838: Broadcast for neighbor discovery
 	* Bug #100839: if ccnd is not running, ccndc does not show help
+	* Feature #100841 Java Merkle tree signing code should log at FINE/FINER rather than INFO for
+	debugging messages
+	* Bug #100843: ccndc segmentation fault on FreeBSD
 
 Changes between 0.6.0 and 0.6.1:
 --------------------------------
