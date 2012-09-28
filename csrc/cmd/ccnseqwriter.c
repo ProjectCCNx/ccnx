@@ -38,7 +38,8 @@ usage(const char *progname)
                 "    -r generate start-write interest so a repository will"
                 " store the content.\n"
                 "    -s n set scope of start-write interest.\n"
-                "       n = 1(local), 2(neighborhood), 3(everywhere) Default 1.\n",
+                "       n = 1(local), 2(neighborhood), 3(everywhere) Default 1.\n"
+                "    -t specify the freshness for content objects.\n",
                 progname);
         exit(1);
 }
@@ -69,6 +70,7 @@ main(int argc, char **argv)
     struct ccn_charbuf *name = NULL;
     struct ccn_seqwriter *w = NULL;
     int blocksize = 1024;
+    int freshness = -1;
     int torepo = 0;
     int scope = 1;
     int i;
@@ -79,7 +81,7 @@ main(int argc, char **argv)
     unsigned char *buf = NULL;
     struct ccn_charbuf *templ;
     
-    while ((res = getopt(argc, argv, "hrb:s:")) != -1) {
+    while ((res = getopt(argc, argv, "hrb:s:t:")) != -1) {
         switch (res) {
             case 'b':
                 blocksize = atoi(optarg);
@@ -92,6 +94,11 @@ main(int argc, char **argv)
             case 's':
                 scope = atoi(optarg);
                 if (scope < 1 || scope > 3)
+                    usage(progname);
+                break;
+            case 't':
+                freshness = atoi(optarg);
+                if (freshness < 0)
                     usage(progname);
                 break;
             default:
@@ -124,6 +131,8 @@ main(int argc, char **argv)
         exit(1);
     }
     ccn_seqw_set_block_limits(w, blocksize, blocksize);
+    if (freshness > -1)
+        ccn_seqw_set_freshness(w, freshness);
     if (torepo) {
         struct ccn_charbuf *name_v = ccn_charbuf_create();
         ccn_seqw_get_name(w, name_v);
