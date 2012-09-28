@@ -66,7 +66,7 @@ incoming_ip4 () { # PROTO IP PORT
         *.*.*.*)    # This pattern may be more specific, e.g. the local subnet
             GUEST_PREFIX=$PREFIX_STEM/$GEN/guest$FACE
             ccndc add $GUEST_PREFIX $PROTO $IP $PORT
-            echo $GUEST_PREFIX | ccnseqwriter -r $LP/ip~$IP
+            echo $GUEST_PREFIX | ccnseqwriter -x 5 -r $LP/ip~$IP
             ;;
         *)  logger -i -s -t $SELF -- I do not recognize $IP;;
     esac
