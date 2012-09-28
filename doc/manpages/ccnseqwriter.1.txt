@@ -7,7 +7,7 @@ ccnseqwriter - Send data from stdin using ccn versioning and segmentation.
 
 SYNOPSIS
 --------
-*ccnseqwriter* [-h] [-b 'blocksize'] [-r] [-s 'scope'] [-t 'freshness'] 'ccnx:/some/uri'
+*ccnseqwriter* [-h] [-b 'blocksize'] [-r] [-s 'scope'] [-x 'freshness'] 'ccnx:/some/uri'
 
 DESCRIPTION
 -----------
@@ -39,7 +39,7 @@ OPTIONS
 	'scope' can be 1 (local), 2 (neighborhood), or 3 (unlimited).
 	Note that a scope of 3 is encoded as the absence of any scope in the interest.
 
-*-t* 'freshness'::
+*-x* 'freshness'::
 	Use the given freshness on all objects written.
 
 EXIT STATUS

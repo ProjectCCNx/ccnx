@@ -31,7 +31,7 @@
 ccnseqwriter \- Send data from stdin using ccn versioning and segmentation\&.
 .SH "SYNOPSIS"
 .sp
-\fBccnseqwriter\fR [\-h] [\-b \fIblocksize\fR] [\-r] [\-s \fIscope\fR] [\-t \fIfreshness\fR] \fIccnx:/some/uri\fR
+\fBccnseqwriter\fR [\-h] [\-b \fIblocksize\fR] [\-r] [\-s \fIscope\fR] [\-x \fIfreshness\fR] \fIccnx:/some/uri\fR
 .SH "DESCRIPTION"
 .sp
 The \fBccnseqwriter\fR utility creates new ccn content using stdin as the source of data\&. The argument is a CCNx URI to be used for the newly signed data; appropriate versioning and segmentation will be added\&.
@@ -61,7 +61,7 @@ Use the given scope on the start\-write request (if \-r specified)\&.
 can be 1 (local), 2 (neighborhood), or 3 (unlimited)\&. Note that a scope of 3 is encoded as the absence of any scope in the interest\&.
 .RE
 .PP
-\fB\-t\fR \fIfreshness\fR
+\fB\-x\fR \fIfreshness\fR
 .RS 4
 Use the given freshness on all objects written\&.
 .RE

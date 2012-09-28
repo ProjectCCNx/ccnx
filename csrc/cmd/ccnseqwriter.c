@@ -39,7 +39,7 @@ usage(const char *progname)
                 " store the content.\n"
                 "    -s n set scope of start-write interest.\n"
                 "       n = 1(local), 2(neighborhood), 3(everywhere) Default 1.\n"
-                "    -t specify the freshness for content objects.\n",
+                "    -x specify the freshness for content objects.\n",
                 progname);
         exit(1);
 }
@@ -81,7 +81,7 @@ main(int argc, char **argv)
     unsigned char *buf = NULL;
     struct ccn_charbuf *templ;
     
-    while ((res = getopt(argc, argv, "hrb:s:t:")) != -1) {
+    while ((res = getopt(argc, argv, "hrb:s:x:")) != -1) {
         switch (res) {
             case 'b':
                 blocksize = atoi(optarg);
@@ -96,7 +96,7 @@ main(int argc, char **argv)
                 if (scope < 1 || scope > 3)
                     usage(progname);
                 break;
-            case 't':
+            case 'x':
                 freshness = atoi(optarg);
                 if (freshness < 0)
                     usage(progname);
