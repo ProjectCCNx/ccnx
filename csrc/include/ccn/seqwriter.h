@@ -33,6 +33,7 @@ int ccn_seqw_get_name(struct ccn_seqwriter *w, struct ccn_charbuf *nv);
 int ccn_seqw_write(struct ccn_seqwriter *w, const void *buf, size_t size);
 int ccn_seqw_batch_end(struct ccn_seqwriter *w);
 int ccn_seqw_set_block_limits(struct ccn_seqwriter *w, int l, int h);
+int ccn_seqw_set_freshness(struct ccn_seqwriter *w, int freshness);
 int ccn_seqw_close(struct ccn_seqwriter *w);
 
 #endif

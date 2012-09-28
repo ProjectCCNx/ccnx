@@ -38,6 +38,7 @@ struct ccn_seqwriter {
     int batching;
     int blockminsize;
     int blockmaxsize;
+    int freshness;
     unsigned char interests_possibly_pending;
     unsigned char closed;
 };
@@ -52,6 +53,8 @@ seqw_next_cob(struct ccn_seqwriter *w)
     
     if (w->closed)
         sp.sp_flags |= CCN_SP_FINAL_BLOCK;
+    if (w->freshness > -1)
+        sp.freshness = w->freshness;
     ccn_charbuf_append(name, w->nv->buf, w->nv->length);
     ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, w->seqnum);
     res = ccn_sign_content(w->h, cob, name, &sp, w->buffer->buf, w->buffer->length);
@@ -161,6 +164,7 @@ ccn_seqw_create(struct ccn *h, struct ccn_charbuf *name)
     w->interests_possibly_pending = 1;
     w->blockminsize = 0;
     w->blockmaxsize = MAX_DATA_SIZE;
+    w->freshness = -1;
     res = ccn_set_interest_filter(h, nb, &(w->cl));
     if (res < 0) {
         ccn_charbuf_destroy(&w->nb);
@@ -278,6 +282,17 @@ ccn_seqw_set_block_limits(struct ccn_seqwriter *w, int l, int h)
         return(-1);
     w->blockminsize = l;
     w->blockmaxsize = h;
+    return(0);
+}
+
+int
+ccn_seqw_set_freshness(struct ccn_seqwriter *w, int freshness)
+{
+    if (w == NULL || w->cl.data != w || w->closed)
+        return(-1);
+    if (freshness < -1)
+        return(-1);
+    w->freshness = freshness;
     return(0);
 }
 /**
