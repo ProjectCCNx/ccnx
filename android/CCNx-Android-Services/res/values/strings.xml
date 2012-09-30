@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 	<string name="app_name">CCNx Service Control</string>
+	<string name="service_started1_msg">CCNx Service Control started</string>
 	<string name="allStartButton">Start All</string>
 	<string name="allStartButton_Processing">Processing Request</string>
 	<string name="allStartButton_Error">Error Starting Up.  Reset to clear Error.</string>
