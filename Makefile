@@ -13,62 +13,42 @@
 #
 
 # Subdirectories we build in
-TOPSUBDIRS = doc/manpages doc/technical csrc schema `cat local.subdirs 2>/dev/null || :`
+TOPSUBDIRS = csrc javasrc apps doc schema `cat local.subdirs 2>/dev/null || :`
 # Packing list for packaging
 PACKLIST = Makefile README LICENSE NEWS NOTICES configure doc/index.txt \
-		   $(TOPSUBDIRS) android experiments javasrc apps
-BLDMSG = printf '=== %s ' 'Building $@ in' && pwd
+           doc/technical doc/manpages android experiments javasrc apps
 
 # Default target:
 default:
 
-# If csrc/conf.mk is missing, we need to run configure.
-# Some versions of make will do this automatically,
-# with other versions the documented recipie must
-# be used.
-csrc/conf.mk:
+# If csrc/conf.mk is missing or old, we need to run configure.
+csrc/conf.mk: csrc/configure
 	./configure
 
-# Include build parameters.
-include csrc/conf.mk	# If this file is missing, run ./configure
-
-IBINSTALL = $(MAKE) install DINST_BIN=$$ib/bin DINST_INC=$$ib/include DINST_LIB=$$ib/lib
-default all: _always
-	for i in $(TOPSUBDIRS) javasrc apps; do         \
-	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
+SUBMAKE = $(MAKE) -f ../csrc/conf.mk -f Makefile
+IBINSTALL = $(SUBMAKE) install \
+            DINST_BIN=$$ib/bin DINST_INC=$$ib/include DINST_LIB=$$ib/lib
+default all: csrc/conf.mk _always
+	for i in $(TOPSUBDIRS); do         \
+	  (cd "$$i" && pwd && $(SUBMAKE) $@) || exit 1;	\
 	done
 	mkdir -p ./lib ./bin
 	test -d ./include || ln -s ./csrc/include
 	ib=`pwd` && (cd csrc && $(IBINSTALL))
-	if [ "x$(BUILD_JAVA)" = "xtrue" ]; then \
-	  ib=`pwd` && (cd javasrc && $(IBINSTALL)); \
-	fi
+	ib=`pwd` && (cd javasrc && $(IBINSTALL))
 	ib=`pwd` && (cd apps && $(IBINSTALL))
 
-clean depend test check shared: _always
-	for i in $(TOPSUBDIRS) javasrc apps; do         \
-	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
+clean depend test check shared testinstall install uninstall documentation dist-docs html: csrc/conf.mk _always
+	for i in $(TOPSUBDIRS); do         \
+	  (cd "$$i" && pwd && $(SUBMAKE) $@) || exit 1;	\
 	done
 	@rm -f _always
 
-testinstall install uninstall: _always
-	for i in $(TOPSUBDIRS) javasrc apps; do         \
-	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
-	done
-	@rm -f _always
-
-documentation dist-docs: _always
-	for i in $(TOPSUBDIRS) javasrc apps android; do         \
-	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
-	done
-	@rm -f _always
-
-clean-documentation: _always
+clean-documentation: csrc/conf.mk _always
 	rm -rf doc/ccode
 	rm -rf doc/javacode
 	rm -rf doc/android
-	(cd doc/manpages && pwd && $(MAKE) clean-documentation)
-	(cd doc/technical && pwd && $(MAKE) clean-documentation)
+	(cd doc && pwd && $(MAKE) clean-documentation)
 
 clean: clean-testinstall
 clean-testinstall: _always
