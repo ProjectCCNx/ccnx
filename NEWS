@@ -14,6 +14,7 @@ CCNx 0.6.2.
 	* Bug #100812: mistyped long in ccnd_handle
 	* Bug #100817: CCNx Android Service missing some CCNS_ defaults, and should provide CCNS_DEBUG
 	as a configurable setting, utility api to add routes.
+	* Bug #100819: Android CCNx Service is unstable on ICS, and has trouble restarting in some cases
 	* Feature #100820: Extension of ccndc
 	* Feature #100821: Corrections and extensions for Makefile and configure scripts
 	* Feature #100822: Automatic keystore creation by C-API
@@ -28,8 +29,17 @@ CCNx 0.6.2.
 	%-escaping them
 	* Support #100831: Update ccndc man page to reflect new features
 	* Support #100832: Remove email address from man pages
+	* Bug #100833: Convert uses of old ccn_signed_info_create()/ccn_encode_ContentObject() api to
+	use ccn_sign_content() api
 	* Bug #100838: Broadcast for neighbor discovery
 	* Bug #100839: if ccnd is not running, ccndc does not show help
+	* Feature #100841 Java Merkle tree signing code should log at FINE/FINER rather than INFO for
+	debugging messages
+	* Bug #100842: some source files have acquired CRLF line endings
+	* Bug #100843: ccndc segmentation fault on FreeBSD
+	* Feature #100844: Add example of guest prefix assignment
+	* Bug #100845: SyncTestRepo test occasionally has runaway log output
+	* Feature #100846: seqwriter library code needs a way to set freshness on generated objects
 
 Changes between 0.6.0 and 0.6.1:
 --------------------------------
