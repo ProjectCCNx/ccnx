@@ -111,10 +111,7 @@ main(int argc, char **argv)
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *temp = NULL;
     struct ccn_charbuf *templ = NULL;
-    struct ccn_charbuf *signed_info = NULL;
-    struct ccn_charbuf *keylocator = NULL;
-    struct ccn_charbuf *finalblockid = NULL;
-    struct ccn_keystore *keystore = NULL;
+    struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     long expire = -1;
     long blocksize = 1024;
     int i;
@@ -162,53 +159,26 @@ main(int argc, char **argv)
     name = ccn_charbuf_create();
     temp = ccn_charbuf_create();
     templ = ccn_charbuf_create();
-    signed_info = ccn_charbuf_create();
-    keystore = ccn_keystore_create();
-    temp->length = 0;
-    ccn_charbuf_putf(temp, "%s/.ccnx/.ccnx_keystore", getenv("HOME"));
-    res = ccn_keystore_init(keystore,
-                            ccn_charbuf_as_string(temp),
-                            "Th1s1sn0t8g00dp8ssw0rd.");
-    if (res != 0) {
-        printf("Failed to initialize keystore\n");
-        exit(1);
-    }
-    
-    name->length = 0;
-    ccn_charbuf_append(name, root->buf, root->length);
-    
+
     /* Set up a handler for interests */
+    ccn_charbuf_append(name, root->buf, root->length);
     ccn_set_interest_filter(ccn, name, &in_interest);
     
     /* Initiate check to see whether there is already something there. */
-    temp->length = 0;
+    ccn_charbuf_reset(temp);
     ccn_charbuf_putf(temp, "%d", 0);
     ccn_name_append(name, temp->buf, temp->length);
-    templ->length = 0;
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
-    ccn_charbuf_append_closer(templ); /* </Name> */
-    ccn_charbuf_append_tt(templ, CCN_DTAG_MaxSuffixComponents, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
-    ccn_charbuf_append(templ, "1", 1);
-    ccn_charbuf_append_closer(templ); /* </MaxSuffixComponents> */
+    ccn_charbuf_reset(templ);
+    ccnb_element_begin(templ, CCN_DTAG_Interest);
+    ccnb_element_begin(templ, CCN_DTAG_Name);
+    ccnb_element_end(templ); /* </Name> */
+    ccnb_tagged_putf(templ, CCN_DTAG_MaxSuffixComponents, "%d", 1);
     // XXX - use pubid
-    ccn_charbuf_append_closer(templ); /* </Interest> */
+    ccnb_element_end(templ); /* </Interest> */
     res = ccn_express_interest(ccn, name, &in_content, templ);
     if (res < 0) abort();
     
-    /* Construct a key locator contining the key itself */
-    keylocator = ccn_charbuf_create();
-    ccn_charbuf_append_tt(keylocator, CCN_DTAG_KeyLocator, CCN_DTAG);
-    ccn_charbuf_append_tt(keylocator, CCN_DTAG_Key, CCN_DTAG);
-    res = ccn_append_pubkey_blob(keylocator, ccn_keystore_public_key(keystore));
-    if (res < 0)
-        ccn_charbuf_destroy(&keylocator);
-    else {
-        ccn_charbuf_append_closer(keylocator); /* </Key> */
-        ccn_charbuf_append_closer(keylocator); /* </KeyLocator> */
-    }
-    
+    sp.freshness = expire;
     for (i = 0;; i++) {
         read_res = read_full(0, buf, blocksize);
         if (read_res < 0) {
@@ -216,48 +186,24 @@ main(int argc, char **argv)
             read_res = 0;
             status = 1;
         }
-        signed_info->length = 0;
         if (read_res < blocksize) {
-            temp->length = 0;
-            ccn_charbuf_putf(temp, "%d", i);
-            ccn_name_append(name, temp->buf, temp->length);
-            finalblockid = ccn_charbuf_create();
-            ccn_charbuf_append_tt(finalblockid, temp->length, CCN_BLOB);
-            ccn_charbuf_append(finalblockid, temp->buf, temp->length);
+            sp.sp_flags |= CCN_SP_FINAL_BLOCK;
         }
-        res = ccn_signed_info_create(signed_info,
-                                     /*pubkeyid*/ccn_keystore_public_key_digest(keystore),
-                                     /*publisher_key_id_size*/ccn_keystore_public_key_digest_length(keystore),
-                                     /*datetime*/NULL,
-                                     /*type*/CCN_CONTENT_DATA,
-                                     /*freshness*/ expire,
-                                     finalblockid,
-                                     keylocator);
-        /* Put the keylocator in the first block only. */
-        ccn_charbuf_destroy(&keylocator);
-        if (res < 0) {
-            fprintf(stderr, "Failed to create signed_info (res == %d)\n", res);
-            exit(1);
-        }
-        name->length = 0;
+        ccn_charbuf_reset(name);
         ccn_charbuf_append(name, root->buf, root->length);
-        temp->length = 0;
+        ccn_charbuf_reset(temp);
         ccn_charbuf_putf(temp, "%d", i);
         ccn_name_append(name, temp->buf, temp->length);
-        temp->length = 0;
+        ccn_charbuf_reset(temp);
         ccn_charbuf_append(temp, buf, read_res);
-        temp->length = 0;
-        res = ccn_encode_ContentObject(temp,
-                                       name,
-                                       signed_info,
-                                       buf,
-                                       read_res,
-                                       ccn_keystore_digest_algorithm(keystore),
-                                       ccn_keystore_private_key(keystore));
+        ccn_charbuf_reset(temp);
+        res = ccn_sign_content(ccn, temp, name, &sp, buf, read_res);
         if (res != 0) {
-            fprintf(stderr, "Failed to encode ContentObject (res == %d)\n", res);
+            fprintf(stderr, "Failed to sign ContentObject (res == %d)\n", res);
             exit(1);
         }
+        /* Put the keylocator in the first block only. */
+        sp.sp_flags |= CCN_SP_OMIT_KEY_LOCATOR;
         if (i == 0) {
             /* Finish check for old content */
             if (mydata.content_received == 0)
@@ -291,9 +237,6 @@ main(int argc, char **argv)
     ccn_charbuf_destroy(&root);
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&temp);
-    ccn_charbuf_destroy(&signed_info);
-    ccn_charbuf_destroy(&finalblockid);
-    ccn_keystore_destroy(&keystore);
     ccn_destroy(&ccn);
     exit(status);
 }
