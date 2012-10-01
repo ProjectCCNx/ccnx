@@ -2,7 +2,10 @@ Changes between 0.6.1 and 0.6.2:
 --------------------------------
 This highlights some important changes since the most recent numbered release.
 Refer to http://redmine.ccnx.org/projects/ccn/versions/12 for more details on
-CCNx 0.6.2.
+CCNx 0.6.2.  This release brings improvements to sync library support in both C (#100785) and 
+Java (#100772), automatic key generation (#100822), better tools for autoconfiguration 
+(#100820, 100838, 100844), stability improvements on Android (#100819), along with the usual
+assortment of bug fixes and enhancements.
 
   * Issues Resolved:
 	* Feature #100772: Provide proper support for sync notification in the java library
