@@ -16,7 +16,7 @@
 TOPSUBDIRS = csrc javasrc apps doc schema `cat local.subdirs 2>/dev/null || :`
 # Packing list for packaging
 PACKLIST = Makefile README LICENSE NEWS NOTICES configure doc/index.txt \
-           doc/technical doc/manpages android experiments javasrc apps
+           doc/technical doc/manpages android experiments csrc javasrc apps
 
 # Default target:
 default:
