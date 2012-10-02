@@ -404,7 +404,6 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		return segments;
 	}
 
-	@Override
 	public Interest handleContent(ContentObject data, Interest interest) {
 		synchronized(this) {
 			notify();

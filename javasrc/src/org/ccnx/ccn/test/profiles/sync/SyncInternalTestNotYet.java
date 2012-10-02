@@ -106,7 +106,6 @@ public class SyncInternalTestNotYet extends CCNTestBase implements CCNContentHan
 		Log.info(Log.FAC_TEST, "Completed testSyncNodeBuild");
 	}
 
-	@Override
 	public Interest handleContent(ContentObject data, Interest interest) {
 		ContentName name = data.name();
 
