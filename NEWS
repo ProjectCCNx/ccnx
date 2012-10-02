@@ -14,6 +14,7 @@ assortment of bug fixes and enhancements.
 	* Bug #100804: Reduce the number of prefix registrations in the java tests
 	* Bug #100809: java sync test code needs to delete slices when complete
 	* Bug #100810: Memory leaks in ccnr/sync and client library
+	* Support #100811: Setup a release job on jenkins for CCNx package releases
 	* Bug #100812: mistyped long in ccnd_handle
 	* Bug #100817: CCNx Android Service missing some CCNS_ defaults, and should provide CCNS_DEBUG
 	as a configurable setting, utility api to add routes.
@@ -43,6 +44,7 @@ assortment of bug fixes and enhancements.
 	* Feature #100844: Add example of guest prefix assignment
 	* Bug #100845: SyncTestRepo test occasionally has runaway log output
 	* Feature #100846: seqwriter library code needs a way to set freshness on generated objects
+	* Bug #100848: PACKLIST is missing csrc directory
 
 Changes between 0.6.0 and 0.6.1:
 --------------------------------
