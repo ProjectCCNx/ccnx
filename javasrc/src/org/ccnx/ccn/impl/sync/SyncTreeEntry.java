@@ -161,7 +161,7 @@ public class SyncTreeEntry {
 		int prevMatch = 0;
 		for (ContentName tname : names) {
 			SyncNodeElement sne = new SyncNodeComposite.SyncNodeElement(tname);
-			ContentName nextName = names.higher(tname);
+			ContentName nextName = names.tailSet(tname).first();
 			if (null != nextName) {
 				byte[] lengthTest;
 				try {
