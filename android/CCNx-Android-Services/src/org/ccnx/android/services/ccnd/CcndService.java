@@ -20,6 +20,7 @@ package org.ccnx.android.services.ccnd;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.Map.Entry;
+import java.util.HashMap;
 
 import org.ccnx.android.ccnlib.CCNxServiceStatus.SERVICE_STATUS;
 import org.ccnx.android.ccnlib.CcndWrapper.CCND_OPTIONS;
@@ -28,6 +29,7 @@ import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
 import org.ccnx.android.ccnlib.CCNxLibraryCheck;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.Intent;
 import android.util.Log;
 
@@ -70,20 +72,37 @@ public final class CcndService extends CCNxService {
 
 	protected void onStartService(Intent intent) {
 		Log.d(TAG, "Starting");
-		
+		boolean isPrefSet = false;
+
 		// Get all the CCND options from the intent 
 		// If no option is found on intent, look in System properties
-		for( CCND_OPTIONS opt : CCND_OPTIONS.values() ) {
-			if(! intent.hasExtra(opt.name())){
-				continue;
+		// If no system property is set, fallback to preferences
+		// And while settings OPTIONS, set preferences
+		SharedPreferences.Editor prefsEditor = mCCNxServicePrefs.edit();
+        
+        
+        if (intent != null) {
+			for( CCND_OPTIONS opt : CCND_OPTIONS.values() ) {
+				if(! intent.hasExtra(opt.name())){
+					continue;
+				}
+				String s = intent.getStringExtra( opt.name() );
+				if( null == s ) 
+					s = System.getProperty(opt.name());
+					Log.d(TAG,"setting option " + opt.name() + " = " + s);
+				if( s != null ) {
+					options.put(opt.name(), s);
+					isPrefSet = true;
+					prefsEditor.putString(opt.name(), s);
+				}
+				
 			}
-			String s = intent.getStringExtra( opt.name() );
-			if( null == s ) 
-				s = System.getProperty(opt.name());
-				Log.d(TAG,"setting option " + opt.name() + " = " + s);
-			if( s != null ) {
-				options.put(opt.name(), s);
+			if (isPrefSet) {
+				prefsEditor.commit();
 			}
+		} else {
+			// We must load options from prefs
+			options = new HashMap<String, String>((HashMap<String, String>)mCCNxServicePrefs.getAll());
 		}
 
 		Load();	

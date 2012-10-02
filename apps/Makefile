@@ -41,11 +41,7 @@ subr.mk generic.mk conf.mk:
 
 test check: default
 
-documentation: _always
-	@: not yet
-
-dist-docs: _always
-	@: not yet
+documentation dist-docs html: _always
 
 _always:
 

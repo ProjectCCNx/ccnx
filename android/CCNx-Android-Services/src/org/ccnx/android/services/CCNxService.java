@@ -17,7 +17,7 @@
 
 package org.ccnx.android.services;
 
-import java.util.TreeMap;
+import java.util.HashMap;
 
 import org.ccnx.android.ccnlib.ICCNxService;
 import org.ccnx.android.ccnlib.IStatusCallback;
@@ -29,6 +29,10 @@ import android.os.IBinder;
 import android.os.RemoteCallbackList;
 import android.os.RemoteException;
 import android.util.Log;
+import android.content.SharedPreferences;
+import android.app.NotificationManager;
+import android.app.Notification;
+import android.app.PendingIntent;
 
 /**
  * Generic service wrapper for Android.  Provides the basic control
@@ -36,7 +40,7 @@ import android.util.Log;
  */
 public abstract class CCNxService extends Service implements Runnable {
 	protected String TAG = "CCNxService";
-
+	protected static final int NOTIFICATION = 2008;
 	// The status of the current service
 	private SERVICE_STATUS status;
 
@@ -45,14 +49,18 @@ public abstract class CCNxService extends Service implements Runnable {
 
 
 	// Where to map all the options that we need for the service
-	protected TreeMap<String, String> options = new TreeMap<String, String>();
+	protected HashMap<String, String> options = new HashMap<String, String>();
 
 	// Thread to run the actual service code
 	protected Thread thd = null;
 
 	// Is the service thread running
-	boolean running;  
+	public boolean running;  
 
+
+	protected NotificationManager mNM;
+
+	protected SharedPreferences mCCNxServicePrefs;
 
 	private final ICCNxService.Stub serviceBinder = new ICCNxService.Stub() {
 		public int getStatus() {
@@ -86,7 +94,11 @@ public abstract class CCNxService extends Service implements Runnable {
 		// Some emulators have problems with ipv6
 		System.setProperty("java.net.preferIPv6Addresses", "false");
 
+		// Init Preferences
+		mCCNxServicePrefs = this.getSharedPreferences("ccnxserviceprefs", MODE_WORLD_READABLE);
 		setStatus(SERVICE_STATUS.SERVICE_SETUP);
+		mNM = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
+		showNotification();
 	}
 
 	@Override
@@ -173,6 +185,22 @@ public abstract class CCNxService extends Service implements Runnable {
 		}
 	}
 
+	private void showNotification() {
+        // In this sample, we'll use the same text for the ticker and the expanded notification
+        CharSequence text = getText(R.string.service_started1_msg);
+
+        // Set the icon, scrolling text and timestamp
+        Notification notification = new Notification(R.drawable.ccnxlogo48px, text, System.currentTimeMillis());
+
+        // The PendingIntent to launch our activity if the user selects this notification
+        PendingIntent contentIntent = PendingIntent.getActivity(this, 0, new Intent(this, Controller.class), 0);
+
+        // Set the info for the views that show in the notification panel.
+        notification.setLatestEventInfo(this, getText(R.string.app_name), text, contentIntent);
+
+        // Send the notification.
+        mNM.notify(NOTIFICATION, notification);
+    }
 	protected abstract void onStartService(Intent i);
 	protected abstract void runService();
 	protected abstract void stopService();

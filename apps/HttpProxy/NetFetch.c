@@ -158,7 +158,6 @@ struct MainDataStruct {
 	FileNode files;
 	int nFiles;
 	struct ccn_keystore *keystore;
-	struct ccn_charbuf *keylocator;
 	char *progname;
 	int64_t mapped;
 	int debug;
@@ -208,8 +207,7 @@ struct FileNodeStruct {
 	void * *tempBufs;
 	seg_t *tempSegs;
 	int *tempLengths;
-	struct ccn_charbuf *signed_info;	// must be per-file
-	struct ccn_charbuf *signed_final;	// must be per-file
+    struct ccn_signing_params signing_params; // must be per-file
 };
 
 struct InterestDataStruct {
@@ -393,7 +391,7 @@ FillTempSegments(FileNode fn, void *buf, int n) {
 				fprintf(stdout,
 						"-- FillTempSegments, fd %d, n %d, rem %d, vic %d, seg %jd, off %d\n",
 						fn->fd, n, rem, vic, seg, off);
-
+                
 			}
 			off = off + rem;
 			seg = seg + (off / CCN_CHUNK_SIZE);
@@ -543,38 +541,36 @@ HaveSegment(FileNode fn, seg_t seg) {
 
 static int
 AssertFinalSize(FileNode fn, off_t fileSize) {
+    struct ccn_charbuf *templ;
+    struct ccn_charbuf *finalBlock;
+    int res;
 	// only to be used when the file size was not previously known
 	// once the final size is set it cannot be changed
-	if (fn->signed_final != NULL) return 0;
+	if (fn->final == 1) return 0;
 	MainData md = fn->md;
-	if (fn->final == 0) {
-		// new file, so accum the new bytes
-		fn->final = 1;
-		fn->fileSize = fileSize;
-		md->stats.fileBytes = md->stats.fileBytes + fileSize;
-	}
+    // new file, so accum the new bytes
+    fn->final = 1;
+    fn->fileSize = fileSize;
+    md->stats.fileBytes = md->stats.fileBytes + fileSize;
 	seg_t nSegs = (fileSize + CCN_CHUNK_SIZE - 1) / CCN_CHUNK_SIZE;
 	fn->nSegs = nSegs;
 	fn->lastUsed = GetCurrentTime();
+    templ = ccn_charbuf_create();
+    res = ccnb_element_begin(templ, CCN_DTAG_SignedInfo);
+    finalBlock = NewSegBlob(nSegs - 1);
+    ccnb_element_begin(templ, CCN_DTAG_FinalBlockID);
+    res |= ccn_charbuf_append_charbuf(templ, finalBlock);
+    res |= ccnb_element_end(templ);
+    res |= ccnb_element_end(templ);    /* </SignedInfo> */
+    fn->signing_params.sp_flags |= CCN_SP_TEMPL_FINAL_BLOCK_ID;
+    fn->signing_params.template_ccnb = templ;
 	if (md->debug) {
 		fprintf(stdout, "-- AssertFinalSize, %s, fileSize %jd, final %jd\n",
 				fn->id, (intmax_t) fileSize, (intmax_t) nSegs-1);
         flushLog();
 	};
-	struct ccn_charbuf *finalBlock = NewSegBlob(nSegs - 1);
-	const void *digest = ccn_keystore_public_key_digest(md->keystore);
-	size_t digestLen = ccn_keystore_public_key_digest_length(md->keystore);
-	fn->signed_final = ccn_charbuf_create();
-	int res = ccn_signed_info_create(fn->signed_final,
-									 digest,
-									 digestLen,
-									 /*datetime*/NULL,
-									 /*type*/CCN_CONTENT_DATA,
-									 /*freshness*/ fn->fresh,
-									 finalBlock,
-									 md->keylocator);
-	ccn_charbuf_destroy(&finalBlock);
-	return res;
+    ccn_charbuf_destroy(&finalBlock);
+	return (res);
 }
 
 static int
@@ -759,6 +755,7 @@ OpenFileNode(MainData md, char *root, char *dir, char *shortName,
 		create = 0;
 	}
 	if (fd >= 0) {
+        struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
 		// looks ok from here, so return the new node
 		fstat(fd, &ss);
 		FileNode fn = ProxyUtil_StructAlloc(1, FileNodeStruct);
@@ -774,13 +771,8 @@ OpenFileNode(MainData md, char *root, char *dir, char *shortName,
 		fn->fileSize = fileSize;
 		fn->modTime.tv_sec = ss.st_mtime;
 		fn->modTime.tv_nsec = 0;
-		seg_t nSegs = 0;
-		if (fileSize > 0) {
-			// final file size already known
-			fn->final = 1;
-			nSegs = (fileSize + CCN_CHUNK_SIZE - 1) / CCN_CHUNK_SIZE;
-			fn->nSegs = nSegs;
-		}
+        fn->signing_params = sp;
+        fn->signing_params.freshness = fresh;
 		fn->lastUsed = GetCurrentTime();
 		fn->firstUsed = fn->lastUsed;
 		fn->root = Concat(root, "");
@@ -789,23 +781,9 @@ OpenFileNode(MainData md, char *root, char *dir, char *shortName,
 		fn->unPercName = NewUnPercName(shortName);
 		fn->id = MakeId(dir, fn->unPercName);
 		fn->create = create;
-		const void *digest = ccn_keystore_public_key_digest(md->keystore);
-		size_t digestLen = ccn_keystore_public_key_digest_length(md->keystore);
-		fn->signed_info = ccn_charbuf_create();
-		int res = 0;
-		res = ccn_signed_info_create(fn->signed_info,
-									 digest,
-									 digestLen,
-									 /*datetime*/NULL,
-									 /*type*/CCN_CONTENT_DATA,
-									 /*freshness*/ fresh,
-									 NULL,
-									 md->keylocator);
-		if (res < 0) {
-			retErr("ccn_signed_info_create failed");
-		}
 		if (md->debug) {
 			double dt = DeltaTime(md->startTime, GetCurrentTime());
+            seg_t nSegs = (fileSize + CCN_CHUNK_SIZE - 1) / CCN_CHUNK_SIZE;
 			if (create)
 				fprintf(stdout, "@%4.3f, CreateFile %s\n",
 						dt, fn->id);
@@ -858,11 +836,6 @@ CloseFileNode(FileNode fn) {
 				fn->shortName = Freestr(fn->shortName);
 				fn->unPercName = Freestr(fn->unPercName);
 				fn->id = Freestr(fn->id);
-				if (fn->signed_info != NULL)
-					ccn_charbuf_destroy(&fn->signed_info);
-				if (fn->signed_final != NULL)
-					ccn_charbuf_destroy(&fn->signed_final);
-				
 				if (fn->nTemp > 0) {
 					// we have some temp bufs to handle
 					int i = 0;
@@ -874,7 +847,7 @@ CloseFileNode(FileNode fn) {
 					free(fn->tempSegs);
 					free(fn->tempLengths);
 				}
-				
+                ccn_charbuf_destroy(&fn->signing_params.template_ccnb);
 				struct timeval tv[2];
 				tv[0].tv_sec = fn->modTime.tv_sec;
 				tv[0].tv_usec = fn->modTime.tv_nsec / 1000;
@@ -962,7 +935,6 @@ CloseMainData(MainData md) {
 	while (md->files != NULL) {
 		CloseFileNode(md->files);
 	}
-	ccn_charbuf_destroy(&md->keylocator);
 	// finally, get rid of self
 	free(md);
 	return NULL;
@@ -990,8 +962,6 @@ CloseMainData(MainData md) {
 static int
 init_internal_keystore(MainData md) {
     struct ccn_charbuf *temp = NULL;
-    struct ccn_charbuf *cmd = NULL;
-    struct ccn_keystore *keystore = NULL;
     char *culprit = NULL;
     struct stat statbuf;
     char *dir = NULL;
@@ -999,11 +969,7 @@ init_internal_keystore(MainData md) {
     size_t save;
     char *keystore_path = NULL;
     
-    if (md->keystore != NULL)
-        return(0);
-    keystore = ccn_keystore_create();
     temp = ccn_charbuf_create();
-    cmd = ccn_charbuf_create();
     dir = getenv("CCNK_KEYSTORE_DIRECTORY");
     if (dir != NULL && dir[0] == '/')
         ccn_charbuf_putf(temp, "%s/", dir);
@@ -1022,10 +988,9 @@ init_internal_keystore(MainData md) {
 	char *kPrefix = "ccnk";
     ccn_charbuf_putf(temp, ".%s_keystore", kPrefix);
     keystore_path = Concat(ccn_charbuf_as_string(temp), "");
-    res = ccn_keystore_init(keystore, keystore_path, CCNK_KEYSTORE_PASS);
-    if (res == 0) {
-        md->keystore = keystore;
-        keystore = NULL;
+    res = ccn_load_default_key(md->ccn, keystore_path, CCNK_KEYSTORE_PASS);
+    if (res != 0) {
+        culprit = keystore_path;    
         goto Finish;
     }
 Finish:
@@ -1036,30 +1001,9 @@ Finish:
 		flushLog();
         culprit = NULL;
     }
-    if (md->keystore != NULL) {
-		// we've got the keystore
-		struct ccn_charbuf *keylocator = ccn_charbuf_create();
-		ccn_charbuf_append_tt(keylocator, CCN_DTAG_KeyLocator, CCN_DTAG);
-		ccn_charbuf_append_tt(keylocator, CCN_DTAG_Key, CCN_DTAG);
-		res = ccn_append_pubkey_blob(keylocator,
-									 ccn_keystore_public_key(md->keystore));
-		if (res < 0)
-			ccn_charbuf_destroy(&keylocator);
-		else {
-			ccn_charbuf_append_closer(keylocator); /* </Key> */
-			ccn_charbuf_append_closer(keylocator); /* </KeyLocator> */
-		}
-		md->keylocator = keylocator;
-    } else {
-        fprintf(stdout, "** No keystore\n");
-		flushLog();
-    }
     ccn_charbuf_destroy(&temp);
-    ccn_charbuf_destroy(&cmd);
     if (keystore_path != NULL)
         free(keystore_path);
-    if (keystore != NULL)
-        ccn_keystore_destroy(&keystore);
     return res;
 }
 
@@ -1154,11 +1098,6 @@ PutSegment(FileNode fn, char *ccnRoot, seg_t seg) {
 	fn->lastUsed = GetCurrentTime();
 	
 	// serve up the segment
-	
-	struct ccn_charbuf *keylocator = NULL;
-	if (seg == 0)
-		// Put the keylocator in the first block only.
-		keylocator = md->keylocator;
     struct ccn_charbuf *cb = ccn_charbuf_create();
 	int res = SetNameCCN(cb, ccnRoot, dir, fn->unPercName);
 	if (res < 0) {
@@ -1172,19 +1111,10 @@ PutSegment(FileNode fn, char *ccnRoot, seg_t seg) {
 					   fn->modTime.tv_sec, fn->modTime.tv_nsec);
 	ccn_name_append_numeric(cb, CCN_MARKER_SEQNUM, seg);
 	
-	struct ccn_charbuf *signed_info = fn->signed_final;
-	if (signed_info == NULL) signed_info = fn->signed_info;
-	
     struct ccn_charbuf *temp = ccn_charbuf_create();
-	ret = ccn_encode_ContentObject(temp,
-								   cb,
-								   signed_info,
-								   addr,
-								   segLen,
-								   NULL,
-								   ccn_keystore_private_key(md->keystore));
+    ret = ccn_sign_content(md->ccn, temp, cb, &fn->signing_params, addr, segLen);
 	if (ret != 0) {
-		fprintf(stdout, "** ccn_encode_ContentObject failed (res == %d)\n",
+		fprintf(stdout, "** ccn_sign_content failed (res == %d)\n",
 				ret);
 		ret = -1;
 	} else {
@@ -1200,6 +1130,8 @@ PutSegment(FileNode fn, char *ccnRoot, seg_t seg) {
 			if (seg > fn->maxSegPut) fn->maxSegPut = seg;
 		}
 	}
+    // Only the first segment gets the key locator
+    fn->signing_params.sp_flags |= CCN_SP_OMIT_KEY_LOCATOR;
 	// cleanup
 	if (usePRead) {
 		free(addr);
@@ -2176,6 +2108,7 @@ main(int argc, char **argv) {
 				md->maxBusySameHost = n;
 			} else {
 				fprintf(stdout, "** bad arg: %s\n", arg);
+                fprintf(stdout, "Usage: %s -fsRoot <root> -ccnRoot <uri> -noDebug -absTime -fanOut <n>\n", argv[0]);
 				return -1;
 			}
 		}
@@ -2184,9 +2117,9 @@ main(int argc, char **argv) {
 	signal(SIGPIPE, SIG_IGN);
 	
 	status = init_internal_keystore(md);
-	if (status >= 0 && md->keystore != NULL)
+	if (status >= 0)
 		status = MainLoop(md);
-		
+    
 	md = CloseMainData(md);
 	ccn_disconnect(h);
 	ccn_destroy(&h);

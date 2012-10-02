@@ -344,9 +344,9 @@ newDateString(void) {
     clk = time(NULL);
     gmtime_r(&clk, &tms);
     string dowArray[8] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "??"};
-        string monArray[13] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                           "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-                           "??"};
+    string monArray[13] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+        "??"};
     int wd = tms.tm_wday;
     int mon = tms.tm_mon;
     if (wd < 0 || wd > 7) wd = 7;
@@ -2316,117 +2316,117 @@ RequestBaseStart(RequestBase rb) {
         && (h->httpVerb == HTTP_GET
             || h->httpVerb == HTTP_HEAD
             || h->httpVerb == HTTP_OPTIONS)) {
-		// determine if this is an acceptable host for CCN
-		string effectiveHost = rb->host;
-		string effectiveName = rb->shortName;
-		struct ShortNameInfo info;
-		char tempHost[NameMax+4];
-		// first, remove any prefixes that are marked as proxies
-		for (;;) {
-			ExamShortName(&info, effectiveName);
-			hostLine = SelectHostSuffix(mb, effectiveHost);
-			if (hostLine == NULL) break;
-            if ((hostLine->flags & (HostLine_Proxy | HostLine_Translate)) == 0)
-                break;
-            if (effectiveName[0] == '/') effectiveName++;
-            int hLen = AcceptHostName(effectiveName, 0, tempHost, NameMax);
-            if (hLen == 0) break;
-            // we have a place to split the line to extract the host
-            if (hostLine->translate == NULL) {
-                effectiveHost = tempHost;
-                effectiveName = effectiveName + hLen;
-            } else {
-                effectiveHost = hostLine->translate;
-                effectiveName = effectiveName + hLen;
+            // determine if this is an acceptable host for CCN
+            string effectiveHost = rb->host;
+            string effectiveName = rb->shortName;
+            struct ShortNameInfo info;
+            char tempHost[NameMax+4];
+            // first, remove any prefixes that are marked as proxies
+            for (;;) {
+                ExamShortName(&info, effectiveName);
+                hostLine = SelectHostSuffix(mb, effectiveHost);
+                if (hostLine == NULL) break;
+                if ((hostLine->flags & (HostLine_Proxy | HostLine_Translate)) == 0)
+                    break;
+                if (effectiveName[0] == '/') effectiveName++;
+                int hLen = AcceptHostName(effectiveName, 0, tempHost, NameMax);
+                if (hLen == 0) break;
+                // we have a place to split the line to extract the host
+                if (hostLine->translate == NULL) {
+                    effectiveHost = tempHost;
+                    effectiveName = effectiveName + hLen;
+                } else {
+                    effectiveHost = hostLine->translate;
+                    effectiveName = effectiveName + hLen;
+                }
+                if (f != NULL) {
+                    fprintf(f, "-- proxy name, host %s, name %s\n",
+                            effectiveHost, effectiveName);
+                    flushLog(f);
+                }
+                string lag = rb->host;
+                rb->host = newStringCopy(effectiveHost);
+                freeString(lag);
+                lag = rb->shortName;
+                rb->shortName = newStringCopy(effectiveName);
+                freeString(lag);
+                rb->rewriteHost++;
             }
-            if (f != NULL) {
-                fprintf(f, "-- proxy name, host %s, name %s\n",
-                        effectiveHost, effectiveName);
-                flushLog(f);
+            if (rb->shortName == NULL || (rb->shortName[0] != '/')) {
+                // force a leading slash in the name
+                string lag = rb->shortName;
+                rb->shortName = newStringCat("/", rb->shortName);
+                freeString(lag);
             }
-            string lag = rb->host;
-            rb->host = newStringCopy(effectiveHost);
-            freeString(lag);
-            lag = rb->shortName;
-            rb->shortName = newStringCopy(effectiveName);
-            freeString(lag);
-            rb->rewriteHost++;
-        }
-        if (rb->shortName == NULL || (rb->shortName[0] != '/')) {
-            // force a leading slash in the name
-            string lag = rb->shortName;
-            rb->shortName = newStringCat("/", rb->shortName);
-            freeString(lag);
-        }
-        // now, we have an effective host and we have flags for the name
-		while (hostLine != NULL) {
-			// maybe CCN, so process the flags for this host
-			int flags = hostLine->flags;
-			if (f != NULL) {
-				fprintf(f, "-- SelectHostSuffix, host %s, flags %d\n",
-                        rb->host, flags);
-				flushLog(f);
-			}
-			if (flags & HostLine_FailQuick) {
-				// these never win 
-				failQuick = 1;
-				hostLine = NULL;
-                break;
-			}
-			if (flags & HostLine_NeedDot && info.dots <= 0) {
-				// requires a dot in the name
-				hostLine = NULL;
-                break;
-            }
-			if ((flags & HostLine_NoCookie) && h->cookie != 0) {
-				// prohibits Cookie:
-				hostLine = NULL;
-                break;
-            }
-			if ((flags & HostLine_NoReferer) && h->hasReferer != 0) {
-				// prohibits Referer:
-				hostLine = NULL;
-                break;
-            }
-			if ((flags & HostLine_NoQuery) && info.query > 0) {
-				// prohibits queries ('?') in name 
-				hostLine = NULL;
-                break;
-            }
-			if (flags & HostLine_SingleConn) {
-				// force a single connection
-				hostLine = NULL;
-				rb->maxConn = 1;
-                break;
-			}
-			if (info.count < 0 || firstLineLen >= NameMax/2) {
-				// CCN can't handle excessively long names
-				hostLine = NULL;
-                break;
-            }
-            if (flags & HostLine_QueryHack) {
-				// force a Range interpretation, if a query is present
-                int i = 0;
-                while (i < firstLineLen) {
-                    char c = buf[i];
-                    i++;
-                    if (c == '?') {
-                        // the query is parsed as a byte range, then deleted
-                        AcceptByteRange(rb, buf+i, firstLineLen-i);
-                        i--;
-                        RewriteBuffer(rb, i, firstLineLen-i, "\r\n");
-                        StripQuery(rb->shortName, strlen(rb->shortName));
-                        break;
+            // now, we have an effective host and we have flags for the name
+            while (hostLine != NULL) {
+                // maybe CCN, so process the flags for this host
+                int flags = hostLine->flags;
+                if (f != NULL) {
+                    fprintf(f, "-- SelectHostSuffix, host %s, flags %d\n",
+                            rb->host, flags);
+                    flushLog(f);
+                }
+                if (flags & HostLine_FailQuick) {
+                    // these never win 
+                    failQuick = 1;
+                    hostLine = NULL;
+                    break;
+                }
+                if (flags & HostLine_NeedDot && info.dots <= 0) {
+                    // requires a dot in the name
+                    hostLine = NULL;
+                    break;
+                }
+                if ((flags & HostLine_NoCookie) && h->cookie != 0) {
+                    // prohibits Cookie:
+                    hostLine = NULL;
+                    break;
+                }
+                if ((flags & HostLine_NoReferer) && h->hasReferer != 0) {
+                    // prohibits Referer:
+                    hostLine = NULL;
+                    break;
+                }
+                if ((flags & HostLine_NoQuery) && info.query > 0) {
+                    // prohibits queries ('?') in name 
+                    hostLine = NULL;
+                    break;
+                }
+                if (flags & HostLine_SingleConn) {
+                    // force a single connection
+                    hostLine = NULL;
+                    rb->maxConn = 1;
+                    break;
+                }
+                if (info.count < 0 || firstLineLen >= NameMax/2) {
+                    // CCN can't handle excessively long names
+                    hostLine = NULL;
+                    break;
+                }
+                if (flags & HostLine_QueryHack) {
+                    // force a Range interpretation, if a query is present
+                    int i = 0;
+                    while (i < firstLineLen) {
+                        char c = buf[i];
+                        i++;
+                        if (c == '?') {
+                            // the query is parsed as a byte range, then deleted
+                            AcceptByteRange(rb, buf+i, firstLineLen-i);
+                            i--;
+                            RewriteBuffer(rb, i, firstLineLen-i, "\r\n");
+                            StripQuery(rb->shortName, strlen(rb->shortName));
+                            break;
+                        }
                     }
                 }
-			}
-            break;
-		}
-        if (hostLine == NULL && failQuick == 0) {
-            fprintf(f, "-- Prevent CCN for %s:%s; using HTTP\n",
-                    rb->host, rb->shortName);
+                break;
+            }
+            if (hostLine == NULL && failQuick == 0) {
+                fprintf(f, "-- Prevent CCN for %s:%s; using HTTP\n",
+                        rb->host, rb->shortName);
+            }
         }
-	}
     
 	if (failQuick) {
         // make a failing reply
@@ -2565,7 +2565,7 @@ AdjustForRanges(RequestBase rb) {
         && h->hasContentRange == 0
         && rb->msgCount == 0) {
         // first time through, need to rewrite the header
-
+        
         // rewrite header to use 206 code
         string buf = (string) rb->buffer;
         int pos = NextLine(buf, 0, rb->bufferLen);
@@ -2645,7 +2645,7 @@ AdjustForRanges(RequestBase rb) {
             }
             pos = npos;    
         }
-
+        
         int off = h->headerLen;
         string ptr = buf+off;
         
@@ -3454,11 +3454,17 @@ main(int argc, string *argv) {
 				mb->maxConn = n;
 			} else {
 				fprintf(stdout, "** bad arg: %s\n", arg);
+                fprintf(stdout, "Usage: %s -remProxy -remHost -keepProxy -keepHost -noDebug -addTime\n"
+                        "          -resolveHigh -resolveHighest -hostFromGet\n"
+                        "          -keepAlive <n> -timeoutSecs <n> -usePort <n> -custom <txt> -maxConn <n>\n",
+                        argv[0]);
                 res = -1;
                 break;
 			}
 		}
     }
+    if (res < 0)
+        exit(1);
     
     res = ExecMainBase(mb);
 	

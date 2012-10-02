@@ -23,6 +23,7 @@ import java.util.Properties;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
 import java.util.Map.Entry;
+import java.util.HashMap;
 
 import org.ccnx.android.ccnlib.CCNxServiceStatus.SERVICE_STATUS;
 import org.ccnx.android.ccnlib.RepoWrapper.REPO_OPTIONS;
@@ -35,6 +36,7 @@ import org.ccnx.ccn.impl.repo.RepositoryServer;
 import org.ccnx.ccn.impl.repo.RepositoryStore;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Environment;
 import android.util.Log;
 
@@ -82,83 +84,102 @@ public final class RepoService extends CCNxService {
 
 	protected void onStartService(Intent intent) {
 		Log.d(TAG, "onStartService - Starting");
-	
-		if (Pattern.matches("1\\.0\\.0", repo_version)) {
-			try {
-				Properties props = new Properties();
-				byte [] opts = intent.getByteArrayExtra("vm_options");
-				if( null != opts ) {
-					ByteArrayInputStream bais = new ByteArrayInputStream(opts);
-					props.loadFromXML(bais);
-	
-					System.getProperties().putAll(props);
-				}
-			} catch(Exception e) {
-				e.printStackTrace();
-			}
-			
-			Log.d(TAG, "CCN_DIR      = " + UserConfiguration.userConfigurationDirectory());
-			Log.d(TAG, "DEF_ALIS     = " + UserConfiguration.defaultKeyAlias());
-			Log.d(TAG, "KEY_DIR      = " + UserConfiguration.keyRepositoryDirectory());
-			Log.d(TAG, "KEY_FILE     = " + UserConfiguration.keystoreFileName());
-			Log.d(TAG, "USER_NAME    = " + UserConfiguration.userName());
-			
-			if(intent.hasExtra(REPO_OPTIONS.REPO_DIRECTORY.name())){
-				repo_dir = intent.getStringExtra(REPO_OPTIONS.REPO_DIRECTORY.name());
-			}
-			
-			if(intent.hasExtra(REPO_OPTIONS.REPO_DEBUG.name())){
-				repo_debug = intent.getStringExtra(REPO_OPTIONS.REPO_DEBUG.name());
-			} else {
-				repo_debug = DEFAULT_REPO_DEBUG;
-			}
-			
-			if(intent.hasExtra(REPO_OPTIONS.REPO_LOCAL.name())){
-				repo_local_name = intent.getStringExtra(REPO_OPTIONS.REPO_LOCAL.name());
-			} else {
-				repo_local_name = DEFAULT_REPO_LOCAL_NAME;
-			}
-			
-			if(intent.hasExtra(REPO_OPTIONS.REPO_GLOBAL.name())){
-				repo_global_name = intent.getStringExtra(REPO_OPTIONS.REPO_GLOBAL.name());
-			} else {
-				repo_global_name = DEFAULT_REPO_GLOBAL_NAME;
-			}
-			
-			if(intent.hasExtra(REPO_OPTIONS.REPO_NAMESPACE.name())){
-				repo_namespace = intent.getStringExtra(REPO_OPTIONS.REPO_NAMESPACE.name());
-			} else {
-				repo_namespace = DEFAULT_REPO_NAMESPACE;
-			}	
-		} else if (Pattern.matches("2\\.0\\.0", repo_version)) {
-			for( CCNR_OPTIONS opt : CCNR_OPTIONS.values() ) {
-				if(!intent.hasExtra(opt.name())){
-					continue;
-				}
-				String s = intent.getStringExtra( opt.name() );
-				if( null == s ) 
-					s = System.getProperty(opt.name());
-					Log.d(TAG,"setting option " + opt.name() + " = " + s);
-				if( s != null ) {
-					options.put(opt.name(), s);
-				}
-			}
-			for( CCNS_OPTIONS opt : CCNS_OPTIONS.values() ) {
-				if(!intent.hasExtra(opt.name())){
-					continue;
-				}
-				String s = intent.getStringExtra( opt.name() );
-				if( null == s ) 
-					s = System.getProperty(opt.name());
-					Log.d(TAG,"setting option " + opt.name() + " = " + s);
-				if( s != null ) {
-					options.put(opt.name(), s);
-				}
-			}
+		boolean isPrefSet = false;
 
+		// Get all the CCND options from the intent 
+		// If no option is found on intent, look in System properties
+		// If no system property is set, fallback to preferences
+		// And while settings OPTIONS, set preferences
+		// We will only attempt a recovery if we are running REPO 2.0.0
+		SharedPreferences.Editor prefsEditor = mCCNxServicePrefs.edit();
+
+		if (intent != null) {
+			if (Pattern.matches("1\\.0\\.0", repo_version)) {
+				try {
+					Properties props = new Properties();
+					byte [] opts = intent.getByteArrayExtra("vm_options");
+					if( null != opts ) {
+						ByteArrayInputStream bais = new ByteArrayInputStream(opts);
+						props.loadFromXML(bais);
+		
+						System.getProperties().putAll(props);
+					}
+				} catch(Exception e) {
+					e.printStackTrace();
+				}
+				
+				Log.d(TAG, "CCN_DIR      = " + UserConfiguration.userConfigurationDirectory());
+				Log.d(TAG, "DEF_ALIS     = " + UserConfiguration.defaultKeyAlias());
+				Log.d(TAG, "KEY_DIR      = " + UserConfiguration.keyRepositoryDirectory());
+				Log.d(TAG, "KEY_FILE     = " + UserConfiguration.keystoreFileName());
+				Log.d(TAG, "USER_NAME    = " + UserConfiguration.userName());
+				
+				if(intent.hasExtra(REPO_OPTIONS.REPO_DIRECTORY.name())){
+					repo_dir = intent.getStringExtra(REPO_OPTIONS.REPO_DIRECTORY.name());
+				}
+				
+				if(intent.hasExtra(REPO_OPTIONS.REPO_DEBUG.name())){
+					repo_debug = intent.getStringExtra(REPO_OPTIONS.REPO_DEBUG.name());
+				} else {
+					repo_debug = DEFAULT_REPO_DEBUG;
+				}
+				
+				if(intent.hasExtra(REPO_OPTIONS.REPO_LOCAL.name())){
+					repo_local_name = intent.getStringExtra(REPO_OPTIONS.REPO_LOCAL.name());
+				} else {
+					repo_local_name = DEFAULT_REPO_LOCAL_NAME;
+				}
+				
+				if(intent.hasExtra(REPO_OPTIONS.REPO_GLOBAL.name())){
+					repo_global_name = intent.getStringExtra(REPO_OPTIONS.REPO_GLOBAL.name());
+				} else {
+					repo_global_name = DEFAULT_REPO_GLOBAL_NAME;
+				}
+				
+				if(intent.hasExtra(REPO_OPTIONS.REPO_NAMESPACE.name())){
+					repo_namespace = intent.getStringExtra(REPO_OPTIONS.REPO_NAMESPACE.name());
+				} else {
+					repo_namespace = DEFAULT_REPO_NAMESPACE;
+				}	
+			} else if (Pattern.matches("2\\.0\\.0", repo_version)) {
+				for( CCNR_OPTIONS opt : CCNR_OPTIONS.values() ) {
+					if(!intent.hasExtra(opt.name())){
+						continue;
+					}
+					String s = intent.getStringExtra( opt.name() );
+					if( null == s ) 
+						s = System.getProperty(opt.name());
+						Log.d(TAG,"setting option " + opt.name() + " = " + s);
+					if( s != null ) {
+						options.put(opt.name(), s);
+						isPrefSet = true;
+						prefsEditor.putString(opt.name(), s);
+					}
+				}
+				for( CCNS_OPTIONS opt : CCNS_OPTIONS.values() ) {
+					if(!intent.hasExtra(opt.name())){
+						continue;
+					}
+					String s = intent.getStringExtra( opt.name() );
+					if( null == s ) 
+						s = System.getProperty(opt.name());
+						Log.d(TAG,"setting option " + opt.name() + " = " + s);
+					if( s != null ) {
+						options.put(opt.name(), s);
+						isPrefSet = true;
+						prefsEditor.putString(opt.name(), s);
+					}
+				}
+				if (isPrefSet) {
+					prefsEditor.commit();
+				}
+			} else {
+				Log.d(TAG,"Unknown Repo version " + repo_version + " specified, failed to start Repo.");
+				setStatus(SERVICE_STATUS.SERVICE_ERROR);
+			}
 		} else {
-			Log.d(TAG,"Unknown Repo version " + repo_version + " specified, failed to start Repo.");
-			setStatus(SERVICE_STATUS.SERVICE_ERROR);
+			// We must load options from prefs
+			options = new HashMap<String, String>((HashMap<String, String>)mCCNxServicePrefs.getAll());
 		}
 		Load();
 	}

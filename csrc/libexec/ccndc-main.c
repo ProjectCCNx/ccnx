@@ -96,7 +96,7 @@ create_command_from_command_line(int argc, char **argv)
 int
 main(int argc, char **argv)
 {
-    struct ccndc_data *ccndc;
+    struct ccndc_data *ccndc = NULL;
     const char *progname = NULL;
     const char *configfile = NULL;
     int res = 1;
