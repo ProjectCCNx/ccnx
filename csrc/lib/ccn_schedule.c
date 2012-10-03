@@ -67,10 +67,9 @@ update_time(struct ccn_schedule *sched)
 {
     struct ccn_timeval now = { 0 };
     int elapsed;
-    if (sched->time_has_passed < 0)
+    if (sched->clock->gettime == 0)
         return; /* For testing with clock stopped */
     sched->clock->gettime(sched->clock, &now);
-    // gettimeofday(&now, 0);
     if ((unsigned)(now.s - sched->lasttime.s) >= INT_MAX/4000000) {
         /* We have taken a backward or large step - do a repair */
         sched->lasttime = now;
@@ -315,6 +314,7 @@ ccn_schedule_run(struct ccn_schedule *sched)
 #ifdef TESTSCHEDULE
 // cc -g -o testschedule -DTESTSCHEDULE=main -I../include ccn_schedule.c
 #include <stdio.h>
+#include <unistd.h>
 #include <sys/time.h>
 
 static void
@@ -344,14 +344,16 @@ static int B(SARGS) { printf("B"); return 0; }
 static int C(SARGS) { printf("C"); return 0; }
 static int D(SARGS) { if (flags & CCN_SCHEDULE_CANCEL) return(0);
                       printf("D");  return 30000000; }
-static struct ccn_schedule_heap_item tst[7];
-int TESTSCHEDULE()
+int TESTSCHEDULE(int argc, char **argv)
 {
     struct ccn_schedule *s = ccn_schedule_create(dd+5, &gt);
     int i;
     struct ccn_scheduled_event *victim = NULL;
-    // s->heap = tst; s->heap_limit = 7; // uncomment for easy debugger display
-    s->time_has_passed = -1; /* don't really ask for time */
+    int realtime = 0;
+    if (argv[0] != NULL)
+        realtime = 1;
+    if (!realtime)
+        gt.gettime = 0;
     ccn_schedule_event(s, 11111, A, dd+4, 11111);
     ccn_schedule_event(s, 1, A, dd, 1);
     ccn_schedule_event(s, 111, C, dd+2, 111);
@@ -360,10 +362,22 @@ int TESTSCHEDULE()
     testtick(s);
     ccn_schedule_event(s, 1111, D, dd+3, 1111);
     ccn_schedule_event(s, 111111, B, dd+5, 111111);
-    for (i = 0; i < 100; i++) {
-        if (i == 50) { ccn_schedule_cancel(s, victim); victim = NULL; }
-        testtick(s);
+    if (realtime) {
+        for (;;) {
+            i = ccn_schedule_run(s);
+            if (i < 0)
+                break;
+            printf("    %d usec until %ld\n", i, (long)s->heap[0].event_time);
+            usleep(i);
+        }
     }
+    else {
+        for (i = 0; i < 100; i++) {
+            if (i == 50) { ccn_schedule_cancel(s, victim); victim = NULL; }
+            testtick(s);
+        }
+    }
+    printf("\n");
     ccn_schedule_destroy(&s);
     return(0);
 }
