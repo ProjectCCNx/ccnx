@@ -13,10 +13,10 @@
 #
 
 # Subdirectories we build in
-TOPSUBDIRS = csrc javasrc apps doc schema `cat local.subdirs 2>/dev/null || :`
+TOPSUBDIRS = doc/technical doc/manpages csrc schema `cat local.subdirs 2>/dev/null || :`
 # Packing list for packaging
 PACKLIST = Makefile README LICENSE NEWS NOTICES configure doc/index.txt \
-           doc/technical doc/manpages android experiments javasrc apps
+           doc/technical doc/manpages schema android experiments csrc javasrc apps
 
 # Default target:
 default:
@@ -29,7 +29,7 @@ SUBMAKE = $(MAKE) -f ../csrc/conf.mk -f Makefile
 IBINSTALL = $(SUBMAKE) install \
             DINST_BIN=$$ib/bin DINST_INC=$$ib/include DINST_LIB=$$ib/lib
 default all: csrc/conf.mk _always
-	for i in $(TOPSUBDIRS); do         \
+	for i in $(TOPSUBDIRS) javsrc apps; do         \
 	  (cd "$$i" && pwd && $(SUBMAKE) $@) || exit 1;	\
 	done
 	mkdir -p ./lib ./bin
@@ -38,9 +38,15 @@ default all: csrc/conf.mk _always
 	ib=`pwd` && (cd javasrc && $(IBINSTALL))
 	ib=`pwd` && (cd apps && $(IBINSTALL))
 
-clean depend test check shared testinstall install uninstall documentation dist-docs html: csrc/conf.mk _always
-	for i in $(TOPSUBDIRS); do         \
+clean depend test check shared testinstall install uninstall html: csrc/conf.mk _always
+	for i in $(TOPSUBDIRS) javasrc apps; do         \
 	  (cd "$$i" && pwd && $(SUBMAKE) $@) || exit 1;	\
+	done
+	@rm -f _always
+
+documentation dist-docs : _always
+	for i in $(TOPSUBDIRS) javasrc apps android; do         \
+	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
 	done
 	@rm -f _always
 
