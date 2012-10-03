@@ -45,6 +45,7 @@ assortment of bug fixes and enhancements.
 	* Bug #100845: SyncTestRepo test occasionally has runaway log output
 	* Feature #100846: seqwriter library code needs a way to set freshness on generated objects
 	* Bug #100848: PACKLIST is missing csrc directory
+	* Bug #100849: JDK 1.6 API used in SyncTreeEntry TreeSet.higher() call
 
 Changes between 0.6.0 and 0.6.1:
 --------------------------------
