@@ -153,16 +153,15 @@ public class SyncTreeEntry {
 	 */
 	public static SyncTreeEntry newLeafNode(TreeSet<ContentName> names) {
 		ArrayList<SyncNodeComposite.SyncNodeElement> refs = new ArrayList<SyncNodeComposite.SyncNodeElement>();
-		ArrayList<ContentName> removes = new ArrayList<ContentName>();
 		int total = 0;
 		int limit = CCNSync.NODE_SPLIT_TRIGGER - CCNSync.NODE_SPLIT_TRIGGER/8;
 		int minLen = CCNSync.NODE_SPLIT_TRIGGER/2;
 		int maxLen = 0;
 		int prevMatch = 0;
-		for (ContentName tname : names) {
-			SyncNodeElement sne = new SyncNodeComposite.SyncNodeElement(tname);
-			ContentName nextName = names.higher(tname);
-			if (null != nextName) {
+		int split = 0;
+		ContentName tname = null;
+		for (ContentName nextName : names) {
+			if (null != tname) {
 				byte[] lengthTest;
 				try {
 					lengthTest = tname.encode();
@@ -195,10 +194,13 @@ public class SyncTreeEntry {
 				if (total > limit)
 					break;
 			}
-			refs.add(sne);
-			removes.add(tname);
+			tname = nextName;
+			split = split + 1;
 		}
-		for (ContentName tname : removes) {
+		for (int i = 0; i < split; i++) {
+			tname = names.first();
+			SyncNodeElement sne = new SyncNodeComposite.SyncNodeElement(tname);
+			refs.add(sne);
 			names.remove(tname);
 		}
 		SyncNodeComposite snc = new SyncNodeComposite(refs, refs.get(0), refs.get(refs.size() - 1), refs.size());
