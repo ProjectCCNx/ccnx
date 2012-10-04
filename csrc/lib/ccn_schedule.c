@@ -317,12 +317,11 @@ int
 ccn_schedule_run(struct ccn_schedule *sched)
 {
     heapmicros ans;
-    update_time(sched);
-    while (sched->heap_n > 0 && sched->heap[0].event_time <= sched->now) {
+    do {
         while (sched->heap_n > 0 && sched->heap[0].event_time <= sched->now)
             ccn_schedule_run_next(sched);
         update_time(sched);
-    }
+    } while (sched->heap_n > 0 && sched->heap[0].event_time <= sched->now);
     if (sched->heap_n == 0)
         return(-1);
     ans = sched->heap[0].event_time - sched->now;
