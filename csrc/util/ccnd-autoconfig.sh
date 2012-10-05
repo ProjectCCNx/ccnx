@@ -18,8 +18,14 @@
 D=`dirname "$0"`
 export PATH="$D:$PATH"
 
-# Removing any previously existed default route
-for i in `ccndstatus | grep "ccnx:/ face" | awk '{print $3}'`; do ccndc destroy face $i; done
+ccndstatus | grep 224.0.23.170:59695 > /dev/null
+MCAST_EXISTED=$?
+
+# Removing any previously created (either by this script or ccndc srv command) default route
+for i in `ccndstatus | grep "ccnx:/autoconf-route face" | awk '{print $3}'`; do 
+   ccndc del / face $i
+   ccndc del /autoconf-route face $i
+done
 
 # Set temporary multicast face
 ccndc -t 10 add "/local/ndn" udp  224.0.23.170 59695 
@@ -31,14 +37,19 @@ if [ "x$info" = "x" ]; then
    # Try to use DNS search list to get default route information
    ccndc srv
 
-   # destroying multicast face
-   ccndstatus | grep 224.0.23.170:59695 | awk '{print $2}' | xargs ccndc destroy face
+   if [ ! $MCAST_EXISTED ]; then
+      # destroying multicast face
+      ccndstatus | grep 224.0.23.170:59695 | awk '{print $2}' | xargs ccndc destroy face
+   fi
    exit 1
 fi
 
 echo Setting default route to a local hub: "$info"
 echo "$info" | xargs ccndc add / udp
+echo "$info" | xargs ccndc add /autoconf-route udp
 
-# destroying multicast face
-ccndstatus | grep 224.0.23.170:59695 | awk '{print $2}' | xargs ccndc destroy face
+if [ ! $MCAST_EXISTED ]; then
+   # destroying multicast face
+   ccndstatus | grep 224.0.23.170:59695 | awk '{print $2}' | xargs ccndc destroy face
+fi
 
