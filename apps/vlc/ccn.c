@@ -459,21 +459,16 @@ ccn_event_thread(void *p_this)
         p_header = ccn_get_header(p_sys->ccn, p_name, CCN_HEADER_TIMEOUT);
         if (p_header != NULL) {
             p_access->info.i_size = p_header->length;
+            p_sys->i_chunksize = p_header->block_size;
             ccn_header_destroy(&p_header);
         }
         msg_Dbg(p_access, "CCN.Input set length %"PRId64, p_access->info.i_size);
     }
     ccn_charbuf_destroy(&p_name);
 
-    for (i=0; i <= p_sys->i_prefetch; i++) {
-        p_name = sequenced_name(p_sys->p_name, i);
-        i_ret = ccn_express_interest(p_sys->ccn, p_name, p_sys->prefetch,
-                                     p_sys->p_prefetch_template);
-        ccn_charbuf_destroy(&p_name);        
-    }
-
     p_co = ccn_charbuf_create();
     CHECK_NOMEM(p_co, "CCN.Input failed: no memory for initial content");
+    /* make sure we can get the first block, or fail early */
     p_name = sequenced_name(p_sys->p_name, 0);
     i_ret = ccn_get(p_sys->ccn, p_name, p_sys->p_data_template, 5000, p_co, NULL, NULL, 0);
     ccn_charbuf_destroy(&p_co);
@@ -481,12 +476,22 @@ ccn_event_thread(void *p_this)
         msg_Err(p_access, "CCN.Input failed: unable to locate specified input");
         goto exit;
     }
+    /* now get the block for real */
     i_ret = ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming,
                                  p_sys->p_data_template);
     ccn_charbuf_destroy(&p_name);
     if (i_ret < 0) {
         msg_Err(p_access, "CCN.Input failed: unable to express interest");
         goto exit;
+    }
+    /* and start prefetches for some more, unless it's a short file */
+    for (i=1; i <= p_sys->i_prefetch; i++) {
+        if (i * p_sys->i_chunksize >= p_access->info.i_size)
+            break;
+        p_name = sequenced_name(p_sys->p_name, i);
+        i_ret = ccn_express_interest(p_sys->ccn, p_name, p_sys->prefetch,
+                                     p_sys->p_prefetch_template);
+        ccn_charbuf_destroy(&p_name);        
     }
 
     vlc_mutex_lock(&p_sys->lock);
