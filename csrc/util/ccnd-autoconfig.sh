@@ -37,7 +37,7 @@ if [ "x$info" = "x" ]; then
    # Try to use DNS search list to get default route information
    ccndc srv
 
-   if [ ! $MCAST_EXISTED ]; then
+   if [ $MCAST_EXISTED -eq 1 ]; then
       # destroying multicast face
       ccndstatus | grep 224.0.23.170:59695 | awk '{print $2}' | xargs ccndc destroy face
    fi
@@ -48,7 +48,7 @@ echo Setting default route to a local hub: "$info"
 echo "$info" | xargs ccndc add / udp
 echo "$info" | xargs ccndc add /autoconf-route udp
 
-if [ ! $MCAST_EXISTED ]; then
+if [ $MCAST_EXISTED -eq 1 ]; then
    # destroying multicast face
    ccndstatus | grep 224.0.23.170:59695 | awk '{print $2}' | xargs ccndc destroy face
 fi
