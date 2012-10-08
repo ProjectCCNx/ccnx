@@ -668,9 +668,9 @@ ccndc_srv(struct ccndc_data *self,
     }
     
 Cleanup:
-    free(uri);
-    free(uri_auto);
     free(host);
+    ccn_charbuf_destroy(&uri);
+    ccn_charbuf_destroy(&uri_auto);
     ccn_face_instance_destroy(&face);
     ccn_forwarding_entry_destroy(&prefix);
     ccn_forwarding_entry_destroy(&prefix_auto);
