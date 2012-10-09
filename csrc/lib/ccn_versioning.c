@@ -27,6 +27,7 @@
 #include <ccn/charbuf.h>
 #include <ccn/uri.h>
 #include <ccn/ccn_private.h>
+#include <sys/time.h>
 
 #define FF 0xff
 
@@ -75,8 +76,24 @@ append_future_vcomp(struct ccn_charbuf *templ)
     ccn_charbuf_append_closer(templ); /* </Component> */
 }
 
+/**
+ * Append InterestLifetime to partially constructed Interest.
+ * XXX: when (ccnb_)append_tagged_binary_number shows up in the library
+ * replace this function...
+ */
+static void
+answer_lifetime(struct ccn_charbuf *templ, uintmax_t lifetime)
+{
+    unsigned char buf[sizeof(lifetime)] = {0};
+    int i;
+    for (i = sizeof(buf) - 1; i >= 0 && lifetime > 0; i--, lifetime >>= 8)
+        buf[i] = lifetime & 0xff;
+    ccnb_append_tagged_blob(templ, CCN_DTAG_InterestLifetime,
+                            buf + i + 1, sizeof(buf) - i - 1);
+}
+
 static struct ccn_charbuf *
-resolve_templ(struct ccn_charbuf *templ, unsigned const char *vcomp, int size)
+resolve_templ(struct ccn_charbuf *templ, unsigned const char *vcomp, int size, int lifetime)
 {
     if (templ == NULL)
         templ = ccn_charbuf_create();
@@ -99,8 +116,16 @@ resolve_templ(struct ccn_charbuf *templ, unsigned const char *vcomp, int size)
     ccn_charbuf_append_closer(templ); /* </Exclude> */
     answer_highest(templ);
     answer_passive(templ);
+    if (lifetime > 0)
+        answer_lifetime(templ, lifetime);
     ccn_charbuf_append_closer(templ); /* </Interest> */
     return(templ);
+}
+
+static int
+ms_to_tu(int m)
+{
+    return ((m * 4096) / 1000);
 }
 
 /**
@@ -115,9 +140,8 @@ resolve_templ(struct ccn_charbuf *templ, unsigned const char *vcomp, int size)
  *        and the ending component appears to be a version, the routine
  *        returns 0 immediately, on the assumption that an explicit
  *        version has already been provided.
- * @param timeout_ms is a time value in milliseconds. This is applied per
- *        fetch attempt, so the total time may be longer by a factor that
- *        depends on the number of (ccn) hops to the source(s).
+ * @param timeout_ms is a time value in milliseconds. This is the total time
+ *        that the caller can wait.
  * @returns -1 for error, 0 if name could not be extended, 1 if was.
  */
 int
@@ -134,7 +158,11 @@ ccn_resolve_version(struct ccn *h, struct ccn_charbuf *name,
     struct ccn_indexbuf *ndx = ccn_indexbuf_create();
     const unsigned char *vers = NULL;
     size_t vers_size = 0;
+    struct timeval start, prev, now;
     int n;
+    int rtt_max = 0;
+    int rtt;
+    int ttimeout;
     struct ccn_indexbuf *nix = ccn_indexbuf_create();
     unsigned char lowtime[7] = {CCN_MARKER_VERSION, 0, FF, FF, FF, FF, FF};
     
@@ -153,9 +181,20 @@ ccn_resolve_version(struct ccn *h, struct ccn_charbuf *name,
             goto Finish;
         }    
     }
-    templ = resolve_templ(templ, lowtime, sizeof(lowtime));
+    templ = resolve_templ(templ, lowtime, sizeof(lowtime),
+                          ms_to_tu(timeout_ms) * 7 / 8);
     ccn_charbuf_append(prefix, name->buf, name->length); /* our copy */
     cobj->length = 0;
+    gettimeofday(&start, NULL);
+    prev = start;
+    /*
+     * the algorithm for CCN_V_HIGHEST is to send the initial Interest with
+     * a lifetime that will ensure 1 resend before the timeout, and to keep
+     * keep sending an Interest, excluding earlier versions, tracking the
+     * maximum round trip time and using a timeout of 4*RTT, and an interest
+     * lifetime that should get a retransmit.   If there is no response,
+     * return the highest version found so far.
+     */
     res = ccn_get(h, prefix, templ, timeout_ms, cobj, pco, ndx, 0);
     while (cobj->length != 0) {
         if (pco->type == CCN_CONTENT_NACK) // XXX - also check for number of components
@@ -171,10 +210,18 @@ ccn_resolve_version(struct ccn *h, struct ccn_charbuf *name,
             myres = 0;
             if ((versioning_flags & CCN_V_EST) == 0)
                 break;
-            templ = resolve_templ(templ, vers, vers_size);
+            gettimeofday(&now, NULL);
+            rtt = (now.tv_sec - prev.tv_sec) * 1000000 + (now.tv_usec - prev.tv_usec);
+            if (rtt > rtt_max) rtt_max = rtt;
+            prev = now;
+            timeout_ms -= (now.tv_sec - start.tv_sec) * 1000 + (now.tv_usec - start.tv_usec) / 1000;
+            if (timeout_ms <= 0)
+                break;
+            ttimeout = timeout_ms < (rtt_max/250) ? timeout_ms : (rtt_max/250);
+            templ = resolve_templ(templ, vers, vers_size, ms_to_tu(ttimeout) * 7 / 8);
             if (templ == NULL) break;
             cobj->length = 0;
-            res = ccn_get(h, prefix, templ, timeout_ms, cobj, pco, ndx,
+            res = ccn_get(h, prefix, templ, ttimeout, cobj, pco, ndx,
                           CCN_GET_NOKEYWAIT);
         }
         else break;
