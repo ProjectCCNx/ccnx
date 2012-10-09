@@ -187,11 +187,9 @@ ccndc_query_srv(const unsigned char *domain, int domain_size,
 	(void)sizeof(class);
     
     if (hostp) {
-        size = strlen(host);
-        *hostp = calloc(1, size);
+        *hostp = strdup(host);
         if (!*hostp)
             return (-1);
-        strncpy(*hostp, host, size);
     }
     if (portp) {
         *portp = port;
