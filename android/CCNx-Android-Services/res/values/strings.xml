@@ -27,6 +27,7 @@
 	<string name="label_ccns_debug">CCNS_DEBUG:</string>
 	<string name="label_about">About</string>
     <string name="label_reset">Reset Service</string>
+    <string name="label_ccndstatus">CCND Status</string>
     <string name="label_ok">OK</string>
     <string name="service_started1_msg">CCNx Service Control started</string>
     <string name="about_text">CCNx 0.6.2\n/*
