@@ -188,10 +188,10 @@ ccndc_query_srv(const unsigned char *domain, int domain_size,
     
     if (hostp) {
         size = strlen(host);
-        *hostp = calloc(1, size);
+        *hostp = calloc(1, size+1);
         if (!*hostp)
             return (-1);
-        strncpy(*hostp, host, size);
+        strncpy(*hostp, host, size+1);
     }
     if (portp) {
         *portp = port;
