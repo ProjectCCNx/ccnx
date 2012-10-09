@@ -47,6 +47,7 @@ import android.widget.TextView;
 import android.widget.EditText;
 import android.widget.Toast;
 import android.widget.Spinner;
+import android.net.Uri;
 
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -58,6 +59,7 @@ import java.util.Enumeration;
  */
 public final class Controller extends Activity implements OnClickListener {
 	public final static String TAG = "CCNx Service Controller";
+    public static final String CCNX_WS_URL = "http://127.0.0.1:9695";
 	private Button mAllBtn;
 	private ProgressDialog pd;
 	
@@ -166,6 +168,10 @@ public final class Controller extends Activity implements OnClickListener {
 	            control.clearErrorMessage();
 	            Toast.makeText(this, "Reset CCNxServiceStatus complete, new status is: {ccnd: " + control.getCcndStatus().name() + 
 	            	", repo: " + control.getRepoStatus().name() + "}", 10).show();
+	            return true;
+	        case R.id.ccndstatus:
+                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(CCNX_WS_URL));
+                startActivity(intent);
 	            return true;
 	        case R.id.about:
 	        	setContentView(R.layout.aboutview);

@@ -4,4 +4,6 @@
         android:title="@string/label_reset" />
     <item android:id="@+id/about"
         android:title="@string/label_about" />
+    <item android:id="@+id/ccndstatus"
+        android:title="@string/label_ccndstatus" />
 </menu>
