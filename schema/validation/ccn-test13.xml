@@ -35,7 +35,7 @@
           </Name>
         </KeyName>
       </KeyLocator>
-      <OptExt ccnbencoding="base64Binary">qXNhbXBsZZ5YWVoAAdIAAOKIftjQ</OptExt>
+      <ExtOpt ccnbencoding="base64Binary">qXNhbXBsZZ5YWVoAAdIAAOKIftjQ</ExtOpt>
     </SignedInfo>
     <Content ccnbencoding="base64Binary"/>
   </ContentObject>
