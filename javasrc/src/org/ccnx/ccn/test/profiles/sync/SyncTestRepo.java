@@ -75,7 +75,9 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 	@Test
 	public void testSyncStartWithHandle() throws Exception {
 		Log.info(Log.FAC_TEST, "Starting testSyncStartWithHandle");
+		
 		ContentName prefix1;
+		callbackNames.clear();
 		prefix1 = prefix.append("slice1");
 
 		CCNSync sync1 = new CCNSync();
@@ -92,6 +94,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		Log.info(Log.FAC_TEST, "Starting testSyncStartWithoutHandle");
 		
 		ContentName prefix1;
+		callbackNames.clear();
 		prefix1 = prefix.append("slice2");
 		CCNSync sync1 = new CCNSync();
 		ConfigSlice slice2 = sync1.startSync(getHandle, topo, prefix1, this);
@@ -107,6 +110,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		Log.info(Log.FAC_TEST, "Starting testSyncClose");
 		
 		ContentName prefix1;
+		callbackNames.clear();
 		prefix1 = prefix.append("slice3");
 		CCNSync sync1 = new CCNSync();
 		ConfigSlice slice3 = sync1.startSync(getHandle, topo, prefix1, this);
@@ -146,6 +150,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		
 		ContentName prefix1;
 		ContentName prefix2;
+		callbackNames.clear();
 		prefix1 = prefix.append("slice4");
 		CCNSync sync1 = new CCNSync();
 		ConfigSlice slice4 = sync1.startSync(getHandle, topo, prefix1, this);
@@ -177,6 +182,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		Log.info(Log.FAC_TEST, "Starting testSyncRestart");
 		
 		ContentName prefix1;
+		callbackNames.clear();
 		prefix1 = prefix.append("slice6");
 		CCNSync sync1 = new CCNSync();
 		ConfigSlice slice6 = sync1.startSync(getHandle, topo, prefix1, this);
@@ -241,6 +247,8 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 	// @Test - disable this test for 0.6.2 release
 	public void testSyncRoot() throws Exception {
 		Log.info(Log.FAC_TEST,"Starting testSyncRoot");
+		
+		callbackNames.clear();
 		ContentName prefix1;
 		CCNSync sync1 = new CCNSync();
 		prefix1 = prefix.append("slice7");
@@ -304,6 +312,8 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 	@Test
 	public void testSyncStartName() throws Exception {
 		Log.info(Log.FAC_TEST,"Starting testSyncStartName");
+		
+		callbackNames.clear();
 		ContentName prefix1;
 		prefix1 = prefix.append("slice8");
 		CCNSync sync1 = new CCNSync();
