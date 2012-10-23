@@ -790,6 +790,11 @@ ccn_parse_SignedInfo(struct ccn_buf_decoder *d, struct ccn_parsed_ContentObject 
             ccn_buf_check_close(d);
         }
         x->offset[CCN_PCO_E_KeyLocator] = d->decoder.token_index;
+        
+        x->offset[CCN_PCO_B_ExtOpt] = d->decoder.token_index;
+        ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_ExtOpt, 2, -1);
+        x->offset[CCN_PCO_E_ExtOpt] = d->decoder.token_index;
+        
         ccn_buf_check_close(d);
     }
     else
