@@ -32,6 +32,9 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 public class ccnjavasyncwatch implements Usage, CCNSyncHandler{
 	static ccnjavasyncwatch ccnsync = new ccnjavasyncwatch();
 	
+	public ArrayList<ContentName> seen = new ArrayList<ContentName>();
+	public boolean checkSeen = false;
+	
 	public void usage(String extraUsage) {
 		System.out.println("usage: ccnjavasyncwatch [-log level] -t <topo> -p <prefix> [-f filter] [-r roothash-hex] [-w timeout-secs]");
 		System.exit(1);
@@ -70,6 +73,10 @@ public class ccnjavasyncwatch implements Usage, CCNSyncHandler{
 					hash = ContentName.fromURI(args[i+1]);
 				else if (args[i].equals("-w"))
 					timeout = Long.parseLong(args[i+1]);
+				else if (args[i].equals("-s")) {
+					checkSeen = true;
+					continue;
+				}
 				i = i+1;
 			}
 			
@@ -129,5 +136,11 @@ public class ccnjavasyncwatch implements Usage, CCNSyncHandler{
 
 	public void handleContentName(ConfigSlice syncSlice, ContentName syncedContent) {
 		System.out.println("Got a new name!!!! "+ syncedContent);
+		if (checkSeen) {
+			if (seen.contains(syncedContent)) {
+				System.out.println("Oh-oh! it was a duplicate!");
+			}
+			seen.add(syncedContent);
+		}
 	}
 }

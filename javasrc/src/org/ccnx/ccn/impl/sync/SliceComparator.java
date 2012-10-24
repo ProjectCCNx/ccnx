@@ -656,10 +656,6 @@ public class SliceComparator implements Runnable {
 						}
 						break;
 					case LEAF:
-						int comp = sne.getName().compareTo(name);
-						if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST) && _updateNames.size() > 0) {
-							Log.finest(Log.FAC_SYNC, "Update compare: name from tree (expanded) is {0}, name  is {1}, comp is {2}", sne.getName(), name, comp);
-						}
 						if (ste.getPos() == 0 && !redo) {
 							// If we are after everything in X, no need to compare to X
 							int comp2 = snc.getMaxName().getName().compareTo(name);
@@ -676,11 +672,15 @@ public class SliceComparator implements Runnable {
 									leafCount += snc.getLeafCount();
 									nodeElements.put(thisHashStartName, thisHashElement);
 								}
-								continue;
+								break;
 							}
 						}
-						found = true;
-						if (comp < 0 || redo) {
+						int comp = sne.getName().compareTo(name);
+						if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST) && _updateNames.size() > 0) {
+							Log.finest(Log.FAC_SYNC, "Update compare: name from tree (expanded) is {0}, name  is {1}, comp is {2}", sne.getName(), name, comp);
+						}
+						ste.incPos();
+						if (comp > 0 || redo) {
 							// We've have to redo everything starting from here (which means the start of this
 							// original node).
 							redo = true;
@@ -692,12 +692,14 @@ public class SliceComparator implements Runnable {
 								neededNames.add(tsne.getName());
 							}
 							ste = pop(_current);
-						} else  {
-							ste.incPos();
-							if (ste.lastPos() && thisHashElement != null && thisHashStartName != null) {
-								leafCount += tmpLeafCount;
-								nodeElements.put(thisHashStartName, thisHashElement);
-							}
+							found = true;	// We didn't really find the name but we don't need to look anymore
+							break;
+						} else if (comp == 0) {
+							found = true;
+						}
+						if (ste.lastPos() && thisHashElement != null && thisHashStartName != null) {
+							leafCount += tmpLeafCount;
+							nodeElements.put(thisHashStartName, thisHashElement);
 						}
 						break;
 					default:
