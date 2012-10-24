@@ -244,7 +244,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		Log.info(Log.FAC_TEST,"Finished running testSyncRestart");
 	}
 	
-	// @Test - disable this test for 0.6.2 release
+	@Test
 	public void testSyncRoot() throws Exception {
 		Log.info(Log.FAC_TEST,"Starting testSyncRoot");
 		

@@ -34,8 +34,6 @@ import org.ccnx.ccn.protocol.ContentName;
 
 /**
  * Entry used for navigating trees of hashes
- * 
- * IMPORTANT NOTE: For now we rely on external synchronization for access to internal values of this class
  */
 public class SyncTreeEntry {
 	// Flags values
@@ -55,7 +53,11 @@ public class SyncTreeEntry {
 	}
 	
 	public void setNode(SyncNodeComposite snc) {
-		_node = snc;
+		synchronized (this) {
+			if (_node != null)
+				return;
+			_node = snc;
+		}
 		if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
 			SyncNodeComposite.decodeLogging(_node);
 		}
@@ -68,9 +70,12 @@ public class SyncTreeEntry {
 	 * @param content
 	 */
 	public void setRawContent(byte[] content) {
-		_node = null;
-		_rawContent = content;
-		_position = 0;
+		synchronized (this) {
+			if (_node != null)
+				return;
+			_rawContent = content;
+			_position = 0;
+		}
 	}
 	
 	/**
@@ -84,9 +89,10 @@ public class SyncTreeEntry {
 	 * @return
 	 */
 	public SyncNodeComposite getNode(XMLDecoder decoder) {
-		if (null == _node && null != _rawContent) {
-			if (null == decoder)
-				return null;
+		SyncNodeComposite node = _node;
+		synchronized (this) {
+			if (null != _node || null == _rawContent || null == decoder)
+				return _node;
 			_node = new SyncNodeComposite();
 			try {
 				_node.decode(_rawContent, decoder);
@@ -98,11 +104,12 @@ public class SyncTreeEntry {
 				return null;
 			}
 			_rawContent = null;
-			if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
-				SyncNodeComposite.decodeLogging(_node);
-			}
+			node = _node;
 		}
-		return _node;
+		if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
+			SyncNodeComposite.decodeLogging(_node);
+		}
+		return node;
 	}
 	
 	public SyncNodeComposite getNode() {
@@ -213,31 +220,31 @@ public class SyncTreeEntry {
 	 * Routines for getting and cycling through the references
 	 * @return
 	 */
-	public SyncNodeComposite.SyncNodeElement getCurrentElement() {
+	public synchronized SyncNodeComposite.SyncNodeElement getCurrentElement() {
 		if (null == _node)
 			return null;
 		return _node.getElement(_position);
 	}
 	
-	public void incPos() {
+	public synchronized void incPos() {
 		_position++;
 	}
 	
-	public void setPos(int position) {
+	public synchronized void setPos(int position) {
 		_position = position;
 	}
 	
-	public int getPos() {
-		return _position;
+	public synchronized int getPos() {
+			return _position;
 	}
 	
-	public boolean lastPos() {
+	public synchronized boolean lastPos() {
 		if (_node == null)
 			return false;	// Needed to prompt a getNode
 		return (_position >= _node.getRefs().size());
 	}
 	
-	public byte[] getHash() {
+	public synchronized byte[] getHash() {
 		return _hash;
 	}
 	
@@ -245,11 +252,11 @@ public class SyncTreeEntry {
 		setFlag(flag, PENDING);
 	}
 	
-	public boolean getPending() {
-		return (_flags & PENDING) != 0;
+	public synchronized boolean getPending() {
+			return (_flags & PENDING) != 0;
 	}
 		
-	public boolean isCovered() {
+	public synchronized boolean isCovered() {
 		return (_flags & COVERED) != 0;
 	}
 	
@@ -257,14 +264,16 @@ public class SyncTreeEntry {
 		setFlag(flag, COVERED);
 	}
 	
-	public boolean equals(SyncTreeEntry ste) {
+	public synchronized boolean equals(SyncTreeEntry ste) {
 		return Arrays.equals(_hash, ste.getHash());
 	}
 	
 	private void setFlag(boolean flag, long type) {
-		if (flag)
-			_flags |= type;
-		else
-			_flags &= ~type;
+		synchronized (this) {
+			if (flag)
+				_flags |= type;
+			else
+				_flags &= ~type;
+		}
 	}
 }

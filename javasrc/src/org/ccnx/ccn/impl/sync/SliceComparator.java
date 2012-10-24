@@ -63,7 +63,12 @@ import org.ccnx.ccn.protocol.Interest;
  * New hashes seen from the network are fed into the system via the "addPending" methods.
  * 
  * Note: We purposely don't decode SyncNodeComposites in handlers since they are big and slow and we risk
- * timing out the handler by doing so. 
+ * timing out the handler by doing so.
+ * 
+ * Note about synchronization:  This class is multi-threaded and contains many class global fields which at first
+ * glance would seem to need synchronization. However care has been taken to insure that the "run" loop can not be
+ * run more than once simultaneously and that all unsynchronized global fields are only referenced from the run
+ * routine or by internal methods called only by it so that synchronization is in fact unnecessary.
  *
  */
 public class SliceComparator implements Runnable {
@@ -255,9 +260,7 @@ public class SliceComparator implements Runnable {
 	private boolean doPreload(SyncTreeEntry srt) throws SyncException {
 		Boolean ret = false;
 		SyncNodeComposite snc = null;
-		synchronized (this) {
-			snc = srt.getNode(_decoder);
-		}
+		snc = srt.getNode(_decoder);
 		if (null != snc) {
 			for (SyncNodeElement sne : snc.getRefs()) {
 				if (sne.getType() == SyncNodeType.HASH) {
@@ -281,11 +284,9 @@ public class SliceComparator implements Runnable {
 	private boolean requestNode(byte[] hash) throws SyncException {
 		boolean ret = false;
 		SyncTreeEntry tsrt = _pbsm.addHash(hash);
-		synchronized (this) {
-			if (tsrt.getNode(_decoder) == null && !tsrt.getPending()) {
-				tsrt.setPending(true);
-				ret = ProtocolBasedSyncMonitor.requestNode(_slice, hash, _handle, _nfh);
-			}
+		if (tsrt.getNode(_decoder) == null && !tsrt.getPending()) {
+			tsrt.setPending(true);
+			ret = ProtocolBasedSyncMonitor.requestNode(_slice, hash, _handle, _nfh);
 		}
 		return ret;
 	}
@@ -335,9 +336,7 @@ public class SliceComparator implements Runnable {
 			if (null == srtY) {
 				break;  // we're done
 			}
-			synchronized (this) {
-				sncY = srtY.getNode(_decoder);
-			}
+			sncY = srtY.getNode(_decoder);
 			if (null != sncY) {
 				sneY = srtY.getCurrentElement();
 			}
@@ -353,9 +352,7 @@ public class SliceComparator implements Runnable {
 				srtX = getHead(_current);
 			}
 			if (null != srtX) {
-				synchronized (this) {
-					sncX = srtX.getNode(_decoder);
-				}
+				sncX = srtX.getNode(_decoder);
 				if (null != sncX) {
 					sneX = srtX.getCurrentElement();
 				}
@@ -909,11 +906,9 @@ public class SliceComparator implements Runnable {
 			if (Log.isLoggable(Log.FAC_SYNC, Level.FINE))
 				Log.fine(Log.FAC_SYNC, "Saw data from nodefind: hash: {0}", Component.printURI(hash));
 			SyncTreeEntry ste = _pbsm.addHash(hash);
-			synchronized (this) {
-				ste.setRawContent(data.content());
-				ste.setPending(false);
-				kickCompare();
-			}
+			ste.setRawContent(data.content());
+			ste.setPending(false);
+			kickCompare();
 			return null;
 		}
 	}
