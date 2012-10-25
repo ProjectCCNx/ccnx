@@ -844,7 +844,8 @@ int ccn_chk_signing_params(struct ccn *h,
                            struct ccn_signing_params *result,
                            struct ccn_charbuf **ptimestamp,
                            struct ccn_charbuf **pfinalblockid,
-                           struct ccn_charbuf **pkeylocator);
+                           struct ccn_charbuf **pkeylocator,
+                           struct ccn_charbuf **pextopt);
 
 /* low-level content-object signing */
 
