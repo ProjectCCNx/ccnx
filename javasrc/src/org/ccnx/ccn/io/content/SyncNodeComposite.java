@@ -153,7 +153,7 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 	
 	public SyncNodeComposite() {}
 	
-	public SyncNodeComposite(ArrayList<SyncNodeElement> refs, SyncNodeElement minName, SyncNodeElement maxName, int leafCount) {
+	public SyncNodeComposite(ArrayList<SyncNodeElement> refs, SyncNodeElement minName, SyncNodeElement maxName, int leafCount, int depth) {
 		_refs = refs;
 		_minName = minName;
 		_maxName = maxName;
@@ -162,14 +162,7 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 		
 		_version = Sync.SYNC_VERSION;
 		
-		// TODO: For now we just support trees here that are 1 or 2 nodes deep
-		_treeDepth = 1;
-		for (SyncNodeElement sne : refs) {
-			if (sne.getType() == SyncNodeType.HASH) {
-				_treeDepth = 2;
-				break;
-			}
-		}
+		_treeDepth = depth;
 	}
 	
 	public ArrayList<SyncNodeElement> getRefs() {

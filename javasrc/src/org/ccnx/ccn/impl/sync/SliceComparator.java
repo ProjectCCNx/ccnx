@@ -102,6 +102,7 @@ public class SliceComparator implements Runnable {
 	protected ContentName _startName = null;
 	protected boolean _doCallbacks = true;
 	protected TreeSet<ContentName> _updateNames = new TreeSet<ContentName>();
+	protected NodeFactory _nFactory = new NodeFactory();
 	
 	/**
 	 * Start a comparison on a slice which will call back "callback" each time
@@ -730,7 +731,7 @@ public class SliceComparator implements Runnable {
 		
 		while (neededNames.size() > 0) {
 			ContentName firstName = neededNames.first();
-			newHead = SyncTreeEntry.newLeafNode(neededNames);
+			newHead = _nFactory.newLeafNode(neededNames);
 			_pbsm.putHashEntry(newHead);
 			if (neededNames.size() > 0) {	// Need to split
 				newHasNodes = true;
@@ -768,7 +769,7 @@ public class SliceComparator implements Runnable {
 								refs.add(nodeElements.get(tname));
 							}
 							SyncNodeElement maxElement = snc.getMaxName();
-							snc = new SyncNodeComposite(refs, minElement, maxElement, leafCount);
+							snc = new SyncNodeComposite(refs, minElement, maxElement, leafCount, 2);
 							newHead = _pbsm.addHash(snc.getHash());
 							newHead.setNode(snc);
 							newHead.setCovered(true);
