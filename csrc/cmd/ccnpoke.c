@@ -4,7 +4,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -337,9 +337,8 @@ main(int argc, char **argv)
         else if (sp.template_ccnb->length > 0) {
             sp.template_ccnb->length--;
         }
-        ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_ExtOpt, CCN_DTAG);
-        ccn_charbuf_append_charbuf(sp.template_ccnb, extopt);
-        ccn_charbuf_append_closer(sp.template_ccnb);
+        ccnb_append_tagged_blob(sp.template_ccnb, CCN_DTAG_ExtOpt,
+                                extopt->buf, extopt->length);
         sp.sp_flags |= CCN_SP_TEMPL_EXT_OPT;
         ccn_charbuf_append_closer(sp.template_ccnb);
     }
