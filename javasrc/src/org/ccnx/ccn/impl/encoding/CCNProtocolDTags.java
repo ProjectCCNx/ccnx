@@ -54,6 +54,7 @@ public class CCNProtocolDTags {
 	public static final int Link = 31;
 	public static final int LinkAuthenticator = 32;
 	public static final int NameComponentCount = 33;	/* DeprecatedInInterest */
+	public static final int ExtOpt = 34;
 	public static final int RootDigest = 36;
 	public static final int Signature = 37;
 	public static final int Start = 38;
@@ -152,7 +153,7 @@ public class CCNProtocolDTags {
 		"Any", "Name", "Component", "Certificate", "Collection", "CompleteName",
 		"Content", "SignedInfo", "ContentDigest", "ContentHash", null, "Count", "Header",
 		"Interest", "Key", "KeyLocator", "KeyName", "Length", "Link", "LinkAuthenticator",
-		"NameComponentCount", null, null, "RootDigest", "Signature", "Start", "Timestamp", "Type",
+		"NameComponentCount", "ExtOpt", null, "RootDigest", "Signature", "Start", "Timestamp", "Type",
 		"Nonce", "Scope", "Exclude", "Bloom", "BloomSeed", null, "AnswerOriginKind",
 		"InterestLifetime", null, null, null, null, "Witness", "SignatureBits", "DigestAlgorithm", "BlockSize",
 		null, "FreshnessSeconds", "FinalBlockID", "PublisherPublicKeyDigest", "PublisherCertificateDigest",
