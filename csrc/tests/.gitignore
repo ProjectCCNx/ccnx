@@ -8,7 +8,9 @@ ephemeral*
 *.out
 *face*.ccnb
 *reg*.ccnb
+extopt.ccnb
 heartbeat.ccnb
+scope0.ccnb
 unanswered.ccnb
 *-pre.html
 *-post.html
