@@ -18,6 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,6 +56,7 @@ usage(const char *progname)
             " Reads data from stdin and sends it to the local ccnd"
             " as a single ContentObject under the given URI\n"
             "  -h - print this message and exit\n"
+            "  -e file - extopt from supplied file\n"
             "  -f - force - send content even if no interest received\n"
             "  -l - set FinalBlockId from last segment of URI\n"
             "  -v - verbose\n"
@@ -107,6 +109,7 @@ main(int argc, char **argv)
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *pname = NULL;
     struct ccn_charbuf *temp = NULL;
+    struct ccn_charbuf *extopt = NULL;
     long expire = -1;
     int versioned = 0;
     size_t blocksize = 8*1024;
@@ -123,10 +126,29 @@ main(int argc, char **argv)
     int timeout = -1;
     int setfinal = 0;
     int prefixcomps = -1;
+    int fd;
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     
-    while ((res = getopt(argc, argv, "fhk:lvV:p:t:w:x:")) != -1) {
+    while ((res = getopt(argc, argv, "e:fhk:lvV:p:t:w:x:")) != -1) {
         switch (res) {
+            case 'e':
+                if (extopt == NULL)
+                    extopt = ccn_charbuf_create();
+                fd = open(optarg, O_RDONLY);
+                if (fd < 0) {
+                    perror(optarg);
+                    exit(1);
+                }
+                for (;;) {
+                    read_res = read(fd, ccn_charbuf_reserve(extopt, 64), 64);
+                    if (read_res <= 0)
+                        break;
+                    extopt->length += read_res;
+                }
+                if (read_res < 0)
+                    perror(optarg);
+                close(fd);
+                break;
             case 'f':
                 force = 1;
                 break;
@@ -306,6 +328,21 @@ main(int argc, char **argv)
         ccn_charbuf_append_closer(sp.template_ccnb);
         ccn_charbuf_destroy(&c);
     }
+
+    if (extopt != NULL && extopt->length > 0) {
+        if (sp.template_ccnb == NULL) {
+            sp.template_ccnb = ccn_charbuf_create();
+            ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_SignedInfo, CCN_DTAG);
+        }
+        else if (sp.template_ccnb->length > 0) {
+            sp.template_ccnb->length--;
+        }
+        ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_ExtOpt, CCN_DTAG);
+        ccn_charbuf_append_charbuf(sp.template_ccnb, extopt);
+        ccn_charbuf_append_closer(sp.template_ccnb);
+        sp.sp_flags |= CCN_SP_TEMPL_EXT_OPT;
+        ccn_charbuf_append_closer(sp.template_ccnb);
+    }
     
     /* Create the signed content object, ready to go */
     temp->length = 0;
@@ -359,5 +396,6 @@ main(int argc, char **argv)
     ccn_charbuf_destroy(&pname);
     ccn_charbuf_destroy(&temp);
     ccn_charbuf_destroy(&sp.template_ccnb);
+    ccn_charbuf_destroy(&extopt);
     exit(status);
 }
