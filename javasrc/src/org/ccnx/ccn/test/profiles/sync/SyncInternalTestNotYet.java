@@ -21,7 +21,7 @@ import java.util.TreeSet;
 import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.impl.sync.NodeFactory;
+import org.ccnx.ccn.impl.sync.NodeBuilder;
 import org.ccnx.ccn.impl.sync.ProtocolBasedSyncMonitor;
 import org.ccnx.ccn.impl.sync.SyncTreeEntry;
 import org.ccnx.ccn.io.content.ConfigSlice;
@@ -45,7 +45,7 @@ public class SyncInternalTestNotYet extends CCNTestBase implements CCNContentHan
 	ContentName prefix;
 	ContentName topo;
 	ContentObject receivedNode = null;
-	NodeFactory nf = new NodeFactory();
+	NodeBuilder nf = new NodeBuilder();
 	
 	@Before
 	public void setUpNameSpace() {

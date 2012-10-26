@@ -121,7 +121,7 @@ public class SyncTreeEntry {
 	 * @param names
 	 * @return entry for the new node or null if none
 	 */
-	public static SyncTreeEntry newNode(NodeFactory nf, TreeSet<ContentName> names) {
+	public static SyncTreeEntry newNode(NodeBuilder nf, TreeSet<ContentName> names) {
 		ArrayList<SyncNodeElement> snes = new ArrayList<SyncNodeElement>();
 		int leafCount = names.size();
 		SyncTreeEntry ourEntry = null;
