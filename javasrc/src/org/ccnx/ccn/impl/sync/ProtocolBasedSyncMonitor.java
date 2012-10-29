@@ -40,7 +40,7 @@ import org.ccnx.ccn.protocol.Interest;
 public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentHandler, CCNInterestHandler {
 	protected CCNHandle _handle;
 	protected HashMap<SyncHashEntry, ArrayList<SliceComparator>> _comparators = new HashMap<SyncHashEntry, ArrayList<SliceComparator>>();
-	protected SyncHashCache _shc = new SyncHashCache();
+	protected SyncNodeCache _snc = new SyncNodeCache();
 	
 	public ProtocolBasedSyncMonitor(CCNHandle handle) {
 		_handle = handle;
@@ -55,10 +55,7 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 		synchronized (callbacks) {
 			registerCallbackInternal(syncHandler, slice);
 		}
-		SyncTreeEntry ste = null;
-		if (null != startHash)
-			ste = _shc.addHash(startHash);
-		SliceComparator sc = new SliceComparator(_shc, syncHandler, slice, ste, startName, _handle);
+		SliceComparator sc = new SliceComparator(_snc, syncHandler, slice, startHash, startName, _handle);
 		synchronized (this) {
 			SyncHashEntry she = new SyncHashEntry(slice.getHash());
 			ArrayList<SliceComparator> al = _comparators.get(she);
@@ -169,9 +166,9 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 		}
 		if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
 			Log.info(Log.FAC_SYNC, "Saw data from interest: hash: {0}", Component.printURI(hash));
-		SyncTreeEntry ste = _shc.addHash(hash);
 		if (null != al) {
 			for (SliceComparator sc : al) {
+				SyncTreeEntry ste = sc.addHash(hash);
 				if (sc.addPending(ste)) {
 					sc.checkNextRound();
 					sc.kickCompare();

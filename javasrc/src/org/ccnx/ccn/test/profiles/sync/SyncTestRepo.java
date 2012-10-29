@@ -269,6 +269,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		 * Test for start with empty root.  This should start at the time we start sync, but not give
 		 * us anything before that.
 		 */
+		Log.fine(Log.FAC_TEST, "Starting sync for empty root");
 		ContentName rootAdvise = new ContentName(slice7.topo, Sync.SYNC_ROOT_ADVISE_MARKER, slice7.getHash());
 		Interest interest = new Interest(rootAdvise);
 		interest.scope(1);
@@ -363,7 +364,8 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		boolean[]finished = (boolean[]) Array.newInstance(boolean.class, segments);
 		Arrays.fill(finished, true);
 		int loopsToTry = (segments * 2) + 20;
-		while (segments != 0 && loopsToTry > 0) {
+		boolean done = false;
+		while (segments != 0 && loopsToTry > 0 && !done) {
 			if (null != errorMessage)
 				Assert.fail(errorMessage);
 			try {
@@ -391,6 +393,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 							//all done!
 							segments = 0;
 							Log.fine(Log.FAC_TEST, "got all the segments!");
+							done = true;
 							break;
 						}
 					}
