@@ -40,10 +40,7 @@ import org.ccnx.ccn.protocol.Interest;
 public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentHandler, CCNInterestHandler {
 	protected CCNHandle _handle;
 	protected HashMap<SyncHashEntry, ArrayList<SliceComparator>> _comparators = new HashMap<SyncHashEntry, ArrayList<SliceComparator>>();
-	
-	// This contains all received hashes. These can be shared via different slice comparators (of course they
-	// would have to be on the same slice to have the same hashes).
-	protected HashMap<SyncHashEntry, SyncTreeEntry> _hashes = new HashMap<SyncHashEntry, SyncTreeEntry>();
+	protected SyncNodeCache _snc = new SyncNodeCache();
 	
 	public ProtocolBasedSyncMonitor(CCNHandle handle) {
 		_handle = handle;
@@ -58,10 +55,7 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 		synchronized (callbacks) {
 			registerCallbackInternal(syncHandler, slice);
 		}
-		SyncTreeEntry ste = null;
-		if (null != startHash)
-			ste = addHash(startHash);
-		SliceComparator sc = new SliceComparator(this, syncHandler, slice, ste, startName, _handle);
+		SliceComparator sc = new SliceComparator(_snc, syncHandler, slice, startHash, startName, _handle);
 		synchronized (this) {
 			SyncHashEntry she = new SyncHashEntry(slice.getHash());
 			ArrayList<SliceComparator> al = _comparators.get(she);
@@ -96,49 +90,6 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 				if (al.size() == 0)
 					_comparators.remove(she);
 			}
-		}
-	}
-	
-	/**
-	 * Add a new hash to the list of ones we've seen
-	 * @param hash
-	 * @return new SyncTreeEntry for the hash
-	 */
-	public SyncTreeEntry addHash(byte[] hash) {
-		synchronized (this) {
-			SyncTreeEntry entry = _hashes.get(new SyncHashEntry(hash));
-			if (null == entry) {
-				entry = new SyncTreeEntry(hash);
-				_hashes.put(new SyncHashEntry(hash), entry);
-			} else
-				entry.setPos(0);
-			return entry;
-		}
-	}
-	
-	/**
-	 * Get a SyncTreeEntry for a hash if there is one
-	 * @param hash
-	 * @return
-	 */
-	public SyncTreeEntry getHash(byte[] hash) {
-		if (null == hash)
-			return null;
-		synchronized (this) {
-			return _hashes.get(new SyncHashEntry(hash));
-		}
-	}
-	
-	/**
-	 * Put a specific entry in for a hash
-	 */
-	public void putHashEntry(SyncTreeEntry entry) {
-		SyncHashEntry she = new SyncHashEntry(entry.getHash());
-		synchronized (this) {
-			SyncTreeEntry tste = _hashes.get(she);
-			if (null != tste)
-				_hashes.remove(she);
-			_hashes.put(she, entry);
 		}
 	}
 	
@@ -215,9 +166,9 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 		}
 		if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
 			Log.info(Log.FAC_SYNC, "Saw data from interest: hash: {0}", Component.printURI(hash));
-		SyncTreeEntry ste = addHash(hash);
 		if (null != al) {
 			for (SliceComparator sc : al) {
+				SyncTreeEntry ste = sc.addHash(hash);
 				if (sc.addPending(ste)) {
 					sc.checkNextRound();
 					sc.kickCompare();

@@ -46,10 +46,13 @@ public class SyncTreeEntry {
 	protected SyncNodeComposite _node = null;
 	protected byte[] _rawContent = null;
 	protected int _position = 0;
+	protected SyncNodeCache _snc = null;
 	
-	public SyncTreeEntry(byte[] hash) {
+	public SyncTreeEntry(byte[] hash, SyncNodeCache cache) {
 		_hash = new byte[hash.length];
 		System.arraycopy(hash, 0, _hash, 0, hash.length);
+		_node = cache.getNode(hash);
+		_snc = cache;
 	}
 	
 	public void setNode(SyncNodeComposite snc) {
@@ -57,6 +60,7 @@ public class SyncTreeEntry {
 			if (_node != null)
 				return;
 			_node = snc;
+			_snc.putNode(snc);			
 		}
 		if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
 			SyncNodeComposite.decodeLogging(_node);
@@ -105,6 +109,7 @@ public class SyncTreeEntry {
 			}
 			_rawContent = null;
 			node = _node;
+			_snc.putNode(_node);
 		}
 		if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
 			SyncNodeComposite.decodeLogging(_node);
@@ -123,14 +128,14 @@ public class SyncTreeEntry {
 	 * @param names
 	 * @return entry for the new node or null if none
 	 */
-	public static SyncTreeEntry newNode(TreeSet<ContentName> names) {
+	public static SyncTreeEntry newNode(TreeSet<ContentName> names, SyncNodeCache cache) {
 		ArrayList<SyncNodeElement> snes = new ArrayList<SyncNodeElement>();
 		int leafCount = names.size();
 		SyncTreeEntry ourEntry = null;
 		SyncNodeElement firstElement = null;
 		SyncNodeElement lastElement = null; 
 		while (names.size() > 0) {
-			ourEntry = newLeafNode(names);
+			ourEntry = newLeafNode(names, cache);
 			SyncNodeElement sne = new SyncNodeElement(ourEntry.getHash());
 			if (names.size() > 0) {
 				if (null == firstElement)
@@ -144,7 +149,7 @@ public class SyncTreeEntry {
 		}
 		if (snes.size() > 0) {
 			SyncNodeComposite snc = new SyncNodeComposite(snes, firstElement, lastElement, leafCount);
-			ourEntry = new SyncTreeEntry(snc.getHash());
+			ourEntry = new SyncTreeEntry(snc.getHash(), cache);
 			ourEntry.setNode(snc);
 		}
 		return ourEntry;
@@ -158,7 +163,7 @@ public class SyncTreeEntry {
 	 * @param names - the set of names in canonical order
 	 * @return
 	 */
-	public static SyncTreeEntry newLeafNode(TreeSet<ContentName> names) {
+	public static SyncTreeEntry newLeafNode(TreeSet<ContentName> names, SyncNodeCache cache) {
 		ArrayList<SyncNodeComposite.SyncNodeElement> refs = new ArrayList<SyncNodeComposite.SyncNodeElement>();
 		int total = 0;
 		int limit = CCNSync.NODE_SPLIT_TRIGGER - CCNSync.NODE_SPLIT_TRIGGER/8;
@@ -211,7 +216,7 @@ public class SyncTreeEntry {
 			names.remove(tname);
 		}
 		SyncNodeComposite snc = new SyncNodeComposite(refs, refs.get(0), refs.get(refs.size() - 1), refs.size());
-		SyncTreeEntry ste = new SyncTreeEntry(snc.getHash());
+		SyncTreeEntry ste = new SyncTreeEntry(snc.getHash(), cache);
 		ste.setNode(snc);
 		return ste;
 	}
