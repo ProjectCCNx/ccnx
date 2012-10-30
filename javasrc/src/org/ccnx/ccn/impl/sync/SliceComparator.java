@@ -789,43 +789,7 @@ public class SliceComparator implements Runnable {
 				nodeElements.put(firstName, new SyncNodeElement(newHead.getHash()));
 		}
 		if (redo && newHasNodes) {
-			newHead = _nBuilder.createHeadRecursive(nodeElements, _snc, 2);
-			// OK its a little bogus to use newHead for what really should be a temp variable here,
-			// but if we can't find a hash (which we actually always should) it works out right
-			// with the rest of the code and if we find it, we reset newHead to the proper value.
-			SyncNodeElement firstNodeElement = nodeElements.get(nodeElements.firstKey());
-			newHead = getHash(firstNodeElement.getData());
-			if (null != newHead) {
-				SyncNodeComposite snc = newHead.getNode();
-				if (null == snc) {
-					Log.warning(Log.FAC_SYNC, "Couldn't get first node in update for {0} - shouldn't happen", 
-							Component.printURI(newHead.getHash()));
-					newHead = null;
-				} else {
-					SyncNodeElement minElement = snc.getMinName();
-					SyncNodeElement lastNodeElement = nodeElements.get(nodeElements.lastKey());
-					newHead = getHash(lastNodeElement.getData());
-					if (null != newHead) {
-						snc = newHead.getNode();
-						if (null == snc) {
-							Log.warning(Log.FAC_SYNC, "Couldn't get last node in update for {0} - shouldn't happen", 
-									Component.printURI(newHead.getHash()));
-							newHead = null;
-						} else {
-							// Have to make sure the refs are in correct order
-							ArrayList<SyncNodeElement> refs = new ArrayList<SyncNodeElement>();
-							for (ContentName tname : nodeElements.keySet()) {
-								refs.add(nodeElements.get(tname));
-							}
-							SyncNodeElement maxElement = snc.getMaxName();
-							snc = new SyncNodeComposite(refs, minElement, maxElement);
-							newHead = addHash(snc.getHash());
-							newHead.setNode(snc);
-							newHead.setCovered(true);
-						}
-					}
-				}
-			}
+			newHead = _nBuilder.createHeadRecursive(nodeElements, this, _snc, 2);
 		}
 		_current.clear();
 		if (null != newHead) {

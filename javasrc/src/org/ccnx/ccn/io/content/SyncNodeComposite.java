@@ -274,6 +274,10 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 		return _leafCount;
 	}
 	
+	public int getDepth() {
+		return _treeDepth;
+	}
+	
 	public static void decodeLogging(SyncNodeComposite node) {
 		Log.finest(Log.FAC_SYNC, "decode node for {0} depth = {1} refs = {2}", Component.printURI(node._longhash), 
 				node._treeDepth, node.getRefs().size());

@@ -37,7 +37,7 @@ public class NodeBuilder {
 	
 	public abstract class NodeCommon<X> {
 		
-		public SyncTreeEntry createNodeCommon(Collection<X> objects, int depth) {
+		public SyncTreeEntry createNodeCommon(Collection<X> objects, int depth, SyncNodeCache cache) {
 			ArrayList<SyncNodeComposite.SyncNodeElement> refs = new ArrayList<SyncNodeComposite.SyncNodeElement>();
 			int total = 0;
 			int limit = CCNSync.NODE_SPLIT_TRIGGER - CCNSync.NODE_SPLIT_TRIGGER/8;
@@ -76,7 +76,7 @@ public class NodeBuilder {
 			}
 			objects.removeAll(removes);
 			SyncNodeComposite snc = newNode(refs, depth);
-			SyncTreeEntry ste = new SyncTreeEntry(snc.getHash());
+			SyncTreeEntry ste = new SyncTreeEntry(snc.getHash(), cache);
 			ste.setNode(snc);
 			return ste;
 		}
@@ -94,7 +94,7 @@ public class NodeBuilder {
 	 * @param names - the set of names in canonical order
 	 * @return
 	 */
-	public SyncTreeEntry newLeafNode(TreeSet<ContentName> names) {
+	public SyncTreeEntry newLeafNode(TreeSet<ContentName> names, SyncNodeCache cache) {
 		return new NodeCommon<ContentName>() {
 			
 			public int extraSplit(ContentName nextName, ContentName tname, int total, int minLen, int prevMatch) {
@@ -128,7 +128,7 @@ public class NodeBuilder {
 			public SyncNodeComposite newNode(ArrayList<SyncNodeElement> refs,int depth) {
 				return new SyncNodeComposite(refs, refs.get(0), refs.get(refs.size() - 1), refs.size(), depth);
 			}
-		}.createNodeCommon(names, 1);
+		}.createNodeCommon(names, 1, cache);
 	}
 	
 	/**
@@ -138,7 +138,7 @@ public class NodeBuilder {
 	 * @param nodes
 	 * @return
 	 */
-	public SyncTreeEntry newNodeOfNodes(TreeMap<ContentName, SyncNodeElement> nodes, final SyncHashCache shc, int depth) {
+	public SyncTreeEntry newNodeOfNodes(TreeMap<ContentName, SyncNodeElement> nodes, final SliceComparator sc, SyncNodeCache cache, int depth) {
 		Collection<SyncNodeElement> values = nodes.values();
 		SyncTreeEntry ste = new NodeCommon<SyncNodeElement>() {		
 			public int extraSplit(SyncNodeElement n, SyncNodeElement tname, int total, int minLen, int prevMatch) {
@@ -150,13 +150,13 @@ public class NodeBuilder {
 			}
 
 			public SyncNodeComposite newNode(ArrayList<SyncNodeElement> refs, int depth) {
-				SyncNodeElement first = findit(refs, shc, 0);
+				SyncNodeElement first = findit(refs, sc, 0);
 				if (null == first) {
 					Log.warning(Log.FAC_SYNC, "Can't get hash or node for {0} in newNode - shouldn't happen", 
 							Component.printURI(refs.get(0).getData()));
 					return null;
 				}
-				SyncNodeElement last = findit(refs, shc, refs.size() - 1);
+				SyncNodeElement last = findit(refs, sc, refs.size() - 1);
 				if (null == last) {
 					Log.warning(Log.FAC_SYNC, "Can't get hash or node for {0} in newNode - shouldn't happen", 
 							Component.printURI(refs.get(refs.size() - 1).getData()));
@@ -164,7 +164,7 @@ public class NodeBuilder {
 				}
 				return new SyncNodeComposite(refs, first, last, refs.size(), depth);
 			}
-		}.createNodeCommon(values, depth);
+		}.createNodeCommon(values, depth, cache);
 		
 		// Remove the values that NodeCommon removed from map
 		// A little clunky but can't come up with any better way at the moment...
@@ -175,22 +175,22 @@ public class NodeBuilder {
 		return ste;
 	}
 	
-	public SyncTreeEntry createHeadRecursive(TreeMap<ContentName, SyncNodeElement> nodeElements, final SyncHashCache shc, int depth) {
+	public SyncTreeEntry createHeadRecursive(TreeMap<ContentName, SyncNodeElement> nodeElements, final SliceComparator sc, SyncNodeCache cache, int depth) {
 		SyncTreeEntry ste = null;
 		TreeMap<ContentName, SyncNodeElement> nextElements = new TreeMap<ContentName, SyncNodeElement>();
 		do {
-			ste = newNodeOfNodes(nodeElements, shc, depth);
+			ste = newNodeOfNodes(nodeElements, sc, cache, depth);
 			nextElements.put(ste.getNode().getMinName().getName(), new SyncNodeElement(ste.getHash()));
 		} while (nodeElements.size() > 0);
 		if (nextElements.size() > 1)
-			return createHeadRecursive(nextElements, shc, depth+1);
+			return createHeadRecursive(nextElements, sc, cache, depth+1);
 		return ste;
 	}
 	
-	private SyncNodeElement findit(ArrayList<SyncNodeElement> refs, SyncHashCache shc, int position) {
+	private SyncNodeElement findit(ArrayList<SyncNodeElement> refs, SliceComparator sc, int position) {
 		SyncNodeElement sne = refs.get(position);
 		while (sne.getType() != SyncNodeType.LEAF) {
-			SyncTreeEntry ste = shc.getHash(sne.getData());
+			SyncTreeEntry ste = sc.getHash(sne.getData());
 			if (null == ste || null == ste.getNode()) {
 				return null;
 			}

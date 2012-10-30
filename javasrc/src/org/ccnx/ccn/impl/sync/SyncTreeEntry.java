@@ -22,9 +22,11 @@ import java.util.Arrays;
 import java.util.TreeSet;
 import java.util.logging.Level;
 
+import org.ccnx.ccn.CCNSync;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.io.content.SyncNodeComposite;
 import org.ccnx.ccn.io.content.SyncNodeComposite.SyncNodeElement;
 import org.ccnx.ccn.protocol.Component;
@@ -126,7 +128,7 @@ public class SyncTreeEntry {
 	 * @param names
 	 * @return entry for the new node or null if none
 	 */
-	public static SyncTreeEntry newNode(TreeSet<ContentName> names, SyncNodeCache cache) {
+	public static SyncTreeEntry newNode(TreeSet<ContentName> names, SyncNodeCache cache, int depth) {
 		ArrayList<SyncNodeElement> snes = new ArrayList<SyncNodeElement>();
 		int leafCount = names.size();
 		SyncTreeEntry ourEntry = null;
@@ -146,7 +148,7 @@ public class SyncTreeEntry {
 			}
 		}
 		if (snes.size() > 0) {
-			SyncNodeComposite snc = new SyncNodeComposite(snes, firstElement, lastElement, leafCount);
+			SyncNodeComposite snc = new SyncNodeComposite(snes, firstElement, lastElement, leafCount, depth);
 			ourEntry = new SyncTreeEntry(snc.getHash(), cache);
 			ourEntry.setNode(snc);
 		}
@@ -154,8 +156,6 @@ public class SyncTreeEntry {
 	}
 	
 	/**
-<<<<<<< HEAD
-=======
 	 * Create a new leaf node from the names entered. We use only as many names as will fit into
 	 * the node, and remove those names from the input list so that after this has completed, the
 	 * list contains the remaining names which are not yet in a node.
@@ -215,14 +215,13 @@ public class SyncTreeEntry {
 			refs.add(sne);
 			names.remove(tname);
 		}
-		SyncNodeComposite snc = new SyncNodeComposite(refs, refs.get(0), refs.get(refs.size() - 1), refs.size());
+		SyncNodeComposite snc = new SyncNodeComposite(refs, refs.get(0), refs.get(refs.size() - 1), refs.size(), 1);
 		SyncTreeEntry ste = new SyncTreeEntry(snc.getHash(), cache);
 		ste.setNode(snc);
 		return ste;
 	}
 	
 	/**
->>>>>>> 20121023_fix_sync_test
 	 * Routines for getting and cycling through the references
 	 * @return
 	 */
