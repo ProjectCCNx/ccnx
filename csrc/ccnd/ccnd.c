@@ -1871,7 +1871,6 @@ Bail:
 /**
  * Stuff a PDU with interest messages that will fit.
  *
- * Note by default stuffing does not happen due to the setting of h->mtu.
  * @returns the number of messages that were stuffed.
  */
 static int
@@ -1879,8 +1878,8 @@ ccn_stuff_interest(struct ccnd_handle *h,
                    struct face *face, struct ccn_charbuf *c)
 {
     int n_stuffed = 0;
-    if (stuff_link_check(h, face, c) > 0)
-        n_stuffed++;
+    
+    n_stuffed += stuff_link_check(h, face, c);
     return(n_stuffed);
 }
 
