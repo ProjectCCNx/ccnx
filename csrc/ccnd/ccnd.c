@@ -441,6 +441,74 @@ ccnd_close_fd(struct ccnd_handle *h, unsigned faceid, int *pfd)
 }
 
 /**
+ * Associate a guid with a face.
+ *
+ * The same guid is shared amoing all the peers that communicate over the
+ * face, and no two faces at a node should have the same guid.
+ *
+ * @returns 0 for success, -1 for error.
+ */
+/*static*/ int
+set_face_guid(struct ccnd_handle *h, struct face *face,
+              const unsigned char *guid, size_t size)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct ccn_charbuf *c = NULL;
+    int res;
+    
+    if (size > 255)
+        return(-1);
+    if (face->guid != NULL)
+        return(-1);
+    if (h->faceid_by_guid == NULL)
+        return(-1);
+    c = ccn_charbuf_create();
+    ccn_charbuf_append_value(c, size, 1);
+    ccn_charbuf_append(c, guid, size);
+    res = hashtb_seek(e, c->buf, c->length, 0);
+    ccn_charbuf_destroy(&c);
+    if (res < 0)
+        return(-1);
+    if (res == HT_NEW_ENTRY) {
+        face->guid = e->key;
+        *(unsigned *)(e->data) = face->faceid;
+        res = 0;
+    }
+    else
+        res = -1;
+    hashtb_end(e);
+    return(res);
+}
+
+/**
+ * Forget the guid associated with a face.
+ *
+ * The first byte of face->guid is the length of the actual guid bytes.
+ */
+static void
+forget_face_guid(struct ccnd_handle *h, struct face *face)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    const unsigned char *guid;
+    int res;
+    
+    guid = face->guid;
+    face->guid = NULL;
+    if (guid == NULL)
+        return;
+    if (h->faceid_by_guid == NULL)
+        return;
+    hashtb_start(h->faceid_by_guid, e);
+    res = hashtb_seek(e, guid, guid[0] + 1, 0);
+    if (res < 0)
+        return;
+    hashtb_delete(e);
+    hashtb_end(e);
+}
+
+/**
  * Clean up when a face is being destroyed.
  *
  * This is called when an entry is deleted from one of the hash tables that
@@ -461,6 +529,8 @@ finalize_face(struct hashtb_enumerator *e)
             ccnd_face_status_change(h, face->faceid);
         if (e->ht == h->faces_by_fd)
             ccnd_close_fd(h, face->faceid, &face->recv_fd);
+        if ((face->guid) != NULL)
+            forget_face_guid(h, face);
         h->faces_by_faceid[i] = NULL;
         if ((face->flags & CCN_FACE_UNDECIDED) != 0 &&
               face->faceid == ((h->face_rover - 1) | h->face_gen)) {
@@ -5504,6 +5574,8 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     param.finalize = &finalize_face;
     h->faces_by_fd = hashtb_create(sizeof(struct face), &param);
     h->dgram_faces = hashtb_create(sizeof(struct face), &param);
+    param.finalize = 0;
+    h->faceid_by_guid = hashtb_create(sizeof(unsigned), &param);
     param.finalize = &finalize_content;
     h->content_tab = hashtb_create(sizeof(struct content_entry), &param);
     param.finalize = &finalize_nameprefix;
@@ -5657,6 +5729,7 @@ ccnd_destroy(struct ccnd_handle **pccnd)
     ccn_schedule_destroy(&h->sched);
     hashtb_destroy(&h->dgram_faces);
     hashtb_destroy(&h->faces_by_fd);
+    hashtb_destroy(&h->faceid_by_guid);
     hashtb_destroy(&h->content_tab);
     hashtb_destroy(&h->interest_tab);
     hashtb_destroy(&h->nameprefix_tab);

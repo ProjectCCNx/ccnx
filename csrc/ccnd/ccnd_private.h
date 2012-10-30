@@ -78,6 +78,7 @@ struct ccnd_handle {
     unsigned char ccnd_id[32];      /**< sha256 digest of our public key */
     struct hashtb *faces_by_fd;     /**< keyed by fd */
     struct hashtb *dgram_faces;     /**< keyed by sockaddr */
+    struct hashtb *faceid_by_guid;  /**< keyed by guid */
     struct hashtb *content_tab;     /**< keyed by portion of ContentObject */
     struct hashtb *nameprefix_tab;  /**< keyed by name prefix components */
     struct hashtb *interest_tab;    /**< keyed by interest msg sans Nonce */
@@ -210,6 +211,7 @@ struct face {
     int surplus;                /**< sends since last successful recv */
     unsigned faceid;            /**< internal face id */
     unsigned recvcount;         /**< for activity level monitoring */
+    const unsigned char *guid;  /**< guid name for channel, shared w/ peers */
     struct content_queue *q[CCN_CQ_N]; /**< outgoing content, per delay class */
     struct ccn_charbuf *inbuf;
     struct ccn_skeleton_decoder decoder;
