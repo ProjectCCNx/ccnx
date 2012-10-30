@@ -448,7 +448,7 @@ ccnd_close_fd(struct ccnd_handle *h, unsigned faceid, int *pfd)
  *
  * @returns 0 for success, -1 for error.
  */
-/*static*/ int
+static int
 set_face_guid(struct ccnd_handle *h, struct face *face,
               const unsigned char *guid, size_t size)
 {
@@ -466,6 +466,7 @@ set_face_guid(struct ccnd_handle *h, struct face *face,
     c = ccn_charbuf_create();
     ccn_charbuf_append_value(c, size, 1);
     ccn_charbuf_append(c, guid, size);
+    hashtb_start(h->faceid_by_guid, e);
     res = hashtb_seek(e, c->buf, c->length, 0);
     ccn_charbuf_destroy(&c);
     if (res < 0)
@@ -496,6 +497,7 @@ forget_face_guid(struct ccnd_handle *h, struct face *face)
     
     guid = face->guid;
     face->guid = NULL;
+    ccn_charbuf_destroy(&face->guid_cob);
     if (guid == NULL)
         return;
     if (h->faceid_by_guid == NULL)
@@ -506,6 +508,28 @@ forget_face_guid(struct ccnd_handle *h, struct face *face)
         return;
     hashtb_delete(e);
     hashtb_end(e);
+}
+
+/**
+ * Generate a new guid for a face
+ *
+ * This guid is useful for routing agents, as it gives an unambiguous way
+ * to talk about a connection between two nodes.
+ */
+void
+ccnd_generate_face_guid(struct ccnd_handle *h, struct face *face)
+{
+    unsigned char g[8];
+    int i;
+    unsigned check = CCN_FACE_GG | CCN_FACE_UNDECIDED | CCN_FACE_PASSIVE;
+    unsigned want = 0;
+    
+    if ((face->flags & check) != want)
+        return;
+    /* XXX - This should be using higher-quality randomness */
+    for (i = 0; i < sizeof(g); i++)
+        g[i] = nrand48(h->seed);
+    set_face_guid(h, face, g, sizeof(g));
 }
 
 /**
@@ -531,6 +555,7 @@ finalize_face(struct hashtb_enumerator *e)
             ccnd_close_fd(h, face->faceid, &face->recv_fd);
         if ((face->guid) != NULL)
             forget_face_guid(h, face);
+        ccn_charbuf_destroy(&face->guid_cob);
         h->faces_by_faceid[i] = NULL;
         if ((face->flags & CCN_FACE_UNDECIDED) != 0 &&
               face->faceid == ((h->face_rover - 1) | h->face_gen)) {

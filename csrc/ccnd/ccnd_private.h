@@ -212,6 +212,7 @@ struct face {
     unsigned faceid;            /**< internal face id */
     unsigned recvcount;         /**< for activity level monitoring */
     const unsigned char *guid;  /**< guid name for channel, shared w/ peers */
+    struct ccn_charbuf *guid_cob; /**< content object publishing face guid */
     struct content_queue *q[CCN_CQ_N]; /**< outgoing content, per delay class */
     struct ccn_charbuf *inbuf;
     struct ccn_skeleton_decoder decoder;
@@ -476,6 +477,7 @@ int ccnd_reg_uri(struct ccnd_handle *h,
                  int flags,
                  int expires);
 
+void ccnd_generate_face_guid(struct ccnd_handle *, struct face *);
 struct face *ccnd_face_from_faceid(struct ccnd_handle *, unsigned);
 void ccnd_face_status_change(struct ccnd_handle *, unsigned);
 int ccnd_destroy_face(struct ccnd_handle *h, unsigned faceid);

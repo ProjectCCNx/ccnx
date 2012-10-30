@@ -84,10 +84,6 @@ ccnd_init_service_ccnb(struct ccnd_handle *ccnd, const char *baseuri, int freshn
     ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_KeyName, CCN_DTAG);
     ccn_charbuf_append_charbuf(sp.template_ccnb, name);
     ccn_charbuf_append_closer(sp.template_ccnb);
-//    ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_PublisherPublicKeyDigest,
-//                          CCN_DTAG);
-//    ccn_charbuf_append_charbuf(sp.template_ccnb, pubid);
-//    ccn_charbuf_append_closer(sp.template_ccnb);
     ccn_charbuf_append_closer(sp.template_ccnb);
     ccn_charbuf_append_closer(sp.template_ccnb);
     sp.sp_flags |= CCN_SP_TEMPL_KEY_LOCATOR;
@@ -105,6 +101,63 @@ ccnd_init_service_ccnb(struct ccnd_handle *ccnd, const char *baseuri, int freshn
     return(cob);
 }
 
+static void
+ccnd_init_face_guid_cob(struct ccnd_handle *ccnd, struct face *face)
+{
+    struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
+    struct ccn *h = ccnd->internal_client;
+    struct ccn_charbuf *name = NULL;
+    struct ccn_charbuf *pubid = NULL;
+    struct ccn_charbuf *pubkey = NULL;
+    struct ccn_charbuf *comp = NULL;
+    struct ccn_charbuf *cob = NULL;
+    int res;
+    
+    if (face->guid == NULL || face->guid_cob != NULL)
+        return;
+    name = ccn_charbuf_create();
+    pubid = ccn_charbuf_create();
+    pubkey = ccn_charbuf_create();
+    comp = ccn_charbuf_create();
+    cob = ccn_charbuf_create();
+    
+    res = ccn_get_public_key(h, NULL, pubid, pubkey);
+    ccn_name_from_uri(name, "ccnx:/%C1.M.S.neighborhood/%C1.M.CHAN");
+    /* %C1.G.%00<guid> */
+    ccn_charbuf_reset(comp);
+    ccn_charbuf_append_value(comp, CCN_MARKER_CONTROL, 1);
+    ccn_charbuf_append_string(comp, ".M.G");
+    ccn_charbuf_append_value(comp, 0, 1);
+    ccn_charbuf_append(comp, face->guid + 1, face->guid[0]);
+    ccn_name_append(name, comp->buf, comp->length);
+    ccn_name_from_uri(name, "%C1.M.NODE");
+    /* %C1.K.%00<ccndid> */
+    ccn_charbuf_reset(comp);
+    ccn_charbuf_append_value(comp, CCN_MARKER_CONTROL, 1);
+    ccn_charbuf_append_string(comp, ".M.K");
+    ccn_charbuf_append_value(comp, 0, 1);
+    ccn_charbuf_append_charbuf(comp, pubid);
+    ccn_name_append(name, comp->buf, comp->length);
+    ccn_charbuf_reset(comp);
+    ccn_charbuf_putf(comp, "face~%u", face->faceid);
+    ccn_name_append(name, comp->buf, comp->length);
+    ccn_create_version(h, name, CCN_V_NOW, 0, 0);
+    ccn_name_from_uri(name, "%00");
+    sp.sp_flags |= CCN_SP_FINAL_BLOCK;
+    sp.freshness = 8;
+    /* XXX - the key is probably not the most useful payload */
+    sp.type = CCN_CONTENT_KEY;
+    res = ccn_sign_content(h, cob, name, &sp, pubkey->buf, pubkey->length);
+    if (res != 0)
+        ccn_charbuf_destroy(&cob);
+    ccn_charbuf_destroy(&name);
+    ccn_charbuf_destroy(&pubid);
+    ccn_charbuf_destroy(&pubkey);
+    ccn_charbuf_destroy(&comp);
+    ccn_charbuf_destroy(&sp.template_ccnb);
+    face->guid_cob = cob;
+}
+
 /**
  * Local interpretation of selfp->intdata
  */
@@ -120,6 +173,8 @@ ccnd_init_service_ccnb(struct ccnd_handle *ccnd, const char *baseuri, int freshn
 #define OP_UNREG       0x0600
 #define OP_NOTICE      0x0700
 #define OP_SERVICE     0x0800
+#define OP_ADJACENCY   0x0900
+
 /**
  * Common interest handler for ccnd_internal_client
  */
@@ -141,6 +196,7 @@ ccnd_answer_req(struct ccn_closure *selfp,
     const unsigned char *final_comp = NULL;
     size_t final_size = 0;
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
+    struct face *face = NULL;
     
     switch (kind) {
         case CCN_UPCALL_FINAL:
@@ -160,7 +216,8 @@ ccnd_answer_req(struct ccn_closure *selfp,
     morecomps = selfp->intdata & MORECOMPS_MASK;
     if ((info->pi->answerfrom & CCN_AOK_NEW) == 0 &&
         selfp->intdata != OP_SERVICE &&
-        selfp->intdata != OP_NOTICE)
+        selfp->intdata != OP_NOTICE &&
+        selfp->intdata != OP_ADJACENCY)
         return(CCN_UPCALL_RESULT_OK);
     if (info->matched_comps >= info->interest_comps->n)
         goto Bail;
@@ -258,6 +315,30 @@ ccnd_answer_req(struct ccn_closure *selfp,
                 goto Finish;
             }
             goto Bail;
+            break;
+        case OP_ADJACENCY:
+            face = ccnd_face_from_faceid(ccnd, ccnd->interest_faceid);
+            if (face == NULL)
+                goto Bail;
+            if (info->pi->prefix_comps == 2 && face->guid == NULL)
+                ccnd_generate_face_guid(ccnd, face);
+            if (face->guid_cob == NULL)
+                ccnd_init_face_guid_cob(ccnd, face);
+            if (face->guid_cob == NULL)
+                goto Bail;
+            if (ccn_content_matches_interest(face->guid_cob->buf,
+                                             face->guid_cob->length,
+                                             1,
+                                             NULL,
+                                             info->interest_ccnb,
+                                             info->pi->offset[CCN_PI_E],
+                                             info->pi
+                                             )) {
+                ccn_put(info->h, face->guid_cob->buf,
+                                 face->guid_cob->length);
+                res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
+                goto Finish;
+            }
             break;
         default:
             goto Bail;
@@ -617,6 +698,8 @@ ccnd_internal_client_start(struct ccnd_handle *ccnd)
                     &ccnd_answer_req, OP_SERVICE);
     ccnd_uri_listen(ccnd, "ccnx:/%C1.M.S.neighborhood",
                     &ccnd_answer_req, OP_SERVICE);
+    ccnd_uri_listen(ccnd, "ccnx:/%C1.M.S.neighborhood/%C1.M.CHAN",
+                    &ccnd_answer_req, OP_ADJACENCY);
     ccnd_reg_ccnx_ccndid(ccnd);
     ccnd_reg_uri(ccnd, "ccnx:/%C1.M.S.localhost",
                  0, /* special faceid for internal client */
