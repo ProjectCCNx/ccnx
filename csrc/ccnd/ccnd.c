@@ -2125,7 +2125,7 @@ remove_content(struct ccnd_handle *h, struct content_entry *content)
  * Periodic content cleaning
  */
 static int
-clean_deamon(struct ccn_schedule *sched,
+clean_daemon(struct ccn_schedule *sched,
              void *clienth,
              struct ccn_scheduled_event *ev,
              int flags)
@@ -2153,8 +2153,10 @@ clean_deamon(struct ccn_schedule *sched,
         return(0);
     }
     n = hashtb_n(h->content_tab);
-    if (n <= h->capacity)
-        return(15000000);
+    if (n <= h->capacity) {
+        h->clean = NULL;
+        return(0);
+    }
     /* Toss unsolicited content first */
     for (i = 0; i < h->unsol->n; i++) {
         if (i == check_limit) {
@@ -2169,8 +2171,8 @@ clean_deamon(struct ccn_schedule *sched,
             (content->flags & CCN_CONTENT_ENTRY_PRECIOUS) == 0)
             remove_content(h, content);
     }
-    n = hashtb_n(h->content_tab);
     h->unsol->n = 0;
+    n = hashtb_n(h->content_tab);
     if (h->min_stale <= h->max_stale) {
         /* clean out stale content next */
         limit = h->max_stale;
@@ -2224,20 +2226,20 @@ clean_deamon(struct ccn_schedule *sched,
             }
         }
         ev->evint = 0;
-        return(1000000);
+        return(5000);
     }
-    ev->evint = 0;
-    return(15000000);
+    h->clean = NULL;
+    return(0);
 }
 
 /**
- * Schedule clean_deamon, if it is not already scheduled.
+ * Schedule clean_daemon, if it is not already scheduled.
  */
 static void
 clean_needed(struct ccnd_handle *h)
 {
     if (h->clean == NULL)
-        h->clean = ccn_schedule_event(h->sched, 1000000, clean_deamon, NULL, 0);
+        h->clean = ccn_schedule_event(h->sched, 5000, clean_daemon, NULL, 0);
 }
 
 /**
@@ -4389,6 +4391,9 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         }
     }
     else if (res == HT_NEW_ENTRY) {
+        unsigned long n = hashtb_n(h->content_tab);
+        if (n > h->capacity + (h->capacity >> 3))
+            clean_needed(h);
         content->accession = ++(h->accession);
         enroll_content(h, content);
         if (content == content_from_accession(h, content->accession)) {
@@ -5616,7 +5621,6 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->flood = (h->autoreg != NULL);
     h->ipv4_faceid = h->ipv6_faceid = CCN_NOFACEID;
     ccnd_listen_on(h, listen_on);
-    clean_needed(h);
     reap_needed(h, 55000);
     age_forwarding_needed(h);
     ccnd_internal_client_start(h);
