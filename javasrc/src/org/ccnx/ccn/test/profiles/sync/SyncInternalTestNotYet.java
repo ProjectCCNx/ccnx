@@ -106,7 +106,7 @@ public class SyncInternalTestNotYet extends CCNTestBase implements CCNContentHan
 		}
 		
 		NodeBuilder nb = new NodeBuilder();
-		SyncTreeEntry testNode = nb.newNode(names, shc, cache, repoNode.getDepth());
+		SyncTreeEntry testNode = nb.newNode(names, shc, cache);
 		Assert.assertTrue(testNode.getNode().equals(repoNode));
 		
 		Log.info(Log.FAC_TEST, "Completed testSyncNodeBuild");

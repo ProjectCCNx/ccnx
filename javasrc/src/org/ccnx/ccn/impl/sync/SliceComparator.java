@@ -766,7 +766,7 @@ public class SliceComparator implements Runnable {
 				nodeElements.put(firstName, new SyncNodeElement(newHead.getHash()));
 		}
 		if (redo && newHasNodes) {
-			newHead = _nBuilder.createHeadRecursive(nodeElements, _shc, _snc, 2);
+			newHead = _nBuilder.createHeadRecursive(nodeElements.values(), _shc, _snc, 2);
 		}
 		_current.clear();
 		if (null != newHead) {

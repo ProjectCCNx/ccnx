@@ -19,7 +19,6 @@ package org.ccnx.ccn.impl.sync;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.logging.Level;
 
@@ -146,8 +145,7 @@ public class NodeBuilder {
 	 * @param nodes
 	 * @return
 	 */
-	public SyncTreeEntry newNodeOfNodes(TreeMap<ContentName, SyncNodeElement> nodes, final SyncHashCache shc, SyncNodeCache cache, int depth) {
-		Collection<SyncNodeElement> values = nodes.values();
+	public SyncTreeEntry newNodeOfNodes(Collection<SyncNodeElement> nodes, final SyncHashCache shc, SyncNodeCache cache, int depth) {
 		SyncTreeEntry ste = new NodeCommon<SyncNodeElement>() {		
 			public int extraSplit(SyncNodeElement n, SyncNodeElement tname, int total, int minLen, int prevMatch) {
 				return 0;
@@ -172,23 +170,17 @@ public class NodeBuilder {
 				}
 				return new SyncNodeComposite(refs, first, last, refs.size(), depth);
 			}
-		}.createNodeCommon(values, depth, shc, cache);
+		}.createNodeCommon(nodes, depth, shc, cache);
 		
-		// Remove the values that NodeCommon removed from map
-		// A little clunky but can't come up with any better way at the moment...
-		for (ContentName name : nodes.keySet()) {
-			if (!values.contains(nodes.get(name)))
-				nodes.remove(name);
-		}
 		return ste;
 	}
 	
-	public SyncTreeEntry createHeadRecursive(TreeMap<ContentName, SyncNodeElement> nodeElements, final SyncHashCache shc, SyncNodeCache cache, int depth) {
+	public SyncTreeEntry createHeadRecursive(Collection<SyncNodeElement> nodeElements, final SyncHashCache shc, SyncNodeCache cache, int depth) {
 		SyncTreeEntry ste = null;
-		TreeMap<ContentName, SyncNodeElement> nextElements = new TreeMap<ContentName, SyncNodeElement>();
+		ArrayList<SyncNodeElement> nextElements = new ArrayList<SyncNodeElement>();
 		do {
 			ste = newNodeOfNodes(nodeElements, shc, cache, depth);
-			nextElements.put(ste.getNode().getMinName().getName(), new SyncNodeElement(ste.getHash()));
+			nextElements.add(new SyncNodeElement(ste.getHash()));
 		} while (nodeElements.size() > 0);
 		if (nextElements.size() > 1)
 			return createHeadRecursive(nextElements, shc, cache, depth+1);
@@ -221,29 +213,18 @@ public class NodeBuilder {
 	 * @param names
 	 * @return entry for the new node or null if none
 	 */
-	public SyncTreeEntry newNode(TreeSet<ContentName> names, SyncHashCache shc, SyncNodeCache cache, int depth) {
+	public SyncTreeEntry newNode(TreeSet<ContentName> names, SyncHashCache shc, SyncNodeCache cache) {
 		ArrayList<SyncNodeElement> snes = new ArrayList<SyncNodeElement>();
-		int leafCount = names.size();
 		SyncTreeEntry ourEntry = null;
-		SyncNodeElement firstElement = null;
-		SyncNodeElement lastElement = null; 
 		while (names.size() > 0) {
 			ourEntry = newLeafNode(names, shc, cache);
 			SyncNodeElement sne = new SyncNodeElement(ourEntry.getHash());
-			if (names.size() > 0) {
-				if (null == firstElement)
-					firstElement = ourEntry.getNode().getRefs().get(0);
-				snes.add(sne);
-			} else if (snes.size() > 0) {
-				int nRefs = ourEntry.getNode().getRefs().size();
-				lastElement = ourEntry.getNode().getRefs().get(nRefs - 1);
+			if (names.size() > 0 || snes.size() > 0) {
 				snes.add(sne);
 			}
 		}
 		if (snes.size() > 0) {
-			SyncNodeComposite snc = new SyncNodeComposite(snes, firstElement, lastElement, leafCount, depth);
-			ourEntry = new SyncTreeEntry(snc.getHash(), cache);
-			ourEntry.setNode(snc);
+			ourEntry = createHeadRecursive(snes, shc, cache, 2);
 		}
 		return ourEntry;
 	}
