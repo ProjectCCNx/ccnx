@@ -505,13 +505,13 @@ public class SliceComparator implements Runnable {
 				} else {
 					if (typeX == SyncNodeType.HASH) {
 						// X is node Y is leaf
+						int resMin = sneY.getName().compareTo(sncX.getMinName().getName());
+						int resMax = sneY.getName().compareTo(sncX.getMaxName().getName());
 						if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
-							Log.finest(Log.FAC_SYNC, "Compare NODE {0} to LEAF {1}", Component.printURI(srtX.getHash()), Component.printURI(srtY.getHash()));
+							Log.finest(Log.FAC_SYNC, "Compare NODE {0} to LEAF {1}, resMin is {2}, resMax is {3}", Component.printURI(srtX.getHash()), Component.printURI(srtY.getHash()), resMin, resMax);
 							Log.finest(Log.FAC_SYNC, "minname is {0}, maxname is {1}, pos X is {2}, pos Y is {3}", SegmentationProfile.getSegmentNumber(sncX.getMinName().getName().parent()), 
 									SegmentationProfile.getSegmentNumber(sncX.getMaxName().getName().parent()), srtX.getPos(), srtY.getPos());
 						}
-						int resMin = sneY.getName().compareTo(sncX.getMinName().getName());
-						int resMax = sneY.getName().compareTo(sncX.getMaxName().getName());
 						if (resMin < 0) {
 							newName(sneY);
 							srtY.incPos();
@@ -696,10 +696,7 @@ public class SliceComparator implements Runnable {
 						thisHashElement = ste.getCurrentElement();
 						ste.incPos();
 						if (redo) {
-							snc = entry.getNode();
-							for (SyncNodeElement tsne: snc.getRefs()) {
-								neededNames.add(tsne.getName());
-							}
+							addNeededNames(neededNames, entry);
 						} else {
 							thisHashStartName = entry.getNode().getMinName().getName();
 							push(entry, _current);
@@ -766,15 +763,30 @@ public class SliceComparator implements Runnable {
 					if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
 						Log.finest(Log.FAC_SYNC, "Update: starting redo because of extra names at end starting with {0}", name);
 					}
-					SyncNodeComposite tsnc = origSte.getNode(_decoder);
-					if (null != tsnc) {
-						for (SyncNodeElement tsne: tsnc.getRefs()) {
-							neededNames.add(tsne.getName());
-						}
-					}
+					addNeededNames(neededNames, origSte);
 				}
 				redo = true;
 				neededNames.add(name);
+			}
+		}
+		
+		if (redo && newHasNodes && ste != null) {
+			// We are redoing a tree with nodes - finish off any leftover names at the end of the tree
+			while (null != ste) {
+				ste.incPos();
+				if (ste.lastPos())
+					ste = pop(_current);
+				if (null != ste) {
+					SyncNodeComposite snc = ste.getNode();
+					if (null != snc) {
+						SyncNodeElement sne = ste.getCurrentElement();
+						if (sne.getType() == SyncNodeType.HASH) {
+							SyncTreeEntry tste = getHash(sne.getData());
+							if (null != tste)
+								addNeededNames(neededNames, tste);
+						}
+					}
+				}
 			}
 		}
 		
@@ -800,6 +812,21 @@ public class SliceComparator implements Runnable {
 		} else {
 			origSte.setPos(0);
 			push(origSte, _current);  // Should already be _currentRoot
+		}
+	}
+	
+	private void addNeededNames(TreeSet<ContentName> neededNames, SyncTreeEntry ste) {
+		if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST))
+			Log.finest(Log.FAC_SYNC, "Update: subsuming node", Component.printURI(ste.getHash()));
+		for (SyncNodeElement tsne: ste.getNode().getRefs()) {
+			if (tsne.getType() != SyncNodeType.LEAF) {
+				if (tsne.getType() == SyncNodeType.HASH) {
+					ste = getHash(tsne.getData());
+					if (null != ste)
+						addNeededNames(neededNames, ste);
+				}
+			} else
+				neededNames.add(tsne.getName());
 		}
 	}
 	

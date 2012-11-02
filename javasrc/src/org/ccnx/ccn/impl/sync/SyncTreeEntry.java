@@ -52,6 +52,8 @@ public class SyncTreeEntry {
 		_hash = new byte[hash.length];
 		System.arraycopy(hash, 0, _hash, 0, hash.length);
 		_node = cache.getNode(hash);
+		if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST) && _node != null)
+			Log.finest(Log.FAC_SYNC, "Found existing node: {0}", Component.printURI(hash));
 		_snc = cache;
 	}
 	
