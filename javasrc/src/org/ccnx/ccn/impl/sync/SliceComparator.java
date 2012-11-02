@@ -18,7 +18,6 @@ package org.ccnx.ccn.impl.sync;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.Stack;
@@ -105,7 +104,7 @@ public class SliceComparator implements Runnable {
 	protected TreeSet<ContentName> _updateNames = new TreeSet<ContentName>();
 	protected NodeBuilder _nBuilder = new NodeBuilder();
 	
-	protected HashMap<SyncHashEntry, SyncTreeEntry> _hashes = new HashMap<SyncHashEntry, SyncTreeEntry>();
+	protected SyncHashCache _shc = new SyncHashCache();
 	
 	/**
 	 * Start a comparison on a slice which will call back "callback" each time
@@ -132,7 +131,7 @@ public class SliceComparator implements Runnable {
 		_callback = callback;
 		_handle = handle;
 		if (null != startHash)
-			_startHash = addHash(startHash);
+			_startHash = _shc.addHash(startHash, _snc);
 		_startName = startName;
 		if (null != startName)
 			_doCallbacks = false;
@@ -140,48 +139,6 @@ public class SliceComparator implements Runnable {
 		_decoder.setInitialBufferSize(DECODER_SIZE);
 	}
 	
-	/**
-	 * Add a new hash to the list of ones we've seen
-	 * @param hash
-	 * @return new SyncTreeEntry for the hash
-	 */
-	public SyncTreeEntry addHash(byte[] hash) {
-		synchronized (this) {
-			SyncTreeEntry entry = _hashes.get(new SyncHashEntry(hash));
-			if (null == entry) {
-				entry = new SyncTreeEntry(hash, _snc);
-				_hashes.put(new SyncHashEntry(hash), entry);
-			} else
-				entry.setPos(0);
-			return entry;
-		}
-	}
-	
-	/**
-	 * Get a SyncTreeEntry for a hash if there is one
-	 * @param hash
-	 * @return
-	 */
-	public SyncTreeEntry getHash(byte[] hash) {
-		if (null == hash)
-			return null;
-		synchronized (this) {
-			return _hashes.get(new SyncHashEntry(hash));
-		}
-	}
-	
-	/**
-	 * Put a specific entry in for a hash
-	 */
-	public void putHashEntry(SyncTreeEntry entry) {
-		SyncHashEntry she = new SyncHashEntry(entry.getHash());
-		synchronized (this) {
-			SyncTreeEntry tste = _hashes.get(she);
-			if (null != tste)
-				_hashes.remove(she);
-			_hashes.put(she, entry);
-		}
-	}
 	/**
 	 * Add new data into the system - either a hash which must be looked up or node
 	 * data which can be directly decoded. These will be used to start a new hash tree
@@ -289,7 +246,15 @@ public class SliceComparator implements Runnable {
 	public CCNSyncHandler getCallback() {
 		return _callback;
 	}
-
+	
+	public SyncHashCache getHashCache() {
+		return _shc;
+	}
+	
+	public SyncNodeCache getNodeCache() {
+		return _snc;
+	}
+	
 	/**
 	 * Start compare process if not already running
 	 */
@@ -338,7 +303,7 @@ public class SliceComparator implements Runnable {
 	 */
 	private boolean requestNode(byte[] hash) throws SyncException {
 		boolean ret = false;
-		SyncTreeEntry tsrt = addHash(hash);
+		SyncTreeEntry tsrt = _shc.addHash(hash, _snc);
 		if (tsrt.getNode(_decoder) == null && !tsrt.getPending()) {
 			tsrt.setPending(true);
 			ret = ProtocolBasedSyncMonitor.requestNode(_slice, hash, _handle, _nfh);
@@ -447,7 +412,7 @@ public class SliceComparator implements Runnable {
 				SyncNodeType typeX = sneX.getType();
 				SyncNodeType typeY = sneY.getType();
 				if (typeY == SyncNodeType.HASH) {
-					SyncTreeEntry entryY = getHash(sneY.getData());
+					SyncTreeEntry entryY = _shc.getHash(sneY.getData());
 					if (null != entryY && entryY.isCovered()) {
 						if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST))
 							Log.finest(Log.FAC_SYNC, "Skipping covered subentry {0}", Component.printURI(entryY.getHash()));
@@ -586,7 +551,7 @@ public class SliceComparator implements Runnable {
 	 */
 	private SyncTreeEntry handleHashNode(SyncNodeElement sne) throws SyncException {
 		byte[] hash = sne.getData();
-		SyncTreeEntry entry = getHash(hash);
+		SyncTreeEntry entry = _shc.getHash(hash);
 		if (null == entry) {
 			if (requestNode(sne.getData())) {
 				changeState(SyncCompareState.PRELOAD);
@@ -687,7 +652,7 @@ public class SliceComparator implements Runnable {
 					switch (sne.getType()) {
 					case HASH:
 						newHasNodes = true;
-						SyncTreeEntry entry = getHash(sne.getData());
+						SyncTreeEntry entry = _shc.getHash(sne.getData());
 						if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
 							Log.finest(Log.FAC_SYNC, "Update compare - moving to: {0}", entry == null ? null : Component.printURI(entry.getHash()));
 						}
@@ -781,7 +746,7 @@ public class SliceComparator implements Runnable {
 					if (null != snc) {
 						SyncNodeElement sne = ste.getCurrentElement();
 						if (sne.getType() == SyncNodeType.HASH) {
-							SyncTreeEntry tste = getHash(sne.getData());
+							SyncTreeEntry tste = _shc.getHash(sne.getData());
 							if (null != tste)
 								addNeededNames(neededNames, tste);
 						}
@@ -792,8 +757,8 @@ public class SliceComparator implements Runnable {
 		
 		while (neededNames.size() > 0) {
 			ContentName firstName = neededNames.first();
-			newHead = SyncTreeEntry.newLeafNode(neededNames, _snc);
-			putHashEntry(newHead);
+			newHead = _nBuilder.newLeafNode(neededNames, _shc, _snc);
+			_shc.putHashEntry(newHead);
 			if (neededNames.size() > 0) {	// Need to split
 				newHasNodes = true;
 			}
@@ -801,7 +766,7 @@ public class SliceComparator implements Runnable {
 				nodeElements.put(firstName, new SyncNodeElement(newHead.getHash()));
 		}
 		if (redo && newHasNodes) {
-			newHead = _nBuilder.createHeadRecursive(nodeElements, this, _snc, 2);
+			newHead = _nBuilder.createHeadRecursive(nodeElements, _shc, _snc, 2);
 		}
 		_current.clear();
 		if (null != newHead) {
@@ -821,7 +786,7 @@ public class SliceComparator implements Runnable {
 		for (SyncNodeElement tsne: ste.getNode().getRefs()) {
 			if (tsne.getType() != SyncNodeType.LEAF) {
 				if (tsne.getType() == SyncNodeType.HASH) {
-					ste = getHash(tsne.getData());
+					ste = _shc.getHash(tsne.getData());
 					if (null != ste)
 						addNeededNames(neededNames, ste);
 				}
@@ -853,7 +818,7 @@ public class SliceComparator implements Runnable {
 						if (null != data) {
 							SyncNodeComposite snc = new SyncNodeComposite();
 							snc.decode(data);
-							SyncTreeEntry ste = addHash(snc.getHash());
+							SyncTreeEntry ste = _shc.addHash(snc.getHash(), _snc);
 							ste.setNode(snc);
 							if (null != _startHash) {  // has to be 0 length so start with "current"
 								_currentRoot = ste;
@@ -948,7 +913,7 @@ public class SliceComparator implements Runnable {
 			byte[] hash = name.component(hashComponent + 2);
 			if (Log.isLoggable(Log.FAC_SYNC, Level.FINE))
 				Log.fine(Log.FAC_SYNC, "Saw data from nodefind: hash: {0}", Component.printURI(hash));
-			SyncTreeEntry ste = addHash(hash);
+			SyncTreeEntry ste = _shc.addHash(hash, _snc);
 			ste.setRawContent(data.content());
 			ste.setPending(false);
 			kickCompare();

@@ -33,11 +33,14 @@ import org.ccnx.ccn.io.content.SyncNodeComposite.SyncNodeType;
 import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 
+/**
+ * Code to build Sync nodes
+ */
 public class NodeBuilder {
 	
 	public abstract class NodeCommon<X> {
 		
-		public SyncTreeEntry createNodeCommon(Collection<X> objects, int depth, SliceComparator sc, SyncNodeCache cache) {
+		public SyncTreeEntry createNodeCommon(Collection<X> objects, int depth, SyncHashCache shc, SyncNodeCache cache) {
 			ArrayList<SyncNodeComposite.SyncNodeElement> refs = new ArrayList<SyncNodeComposite.SyncNodeElement>();
 			int total = 0;
 			int limit = CCNSync.NODE_SPLIT_TRIGGER - CCNSync.NODE_SPLIT_TRIGGER/8;
@@ -81,7 +84,7 @@ public class NodeBuilder {
 				return null;
 			}
 			SyncTreeEntry ste = new SyncTreeEntry(snc.getHash(), cache);
-			sc.putHashEntry(ste);
+			shc.putHashEntry(ste);
 			ste.setNode(snc);
 			return ste;
 		}
@@ -99,7 +102,7 @@ public class NodeBuilder {
 	 * @param names - the set of names in canonical order
 	 * @return
 	 */
-	public SyncTreeEntry newLeafNode(TreeSet<ContentName> names, SliceComparator sc, SyncNodeCache cache) {
+	public SyncTreeEntry newLeafNode(TreeSet<ContentName> names, SyncHashCache shc, SyncNodeCache cache) {
 		return new NodeCommon<ContentName>() {
 			
 			public int extraSplit(ContentName nextName, ContentName tname, int total, int minLen, int prevMatch) {
@@ -133,7 +136,7 @@ public class NodeBuilder {
 			public SyncNodeComposite newNode(ArrayList<SyncNodeElement> refs,int depth) {
 				return new SyncNodeComposite(refs, refs.get(0), refs.get(refs.size() - 1), refs.size(), depth);
 			}
-		}.createNodeCommon(names, 1, sc, cache);
+		}.createNodeCommon(names, 1, shc, cache);
 	}
 	
 	/**
@@ -143,7 +146,7 @@ public class NodeBuilder {
 	 * @param nodes
 	 * @return
 	 */
-	public SyncTreeEntry newNodeOfNodes(TreeMap<ContentName, SyncNodeElement> nodes, final SliceComparator sc, SyncNodeCache cache, int depth) {
+	public SyncTreeEntry newNodeOfNodes(TreeMap<ContentName, SyncNodeElement> nodes, final SyncHashCache shc, SyncNodeCache cache, int depth) {
 		Collection<SyncNodeElement> values = nodes.values();
 		SyncTreeEntry ste = new NodeCommon<SyncNodeElement>() {		
 			public int extraSplit(SyncNodeElement n, SyncNodeElement tname, int total, int minLen, int prevMatch) {
@@ -155,13 +158,13 @@ public class NodeBuilder {
 			}
 
 			public SyncNodeComposite newNode(ArrayList<SyncNodeElement> refs, int depth) {
-				SyncNodeElement first = findit(refs, sc, true);
+				SyncNodeElement first = findit(refs, shc, true);
 				if (null == first) {
 					Log.warning(Log.FAC_SYNC, "Can't get hash or node for {0} in newNode - shouldn't happen", 
 							Component.printURI(refs.get(0).getData()));
 					return null;
 				}
-				SyncNodeElement last = findit(refs, sc, false);
+				SyncNodeElement last = findit(refs, shc, false);
 				if (null == last) {
 					Log.warning(Log.FAC_SYNC, "Can't get hash or node for {0} in newNode - shouldn't happen", 
 							Component.printURI(refs.get(refs.size() - 1).getData()));
@@ -169,7 +172,7 @@ public class NodeBuilder {
 				}
 				return new SyncNodeComposite(refs, first, last, refs.size(), depth);
 			}
-		}.createNodeCommon(values, depth, sc, cache);
+		}.createNodeCommon(values, depth, shc, cache);
 		
 		// Remove the values that NodeCommon removed from map
 		// A little clunky but can't come up with any better way at the moment...
@@ -180,15 +183,15 @@ public class NodeBuilder {
 		return ste;
 	}
 	
-	public SyncTreeEntry createHeadRecursive(TreeMap<ContentName, SyncNodeElement> nodeElements, final SliceComparator sc, SyncNodeCache cache, int depth) {
+	public SyncTreeEntry createHeadRecursive(TreeMap<ContentName, SyncNodeElement> nodeElements, final SyncHashCache shc, SyncNodeCache cache, int depth) {
 		SyncTreeEntry ste = null;
 		TreeMap<ContentName, SyncNodeElement> nextElements = new TreeMap<ContentName, SyncNodeElement>();
 		do {
-			ste = newNodeOfNodes(nodeElements, sc, cache, depth);
+			ste = newNodeOfNodes(nodeElements, shc, cache, depth);
 			nextElements.put(ste.getNode().getMinName().getName(), new SyncNodeElement(ste.getHash()));
 		} while (nodeElements.size() > 0);
 		if (nextElements.size() > 1)
-			return createHeadRecursive(nextElements, sc, cache, depth+1);
+			return createHeadRecursive(nextElements, shc, cache, depth+1);
 		if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST) && ste.getNode().getRefs().get(0).getType() == SyncNodeType.HASH) {
 			Log.finest(Log.FAC_SYNC, "Creating new compound node - with first element {0} and last element {1}",
 							Component.printURI(ste.getNode().getRefs().get(0).getData()), Component.printURI(ste.getNode().getRefs().get(ste.getNode().getRefs().size() - 1).getData()));
@@ -196,11 +199,11 @@ public class NodeBuilder {
 		return ste;
 	}
 	
-	private SyncNodeElement findit(ArrayList<SyncNodeElement> refs, SliceComparator sc, boolean start) {
+	private SyncNodeElement findit(ArrayList<SyncNodeElement> refs, SyncHashCache shc, boolean start) {
 		int position = start ? 0 : refs.size() - 1;
 		SyncNodeElement sne = refs.get(position);
 		while (sne.getType() != SyncNodeType.LEAF) {
-			SyncTreeEntry ste = sc.getHash(sne.getData());
+			SyncTreeEntry ste = shc.getHash(sne.getData());
 			if (null == ste || null == ste.getNode()) {
 				return null;
 			}
@@ -211,4 +214,37 @@ public class NodeBuilder {
 		return sne;
 	}
 	
+	/**
+	 * Create a new composite node based on the input set of content names in
+	 * canonical order.
+	 * 
+	 * @param names
+	 * @return entry for the new node or null if none
+	 */
+	public SyncTreeEntry newNode(TreeSet<ContentName> names, SyncHashCache shc, SyncNodeCache cache, int depth) {
+		ArrayList<SyncNodeElement> snes = new ArrayList<SyncNodeElement>();
+		int leafCount = names.size();
+		SyncTreeEntry ourEntry = null;
+		SyncNodeElement firstElement = null;
+		SyncNodeElement lastElement = null; 
+		while (names.size() > 0) {
+			ourEntry = newLeafNode(names, shc, cache);
+			SyncNodeElement sne = new SyncNodeElement(ourEntry.getHash());
+			if (names.size() > 0) {
+				if (null == firstElement)
+					firstElement = ourEntry.getNode().getRefs().get(0);
+				snes.add(sne);
+			} else if (snes.size() > 0) {
+				int nRefs = ourEntry.getNode().getRefs().size();
+				lastElement = ourEntry.getNode().getRefs().get(nRefs - 1);
+				snes.add(sne);
+			}
+		}
+		if (snes.size() > 0) {
+			SyncNodeComposite snc = new SyncNodeComposite(snes, firstElement, lastElement, leafCount, depth);
+			ourEntry = new SyncTreeEntry(snc.getHash(), cache);
+			ourEntry.setNode(snc);
+		}
+		return ourEntry;
+	}
 }

@@ -168,7 +168,7 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 			Log.info(Log.FAC_SYNC, "Saw data from interest: hash: {0}", Component.printURI(hash));
 		if (null != al) {
 			for (SliceComparator sc : al) {
-				SyncTreeEntry ste = sc.addHash(hash);
+				SyncTreeEntry ste = sc.getHashCache().addHash(hash, sc.getNodeCache());
 				if (sc.addPending(ste)) {
 					sc.checkNextRound();
 					sc.kickCompare();

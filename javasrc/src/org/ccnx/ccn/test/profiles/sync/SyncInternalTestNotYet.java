@@ -21,7 +21,9 @@ import java.util.TreeSet;
 import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.impl.sync.NodeBuilder;
 import org.ccnx.ccn.impl.sync.ProtocolBasedSyncMonitor;
+import org.ccnx.ccn.impl.sync.SyncHashCache;
 import org.ccnx.ccn.impl.sync.SyncNodeCache;
 import org.ccnx.ccn.impl.sync.SyncTreeEntry;
 import org.ccnx.ccn.io.content.ConfigSlice;
@@ -46,6 +48,7 @@ public class SyncInternalTestNotYet extends CCNTestBase implements CCNContentHan
 	ContentName topo;
 	ContentObject receivedNode = null;
 	SyncNodeCache cache = new SyncNodeCache();
+	SyncHashCache shc = new SyncHashCache();
 	
 	@Before
 	public void setUpNameSpace() {
@@ -102,7 +105,8 @@ public class SyncInternalTestNotYet extends CCNTestBase implements CCNContentHan
 			}
 		}
 		
-		SyncTreeEntry testNode = SyncTreeEntry.newNode(names, cache, repoNode.getDepth());
+		NodeBuilder nb = new NodeBuilder();
+		SyncTreeEntry testNode = nb.newNode(names, shc, cache, repoNode.getDepth());
 		Assert.assertTrue(testNode.getNode().equals(repoNode));
 		
 		Log.info(Log.FAC_TEST, "Completed testSyncNodeBuild");
