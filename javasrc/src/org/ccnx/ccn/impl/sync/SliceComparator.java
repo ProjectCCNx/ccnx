@@ -73,7 +73,7 @@ import org.ccnx.ccn.protocol.Interest;
  */
 public class SliceComparator implements Runnable {
 	public static final int DECODER_SIZE = 756;
-	public static enum SyncCompareState {INIT, PRELOAD, COMPARE, DONE};
+	public static enum SyncCompareState {INIT, PRELOAD, COMPARE, DONE, UPDATE};
 
 	public ScheduledThreadPoolExecutor _executor = (ScheduledThreadPoolExecutor) Executors.newScheduledThreadPool(1);
 	public final int COMPARE_INTERVAL = 100; // ms
@@ -608,20 +608,21 @@ public class SliceComparator implements Runnable {
 		if (_currentRoot != null) {
 			_currentRoot.setPos(0);
 			push(_currentRoot, _current);
-			updateCurrent();
-			_updateNames.clear();
 		}
 	}
 	
 	/**
 	 * We keep a running tree of what we already have in "X". Update it here to reflect what we
 	 * got on the last round.
+	 * @throws SyncException 
 	 */
-	protected void updateCurrent() {
+	protected boolean updateCurrent() throws SyncException {
 		TreeSet<ContentName> neededNames = new TreeSet<ContentName>();
+		Stack<SyncTreeEntry> updateStack = new Stack<SyncTreeEntry>();
 		boolean newHasNodes = false;
 		boolean redo = false;
 		SyncTreeEntry ste = getHead(_current);
+		push(ste, updateStack);
 		SyncTreeEntry origSte = ste;
 		SyncTreeEntry newHead = null;
 		if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST) && _updateNames.size() > 0)
@@ -636,17 +637,19 @@ public class SliceComparator implements Runnable {
 			boolean found = false;
 			while (!found && null != ste) {
 				while (null != ste && ste.lastPos()) {
-					pop(_current);
-					ste = getHead(_current);
+					pop(updateStack);
+					ste = getHead(updateStack);
 				}
 				if (null != ste) {
 					snc = ste.getNode();
-					if (null != snc) {
-						sne = ste.getCurrentElement();
+					if (null == snc) {
+						requestNode(ste.getHash());
+						return false;
 					}
-					if (null == snc || null == sne) {
-						Log.warning(Log.FAC_SYNC, "Missing node for {0} should not be missing", Component.printURI(ste.getHash()));
-						return;
+					sne = ste.getCurrentElement();
+					if (null == sne) {
+						Log.warning("Missing element for {0} in update - shouldn't happen", Component.printURI(snc.getHash()));
+						return false;
 					}
 				
 					switch (sne.getType()) {
@@ -656,15 +659,17 @@ public class SliceComparator implements Runnable {
 						if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
 							Log.finest(Log.FAC_SYNC, "Update compare - moving to: {0}", entry == null ? null : Component.printURI(entry.getHash()));
 						}
-						if (null == entry)
-							return;	// Shouldn't happen I don't think
+						if (null == entry) {
+							requestNode(sne.getData());
+							return false;
+						}
 						thisHashElement = ste.getCurrentElement();
 						ste.incPos();
 						if (redo) {
 							addNeededNames(neededNames, entry);
 						} else {
 							thisHashStartName = entry.getNode().getMinName().getName();
-							push(entry, _current);
+							push(entry, updateStack);
 							ste = entry;
 							ste.setPos(0);
 						}
@@ -674,8 +679,8 @@ public class SliceComparator implements Runnable {
 							// If we are after everything in X, no need to compare to X
 							int comp2 = snc.getMaxName().getName().compareTo(name);
 							if (comp2 < 0) {
-								pop(_current);
-								ste = getHead(_current);
+								pop(updateStack);
+								ste = getHead(updateStack);
 								if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
 									if (null != ste)
 										Log.finest(Log.FAC_SYNC, "Shortcut in update - popping back to {0}, pos {1}", Component.printURI(ste.getHash()), ste.getPos());
@@ -704,7 +709,7 @@ public class SliceComparator implements Runnable {
 							for (SyncNodeElement tsne: snc.getRefs()) {
 								neededNames.add(tsne.getName());
 							}
-							ste = pop(_current);
+							ste = pop(updateStack);
 							found = true;	// We didn't really find the name but we don't need to look anymore
 							break;
 						} else if (comp == 0) {
@@ -740,7 +745,7 @@ public class SliceComparator implements Runnable {
 			while (null != ste) {
 				ste.incPos();
 				if (ste.lastPos())
-					ste = pop(_current);
+					ste = pop(updateStack);
 				if (null != ste) {
 					SyncNodeComposite snc = ste.getNode();
 					if (null != snc) {
@@ -778,6 +783,7 @@ public class SliceComparator implements Runnable {
 			origSte.setPos(0);
 			push(origSte, _current);  // Should already be _currentRoot
 		}
+		return true;
 	}
 	
 	private void addNeededNames(TreeSet<ContentName> neededNames, SyncTreeEntry ste) {
@@ -869,9 +875,18 @@ public class SliceComparator implements Runnable {
 				case DONE:	// Compare is done. Start over again if we have pending data
 							// for another compare
 					nextRound();
+					changeState(SyncCompareState.UPDATE);
+					
+				case UPDATE:
+					if (_updateNames.size() > 0) {
+						if (updateCurrent())
+							_updateNames.clear();
+						else
+							break;
+					}
 					synchronized (this) {
+						changeState(SyncCompareState.INIT);
 						if (_pendingEntries.size() > 0) {
-							changeState(SyncCompareState.INIT);
 							break;
 						}
 					}

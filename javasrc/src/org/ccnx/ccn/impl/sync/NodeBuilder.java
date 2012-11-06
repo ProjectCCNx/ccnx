@@ -84,6 +84,7 @@ public class NodeBuilder {
 			}
 			SyncTreeEntry ste = new SyncTreeEntry(snc.getHash(), cache);
 			shc.putHashEntry(ste);
+			ste.setLocal(true);
 			ste.setNode(snc);
 			return ste;
 		}
@@ -102,7 +103,7 @@ public class NodeBuilder {
 	 * @return
 	 */
 	public SyncTreeEntry newLeafNode(TreeSet<ContentName> names, SyncHashCache shc, SyncNodeCache cache) {
-		return new NodeCommon<ContentName>() {
+		SyncTreeEntry ste = new NodeCommon<ContentName>() {
 			
 			public int extraSplit(ContentName nextName, ContentName tname, int total, int minLen, int prevMatch) {
 				int match = tname.matchLength(nextName);
@@ -136,6 +137,12 @@ public class NodeBuilder {
 				return new SyncNodeComposite(refs, refs.get(0), refs.get(refs.size() - 1), refs.size(), depth);
 			}
 		}.createNodeCommon(names, 1, shc, cache);
+		
+		SyncNodeComposite theNode = ste.getNode();
+		if (null != theNode) {
+			theNode.setLeafCount(theNode.getRefs().size());
+		}
+		return ste;
 	}
 	
 	/**
@@ -172,6 +179,19 @@ public class NodeBuilder {
 			}
 		}.createNodeCommon(nodes, depth, shc, cache);
 		
+		SyncNodeComposite theNode = ste.getNode();
+		int leafCount = 0;
+		if (null != theNode) {
+			for (SyncNodeElement sne : theNode.getRefs()) {
+				if (sne.getType() == SyncNodeType.HASH) {
+					SyncTreeEntry tste = shc.getHash(sne.getData());
+					if (null != tste && null != tste.getNode())
+						leafCount += tste.getNode().getLeafCount();
+				}
+			}
+			theNode.setLeafCount(theNode.getRefs().size());
+		}
+		theNode.setLeafCount(leafCount);
 		return ste;
 	}
 	
@@ -227,5 +247,5 @@ public class NodeBuilder {
 			ourEntry = createHeadRecursive(snes, shc, cache, 2);
 		}
 		return ourEntry;
-	}
+	}	
 }

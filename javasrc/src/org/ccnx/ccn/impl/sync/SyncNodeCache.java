@@ -16,17 +16,23 @@
  */
 package org.ccnx.ccn.impl.sync;
 
+import java.lang.ref.WeakReference;
 import java.util.HashMap;
 
 import org.ccnx.ccn.io.content.SyncNodeComposite;
 
+/**
+ * Nodes can be cached by hash across different comparators. We use WeakReferences to avoid accidentally caching nodes that
+ * no longer have any real referents
+ */
 public class SyncNodeCache {
 	
-	protected HashMap<SyncHashEntry, SyncNodeComposite> _nodes = new HashMap<SyncHashEntry, SyncNodeComposite>();
+	protected HashMap<SyncHashEntry, WeakReference<SyncNodeComposite>> _nodes = new HashMap<SyncHashEntry, WeakReference<SyncNodeComposite>>();
 
 	public void putNode(SyncNodeComposite node) {
 		synchronized (this) {
-			_nodes.put((new SyncHashEntry(node.getHash())), node);
+			WeakReference<SyncNodeComposite> wr = new WeakReference<SyncNodeComposite>(node);
+			_nodes.put((new SyncHashEntry(node.getHash())), wr);
 		}
 	}
 	
@@ -39,7 +45,10 @@ public class SyncNodeCache {
 		if (null == hash)
 			return null;
 		synchronized (this) {
-			return _nodes.get(new SyncHashEntry(hash));
+			WeakReference<SyncNodeComposite> wr = _nodes.get(new SyncHashEntry(hash));
+			if (null == wr)
+				return null;
+			return wr.get();
 		}
 	}
 }

@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.impl.sync;
 
+import java.lang.ref.SoftReference;
 import java.util.Arrays;
 import java.util.logging.Level;
 
@@ -34,10 +35,12 @@ public class SyncTreeEntry {
 	protected final static long PENDING = 1; 	// Indicates a request for the node has been sent but not yet
 												// answered
 	protected final static long COVERED = 2;	// Indicates that all names covered by these references have been seen
+	protected final static long LOCAL = 4;		// Indicates that the node associated with this entry was created locally
 
 	protected long _flags;
 	protected byte[] _hash = null;				// The hash associated with the node associated with this entry
-	protected SyncNodeComposite _node = null;
+	protected SyncNodeComposite _node = null;	// If it wasn't created by us, it can be retrieved so saved via SoftReference
+	protected SoftReference<SyncNodeComposite> _softNodeRef = null;
 	protected byte[] _rawContent = null;
 	protected int _position = 0;
 	protected SyncNodeCache _snc = null;
@@ -53,13 +56,17 @@ public class SyncTreeEntry {
 	
 	public void setNode(SyncNodeComposite snc) {
 		synchronized (this) {
-			if (_node != null)
+			if (getNodeByReference() != null)
 				return;
-			_node = snc;
+			if ((_flags & LOCAL) == 0) {
+				SoftReference<SyncNodeComposite> sr = new SoftReference<SyncNodeComposite>(snc);
+				_softNodeRef = sr;
+			} else
+				_node = snc;
 			_snc.putNode(snc);			
 		}
 		if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
-			SyncNodeComposite.decodeLogging(_node);
+			SyncNodeComposite.decodeLogging(snc);
 		}
 	}
 	
@@ -71,7 +78,7 @@ public class SyncTreeEntry {
 	 */
 	public void setRawContent(byte[] content) {
 		synchronized (this) {
-			if (_node != null)
+			if (getNodeByReference() != null)
 				return;
 			_rawContent = content;
 			_position = 0;
@@ -89,26 +96,26 @@ public class SyncTreeEntry {
 	 * @return
 	 */
 	public SyncNodeComposite getNode(XMLDecoder decoder) {
-		SyncNodeComposite node = _node;
+		SyncNodeComposite node = getNodeByReference();
 		synchronized (this) {
-			if (null != _node || null == _rawContent || null == decoder)
-				return _node;
-			_node = new SyncNodeComposite();
+			if (null != node || null == _rawContent || null == decoder)
+				return node;
+			
+			// If we have to decode it, its not local by definition
+			node = new SyncNodeComposite();
 			try {
-				_node.decode(_rawContent, decoder);
+				node.decode(_rawContent, decoder);
 			} catch (ContentDecodingException e) {
 				Log.warning("Couldn't decode node {0} due to: {1}", (_hash == null ? "(unknown)"
 						: Component.printURI(_hash)), e.getMessage());
-				_node = null;
 				_rawContent = null;
 				return null;
 			}
 			_rawContent = null;
-			node = _node;
-			_snc.putNode(_node);
+			_softNodeRef = new SoftReference<SyncNodeComposite>(node);
 		}
 		if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
-			SyncNodeComposite.decodeLogging(_node);
+			SyncNodeComposite.decodeLogging(node);
 		}
 		return node;
 	}
@@ -122,9 +129,10 @@ public class SyncTreeEntry {
 	 * @return
 	 */
 	public synchronized SyncNodeComposite.SyncNodeElement getCurrentElement() {
-		if (null == _node)
+		SyncNodeComposite node = getNodeByReference();
+		if (null == node)
 			return null;
-		return _node.getElement(_position);
+		return node.getElement(_position);
 	}
 	
 	public synchronized void incPos() {
@@ -140,9 +148,10 @@ public class SyncTreeEntry {
 	}
 	
 	public synchronized boolean lastPos() {
-		if (_node == null)
+		SyncNodeComposite node = getNodeByReference();
+		if (node == null)
 			return false;	// Needed to prompt a getNode
-		return (_position >= _node.getRefs().size());
+		return (_position >= node.getRefs().size());
 	}
 	
 	public synchronized byte[] getHash() {
@@ -165,6 +174,18 @@ public class SyncTreeEntry {
 		setFlag(flag, COVERED);
 	}
 	
+	public void setLocal(boolean flag) {
+		synchronized (this) {
+			if (flag && (_node != null))
+				return;		// Switch to local not allowed
+		}
+		setFlag(flag, LOCAL);
+	}
+	
+	public synchronized boolean isLocal() {
+		return (_flags & LOCAL) != 0;
+	}
+	
 	public synchronized boolean equals(SyncTreeEntry ste) {
 		return Arrays.equals(_hash, ste.getHash());
 	}
@@ -175,6 +196,13 @@ public class SyncTreeEntry {
 				_flags |= type;
 			else
 				_flags &= ~type;
+		}
+	}
+	
+	private SyncNodeComposite getNodeByReference() {
+		synchronized (this) {
+			boolean local = (_flags & LOCAL) != 0;
+			return local ? _node : (null == _softNodeRef ? null : _softNodeRef.get());
 		}
 	}
 }

@@ -169,6 +169,10 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 		return _refs;
 	}
 	
+	public void setLeafCount(int count) {
+		_leafCount = count;
+	}
+	
 	public SyncNodeElement getElement(int position) {
 		if (position >= _refs.size())
 			return null;
