@@ -264,6 +264,7 @@ struct face {
  */
 struct content_entry {
     ccn_accession_t accession;  /**< assigned in arrival order */
+    unsigned arrival_faceid;    /**< the faceid of first arrival */
     unsigned short *comps;      /**< Name Component byte boundary offsets */
     int ncomps;                 /**< Number of name components plus one */
     int flags;                  /**< see below */

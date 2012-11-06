@@ -4473,6 +4473,10 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
             content->flags &= ~CCN_CONTENT_ENTRY_STALE;
             h->n_stale--;
             set_content_timer(h, content, &obj);
+            /* Record the new arrival face only if the old face is gone */
+            // XXX - it is not clear that this is the most useful choice
+            if (face_from_faceid(h, content->arrival_faceid) == NULL)
+                content->arrival_faceid = face->faceid;
             // XXX - no counter for this case
         }
         else {
@@ -4484,6 +4488,7 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
     }
     else if (res == HT_NEW_ENTRY) {
         content->accession = ++(h->accession);
+        content->arrival_faceid = face->faceid;
         enroll_content(h, content);
         if (content == content_from_accession(h, content->accession)) {
             content->ncomps = comps->n;
@@ -4496,7 +4501,6 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
                 res = -__LINE__;
                 hashtb_end(e);
                 goto Bail;
-                
             }
         }
         content->key_size = e->keysize;
