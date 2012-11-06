@@ -643,6 +643,8 @@ public class SliceComparator implements Runnable {
 				if (null != ste) {
 					snc = ste.getNode();
 					if (null == snc) {
+						if (Log.isLoggable(Log.FAC_SYNC, Level.FINE))
+							Log.fine(Log.FAC_SYNC, "No data for update entry: {0}", Component.printURI(ste.getHash()));
 						requestNode(ste.getHash());
 						return false;
 					}
@@ -656,12 +658,14 @@ public class SliceComparator implements Runnable {
 					case HASH:
 						newHasNodes = true;
 						SyncTreeEntry entry = _shc.getHash(sne.getData());
-						if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
-							Log.finest(Log.FAC_SYNC, "Update compare - moving to: {0}", entry == null ? null : Component.printURI(entry.getHash()));
-						}
 						if (null == entry) {
+							if (Log.isLoggable(Log.FAC_SYNC, Level.FINE))
+								Log.fine(Log.FAC_SYNC, "No data for update entry: {0}", Component.printURI(sne.getData()));
 							requestNode(sne.getData());
 							return false;
+						}
+						if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
+							Log.finest(Log.FAC_SYNC, "Update compare - moving to: {0}", Component.printURI(entry.getHash()));
 						}
 						thisHashElement = ste.getCurrentElement();
 						ste.incPos();
@@ -786,6 +790,9 @@ public class SliceComparator implements Runnable {
 		return true;
 	}
 	
+	/**
+	 * This entry will be redone - add all of its names to the list and remove it
+	 */
 	private void addNeededNames(TreeSet<ContentName> neededNames, SyncTreeEntry ste) {
 		if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST))
 			Log.finest(Log.FAC_SYNC, "Update: subsuming node", Component.printURI(ste.getHash()));
@@ -799,6 +806,8 @@ public class SliceComparator implements Runnable {
 			} else
 				neededNames.add(tsne.getName());
 		}
+		if (ste.isLocal())
+			_shc.removeHashEntry(ste);
 	}
 	
 	/**

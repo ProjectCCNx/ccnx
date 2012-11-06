@@ -29,6 +29,11 @@ import org.ccnx.ccn.protocol.Component;
 
 /**
  * Entry used for navigating trees of hashes
+ * 
+ * The policy about how to save nodes is: If the node came from the network, it can be retrieved via a request so
+ * we use a SoftReference to allow these to be garbage collected when necessary. If the node is local, we built it so
+ * can't be guaranteed that we know how to rebuild it if we lose it. So we hold onto these directly here, and remove
+ * them explicitly when no longer needed in the higher level code.
  */
 public class SyncTreeEntry {
 	// Flags values

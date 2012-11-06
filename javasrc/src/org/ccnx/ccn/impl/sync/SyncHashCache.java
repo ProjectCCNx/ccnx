@@ -64,4 +64,15 @@ public class SyncHashCache {
 			_hashes.put(she, entry);
 		}
 	}
+	
+	/**
+	 * Remove a specific entry from the cache - needed to avoid unnecessary
+	 * memory leaks
+	 */
+	public void removeHashEntry(SyncTreeEntry entry) {
+		SyncHashEntry she = new SyncHashEntry(entry.getHash());
+		synchronized (this) {
+			_hashes.remove(she);
+		}
+	}
 }
