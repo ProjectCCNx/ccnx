@@ -542,9 +542,9 @@ ccnd_generate_face_guid(struct ccnd_handle *h, struct face *face, int size,
         if (size - i > sizeof(range))
             range = ~0;
         else {
-            for (range = 0; i < size; i++)
-                range = range + (hi[i] << (8 * (size -i)))
-                              - (lo[i] << (8 * (size -i)));
+            range = 0;
+            for (i = i; i < size; i++)
+                range = (range << 8) + hi[i] - lo[i];
         }
         if (range < 2)
             return;

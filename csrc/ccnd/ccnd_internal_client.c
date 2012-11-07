@@ -191,13 +191,13 @@ extract_bounds(const unsigned char *ccnb, struct ccn_parsed_interest *pi,
     int y;
     int z;
     size_t sz;
-    int start = pi->offset[CCN_PI_B_Exclude];
-    int end = pi->offset[CCN_PI_E_Exclude];
     
-    if (start < end) {
-        d = ccn_buf_decoder_start(&decoder, ccnb + start, end - start);
+    /* We are interested only in the Exclude element. */
+    ccnb = ccnb + pi->offset[CCN_PI_B_Exclude];
+    sz = pi->offset[CCN_PI_E_Exclude] - pi->offset[CCN_PI_B_Exclude];
+    if (sz != 0) {
+        d = ccn_buf_decoder_start(&decoder, ccnb, sz);
         if (ccn_buf_match_dtag(d, CCN_DTAG_Exclude)) {
-            res = d->decoder.element_index;
             ccn_buf_advance(d);
             if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
                 ccn_buf_advance(d);
@@ -219,9 +219,9 @@ extract_bounds(const unsigned char *ccnb, struct ccn_parsed_interest *pi,
                 return (-1);
             if (y - x != z - y)
                 return(-1);
-            res = ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb + start, x, y, plo, &sz);
+            res = ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb, x, y, plo, &sz);
             if (res < 0) return(-1);
-            res = ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb + start, x, y, phi, &sz);
+            res = ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb, y, z, phi, &sz);
             if (res < 0) return(-1);
             return(sz);
         }
@@ -389,7 +389,6 @@ ccnd_answer_req(struct ccn_closure *selfp,
                     hi += sizeof(mb);
                     ccnd_generate_face_guid(ccnd, face, size, lo, hi);
                 }
-                    
             }
             if (face->guid_cob == NULL)
                 ccnd_init_face_guid_cob(ccnd, face);
@@ -406,9 +405,8 @@ ccnd_answer_req(struct ccn_closure *selfp,
                 ccn_put(info->h, face->guid_cob->buf,
                                  face->guid_cob->length);
                 res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
-                goto Finish;
             }
-            break;
+            goto Finish;
         default:
             goto Bail;
     }
