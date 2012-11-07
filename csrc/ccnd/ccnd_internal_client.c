@@ -176,6 +176,60 @@ ccnd_init_face_guid_cob(struct ccnd_handle *ccnd, struct face *face)
 #define OP_ADJACENCY   0x0900
 
 /**
+ * Isolate the lower and upper bounds for the guid component from Exclude
+ *
+ * This is used as part of the adjacency protocol.
+ */
+static int
+extract_bounds(const unsigned char *ccnb, struct ccn_parsed_interest *pi,
+               const unsigned char **plo, const unsigned char **phi)
+{
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d = NULL;
+    int res = -1;
+    int x;
+    int y;
+    int z;
+    size_t sz;
+    int start = pi->offset[CCN_PI_B_Exclude];
+    int end = pi->offset[CCN_PI_E_Exclude];
+    
+    if (start < end) {
+        d = ccn_buf_decoder_start(&decoder, ccnb + start, end - start);
+        if (ccn_buf_match_dtag(d, CCN_DTAG_Exclude)) {
+            res = d->decoder.element_index;
+            ccn_buf_advance(d);
+            if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
+                ccn_buf_advance(d);
+                ccn_buf_check_close(d);
+            }
+            else return(-1);
+            x = d->decoder.token_index;
+            ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Component, 8, 70);
+            y = d->decoder.token_index;
+            ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Component, 8, 70);
+            z = d->decoder.token_index;
+            if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
+                ccn_buf_advance(d);
+                ccn_buf_check_close(d);
+            }
+            else return(-1);
+            ccn_buf_check_close(d);
+            if (d->decoder.state < 0)
+                return (-1);
+            if (y - x != z - y)
+                return(-1);
+            res = ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb + start, x, y, plo, &sz);
+            if (res < 0) return(-1);
+            res = ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb + start, x, y, phi, &sz);
+            if (res < 0) return(-1);
+            return(sz);
+        }
+    }
+    return(-1);
+}
+
+/**
  * Common interest handler for ccnd_internal_client
  */
 static enum ccn_upcall_res
@@ -320,8 +374,23 @@ ccnd_answer_req(struct ccn_closure *selfp,
             face = ccnd_face_from_faceid(ccnd, ccnd->interest_faceid);
             if (face == NULL)
                 goto Bail;
-            if (info->pi->prefix_comps == 2 && face->guid == NULL)
-                ccnd_generate_face_guid(ccnd, face);
+            if (info->pi->prefix_comps == 2 && face->guid == NULL) {
+                const unsigned char *lo = NULL;
+                const unsigned char *hi = NULL;
+                int size = 0;
+                unsigned char mb[6] = "\xC1.M.G\x00";
+                
+                size = extract_bounds(info->interest_ccnb, info->pi, &lo, &hi);
+                if (size > (int)sizeof(mb) &&
+                    0 == memcmp(mb, lo, sizeof(mb)) &&
+                    0 == memcmp(mb, hi, sizeof(mb))) {
+                    size -= sizeof(mb);
+                    lo += sizeof(mb);
+                    hi += sizeof(mb);
+                    ccnd_generate_face_guid(ccnd, face, size, lo, hi);
+                }
+                    
+            }
             if (face->guid_cob == NULL)
                 ccnd_init_face_guid_cob(ccnd, face);
             if (face->guid_cob == NULL)

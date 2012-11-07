@@ -515,21 +515,57 @@ forget_face_guid(struct ccnd_handle *h, struct face *face)
  *
  * This guid is useful for routing agents, as it gives an unambiguous way
  * to talk about a connection between two nodes.
+ *
+ * lo and hi, if not NULL, are exclusive bounds for the generated guid.
+ * The size is in bytes, and refers to both the bounds and the result.
  */
 void
-ccnd_generate_face_guid(struct ccnd_handle *h, struct face *face)
+ccnd_generate_face_guid(struct ccnd_handle *h, struct face *face, int size,
+                        const unsigned char *lo, const unsigned char *hi)
 {
-    unsigned char g[8];
     int i;
     unsigned check = CCN_FACE_GG | CCN_FACE_UNDECIDED | CCN_FACE_PASSIVE;
     unsigned want = 0;
+    uint_least64_t range;
+    uint_least64_t r;
+    struct ccn_charbuf *c = NULL;
     
     if ((face->flags & check) != want)
         return;
-    /* XXX - This should be using higher-quality randomness */
-    for (i = 0; i < sizeof(g); i++)
-        g[i] = nrand48(h->seed);
-    set_face_guid(h, face, g, sizeof(g));
+     /* XXX - This should be using higher-quality randomness */
+    if (lo != NULL && hi != NULL) {
+        /* Generate up to 64 additional random bits to augment guid */
+        for (i = 0; i < size && lo[i] == hi[i];)
+            i++;
+        if (i == size || lo[i] > hi[i])
+            return;
+        if (size - i > sizeof(range))
+            range = ~0;
+        else {
+            for (range = 0; i < size; i++)
+                range = range + (hi[i] << (8 * (size -i)))
+                              - (lo[i] << (8 * (size -i)));
+        }
+        if (range < 2)
+            return;
+        c = ccn_charbuf_create();
+        ccn_charbuf_append(c, lo, size);
+        r = nrand48(h->seed);
+        r = (r << 20) ^ nrand48(h->seed);
+        r = (r << 20) ^ nrand48(h->seed);
+        r = r % (range - 1) + 1;
+        for (i = size - 1; r != 0 && i >= 0; i--) {
+            r = r + c->buf[i];
+            c->buf[i] = r & 0xff;
+            r = r >> 8;
+        }
+    }
+    else {
+        for (i = 0; i < size; i++)
+            ccn_charbuf_append_value(c, nrand48(h->seed) & 0xff, 1);
+    }
+    set_face_guid(h, face, c->buf, c->length);
+    ccn_charbuf_destroy(&c);
 }
 
 /**
