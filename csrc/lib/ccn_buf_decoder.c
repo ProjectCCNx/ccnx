@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011, 2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -651,8 +651,9 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
         interest->offset[CCN_PI_B_Nonce] = d->decoder.token_index;
         res = ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_Nonce, 4, 64);
         interest->offset[CCN_PI_E_Nonce] = d->decoder.token_index;
-        /* Allow for no experimental stuff */
         interest->offset[CCN_PI_B_OTHER] = d->decoder.token_index;
+        /* this is for local use */
+        ccn_parse_optional_tagged_nonNegativeInteger(d, CCN_DTAG_FaceID);
         interest->offset[CCN_PI_E_OTHER] = d->decoder.token_index;
         ccn_buf_check_close(d);
         interest->offset[CCN_PI_E] = d->decoder.index;
