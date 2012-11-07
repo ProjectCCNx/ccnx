@@ -391,32 +391,36 @@ ccn_parse_nonNegativeInteger(struct ccn_buf_decoder *d)
     const unsigned char *p;
     int i;
     int n;
-    int val;
-    int newval;
+    unsigned val;
+    unsigned newval;
     unsigned char c;
     if (d->decoder.state < 0)
-        return(d->decoder.state);
+        return(-1);
     if (CCN_GET_TT_FROM_DSTATE(d->decoder.state) == CCN_UDATA) {
         p = d->buf + d->decoder.index;
         n = d->decoder.numval;
-        if (n < 1)
-            return(d->decoder.state = -__LINE__);
+        if (n < 1) { d->decoder.state = -__LINE__; return(-1); }
         val = 0;
         for (i = 0; i < n; i++) {
             c = p[i];
             if ('0' <= c && c <= '9') {
                 newval = val * 10 + (c - '0');
-                if (newval < val)
-                    return(d->decoder.state = -__LINE__);
+                if (newval < val) {
+                    d->decoder.state = -__LINE__;
+                    return(-1);
+                }
                 val = newval;
             }
-            else
-                return(d->decoder.state = -__LINE__);
+            else {
+                d->decoder.state = -__LINE__;
+                return(-1);
+            }
         }
         ccn_buf_advance(d);
         return(val);
     }
-    return(d->decoder.state = -__LINE__);
+    d->decoder.state = -__LINE__;
+    return(-1);
 }
 
 /**
@@ -531,7 +535,7 @@ ccn_parse_optional_tagged_nonNegativeInteger(struct ccn_buf_decoder *d, enum ccn
         ccn_buf_check_close(d);
     }
     if (d->decoder.state < 0)
-        return (d->decoder.state);
+        return (-1);
     return(res);
 }
 
