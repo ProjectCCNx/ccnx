@@ -3212,7 +3212,20 @@ get_outbound_faces(struct ccnd_handle *h,
     if (npe->fgen != h->forward_to_gen)
         update_forward_to(h, npe);
     x = ccn_indexbuf_create();
-    if (pi->scope == 0 || npe->forward_to == NULL || npe->forward_to->n == 0)
+    if (pi->scope == 0)
+        return(x);
+    if (from != NULL && (from->flags & CCN_FACE_GG) != 0) {
+        i = ccn_fetch_tagged_nonNegativeInteger(CCN_DTAG_FaceID, msg,
+              pi->offset[CCN_PI_B_OTHER], pi->offset[CCN_PI_E_OTHER]);
+        if (i != -1) {
+            faceid = i;
+            ccn_indexbuf_append_element(x, faceid);
+            if (h->debug & 32)
+                ccnd_msg(h, "outbound.%d adding %u", __LINE__, faceid);
+            return(x);
+        }
+    }
+    if (npe->forward_to == NULL || npe->forward_to->n == 0)
         return(x);
     if ((npe->flags & CCN_FORW_LOCAL) != 0)
         checkmask = (from != NULL && (from->flags & CCN_FACE_GG) != 0) ? CCN_FACE_GG : (~0);
