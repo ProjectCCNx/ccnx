@@ -337,21 +337,21 @@ static int CCNSeek(access_t *p_access, uint64_t i_pos)
     p_sys->incoming->data = p_access; /* so CCN callbacks can find p_sys */
     p_sys->incoming->p = &incoming_content; /* the CCN callback */
     p_sys->i_pos = i_pos;
-    /* prefetch, but only do full amount if going forward */
+    /* fetch */
+    p_name = sequenced_name(p_sys->p_name, p_sys->i_pos / p_sys->i_chunksize);
+    ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming, p_sys->p_data_template);
+    ccn_charbuf_destroy(&p_name);
+    /* and prefetch, but only do full amount if going forward */
     if (i_pos > p_access->info.i_pos)
       i_prefetch = p_sys->i_prefetch;
     else
       i_prefetch = p_sys->i_prefetch / 2;
-    for (i = 0; i <= i_prefetch; i++) {
+    for (i = 1; i <= i_prefetch; i++) {
         p_name = sequenced_name(p_sys->p_name, i + p_sys->i_pos / p_sys->i_chunksize);
         ccn_express_interest(p_sys->ccn, p_name, p_sys->prefetch,
                                      p_sys->p_prefetch_template);
         ccn_charbuf_destroy(&p_name);        
     }
-    /* and fetch */
-    p_name = sequenced_name(p_sys->p_name, p_sys->i_pos / p_sys->i_chunksize);
-    ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming, p_sys->p_data_template);
-    ccn_charbuf_destroy(&p_name);
     
     p_access->info.i_pos = i_pos;
     p_access->info.b_eof = false;
@@ -673,7 +673,8 @@ incoming_content(struct ccn_closure *selfp,
             ccn_charbuf_destroy(&name);
             if (res < 0) abort();
             /* and prefetch a fragment if it's not past the end */
-            if (p_sys->i_prefetch * p_sys->i_chunksize <= p_access->info.i_size - i_nextpos) {
+            if (p_sys->i_prefetch > 0 &&
+                (p_sys->i_prefetch * p_sys->i_chunksize <= p_access->info.i_size - i_nextpos)) {
                 name = sequenced_name(p_sys->p_name, p_sys->i_prefetch + i_nextpos / p_sys->i_chunksize);
                 res = ccn_express_interest(info->h, name, p_sys->prefetch, p_sys->p_prefetch_template);
                 ccn_charbuf_destroy(&name);
