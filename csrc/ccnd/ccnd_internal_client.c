@@ -229,6 +229,64 @@ extract_bounds(const unsigned char *ccnb, struct ccn_parsed_interest *pi,
     return(-1);
 }
 
+static enum ccn_upcall_res
+incoming_adjacency(struct ccn_closure *selfp,
+                   enum ccn_upcall_kind kind,
+                   struct ccn_upcall_info *info)
+{
+    switch (kind) {
+        case CCN_UPCALL_FINAL:
+            free(selfp);
+            return(CCN_UPCALL_RESULT_OK);
+        default:
+            return(CCN_UPCALL_RESULT_ERR);
+    }
+}
+
+static void
+send_adjacency_offer(struct ccnd_handle *ccnd, struct face *face)
+{
+    struct ccn_charbuf *name;
+    struct ccn_charbuf *c;
+    struct ccn_charbuf *templ;
+    struct ccn_closure *action = NULL;
+    
+    if (face == NULL || face->guid == NULL)
+        return;
+    name = ccn_charbuf_create();
+    c = ccn_charbuf_create();
+    templ = ccn_charbuf_create();
+    ccn_name_from_uri(name, "ccnx:/%C1.M.S.neighborhood/%C1.M.CHAN");
+    ccn_charbuf_reset(c);
+    ccn_charbuf_append_string(c, "\xC1.M.G");
+    ccn_charbuf_append_value(c, 0, 1);
+    ccn_charbuf_append(c, face->guid + 1, face->guid[0]);
+    ccn_name_append(name, c->buf, c->length);
+    ccn_name_from_uri(name, "%C1.M.NODE");
+    ccn_charbuf_reset(templ);
+    ccnb_element_begin(templ, CCN_DTAG_Interest);
+    ccn_charbuf_append_charbuf(templ, name);
+    ccnb_element_begin(templ, CCN_DTAG_Exclude);
+    ccn_charbuf_reset(c);
+    ccn_charbuf_append_string(c, "\xC1.M.K");
+    ccn_charbuf_append_value(c, 0, 1);
+    ccn_charbuf_append(c, ccnd->ccnd_id, sizeof(ccnd->ccnd_id));
+    ccnb_append_tagged_blob(templ, CCN_DTAG_Component, c->buf, c->length);
+    ccnb_element_end(templ); /* Exclude */
+    ccnb_tagged_putf(templ, CCN_DTAG_Scope, "2");
+    ccnb_tagged_putf(templ, CCN_DTAG_FaceID, "%u", face->faceid);
+    ccnb_element_end(templ); /* Interest */
+    action = calloc(1, sizeof(*action));
+    if (action != NULL) {
+        action->p = &incoming_adjacency;
+        action->intdata = face->faceid;
+        ccn_express_interest(ccnd->internal_client, name, action, templ);
+    }
+    ccn_charbuf_destroy(&name);
+    ccn_charbuf_destroy(&c);
+    ccn_charbuf_destroy(&templ);
+}
+
 /**
  * Common interest handler for ccnd_internal_client
  */
@@ -388,6 +446,12 @@ ccnd_answer_req(struct ccn_closure *selfp,
                     lo += sizeof(mb);
                     hi += sizeof(mb);
                     ccnd_generate_face_guid(ccnd, face, size, lo, hi);
+                    if (face->guid != NULL) {
+                        send_adjacency_offer(ccnd, face);
+                        // XXX - need to record offered status
+                        res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
+                        // eventually - goto Finish;
+                    }
                 }
             }
             if (face->guid_cob == NULL)
