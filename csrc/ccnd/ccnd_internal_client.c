@@ -159,23 +159,6 @@ ccnd_init_face_guid_cob(struct ccnd_handle *ccnd, struct face *face)
 }
 
 /**
- * Local interpretation of selfp->intdata
- */
-#define MORECOMPS_MASK 0x007F
-#define MUST_VERIFY    0x0080
-#define MUST_VERIFY1   (MUST_VERIFY + 1)
-#define OPER_MASK      0xFF00
-#define OP_PING        0x0000
-#define OP_NEWFACE     0x0200
-#define OP_DESTROYFACE 0x0300
-#define OP_PREFIXREG   0x0400
-#define OP_SELFREG     0x0500
-#define OP_UNREG       0x0600
-#define OP_NOTICE      0x0700
-#define OP_SERVICE     0x0800
-#define OP_ADJACENCY   0x0900
-
-/**
  * Isolate the lower and upper bounds for the guid component from Exclude
  *
  * This is used as part of the adjacency protocol.
@@ -286,6 +269,23 @@ send_adjacency_offer(struct ccnd_handle *ccnd, struct face *face)
     ccn_charbuf_destroy(&c);
     ccn_charbuf_destroy(&templ);
 }
+
+/**
+ * Local interpretation of selfp->intdata
+ */
+#define MORECOMPS_MASK 0x007F
+#define MUST_VERIFY    0x0080
+#define MUST_VERIFY1   (MUST_VERIFY + 1)
+#define OPER_MASK      0xFF00
+#define OP_PING        0x0000
+#define OP_NEWFACE     0x0200
+#define OP_DESTROYFACE 0x0300
+#define OP_PREFIXREG   0x0400
+#define OP_SELFREG     0x0500
+#define OP_UNREG       0x0600
+#define OP_NOTICE      0x0700
+#define OP_SERVICE     0x0800
+#define OP_ADJACENCY   0x0900
 
 /**
  * Common interest handler for ccnd_internal_client
