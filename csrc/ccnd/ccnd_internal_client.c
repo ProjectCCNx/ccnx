@@ -108,7 +108,7 @@ ccnd_init_face_guid_cob(struct ccnd_handle *ccnd, struct face *face)
     struct ccn *h = ccnd->internal_client;
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *pubid = NULL;
-    struct ccn_charbuf *pubkey = NULL;
+    struct ccn_charbuf *payload = NULL;
     struct ccn_charbuf *comp = NULL;
     struct ccn_charbuf *cob = NULL;
     int res;
@@ -117,11 +117,10 @@ ccnd_init_face_guid_cob(struct ccnd_handle *ccnd, struct face *face)
         return;
     name = ccn_charbuf_create();
     pubid = ccn_charbuf_create();
-    pubkey = ccn_charbuf_create();
+    payload = ccn_charbuf_create();
     comp = ccn_charbuf_create();
     cob = ccn_charbuf_create();
     
-    res = ccn_get_public_key(h, NULL, pubid, pubkey);
     ccn_name_from_uri(name, "ccnx:/%C1.M.S.neighborhood/%C1.M.CHAN");
     /* %C1.G.%00<guid> */
     ccn_charbuf_reset(comp);
@@ -145,14 +144,12 @@ ccnd_init_face_guid_cob(struct ccnd_handle *ccnd, struct face *face)
     ccn_name_from_uri(name, "%00");
     sp.sp_flags |= CCN_SP_FINAL_BLOCK;
     sp.freshness = 8;
-    /* XXX - the key is probably not the most useful payload */
-    sp.type = CCN_CONTENT_KEY;
-    res = ccn_sign_content(h, cob, name, &sp, pubkey->buf, pubkey->length);
+    res = ccn_sign_content(h, cob, name, &sp, payload->buf, payload->length);
     if (res != 0)
         ccn_charbuf_destroy(&cob);
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&pubid);
-    ccn_charbuf_destroy(&pubkey);
+    ccn_charbuf_destroy(&payload);
     ccn_charbuf_destroy(&comp);
     ccn_charbuf_destroy(&sp.template_ccnb);
     face->guid_cob = cob;
