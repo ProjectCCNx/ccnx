@@ -487,8 +487,8 @@ set_face_guid(struct ccnd_handle *h, struct face *face,
  *
  * The first byte of face->guid is the length of the actual guid bytes.
  */
-static void
-forget_face_guid(struct ccnd_handle *h, struct face *face)
+void
+ccnd_forget_face_guid(struct ccnd_handle *h, struct face *face)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -590,7 +590,7 @@ finalize_face(struct hashtb_enumerator *e)
         if (e->ht == h->faces_by_fd)
             ccnd_close_fd(h, face->faceid, &face->recv_fd);
         if ((face->guid) != NULL)
-            forget_face_guid(h, face);
+            ccnd_forget_face_guid(h, face);
         ccn_charbuf_destroy(&face->guid_cob);
         h->faces_by_faceid[i] = NULL;
         if ((face->flags & CCN_FACE_UNDECIDED) != 0 &&

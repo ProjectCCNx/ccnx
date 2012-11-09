@@ -224,7 +224,8 @@ struct face {
     unsigned rrun;
     uintmax_t rseq;
     struct ccnd_meter *meter[CCND_FACE_METER_N];
-    unsigned short pktseq;     /**< sequence number for sent packets */
+    unsigned short pktseq;      /**< sequence number for sent packets */
+    unsigned short adjstate;    /**< state of adjacency negotiotiation */
 };
 
 /** face flags */
@@ -480,6 +481,7 @@ int ccnd_reg_uri(struct ccnd_handle *h,
 
 void ccnd_generate_face_guid(struct ccnd_handle *h, struct face *face, int size,
                              const unsigned char *lo, const unsigned char *hi);
+void ccnd_forget_face_guid(struct ccnd_handle *h, struct face *face);
 struct face *ccnd_face_from_faceid(struct ccnd_handle *, unsigned);
 void ccnd_face_status_change(struct ccnd_handle *, unsigned);
 int ccnd_destroy_face(struct ccnd_handle *h, unsigned faceid);

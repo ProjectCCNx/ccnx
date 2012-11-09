@@ -101,6 +101,17 @@ ccnd_init_service_ccnb(struct ccnd_handle *ccnd, const char *baseuri, int freshn
     return(cob);
 }
 
+/* These are used in face->adjstate to track our state */
+#define ADJ_SOL_SENT (1U << 0)
+#define ADJ_SOL_RECV (1U << 1)
+#define ADJ_OFR_SENT (1U << 2)
+#define ADJ_OFR_RECV (1U << 3)
+#define ADJ_CRQ_SENT (1U << 4)
+#define ADJ_CRQ_RECV (1U << 5)
+#define ADJ_DAT_SENT (1U << 6)
+#define ADJ_DAT_RECV (1U << 7)
+#define ADJ_TIMEDWAIT (1U << 8)
+
 static void
 ccnd_init_face_guid_cob(struct ccnd_handle *ccnd, struct face *face)
 {
@@ -114,6 +125,8 @@ ccnd_init_face_guid_cob(struct ccnd_handle *ccnd, struct face *face)
     int res;
     
     if (face->guid == NULL || face->guid_cob != NULL)
+        return;
+    if ((face->adjstate & (ADJ_OFR_SENT | ADJ_OFR_RECV)) == 0)
         return;
     name = ccn_charbuf_create();
     pubid = ccn_charbuf_create();
@@ -143,7 +156,7 @@ ccnd_init_face_guid_cob(struct ccnd_handle *ccnd, struct face *face)
     ccn_create_version(h, name, CCN_V_NOW, 0, 0);
     ccn_name_from_uri(name, "%00");
     sp.sp_flags |= CCN_SP_FINAL_BLOCK;
-    sp.freshness = 8;
+    sp.freshness = 120;
     res = ccn_sign_content(h, cob, name, &sp, payload->buf, payload->length);
     if (res != 0)
         ccn_charbuf_destroy(&cob);
@@ -214,9 +227,33 @@ incoming_adjacency(struct ccn_closure *selfp,
                    enum ccn_upcall_kind kind,
                    struct ccn_upcall_info *info)
 {
+    struct face *face = NULL;
+    struct ccnd_handle *ccnd = selfp->data;
     switch (kind) {
         case CCN_UPCALL_FINAL:
             free(selfp);
+            return(CCN_UPCALL_RESULT_OK);
+        case CCN_UPCALL_CONTENT:
+            face = ccnd_face_from_faceid(ccnd, selfp->intdata);
+            if (face == NULL)
+                return(CCN_UPCALL_RESULT_ERR);
+            if ((face->adjstate & (ADJ_TIMEDWAIT)) != 0)
+                return(CCN_UPCALL_RESULT_ERR);
+            /* XXX - this should scrutinize the data to make sure it is OK */
+            if ((face->adjstate & (ADJ_OFR_SENT | ADJ_CRQ_SENT)) != 0)
+                face->adjstate |= ADJ_DAT_RECV;
+            if ((face->adjstate & (ADJ_CRQ_RECV)) != 0 &&
+                (face->adjstate & (ADJ_DAT_SENT)) == 0 &&
+                face->guid_cob != 0) {
+                ccn_put(info->h, face->guid_cob->buf,
+                                 face->guid_cob->length);
+                face->adjstate |= ADJ_DAT_SENT;
+            }
+            return(CCN_UPCALL_RESULT_OK);
+        case CCN_UPCALL_INTEREST_TIMED_OUT:
+            if ((face->adjstate & (ADJ_OFR_SENT | ADJ_CRQ_SENT)) != 0)
+                ccnd_forget_face_guid(ccnd, face);
+            face->adjstate = ADJ_TIMEDWAIT;
             return(CCN_UPCALL_RESULT_OK);
         default:
             return(CCN_UPCALL_RESULT_ERR);
@@ -232,6 +269,8 @@ send_adjacency_offer(struct ccnd_handle *ccnd, struct face *face)
     struct ccn_closure *action = NULL;
     
     if (face == NULL || face->guid == NULL)
+        return;
+    if ((face->adjstate & (ADJ_OFR_SENT | ADJ_SOL_SENT | ADJ_TIMEDWAIT)) != 0)
         return;
     name = ccn_charbuf_create();
     c = ccn_charbuf_create();
@@ -260,7 +299,9 @@ send_adjacency_offer(struct ccnd_handle *ccnd, struct face *face)
     if (action != NULL) {
         action->p = &incoming_adjacency;
         action->intdata = face->faceid;
+        action->data = ccnd;
         ccn_express_interest(ccnd->internal_client, name, action, templ);
+        face->adjstate |= ADJ_OFR_SENT;
     }
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&c);
@@ -442,12 +483,14 @@ ccnd_answer_req(struct ccn_closure *selfp,
                     size -= sizeof(mb);
                     lo += sizeof(mb);
                     hi += sizeof(mb);
+                    // XXX - we may want to be selective about proceeding
+                    face->adjstate |= ADJ_SOL_RECV;
                     ccnd_generate_face_guid(ccnd, face, size, lo, hi);
                     if (face->guid != NULL) {
                         send_adjacency_offer(ccnd, face);
-                        // XXX - need to record offered status
+                        face->adjstate |= ADJ_OFR_SENT;
                         res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
-                        // eventually - goto Finish;
+                        goto Finish;
                     }
                 }
             }
@@ -463,8 +506,13 @@ ccnd_answer_req(struct ccn_closure *selfp,
                                              info->pi->offset[CCN_PI_E],
                                              info->pi
                                              )) {
-                ccn_put(info->h, face->guid_cob->buf,
-                                 face->guid_cob->length);
+                if (info->pi->prefix_comps == 4)
+                    face->adjstate |= ADJ_CRQ_RECV;
+                if ((face->adjstate & (ADJ_DAT_RECV | ADJ_OFR_RECV)) != 0) {
+                    ccn_put(info->h, face->guid_cob->buf,
+                            face->guid_cob->length);
+                    face->adjstate |= ADJ_DAT_SENT;
+                }
                 res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
             }
             goto Finish;
