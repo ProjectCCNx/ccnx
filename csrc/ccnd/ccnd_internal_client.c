@@ -251,6 +251,9 @@ incoming_adjacency(struct ccn_closure *selfp,
             }
             return(CCN_UPCALL_RESULT_OK);
         case CCN_UPCALL_INTEREST_TIMED_OUT:
+            face = ccnd_face_from_faceid(ccnd, selfp->intdata);
+            if (face == NULL)
+                return(CCN_UPCALL_RESULT_ERR);
             if ((face->adjstate & (ADJ_OFR_SENT | ADJ_CRQ_SENT)) != 0)
                 ccnd_forget_face_guid(ccnd, face);
             face->adjstate = ADJ_TIMEDWAIT;
