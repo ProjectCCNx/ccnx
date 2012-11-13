@@ -486,7 +486,9 @@ int ccnd_set_face_guid(struct ccnd_handle *h, struct face *face,
 void ccnd_forget_face_guid(struct ccnd_handle *h, struct face *face);
 int ccnd_append_face_guid(struct ccnd_handle *h, struct ccn_charbuf *cb,
                           struct face *face);
-                      
+
+void ccnd_internal_client_has_somthing_to_say(struct ccnd_handle *h);
+
 struct face *ccnd_face_from_faceid(struct ccnd_handle *, unsigned);
 void ccnd_face_status_change(struct ccnd_handle *, unsigned);
 int ccnd_destroy_face(struct ccnd_handle *h, unsigned faceid);

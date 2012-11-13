@@ -39,7 +39,7 @@
 #include <ccn/uri.h>
 #include "ccnd_private.h"
 
-#if 0
+#if 1
 #define GOT_HERE ccnd_msg(ccnd, "at ccnd_internal_client.c:%d", __LINE__);
 #else
 #define GOT_HERE
@@ -134,7 +134,7 @@ ccnd_init_face_guid_cob(struct ccnd_handle *ccnd, struct face *face)
     payload = ccn_charbuf_create();
     comp = ccn_charbuf_create();
     cob = ccn_charbuf_create();
-    
+GOT_HERE    
     ccn_name_from_uri(name, "ccnx:/%C1.M.S.neighborhood/%C1.M.CHAN");
     /* %C1.G.%00<guid> */
     ccn_charbuf_reset(comp);
@@ -236,11 +236,12 @@ solicit_response(struct ccn_closure *selfp,
             free(selfp);
             return(CCN_UPCALL_RESULT_OK);
         default:
-            face = ccnd_face_from_faceid(ccnd, selfp->intdata);
+GOT_HERE            face = ccnd_face_from_faceid(ccnd, selfp->intdata);
             if (face == NULL)
                 return(CCN_UPCALL_RESULT_ERR);
+            ccnd_msg(ccnd, "face %u adjstate %#x kind %d", face->faceid, face->adjstate, (int)kind);
             if ((face->adjstate & (ADJ_SOL_SENT)) != 0) {
-                ccnd_forget_face_guid(ccnd, face);
+GOT_HERE                ccnd_forget_face_guid(ccnd, face);
                 face->adjstate = ADJ_TIMEDWAIT;
             }
             return(CCN_UPCALL_RESULT_ERR);
@@ -257,10 +258,10 @@ send_adjacency_solicit(struct ccnd_handle *ccnd, struct face *face)
     struct ccn_closure *action = NULL;
     int i;
     int ans = -1;
-
+GOT_HERE
     if (face == NULL || face->guid != NULL || face->adjstate != 0)
         return(-1);
-    name = ccn_charbuf_create();
+GOT_HERE    name = ccn_charbuf_create();
     c = ccn_charbuf_create();
     g = ccn_charbuf_create();
     templ = ccn_charbuf_create();
@@ -300,7 +301,7 @@ send_adjacency_solicit(struct ccnd_handle *ccnd, struct face *face)
         action->p = &solicit_response;
         action->intdata = face->faceid;
         action->data = ccnd;
-        ans = ccn_express_interest(ccnd->internal_client, name, action, templ);
+GOT_HERE        ans = ccn_express_interest(ccnd->internal_client, name, action, templ);
         if (ans >= 0)
             ans = ccnd_set_face_guid(ccnd, face,  g->buf, g->length);
         if (ans >= 0)
@@ -327,7 +328,7 @@ ccnd_do_solicit(struct ccn_schedule *sched,
     
     if ((flags & CCN_SCHEDULE_CANCEL) != 0)
         return(0);
-    
+GOT_HERE    
     faceid = ev->evint;
     face = ccnd_face_from_faceid(ccnd, faceid);
     if (face == NULL)
@@ -336,7 +337,7 @@ ccnd_do_solicit(struct ccn_schedule *sched,
             CCN_FACE_GG | CCN_FACE_MCAST | CCN_FACE_PASSIVE | CCN_FACE_NORECV |
             CCN_FACE_NOSEND;
     want = 0;
-    if (face->adjstate == 0 && (face->flags & check) == want)
+GOT_HERE    if (face->adjstate == 0 && (face->flags & check) == want)
         send_adjacency_solicit(ccnd, face);
     return(0);
 }
@@ -359,7 +360,7 @@ incoming_adjacency(struct ccn_closure *selfp,
             if ((face->adjstate & (ADJ_TIMEDWAIT)) != 0)
                 return(CCN_UPCALL_RESULT_ERR);
             /* XXX - this should scrutinize the data to make sure it is OK */
-            if ((face->adjstate & (ADJ_OFR_SENT | ADJ_CRQ_SENT)) != 0)
+GOT_HERE            if ((face->adjstate & (ADJ_OFR_SENT | ADJ_CRQ_SENT)) != 0)
                 face->adjstate |= ADJ_DAT_RECV;
             if ((face->adjstate & (ADJ_CRQ_RECV)) != 0 &&
                 (face->adjstate & (ADJ_DAT_SENT)) == 0 &&
@@ -373,7 +374,7 @@ incoming_adjacency(struct ccn_closure *selfp,
             face = ccnd_face_from_faceid(ccnd, selfp->intdata);
             if (face == NULL)
                 return(CCN_UPCALL_RESULT_ERR);
-            if ((face->adjstate & (ADJ_OFR_SENT | ADJ_CRQ_SENT)) != 0)
+GOT_HERE            if ((face->adjstate & (ADJ_OFR_SENT | ADJ_CRQ_SENT)) != 0)
                 ccnd_forget_face_guid(ccnd, face);
             face->adjstate = ADJ_TIMEDWAIT;
             return(CCN_UPCALL_RESULT_OK);
@@ -389,12 +390,12 @@ send_adjacency_offer(struct ccnd_handle *ccnd, struct face *face)
     struct ccn_charbuf *c;
     struct ccn_charbuf *templ;
     struct ccn_closure *action = NULL;
-    
+GOT_HERE    
     if (face == NULL || face->guid == NULL)
         return;
-    if ((face->adjstate & (ADJ_OFR_SENT | ADJ_SOL_SENT | ADJ_TIMEDWAIT)) != 0)
+GOT_HERE    if ((face->adjstate & (ADJ_OFR_SENT | ADJ_SOL_SENT | ADJ_TIMEDWAIT)) != 0)
         return;
-    name = ccn_charbuf_create();
+GOT_HERE    name = ccn_charbuf_create();
     c = ccn_charbuf_create();
     templ = ccn_charbuf_create();
     ccn_name_from_uri(name, "ccnx:/%C1.M.S.neighborhood/%C1.M.CHAN");
@@ -422,7 +423,7 @@ send_adjacency_offer(struct ccnd_handle *ccnd, struct face *face)
         action->p = &incoming_adjacency;
         action->intdata = face->faceid;
         action->data = ccnd;
-        ccn_express_interest(ccnd->internal_client, name, action, templ);
+GOT_HERE        ccn_express_interest(ccnd->internal_client, name, action, templ);
         face->adjstate |= ADJ_OFR_SENT;
     }
     ccn_charbuf_destroy(&name);
@@ -440,32 +441,32 @@ check_offer_matches_my_solicit(struct ccnd_handle *ccnd, struct face *face,
     const char *mg = "\xC1.M.G";
     const char *mn = "\xC1.M.NODE";
     
-    if (info->pi->prefix_comps != 4)
+GOT_HERE    if (info->pi->prefix_comps != 4)
         return;
-    if ((face->adjstate & ADJ_SOL_SENT) == 0)
+GOT_HERE    if ((face->adjstate & ADJ_SOL_SENT) == 0)
         return;
-    if (face->guid == NULL)
+GOT_HERE    if (face->guid == NULL)
         return;
     res = ccn_name_comp_get(info->interest_ccnb, info->interest_comps, 3,
                             &p, &size);
     if (res < 0)
         return;
-    if (size != strlen(mn) || 0 != memcmp(p, mn, size))
+GOT_HERE    if (size != strlen(mn) || 0 != memcmp(p, mn, size))
         return;
     res = ccn_name_comp_get(info->interest_ccnb, info->interest_comps, 2,
                             &p, &size);
     if (res < 0)
         return;
     res = strlen(mg) + 1;
-    if (size != res + face->guid[0] || face->guid[0] <= 6)
+GOT_HERE    if (size != res + face->guid[0] || face->guid[0] <= 6)
         return;
     if (0 != memcmp(p, mg, res + 1))
         return;
     if (0 != memcmp(p + res, face->guid + 1, face->guid[0] - 6))
         return;
-    ccnd_forget_face_guid(ccnd, face);
+GOT_HERE    ccnd_forget_face_guid(ccnd, face);
     ccnd_set_face_guid(ccnd, face, p + res, size - res);
-    face->adjstate &= ADJ_SOL_SENT;
+    face->adjstate &= ~ADJ_SOL_SENT;
     face->adjstate |= ADJ_OFR_RECV;
 }
 
@@ -628,11 +629,11 @@ ccnd_answer_req(struct ccn_closure *selfp,
             goto Bail;
             break;
         case OP_ADJACENCY:
-            face = ccnd_face_from_faceid(ccnd, ccnd->interest_faceid);
+GOT_HERE            face = ccnd_face_from_faceid(ccnd, ccnd->interest_faceid);
             debugme(__LINE__);
             if (face == NULL)
                 goto Bail;
-            if (info->pi->prefix_comps == 2 && face->guid == NULL) {
+GOT_HERE            if (info->pi->prefix_comps == 2 && face->guid == NULL) {
                 const unsigned char *lo = NULL;
                 const unsigned char *hi = NULL;
                 int size = 0;
@@ -655,12 +656,12 @@ ccnd_answer_req(struct ccn_closure *selfp,
                     }
                 }
             }
-            check_offer_matches_my_solicit(ccnd, face, info);
+GOT_HERE            check_offer_matches_my_solicit(ccnd, face, info);
             if (face->guid_cob == NULL)
                 ccnd_init_face_guid_cob(ccnd, face);
             if (face->guid_cob == NULL)
                 goto Bail;
-            if (ccn_content_matches_interest(face->guid_cob->buf,
+GOT_HERE            if (ccn_content_matches_interest(face->guid_cob->buf,
                                              face->guid_cob->length,
                                              1,
                                              NULL,
@@ -668,10 +669,10 @@ ccnd_answer_req(struct ccn_closure *selfp,
                                              info->pi->offset[CCN_PI_E],
                                              info->pi
                                              )) {
-                if (info->pi->prefix_comps == 4)
+GOT_HERE                if (info->pi->prefix_comps == 4)
                     face->adjstate |= ADJ_CRQ_RECV;
                 if ((face->adjstate & (ADJ_DAT_RECV | ADJ_OFR_RECV)) != 0) {
-                    ccn_put(info->h, face->guid_cob->buf,
+GOT_HERE                    ccn_put(info->h, face->guid_cob->buf,
                             face->guid_cob->length);
                     face->adjstate |= ADJ_DAT_SENT;
                 }

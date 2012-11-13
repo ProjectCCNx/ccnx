@@ -4982,8 +4982,8 @@ process_icb_action(
  * This little dance keeps us from destroying an interest
  * entry while we are in the middle of processing it.
  */
-static void
-process_internal_client_buffer_needed(struct ccnd_handle *h)
+void
+ccnd_internal_client_has_somthing_to_say(struct ccnd_handle *h)
 {
     ccn_schedule_event(h->sched, 0, process_icb_action, NULL, 0);
 }
@@ -5077,7 +5077,7 @@ ccnd_send(struct ccnd_handle *h,
     if (face == h->face0) {
         ccnd_meter_bump(h, face->meter[FM_BYTO], size);
         ccn_dispatch_message(h->internal_client, (void *)data, size);
-        process_internal_client_buffer_needed(h);
+        ccnd_internal_client_has_somthing_to_say(h);
         return;
     }
     if ((face->flags & CCN_FACE_DGRAM) == 0)
