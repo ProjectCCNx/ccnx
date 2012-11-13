@@ -119,7 +119,6 @@ ccnd_init_face_guid_cob(struct ccnd_handle *ccnd, struct face *face)
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     struct ccn *h = ccnd->internal_client;
     struct ccn_charbuf *name = NULL;
-    struct ccn_charbuf *pubid = NULL;
     struct ccn_charbuf *payload = NULL;
     struct ccn_charbuf *comp = NULL;
     struct ccn_charbuf *cob = NULL;
@@ -130,7 +129,6 @@ ccnd_init_face_guid_cob(struct ccnd_handle *ccnd, struct face *face)
     if ((face->adjstate & (ADJ_OFR_SENT | ADJ_OFR_RECV)) == 0)
         return;
     name = ccn_charbuf_create();
-    pubid = ccn_charbuf_create();
     payload = ccn_charbuf_create();
     comp = ccn_charbuf_create();
     cob = ccn_charbuf_create();
@@ -149,7 +147,7 @@ ccnd_init_face_guid_cob(struct ccnd_handle *ccnd, struct face *face)
     ccn_charbuf_append_value(comp, CCN_MARKER_CONTROL, 1);
     ccn_charbuf_append_string(comp, ".M.K");
     ccn_charbuf_append_value(comp, 0, 1);
-    ccn_charbuf_append_charbuf(comp, pubid);
+    ccn_charbuf_append(comp, ccnd->ccnd_id, sizeof(ccnd->ccnd_id));
     ccn_name_append(name, comp->buf, comp->length);
     ccn_charbuf_reset(comp);
     ccn_charbuf_putf(comp, "face~%u", face->faceid);
@@ -162,7 +160,6 @@ ccnd_init_face_guid_cob(struct ccnd_handle *ccnd, struct face *face)
     if (res != 0)
         ccn_charbuf_destroy(&cob);
     ccn_charbuf_destroy(&name);
-    ccn_charbuf_destroy(&pubid);
     ccn_charbuf_destroy(&payload);
     ccn_charbuf_destroy(&comp);
     ccn_charbuf_destroy(&sp.template_ccnb);
@@ -451,13 +448,13 @@ check_offer_matches_my_solicit(struct ccnd_handle *ccnd, struct face *face,
         return;
     if (face->guid == NULL)
         return;
-    res = ccn_name_comp_get(info->interest_ccnb, info->interest_comps, 3,
+    res = ccn_name_comp_get(info->interest_ccnb, info->interest_comps, 2,
                             &p, &size);
     if (res < 0)
         return;
     if (size != strlen(mn) || 0 != memcmp(p, mn, size))
         return;
-    res = ccn_name_comp_get(info->interest_ccnb, info->interest_comps, 2,
+    res = ccn_name_comp_get(info->interest_ccnb, info->interest_comps, 1,
                             &p, &size);
     if (res < 0)
         return;
