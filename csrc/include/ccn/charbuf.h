@@ -90,23 +90,11 @@ int ccn_charbuf_putf(struct ccn_charbuf *c, const char *fmt, ...);
  * Return value is 0, or -1 for error.
  * example: 2008-07-22T17:33:14.109Z
  */ 
-int ccn_charbuf_append_datetime(struct ccn_charbuf *c, time_t secs, int nsecs);
 
-/*
- * ccn_charbuf_append_datetime_now: append a date/time string
- * Appends a dateTime string representing the current date and time
- * in canonical form according to
- * http://www.w3.org/TR/xmlschema-2/
- * precision, a non-negative number, indicates the maximum number
- * of fractional digits in the seconds.  Only values 0..6 have
- * any effect, at this times, since the gettimeofday() function
- * is defined to return microsecond resolution.
- * Return value is 0, or -1 for error.
- * example: 2008-07-22T17:33:14.109Z
- */ 
 #define CCN_DATETIME_PRECISION_USEC 6
 #define CCN_DATETIME_PRECISION_MAX 6
-int ccn_charbuf_append_datetime_now(struct ccn_charbuf *c, int precision);
+
+int ccn_charbuf_append_datetime(struct ccn_charbuf *c, time_t secs, int nsecs);
 
 /*
  * ccn_charbuf_as_string: view charbuf contents as a string
