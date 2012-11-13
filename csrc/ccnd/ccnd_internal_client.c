@@ -342,6 +342,9 @@ ccnd_do_solicit(struct ccn_schedule *sched,
     return(0);
 }
 
+static void send_adjacency_offer_or_commit_req(struct ccnd_handle *ccnd,
+                                               struct face *face);
+
 static enum ccn_upcall_res
 incoming_adjacency(struct ccn_closure *selfp,
                    enum ccn_upcall_kind kind,
@@ -368,6 +371,7 @@ incoming_adjacency(struct ccn_closure *selfp,
                 ccn_put(info->h, face->guid_cob->buf,
                                  face->guid_cob->length);
                 face->adjstate |= ADJ_DAT_SENT;
+                send_adjacency_offer_or_commit_req(ccnd, face);
             }
             return(CCN_UPCALL_RESULT_OK);
         case CCN_UPCALL_INTEREST_TIMED_OUT:
@@ -384,7 +388,7 @@ incoming_adjacency(struct ccn_closure *selfp,
 }
 
 static void
-send_adjacency_offer(struct ccnd_handle *ccnd, struct face *face)
+send_adjacency_offer_or_commit_req(struct ccnd_handle *ccnd, struct face *face)
 {
     struct ccn_charbuf *name;
     struct ccn_charbuf *c;
@@ -425,7 +429,10 @@ send_adjacency_offer(struct ccnd_handle *ccnd, struct face *face)
         action->intdata = face->faceid;
         action->data = ccnd;
         ccn_express_interest(ccnd->internal_client, name, action, templ);
-        face->adjstate |= ADJ_OFR_SENT;
+        if ((face->adjstate & ADJ_OFR_RECV) != 0)
+            face->adjstate |= ADJ_CRQ_SENT;
+        else
+            face->adjstate |= ADJ_OFR_SENT;
     }
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&c);
@@ -652,7 +659,7 @@ ccnd_answer_req(struct ccn_closure *selfp,
                     face->adjstate |= ADJ_SOL_RECV;
                     ccnd_generate_face_guid(ccnd, face, size, lo, hi);
                     if (face->guid != NULL) {
-                        send_adjacency_offer(ccnd, face);
+                        send_adjacency_offer_or_commit_req(ccnd, face);
                         res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
                         goto Finish;
                     }
@@ -677,6 +684,7 @@ ccnd_answer_req(struct ccn_closure *selfp,
                     ccn_put(info->h, face->guid_cob->buf,
                             face->guid_cob->length);
                     face->adjstate |= ADJ_DAT_SENT;
+                    send_adjacency_offer_or_commit_req(ccnd, face);
                 }
                 res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
             }
