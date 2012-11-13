@@ -49,6 +49,8 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 	ContentName prefix;
 	ContentName topo;
 	Vector<ContentName> callbackNames = new Vector<ContentName>();
+	Vector<ContentName> callbackNames2 = new Vector<ContentName>();
+	Vector<ContentName> callbackNames3 = new Vector<ContentName>();
 	String errorMessage = null;
 
 	static Vector<ConfigSlice> slices = new Vector<ConfigSlice>();
@@ -121,7 +123,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		
 		// Write a 100 block file to test a true sync tree
 		int segments = SyncTestCommon.writeFile(prefix1, false, SystemConfiguration.BLOCK_SIZE * 100, putHandle);
-		int segmentCheck = checkCallbacks(prefix1, segments, 0);
+		int segmentCheck = checkCallbacks(callbackNames, prefix1, segments, 0);
 		if (segmentCheck!=0)
 			Assert.fail("Did not receive all of the callbacks");
 		else
@@ -134,7 +136,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		prefix1 = prefix1.append("round2");
 		Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1);
 		segments = SyncTestCommon.writeFile(prefix1, true, 0, putHandle);  //this should be a new version
-		segmentCheck = checkCallbacks(prefix1, segments, 0);
+		segmentCheck = checkCallbacks(callbackNames, prefix1, segments, 0);
 		if (segmentCheck != segments) {
 			//we must have gotten callbacks...  bad.
 			Assert.fail("received callbacks after interface was closed.  ERROR");
@@ -162,10 +164,10 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1);
 		int segments = SyncTestCommon.writeFile(prefix1, true, 0, putHandle);
 		int segments2 = SyncTestCommon.writeFile(prefix2, true, 0, putHandle);
-		int segmentCheck = checkCallbacks(prefix1, segments, 0);
+		int segmentCheck = checkCallbacks(callbackNames, prefix1, segments, 0);
 		if (segmentCheck!=0)
 			Assert.fail("Did not receive all of the callbacks");
-		segmentCheck = checkCallbacks(prefix2, segments2, 0);
+		segmentCheck = checkCallbacks(callbackNames, prefix2, segments2, 0);
 		if (segmentCheck!=0)
 			Assert.fail("Did not receive all of the callbacks");
 		
@@ -191,7 +193,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		//the slice should be written..  now save content and get a callback.
 		Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1);
 		int segments = SyncTestCommon.writeFile(prefix1, true, 0, putHandle);
-		int segmentCheck = checkCallbacks(prefix1, segments, 0);
+		int segmentCheck = checkCallbacks(callbackNames, prefix1, segments, 0);
 		if (segmentCheck!=0)
 			Assert.fail("Did not receive all of the callbacks");
 		else
@@ -205,7 +207,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		ContentName prefix1a = prefix1.append("round2");
 		Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1a);
 		segments = SyncTestCommon.writeFile(prefix1a, true, 0, putHandle);  //this should be a new version
-		segmentCheck = checkCallbacks(prefix1a, segments, 0);
+		segmentCheck = checkCallbacks(callbackNames, prefix1a, segments, 0);
 		if (segmentCheck != segments) {
 			//we must have gotten callbacks...  bad.
 			Assert.fail("received callbacks after interface was closed.  ERROR");
@@ -231,7 +233,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		//the slice should be written..  now save content and get a callback.
 		Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1b);
 		segments = SyncTestCommon.writeFile(prefix1b, true, 0, putHandle);
-		segmentCheck = checkCallbacks(prefix1b, segments, 0);
+		segmentCheck = checkCallbacks(callbackNames, prefix1b, segments, 0);
 		if (segmentCheck!=0)
 			Assert.fail("Did not receive all of the callbacks");
 		else
@@ -257,7 +259,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		ContentName prefix1a = prefix1.append("round1");
 		Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1a);
 		int segments = SyncTestCommon.writeFile(prefix1a, true, 0, putHandle);
-		int segmentCheck = checkCallbacks(prefix1a, segments, 0);
+		int segmentCheck = checkCallbacks(callbackNames, prefix1a, segments, 0);
 		if (segmentCheck!=0)
 			Assert.fail("Did not receive all of the callbacks");
 		sync1.stopSync(this, slice7);
@@ -280,7 +282,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		}
 		ContentName prefix1b = prefix1.append("round2");
 		segments = SyncTestCommon.writeFile(prefix1b, true, 0, putHandle);
-		segmentCheck = checkCallbacks(prefix1b, segments, 0);
+		segmentCheck = checkCallbacks(callbackNames, prefix1b, segments, 0);
 		if (segmentCheck!=0)
 			Assert.fail("Did not receive all of the callbacks");
 		synchronized (callbackNames) {
@@ -299,7 +301,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		slice7 = sync1.startSync(getHandle, topo, prefix1, null, snc.getHash(), null, this);
 		ContentName prefix1c = prefix1.append("round3");
 		segments = SyncTestCommon.writeFile(prefix1c, true, 0, putHandle);
-		segmentCheck = checkCallbacks(prefix1c, segments, 0);
+		segmentCheck = checkCallbacks(callbackNames, prefix1c, segments, 0);
 		if (segmentCheck!=0)
 			Assert.fail("Did not receive all of the callbacks");
 		sync1.stopSync(this, slice7);
@@ -332,7 +334,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		// We should start looking starting with segment 20
 		ConfigSlice slice8 = sync1.startSync(getHandle, topo, prefix1, null, null, startName, this);
 		slices.add(slice8);
-		int segmentCheck = checkCallbacks(prefix1, segments - 20, 20);
+		int segmentCheck = checkCallbacks(callbackNames, prefix1, segments - 20, 20);
 		if (segmentCheck!=0)
 			Assert.fail("Did not receive all of the callbacks");
 		else
@@ -341,11 +343,71 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		Log.info(Log.FAC_TEST,"Finished running testSyncStartName");
 	}
 	
+	@Test
+	public void testMultiSync() throws Exception {
+		Log.info(Log.FAC_TEST,"Starting testMultiSync");
+		
+		callbackNames.clear();
+		callbackNames2.clear();
+		callbackNames3.clear();
+		ContentName prefix1;
+		prefix1 = prefix.append("slice9");
+		CCNSync sync1 = new CCNSync();
+		
+		Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1);
+		
+		int segments = SyncTestCommon.writeFile(prefix1, false, SystemConfiguration.BLOCK_SIZE * 40, putHandle);
+		ContentObject checkObj = getHandle.get(prefix1, SystemConfiguration.MEDIUM_TIMEOUT);
+		Assert.assertNotNull("Didn't get back what we wrote to the repo", checkObj);
+		
+		ConfigSlice slice8 = sync1.startSync(getHandle, topo, prefix1, null, null, null, this);
+		CCNSyncHandler sh2 = new SyncHandler2();
+		CCNSyncHandler sh3 = new SyncHandler3();
+		slices.add(slice8);
+		sync1.startSync(getHandle, topo, prefix1, null, null, null, sh2);
+		sync1.startSync(getHandle, topo, prefix1, null, null, null, sh3);
+		int segmentCheck = checkCallbacks(callbackNames, prefix1, segments, 0);
+		int segmentCheck2 = checkCallbacks(callbackNames2, prefix1, segments, 0);
+		int segmentCheck3 = checkCallbacks(callbackNames3, prefix1, segments, 0);
+		if (segmentCheck!=0 || segmentCheck2 != 0 || segmentCheck3 != 0)
+			Assert.fail("Did not receive all of the callbacks");
+		else
+			Log.fine(Log.FAC_TEST, "I got all the callbacks for part 1 of testMultiSync!");
+		sync1.stopSync(this, slice8);
+		
+		synchronized (callbackNames2) {
+			callbackNames2.clear();
+		}
+		synchronized (callbackNames3) {
+			callbackNames3.clear();
+		}
+		
+		Log.fine(Log.FAC_TEST, "test another file: {0} after stopping a sync", prefix1);
+
+		ContentName prefix1b = prefix1.append("round2");
+		segments = SyncTestCommon.writeFile(prefix1b, false, SystemConfiguration.BLOCK_SIZE * 40, putHandle);
+		segmentCheck2 = checkCallbacks(callbackNames2, prefix1, segments, 0);
+		segmentCheck3 = checkCallbacks(callbackNames3, prefix1, segments, 0);
+		if (segmentCheck2 != 0 || segmentCheck3 != 0)
+			Assert.fail("Did not receive all of the callbacks");
+		else
+			Log.fine(Log.FAC_TEST, "I got all the callbacks for part 2 of testMultiSync!");
+		
+		sync1.stopSync(sh2, slice8);
+		sync1.stopSync(sh3, slice8);
+	
+		Log.info(Log.FAC_TEST,"Finished running testMultiSync");
+	}
+	
 	public void handleContentName(ConfigSlice syncSlice, ContentName syncedContent) {
+		doHandleContentName(1, syncSlice, syncedContent, callbackNames);
+	}
+	
+	public void doHandleContentName(int callerId, ConfigSlice syncSlice, ContentName syncedContent, Vector<ContentName> callbackNames) {
 		if ( MetadataProfile.isHeader(syncedContent)) {
-			Log.info(Log.FAC_TEST, "Callback for name: {0} - number is header", syncedContent);
+			Log.info(Log.FAC_TEST, "Number {0}: Callback for name: {1} - number is header", callerId, syncedContent);
 		} else {
-			Log.info(Log.FAC_TEST, "Callback for name: {0} - number is {1}", syncedContent, SegmentationProfile.getSegmentNumber(syncedContent));
+			Log.info(Log.FAC_TEST, "Number {0}: Callback for name: {1} - number is {2}", callerId, syncedContent, SegmentationProfile.getSegmentNumber(syncedContent));
 		}
 		synchronized (callbackNames) {
 			for (ContentName name : callbackNames) {
@@ -357,7 +419,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		}
 	}
 	
-	private int checkCallbacks(ContentName prefix, int segments, int firstSegment) {
+	private int checkCallbacks(Vector<ContentName> callbacks, ContentName prefix, int segments, int firstSegment) {
 		Log.fine(Log.FAC_TEST, "checking for callbacks:  {0} segments: {1}", prefix, segments);
 		boolean[] received = (boolean[]) Array.newInstance(boolean.class, segments);
 		Arrays.fill(received, false);
@@ -373,8 +435,8 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 			} catch (InterruptedException e) {
 				Log.warning(Log.FAC_TEST, "interrupted while waiting for names on callback");
 			}
-			synchronized(callbackNames) {
-				for (ContentName n: callbackNames) {
+			synchronized (callbacks) {
+				for (ContentName n: callbacks) {
 					if (prefix.isPrefixOf(n)) {
 						//this is one of our names
 						if ( MetadataProfile.isHeader(n)) {
@@ -422,5 +484,19 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 			notify();
 		}
 		return null;
+	}
+	
+	public class SyncHandler2 implements CCNSyncHandler {
+
+		public void handleContentName(ConfigSlice syncSlice, ContentName syncedContent) {
+			doHandleContentName(2, syncSlice, syncedContent, callbackNames2);
+		}	
+	}
+	
+	public class SyncHandler3 implements CCNSyncHandler {
+
+		public void handleContentName(ConfigSlice syncSlice, ContentName syncedContent) {
+			doHandleContentName(3, syncSlice, syncedContent, callbackNames3);
+		}	
 	}
 }
