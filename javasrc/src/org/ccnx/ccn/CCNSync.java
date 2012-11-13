@@ -81,4 +81,8 @@ public class CCNSync {
 		//will unregister the callback here
 		syncMon.removeCallback(syncHandler, syncSlice);
 	}
+	
+	public void shutdown(ConfigSlice slice) {
+		syncMon.shutdown(slice);
+	}
 }

@@ -252,6 +252,15 @@ public class SliceComparator implements Runnable {
 	}
 	
 	/**
+	 * Get the callbacks
+	 * WARNING - any changes to this must be synced
+	 * @return
+	 */
+	public ArrayList<CCNSyncHandler> getCallbacks() {
+		return _callbacks;
+	}
+	
+	/**
 	 * Remove a callback associated with this comparator
 	 * @return the callback
 	 */

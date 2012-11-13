@@ -102,7 +102,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		ConfigSlice slice2 = sync1.startSync(getHandle, topo, prefix1, this);
 		slices.add(slice2);
 		
-		sync1.stopSync(this, slice2);
+		sync1.shutdown(slice2);
 
 		Log.info(Log.FAC_TEST,"Finished running testSyncStartWithoutHandle");
 	}
@@ -141,6 +141,8 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 			//we must have gotten callbacks...  bad.
 			Assert.fail("received callbacks after interface was closed.  ERROR");
 		}
+		
+		sync1.shutdown(slice3);
 		Log.fine(Log.FAC_TEST, "I didn't get callbacks after I stopped sync for myself!");
 
 		Log.info(Log.FAC_TEST,"Finished running testSyncStop");
@@ -172,8 +174,8 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 			Assert.fail("Did not receive all of the callbacks");
 		
 		//now close the callback interface
-		sync1.stopSync(this, slice4);
-		sync1.stopSync(this, slice5);
+		sync1.shutdown(slice4);
+		sync1.shutdown(slice5);
 			
 		Log.info(Log.FAC_TEST,"Finished running testSyncStop");
 	}
@@ -200,7 +202,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 			Log.fine(Log.FAC_TEST, "I got all the callbacks for part 1 of testSyncRestart!");
 		
 		//now close the callback interface
-		sync1.stopSync(this, slice6);
+		sync1.shutdown(slice6);
 		callbackNames.clear();
 		
 		//then close and make sure we don't get a callback
@@ -240,7 +242,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 			Log.fine(Log.FAC_TEST, "I got all the callbacks for part 2 of testSyncRestart!");
 		
 		//now close the callback interface
-		sync1.stopSync(this, slice6b);
+		sync1.shutdown(slice6b);
 
 			
 		Log.info(Log.FAC_TEST,"Finished running testSyncRestart");
@@ -304,7 +306,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		segmentCheck = checkCallbacks(callbackNames, prefix1c, segments, 0);
 		if (segmentCheck!=0)
 			Assert.fail("Did not receive all of the callbacks");
-		sync1.stopSync(this, slice7);
+		sync1.shutdown(slice7);
 		for (ContentName n: callbackNames) {
 			Assert.assertFalse("Saw unexpected data in arbitrary root test: " + n, prefix1a.isPrefixOf(n));
 		}		
@@ -339,7 +341,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 			Assert.fail("Did not receive all of the callbacks");
 		else
 			Log.fine(Log.FAC_TEST, "I got all the callbacks for part 1 of testSyncRestart!");
-		sync1.stopSync(this, slice8);
+		sync1.shutdown(slice8);
 		Log.info(Log.FAC_TEST,"Finished running testSyncStartName");
 	}
 	
@@ -393,8 +395,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		else
 			Log.fine(Log.FAC_TEST, "I got all the callbacks for part 2 of testMultiSync!");
 		
-		sync1.stopSync(sh2, slice8);
-		sync1.stopSync(sh3, slice8);
+		sync1.shutdown(slice8);
 	
 		Log.info(Log.FAC_TEST,"Finished running testMultiSync");
 	}

@@ -84,19 +84,47 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 		_handle.expressInterest(interest, this);
 	}
 
+	/**
+	 * We don't want to shutdown just because there are no more callbacks because if someone asks
+	 * for a new sync starting at the current hash, having something running is the best way to
+	 * find the current hash. If someone wants to shutdown, they should explicitly ask for it.
+	 */
 	public void removeCallback(CCNSyncHandler syncHandler, ConfigSlice slice) {
 		ArrayList<SliceComparator> removes = new ArrayList<SliceComparator>();
 		SyncHashEntry she = new SyncHashEntry(slice.getHash());
 		synchronized (this) {
 			ComparatorGroup cg = _comparators.get(she);
-			for (SliceComparator sc : cg._activeComparators) {
-				sc.removeCallback(syncHandler);
-				if (sc != cg._leadComparator) {
-					if (sc.shutdownIfUseless())
-						removes.add(sc);
+			if (null != cg) {
+				for (SliceComparator sc : cg._activeComparators) {
+					sc.removeCallback(syncHandler);
+					if (sc != cg._leadComparator) {
+						if (sc.shutdownIfUseless())
+							removes.add(sc);
+					}
 				}
+				cg._activeComparators.removeAll(removes);
 			}
-			cg._activeComparators.removeAll(removes);
+		}
+	}
+	
+	public void shutdown(ConfigSlice slice) {
+		SyncHashEntry she = new SyncHashEntry(slice.getHash());
+		synchronized (this) {
+			ComparatorGroup cg = _comparators.get(she);
+			if (null != cg) {
+				// remove all callbacks - therefore shutting down all current comparators except
+				// the lead
+				for (SliceComparator sc : cg._activeComparators) {
+					ArrayList<CCNSyncHandler> callbacks = sc.getCallbacks();
+					ArrayList<CCNSyncHandler> shutdownCallbacks = new ArrayList<CCNSyncHandler>();
+					shutdownCallbacks.addAll(callbacks);
+					for (CCNSyncHandler syncHandler : shutdownCallbacks)
+						sc.removeCallback(syncHandler);
+				}
+				// Now shutdown the lead
+				cg._leadComparator.shutdownIfUseless();
+				_comparators.remove(she);
+			}
 		}
 	}
 	
