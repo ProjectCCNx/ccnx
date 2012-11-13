@@ -81,6 +81,7 @@ public class SliceComparator implements Runnable {
 	protected Object _timerLock = new Object();
 	protected boolean _needToCompare = true;
 	protected boolean _comparing = false;
+	protected boolean _shutdown = false;
 	
 	// Prevents the comparison task from being run more than once simultaneously
 	protected Semaphore _compareSemaphore = new Semaphore(1);
@@ -89,6 +90,8 @@ public class SliceComparator implements Runnable {
 	
 	protected ConfigSlice _slice;
 	protected ArrayList<CCNSyncHandler> _callbacks = new ArrayList<CCNSyncHandler>();
+	protected ArrayList<CCNSyncHandler> _pendingCallbacks = new ArrayList<CCNSyncHandler>();
+	protected SliceComparator _leadComparator;
 	protected CCNHandle _handle;
 	protected SyncNodeCache _snc = null;
 
@@ -121,11 +124,14 @@ public class SliceComparator implements Runnable {
 	 * @param startName report all names seen after we see this name
 	 * @param handle the CCNHandle to use
 	 */
-	public SliceComparator(SyncNodeCache snc, CCNSyncHandler callback, ConfigSlice slice, 
+	public SliceComparator(SliceComparator leadComparator, SyncNodeCache snc, CCNSyncHandler callback, ConfigSlice slice, 
 				byte[] startHash, ContentName startName, CCNHandle handle) {
 		if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
 			Log.info(Log.FAC_SYNC, "Beginning sync monitoring {0}", null == startHash ? "from start"
 					: "starting with: " + Component.printURI(startHash));
+		_leadComparator = leadComparator;
+		if (null == _leadComparator)
+			_leadComparator = this;
 		_snc = snc;
 		_slice = slice;
 		_callbacks.add(callback);
@@ -239,12 +245,29 @@ public class SliceComparator implements Runnable {
 		}
 	}
 	
+	public void addCallback(CCNSyncHandler callback) {
+		synchronized (this) {
+			_pendingCallbacks.add(callback);
+		}
+	}
+	
 	/**
 	 * Remove a callback associated with this comparator
 	 * @return the callback
 	 */
 	public void removeCallback(CCNSyncHandler callback) {
-		_callbacks.remove(callback);
+		synchronized (this) {
+			_callbacks.remove(callback);
+		}
+	}
+	
+	public boolean shutdownIfUseless() {
+		synchronized (this) {
+			if (_callbacks.size() == 0) {
+				_shutdown = true;
+			}
+			return _shutdown;
+		}
 	}
 	
 	public SyncHashCache getHashCache() {
@@ -817,14 +840,26 @@ public class SliceComparator implements Runnable {
 	 * machine to figure out where it left off and where to start back in again.
 	 */
 	public void run() {
+		synchronized (this) {
+			if (_shutdown)
+				return;
+		}
 		_compareSemaphore.acquireUninterruptibly();
 		boolean keepComparing = true;
 		try {
 			do {
+				synchronized (this) {
+					if (_shutdown)
+						return;
+				}
 				switch (getState()) {
 				case INIT:		// Starting a new compare
+					synchronized (this) {
+						_callbacks.addAll(_pendingCallbacks);
+						_pendingCallbacks.clear();
+					}
 					byte[] data = null;
-					if (null != _startHash && _startHash.getHash().length != 0) {
+					if (null != _startHash) {
 						_currentRoot = _startHash;
 						_startHash = null;
 						nextRound();
@@ -836,11 +871,15 @@ public class SliceComparator implements Runnable {
 							snc.decode(data);
 							SyncTreeEntry ste = _shc.addHash(snc.getHash(), _snc);
 							ste.setNode(snc);
-							if (null != _startHash) {  // has to be 0 length so start with "current"
+							if (null != _startHash) {  
+								// has to be 0 length so start with "current"
+								// This would be only in the case where we are starting a new
+								// sync with a 0 length hash request (the other is where we already
+								// had a sync running which is taken care of in ProtocolBasedSyncMonitor)
 								_currentRoot = ste;
 								_startHash = null;
 								nextRound();
-							} else {	// No sense doing a compare with ourself!
+							} else {        // No sense doing a compare with ours
 								addPending(ste);
 							}
 						}
@@ -866,6 +905,10 @@ public class SliceComparator implements Runnable {
 					}
 					// Fall through
 				case PRELOAD:	// Need to load data for the compare
+					synchronized (this) {
+						if (_shutdown)
+							return;
+					}
 					if (null == getHead(_next)) {
 						keepComparing = false;
 						break;
@@ -877,6 +920,10 @@ public class SliceComparator implements Runnable {
 					changeState(SyncCompareState.COMPARE);
 					// Fall through
 				case COMPARE:	// We are currently in the process of comparing
+					synchronized (this) {
+						if (_shutdown)
+							return;
+					}
 					doComparison();
 					if (getState() == SyncCompareState.COMPARE) {
 						keepComparing = false;
@@ -884,10 +931,30 @@ public class SliceComparator implements Runnable {
 					break;
 				case DONE:	// Compare is done. Start over again if we have pending data
 							// for another compare
+					synchronized (this) {
+						if (this != _leadComparator) {
+							// If we aren't the lead comparator for this slice we don't need to 
+							// continue - instead we can just add ourselves to its callbacks
+							// Note that eventually this will lead to this comparator being culled.
+							// We might want to do that explicitly but for now I'm not going to 
+							// worry about it.
+							// TODO - could there be a gap here if we had pending inputs that the
+							// leader was already working on?
+							for (CCNSyncHandler callback : _callbacks)							
+								_leadComparator.addCallback(callback);
+							_shutdown = true;
+						}
+						if (_shutdown)
+							return;
+					}
 					nextRound();
 					changeState(SyncCompareState.UPDATE);
 					
 				case UPDATE:
+					synchronized (this) {
+						if (_shutdown)
+							return;
+					}
 					if (_updateNames.size() > 0) {
 						if (updateCurrent())
 							_updateNames.clear();

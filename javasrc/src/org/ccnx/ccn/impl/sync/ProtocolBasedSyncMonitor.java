@@ -61,15 +61,21 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 	 * which are used to notice new hashes coming through which may contain unseen files.
 	 */
 	public void registerCallback(CCNSyncHandler syncHandler, ConfigSlice slice, byte[] startHash, ContentName startName) throws IOException {
-		SliceComparator sc = new SliceComparator(_snc, syncHandler, slice, startHash, startName, _handle);
 		synchronized (this) {
 			SyncHashEntry she = new SyncHashEntry(slice.getHash());
 			ComparatorGroup cg = _comparators.get(she);
-			if (null == cg) {
-				cg = new ComparatorGroup(sc);
+			if (null != cg && null != startHash && startHash.length == 0) {
+				// For 0 length hash (== start with current hash) we can just add the handler to the leadComparator if there is one since it should
+				// already know the latest hash
+				cg._leadComparator.addCallback(syncHandler);
+			} else {
+				SliceComparator sc = new SliceComparator(null == cg ? null : cg._leadComparator, _snc, syncHandler, slice, startHash, startName, _handle);
+				if (null == cg) {
+					cg = new ComparatorGroup(sc);
+				}
+				cg._activeComparators.add(sc);
+				_comparators.put(new SyncHashEntry(slice.getHash()), cg);
 			}
-			cg._activeComparators.add(sc);
-			_comparators.put(new SyncHashEntry(slice.getHash()), cg);
 		}
 		ContentName rootAdvise = new ContentName(slice.topo, Sync.SYNC_ROOT_ADVISE_MARKER, slice.getHash());
 		Interest interest = new Interest(rootAdvise);
@@ -79,12 +85,18 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 	}
 
 	public void removeCallback(CCNSyncHandler syncHandler, ConfigSlice slice) {
+		ArrayList<SliceComparator> removes = new ArrayList<SliceComparator>();
 		SyncHashEntry she = new SyncHashEntry(slice.getHash());
 		synchronized (this) {
 			ComparatorGroup cg = _comparators.get(she);
 			for (SliceComparator sc : cg._activeComparators) {
 				sc.removeCallback(syncHandler);
+				if (sc != cg._leadComparator) {
+					if (sc.shutdownIfUseless())
+						removes.add(sc);
+				}
 			}
+			cg._activeComparators.removeAll(removes);
 		}
 	}
 	
