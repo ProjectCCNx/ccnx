@@ -448,9 +448,9 @@ ccnd_close_fd(struct ccnd_handle *h, unsigned faceid, int *pfd)
  *
  * @returns 0 for success, -1 for error.
  */
-static int
-set_face_guid(struct ccnd_handle *h, struct face *face,
-              const unsigned char *guid, size_t size)
+int
+ccnd_set_face_guid(struct ccnd_handle *h, struct face *face,
+                   const unsigned char *guid, size_t size)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -480,6 +480,21 @@ set_face_guid(struct ccnd_handle *h, struct face *face,
         res = -1;
     hashtb_end(e);
     return(res);
+}
+
+/**
+ * Append the guid associated with a face to a charbuf
+ *
+ * @returns the length of the appended guid, or -1 for error.
+ */
+int
+ccnd_append_face_guid(struct ccnd_handle *h, struct ccn_charbuf *cb,
+                      struct face *face)
+{
+    if (face == NULL || face->guid == NULL)
+        return(-1);
+    ccn_charbuf_append(cb, face->guid + 1, face->guid[0]);
+    return(face->guid[0]);
 }
 
 /**
@@ -564,7 +579,7 @@ ccnd_generate_face_guid(struct ccnd_handle *h, struct face *face, int size,
         for (i = 0; i < size; i++)
             ccn_charbuf_append_value(c, nrand48(h->seed) & 0xff, 1);
     }
-    set_face_guid(h, face, c->buf, c->length);
+    ccnd_set_face_guid(h, face, c->buf, c->length);
     ccn_charbuf_destroy(&c);
 }
 

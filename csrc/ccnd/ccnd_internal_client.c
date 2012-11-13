@@ -54,7 +54,8 @@
 /* The ping responder is deprecated, but enable it by default for now */
 #define CCND_PING 1
 #endif
-
+int bug;
+void debugme(int line) {bug=line;}
 static void ccnd_start_notice(struct ccnd_handle *ccnd);
 
 static struct ccn_charbuf *
@@ -140,7 +141,7 @@ ccnd_init_face_guid_cob(struct ccnd_handle *ccnd, struct face *face)
     ccn_charbuf_append_value(comp, CCN_MARKER_CONTROL, 1);
     ccn_charbuf_append_string(comp, ".M.G");
     ccn_charbuf_append_value(comp, 0, 1);
-    ccn_charbuf_append(comp, face->guid + 1, face->guid[0]);
+    ccnd_append_face_guid(ccnd, comp, face);
     ccn_name_append(name, comp->buf, comp->length);
     ccn_name_from_uri(name, "%C1.M.NODE");
     /* %C1.K.%00<ccndid> */
@@ -223,6 +224,124 @@ extract_bounds(const unsigned char *ccnb, struct ccn_parsed_interest *pi,
 }
 
 static enum ccn_upcall_res
+solicit_response(struct ccn_closure *selfp,
+                   enum ccn_upcall_kind kind,
+                   struct ccn_upcall_info *info)
+{
+    struct face *face = NULL;
+    struct ccnd_handle *ccnd = selfp->data;
+    
+    switch (kind) {
+        case CCN_UPCALL_FINAL:
+            free(selfp);
+            return(CCN_UPCALL_RESULT_OK);
+        default:
+            face = ccnd_face_from_faceid(ccnd, selfp->intdata);
+            if (face == NULL)
+                return(CCN_UPCALL_RESULT_ERR);
+            if ((face->adjstate & (ADJ_SOL_SENT)) != 0) {
+                ccnd_forget_face_guid(ccnd, face);
+                face->adjstate = ADJ_TIMEDWAIT;
+            }
+            return(CCN_UPCALL_RESULT_ERR);
+    }
+}
+
+static int
+send_adjacency_solicit(struct ccnd_handle *ccnd, struct face *face)
+{
+    struct ccn_charbuf *name;
+    struct ccn_charbuf *c;
+    struct ccn_charbuf *g;
+    struct ccn_charbuf *templ;
+    struct ccn_closure *action = NULL;
+    int i;
+    int ans = -1;
+
+    if (face == NULL || face->guid != NULL || face->adjstate != 0)
+        return(-1);
+    name = ccn_charbuf_create();
+    c = ccn_charbuf_create();
+    g = ccn_charbuf_create();
+    templ = ccn_charbuf_create();
+    ccn_name_from_uri(name, "ccnx:/%C1.M.S.neighborhood/%C1.M.CHAN");
+    ccn_charbuf_reset(g);
+    ccn_charbuf_append_value(g, 0, 2); /* 2 reserved bytes */
+    /* The first half is chosen by our side */
+    for (i = 0; i < 6; i++)
+        ccn_charbuf_append_value(g, nrand48(ccnd->seed) & 0xff, 1);
+    /* The second half will be chosen by the other side */
+    for (i = 0; i < 6; i++)
+        ccn_charbuf_append_value(g, 0, 1);
+    ccn_charbuf_reset(templ);
+    ccnb_element_begin(templ, CCN_DTAG_Interest);
+    ccn_charbuf_append_charbuf(templ, name);
+    ccnb_element_begin(templ, CCN_DTAG_Exclude);
+    ccnb_tagged_putf(templ, CCN_DTAG_Any, "");
+    ccn_charbuf_reset(c);
+    ccn_charbuf_append_string(c, "\xC1.M.G");
+    ccn_charbuf_append_value(c, 0, 1);
+    ccn_charbuf_append(c, g->buf, g->length);
+    ccnb_append_tagged_blob(templ, CCN_DTAG_Component, c->buf, c->length);
+    ccn_charbuf_reset(c);
+    ccn_charbuf_append_string(c, "\xC1.M.G");
+    ccn_charbuf_append_value(c, 0, 1);
+    ccn_charbuf_append(c, g->buf, g->length - 6);
+    for (i = 0; i < 6; i++)
+        ccn_charbuf_append_value(c, 0xff, 1);
+    ccnb_append_tagged_blob(templ, CCN_DTAG_Component, c->buf, c->length);
+    ccnb_tagged_putf(templ, CCN_DTAG_Any, "");
+    ccnb_element_end(templ); /* Exclude */
+    ccnb_tagged_putf(templ, CCN_DTAG_Scope, "2");
+    ccnb_tagged_putf(templ, CCN_DTAG_FaceID, "%u", face->faceid);
+    ccnb_element_end(templ); /* Interest */
+    action = calloc(1, sizeof(*action));
+    if (action != NULL) {
+        action->p = &solicit_response;
+        action->intdata = face->faceid;
+        action->data = ccnd;
+        ans = ccn_express_interest(ccnd->internal_client, name, action, templ);
+        if (ans >= 0)
+            ans = ccnd_set_face_guid(ccnd, face,  g->buf, g->length);
+        if (ans >= 0)
+            face->adjstate = ADJ_SOL_SENT;
+        ans = (ans < 0) ? -1 : 0;
+    }
+    ccn_charbuf_destroy(&name);
+    ccn_charbuf_destroy(&c);
+    ccn_charbuf_destroy(&g);
+    ccn_charbuf_destroy(&templ);
+    return(ans);
+}
+
+static int
+ccnd_do_solicit(struct ccn_schedule *sched,
+                void *clienth,
+                struct ccn_scheduled_event *ev,
+                int flags)
+{
+    struct ccnd_handle *ccnd = clienth;
+    struct face *face = NULL;
+    unsigned faceid;
+    unsigned check, want;
+    
+    if ((flags & CCN_SCHEDULE_CANCEL) != 0)
+        return(0);
+    
+    faceid = ev->evint;
+    face = ccnd_face_from_faceid(ccnd, faceid);
+    if (face == NULL)
+        return(0);
+    check = CCN_FACE_CONNECTING | CCN_FACE_UNDECIDED | CCN_FACE_NOSEND |
+            CCN_FACE_GG | CCN_FACE_MCAST | CCN_FACE_PASSIVE | CCN_FACE_NORECV |
+            CCN_FACE_NOSEND;
+    want = 0;
+    if (face->adjstate == 0 && (face->flags & check) == want)
+        send_adjacency_solicit(ccnd, face);
+    return(0);
+}
+
+static enum ccn_upcall_res
 incoming_adjacency(struct ccn_closure *selfp,
                    enum ccn_upcall_kind kind,
                    struct ccn_upcall_info *info)
@@ -282,7 +401,7 @@ send_adjacency_offer(struct ccnd_handle *ccnd, struct face *face)
     ccn_charbuf_reset(c);
     ccn_charbuf_append_string(c, "\xC1.M.G");
     ccn_charbuf_append_value(c, 0, 1);
-    ccn_charbuf_append(c, face->guid + 1, face->guid[0]);
+    ccnd_append_face_guid(ccnd, c, face);
     ccn_name_append(name, c->buf, c->length);
     ccn_name_from_uri(name, "%C1.M.NODE");
     ccn_charbuf_reset(templ);
@@ -309,6 +428,45 @@ send_adjacency_offer(struct ccnd_handle *ccnd, struct face *face)
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&c);
     ccn_charbuf_destroy(&templ);
+}
+
+static void
+check_offer_matches_my_solicit(struct ccnd_handle *ccnd, struct face *face,
+                               struct ccn_upcall_info *info)
+{
+    const unsigned char *p = NULL;
+    size_t size = 0;
+    int res;
+    const char *mg = "\xC1.M.G";
+    const char *mn = "\xC1.M.NODE";
+    
+    if (info->pi->prefix_comps != 4)
+        return;
+    if ((face->adjstate & ADJ_SOL_SENT) == 0)
+        return;
+    if (face->guid == NULL)
+        return;
+    res = ccn_name_comp_get(info->interest_ccnb, info->interest_comps, 3,
+                            &p, &size);
+    if (res < 0)
+        return;
+    if (size != strlen(mn) || 0 != memcmp(p, mn, size))
+        return;
+    res = ccn_name_comp_get(info->interest_ccnb, info->interest_comps, 2,
+                            &p, &size);
+    if (res < 0)
+        return;
+    res = strlen(mg) + 1;
+    if (size != res + face->guid[0] || face->guid[0] <= 6)
+        return;
+    if (0 != memcmp(p, mg, res + 1))
+        return;
+    if (0 != memcmp(p + res, face->guid + 1, face->guid[0] - 6))
+        return;
+    ccnd_forget_face_guid(ccnd, face);
+    ccnd_set_face_guid(ccnd, face, p + res, size - res);
+    face->adjstate &= ADJ_SOL_SENT;
+    face->adjstate |= ADJ_OFR_RECV;
 }
 
 /**
@@ -471,6 +629,7 @@ ccnd_answer_req(struct ccn_closure *selfp,
             break;
         case OP_ADJACENCY:
             face = ccnd_face_from_faceid(ccnd, ccnd->interest_faceid);
+            debugme(__LINE__);
             if (face == NULL)
                 goto Bail;
             if (info->pi->prefix_comps == 2 && face->guid == NULL) {
@@ -491,12 +650,12 @@ ccnd_answer_req(struct ccn_closure *selfp,
                     ccnd_generate_face_guid(ccnd, face, size, lo, hi);
                     if (face->guid != NULL) {
                         send_adjacency_offer(ccnd, face);
-                        face->adjstate |= ADJ_OFR_SENT;
                         res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
                         goto Finish;
                     }
                 }
             }
+            check_offer_matches_my_solicit(ccnd, face, info);
             if (face->guid_cob == NULL)
                 ccnd_init_face_guid_cob(ccnd, face);
             if (face->guid_cob == NULL)
@@ -800,6 +959,9 @@ void
 ccnd_face_status_change(struct ccnd_handle *ccnd, unsigned faceid)
 {
     struct ccn_indexbuf *chface = ccnd->chface;
+    struct face *face = ccnd_face_from_faceid(ccnd, faceid);
+    unsigned check, want;
+    
     if (chface != NULL) {
         ccn_indexbuf_set_insert(chface, faceid);
         if (ccnd->notice_push == NULL)
@@ -807,6 +969,14 @@ ccnd_face_status_change(struct ccnd_handle *ccnd, unsigned faceid)
                                                    ccnd_notice_push,
                                                    NULL, 0);
     }
+    /* Schedule negotiation of a link guid if appropriate. */
+    check = CCN_FACE_CONNECTING | CCN_FACE_UNDECIDED | CCN_FACE_NOSEND |
+            CCN_FACE_GG | CCN_FACE_MCAST | CCN_FACE_PASSIVE | CCN_FACE_NORECV |
+            CCN_FACE_NOSEND;
+    want = 0;
+    if (ccnd->sched != NULL && face != NULL && (face->flags & check) == want)
+        ccn_schedule_event(ccnd->sched, 2000 + nrand48(ccnd->seed) % 131072U,
+                           ccnd_do_solicit, NULL, faceid);
 }
 
 static void

@@ -481,7 +481,12 @@ int ccnd_reg_uri(struct ccnd_handle *h,
 
 void ccnd_generate_face_guid(struct ccnd_handle *h, struct face *face, int size,
                              const unsigned char *lo, const unsigned char *hi);
+int ccnd_set_face_guid(struct ccnd_handle *h, struct face *face,
+                       const unsigned char *guid, size_t size);
 void ccnd_forget_face_guid(struct ccnd_handle *h, struct face *face);
+int ccnd_append_face_guid(struct ccnd_handle *h, struct ccn_charbuf *cb,
+                          struct face *face);
+                      
 struct face *ccnd_face_from_faceid(struct ccnd_handle *, unsigned);
 void ccnd_face_status_change(struct ccnd_handle *, unsigned);
 int ccnd_destroy_face(struct ccnd_handle *h, unsigned faceid);
