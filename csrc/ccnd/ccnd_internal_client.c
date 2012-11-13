@@ -135,7 +135,7 @@ ccnd_init_face_guid_cob(struct ccnd_handle *ccnd, struct face *face)
     comp = ccn_charbuf_create();
     cob = ccn_charbuf_create();
     
-    ccn_name_from_uri(name, "ccnx:/%C1.M.S.neighborhood/%C1.M.CHAN");
+    ccn_name_from_uri(name, "ccnx:/%C1.M.FACE");
     /* %C1.G.%00<guid> */
     ccn_charbuf_reset(comp);
     ccn_charbuf_append_value(comp, CCN_MARKER_CONTROL, 1);
@@ -265,7 +265,7 @@ send_adjacency_solicit(struct ccnd_handle *ccnd, struct face *face)
     c = ccn_charbuf_create();
     g = ccn_charbuf_create();
     templ = ccn_charbuf_create();
-    ccn_name_from_uri(name, "ccnx:/%C1.M.S.neighborhood/%C1.M.CHAN");
+    ccn_name_from_uri(name, "ccnx:/%C1.M.FACE");
     ccn_charbuf_reset(g);
     ccn_charbuf_append_value(g, 0, 2); /* 2 reserved bytes */
     /* The first half is chosen by our side */
@@ -401,7 +401,7 @@ send_adjacency_offer(struct ccnd_handle *ccnd, struct face *face)
     name = ccn_charbuf_create();
     c = ccn_charbuf_create();
     templ = ccn_charbuf_create();
-    ccn_name_from_uri(name, "ccnx:/%C1.M.S.neighborhood/%C1.M.CHAN");
+    ccn_name_from_uri(name, "ccnx:/%C1.M.FACE");
     ccn_charbuf_reset(c);
     ccn_charbuf_append_string(c, "\xC1.M.G");
     ccn_charbuf_append_value(c, 0, 1);
@@ -445,7 +445,7 @@ check_offer_matches_my_solicit(struct ccnd_handle *ccnd, struct face *face,
     const char *mg = "\xC1.M.G";
     const char *mn = "\xC1.M.NODE";
     
-    if (info->pi->prefix_comps != 4)
+    if (info->pi->prefix_comps != 3)
         return;
     if ((face->adjstate & ADJ_SOL_SENT) == 0)
         return;
@@ -638,7 +638,7 @@ ccnd_answer_req(struct ccn_closure *selfp,
             debugme(__LINE__);
             if (face == NULL)
                 goto Bail;
-            if (info->pi->prefix_comps == 2 && face->guid == NULL) {
+            if (info->pi->prefix_comps == 1 && face->guid == NULL) {
                 const unsigned char *lo = NULL;
                 const unsigned char *hi = NULL;
                 int size = 0;
@@ -674,7 +674,7 @@ ccnd_answer_req(struct ccn_closure *selfp,
                                              info->pi->offset[CCN_PI_E],
                                              info->pi
                                              )) {
-                if (info->pi->prefix_comps == 4)
+                if (info->pi->prefix_comps == 3)
                     face->adjstate |= ADJ_CRQ_RECV;
                 if ((face->adjstate & (ADJ_DAT_RECV | ADJ_OFR_RECV)) != 0) {
                     ccn_put(info->h, face->guid_cob->buf,
@@ -1053,7 +1053,7 @@ ccnd_internal_client_start(struct ccnd_handle *ccnd)
                     &ccnd_answer_req, OP_SERVICE);
     ccnd_uri_listen(ccnd, "ccnx:/%C1.M.S.neighborhood",
                     &ccnd_answer_req, OP_SERVICE);
-    ccnd_uri_listen(ccnd, "ccnx:/%C1.M.S.neighborhood/%C1.M.CHAN",
+    ccnd_uri_listen(ccnd, "ccnx:/%C1.M.FACE",
                     &ccnd_answer_req, OP_ADJACENCY);
     ccnd_reg_ccnx_ccndid(ccnd);
     ccnd_reg_uri(ccnd, "ccnx:/%C1.M.S.localhost",
