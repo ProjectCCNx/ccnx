@@ -88,7 +88,7 @@ public class SliceComparator implements Runnable {
 	protected Object _compareLock = new Object();
 	
 	protected ConfigSlice _slice;
-	protected CCNSyncHandler _callback;
+	protected ArrayList<CCNSyncHandler> _callbacks = new ArrayList<CCNSyncHandler>();
 	protected CCNHandle _handle;
 	protected SyncNodeCache _snc = null;
 
@@ -128,7 +128,7 @@ public class SliceComparator implements Runnable {
 					: "starting with: " + Component.printURI(startHash));
 		_snc = snc;
 		_slice = slice;
-		_callback = callback;
+		_callbacks.add(callback);
 		_handle = handle;
 		if (null != startHash)
 			_startHash = _shc.addHash(startHash, _snc);
@@ -240,11 +240,11 @@ public class SliceComparator implements Runnable {
 	}
 	
 	/**
-	 * Get callback associated with this comparator
+	 * Remove a callback associated with this comparator
 	 * @return the callback
 	 */
-	public CCNSyncHandler getCallback() {
-		return _callback;
+	public void removeCallback(CCNSyncHandler callback) {
+		_callbacks.remove(callback);
 	}
 	
 	public SyncHashCache getHashCache() {
@@ -577,7 +577,8 @@ public class SliceComparator implements Runnable {
 				return;
 			_doCallbacks = true;
 		}
-		_callback.handleContentName(_slice, name);
+		for (CCNSyncHandler callback : _callbacks)
+			callback.handleContentName(_slice, name);
 	}
 	
 	protected void push(SyncTreeEntry srt, Stack<SyncTreeEntry> stack) {
