@@ -60,6 +60,10 @@ it will be placed into the pool that was active when the interest was sent.
     Run for the indicated number of milliseconds,
     or until the arrival of data.
 
+*reconnect* 'secs'::
+    Disconnect the ccn handle, sleep for 'secs' seconds and then reconnect.
+    Used for testing disconnect/reconnect behavior.
+
 *mincob* 'num'::
     Fail if the current pool has fewer than 'num' content objects.
 

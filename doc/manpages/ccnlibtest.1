@@ -1,13 +1,13 @@
 '\" t
 .\"     Title: ccndlibtest
 .\"    Author: [see the "AUTHOR" section]
-.\" Generator: DocBook XSL Stylesheets v1.76.0 <http://docbook.sf.net/>
-.\"      Date: 10/09/2012
+.\" Generator: DocBook XSL Stylesheets v1.76.1 <http://docbook.sf.net/>
+.\"      Date: 10/13/2012
 .\"    Manual: \ \&
 .\"    Source: \ \& 0.7.0pa1
 .\"  Language: English
 .\"
-.TH "CCNDLIBTEST" "1" "10/09/2012" "\ \& 0\&.7\&.0pa1" "\ \&"
+.TH "CCNDLIBTEST" "1" "10/13/2012" "\ \& 0\&.6\&.2" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -78,6 +78,13 @@ as the flags for subsequent prefix registration\&. This should be expressed as a
 \fBrun\fR \fImillisec\fR
 .RS 4
 Run for the indicated number of milliseconds, or until the arrival of data\&.
+.RE
+.PP
+\fBreconnect\fR \fIsecs\fR
+.RS 4
+Disconnect the ccn handle, sleep for
+\fIsecs\fR
+seconds and then reconnect\&. Used for testing disconnect/reconnect behavior\&.
 .RE
 .PP
 \fBmincob\fR \fInum\fR

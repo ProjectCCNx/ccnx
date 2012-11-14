@@ -172,7 +172,9 @@ int ccn_get_connection_fd(struct ccn *h);
 /*
  * ccn_disconnect: disconnect from local ccnd
  * This breaks the connection and discards buffered I/O,
- * but leaves other state intact.
+ * but leaves other state intact.  Interests that are pending at disconnect
+ * will be reported as timed out, and interest filters active at disconnect
+ * will be re-registered if a subsequent ccn_connect on the handle succeeds.
  */ 
 int ccn_disconnect(struct ccn *h);
 

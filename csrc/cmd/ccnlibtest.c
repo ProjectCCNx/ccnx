@@ -174,7 +174,7 @@ outgoing_content(struct ccn_closure *selfp,
     return(CCN_UPCALL_RESULT_ERR);
 }
 
-#define USAGE "ccnlibtest [-hv] (pool n | flags x | prefix uri | run millis | file.ccnb) ..."
+#define USAGE "ccnlibtest [-hv] (pool n | flags x | prefix uri | reconnect secs | run millis | file.ccnb) ..."
 
 void
 usage(void)
@@ -194,6 +194,7 @@ main(int argc, char **argv)
     struct ccn_indexbuf *comps = ccn_indexbuf_create();
     int i;
     int millis = 0;
+    int secs = 0;
     int opt;
     int pool = 0;
     int regflgs = (CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE);
@@ -228,6 +229,21 @@ main(int argc, char **argv)
     }
     for (i = 0; i < argc; i++) {
         arg = argv[i];
+        if (0 == strcmp(arg, "reconnect")) {
+            if (argv[i+1] == NULL)
+                usage();
+            secs = atoi(argv[i+1]);
+            if (secs <= 0 && strcmp(argv[i+1], "0") != 0)
+                usage();
+            i++;
+            ccn_disconnect(ccnH);
+            sleep(secs);
+            if (ccn_connect(ccnH, NULL) == -1) {
+                ccn_perror(ccnH, "ccn_connect");
+                exit(1);
+            }
+            continue;
+        }
         if (0 == strcmp(arg, "pool")) {
             if (argv[i+1] == NULL)
                 usage();
