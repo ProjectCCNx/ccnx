@@ -61,6 +61,7 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 	 * which are used to notice new hashes coming through which may contain unseen files.
 	 */
 	public void registerCallback(CCNSyncHandler syncHandler, ConfigSlice slice, byte[] startHash, ContentName startName) throws IOException {
+		boolean sendRootAdviseRequest = true;
 		synchronized (this) {
 			SyncHashEntry she = new SyncHashEntry(slice.getHash());
 			ComparatorGroup cg = _comparators.get(she);
@@ -68,6 +69,7 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 				// For 0 length hash (== start with current hash) we can just add the handler to the leadComparator if there is one since it should
 				// already know the latest hash
 				cg._leadComparator.addCallback(syncHandler);
+				sendRootAdviseRequest = false;
 			} else {
 				SliceComparator sc = new SliceComparator(null == cg ? null : cg._leadComparator, _snc, syncHandler, slice, startHash, startName, _handle);
 				if (null == cg) {
@@ -77,11 +79,13 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 				_comparators.put(new SyncHashEntry(slice.getHash()), cg);
 			}
 		}
-		ContentName rootAdvise = new ContentName(slice.topo, Sync.SYNC_ROOT_ADVISE_MARKER, slice.getHash());
-		Interest interest = new Interest(rootAdvise);
-		interest.scope(1);
-		_handle.registerFilter(rootAdvise, this);
-		_handle.expressInterest(interest, this);
+		if (sendRootAdviseRequest) {
+			ContentName rootAdvise = new ContentName(slice.topo, Sync.SYNC_ROOT_ADVISE_MARKER, slice.getHash());
+			Interest interest = new Interest(rootAdvise);
+			interest.scope(1);
+			_handle.registerFilter(rootAdvise, this);
+			_handle.expressInterest(interest, this);
+		}
 	}
 
 	/**
