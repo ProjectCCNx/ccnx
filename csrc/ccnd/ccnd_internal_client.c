@@ -262,18 +262,21 @@ send_adjacency_solicit(struct ccnd_handle *ccnd, struct face *face)
     c = ccn_charbuf_create();
     g = ccn_charbuf_create();
     templ = ccn_charbuf_create();
-    ccn_name_from_uri(name, "ccnx:/%C1.M.FACE");
+    /* Construct a proposed partial guid, without marker bytes */
     ccn_charbuf_reset(g);
-    ccn_charbuf_append_value(g, 0, 2); /* 2 reserved bytes */
+    ccn_charbuf_append_value(g, 0, 1); /* 1 reserved byte of zero */
     /* The first half is chosen by our side */
     for (i = 0; i < 6; i++)
         ccn_charbuf_append_value(g, nrand48(ccnd->seed) & 0xff, 1);
     /* The second half will be chosen by the other side */
     for (i = 0; i < 6; i++)
         ccn_charbuf_append_value(g, 0, 1);
+    /* Construct the interest */
     ccn_charbuf_reset(templ);
     ccnb_element_begin(templ, CCN_DTAG_Interest);
+    ccn_name_from_uri(name, "ccnx:/%C1.M.FACE");
     ccn_charbuf_append_charbuf(templ, name);
+    /* This interest excludes all but a range of possible guid components */
     ccnb_element_begin(templ, CCN_DTAG_Exclude);
     ccnb_tagged_putf(templ, CCN_DTAG_Any, "");
     ccn_charbuf_reset(c);
@@ -290,8 +293,11 @@ send_adjacency_solicit(struct ccnd_handle *ccnd, struct face *face)
     ccnb_append_tagged_blob(templ, CCN_DTAG_Component, c->buf, c->length);
     ccnb_tagged_putf(templ, CCN_DTAG_Any, "");
     ccnb_element_end(templ); /* Exclude */
+    /* We don't want to get confused by cached content */
     ccnb_tagged_putf(templ, CCN_DTAG_AnswerOriginKind, "%d", 0);
+    /* Only talk to direct peers */
     ccnb_tagged_putf(templ, CCN_DTAG_Scope, "2");
+    /* Bypass the FIB - send to just the face we want */
     ccnb_tagged_putf(templ, CCN_DTAG_FaceID, "%u", face->faceid);
     ccnb_element_end(templ); /* Interest */
     action = calloc(1, sizeof(*action));
@@ -300,6 +306,7 @@ send_adjacency_solicit(struct ccnd_handle *ccnd, struct face *face)
         action->intdata = face->faceid;
         action->data = ccnd;
         ans = ccn_express_interest(ccnd->internal_client, name, action, templ);
+        /* Use the guid slot to hold out proposal */
         if (ans >= 0)
             ans = ccnd_set_face_guid(ccnd, face,  g->buf, g->length);
         if (ans >= 0) {
