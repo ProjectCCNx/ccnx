@@ -63,15 +63,16 @@ import org.junit.Test;
  * Test for stream encryption/decryption.
  */
 public class CCNSecureInputStreamTest {
-	
+
 	static protected abstract class StreamFactory {
 		ContentName name;
 		ContentKeys keys;
-		int encrLength = 25*1024+301;
+		int encrLength;
 		byte [] encrData;
-		
-		public StreamFactory(String file_name) throws NoSuchAlgorithmException, IOException, InterruptedException {
+
+		public StreamFactory(String file_name, int length) throws NoSuchAlgorithmException, IOException, InterruptedException {
 			name = new ContentName(testHelper.getClassNamespace(), file_name);
+			encrLength = length;
 			flosser.handleNamespace(name);
 			try {
 				keys = StaticContentKeys.generateRandomKeys();
@@ -82,10 +83,10 @@ public class CCNSecureInputStreamTest {
 			writeFile(encrLength);
 			flosser.stopMonitoringNamespace(name);
 		}
-		
+
 		public abstract CCNInputStream makeInputStream() throws IOException;
 		public abstract OutputStream makeOutputStream() throws IOException;
-		
+
 		public void writeFile(int fileLength) throws IOException, NoSuchAlgorithmException, InterruptedException {
 			Random randBytes = new Random(0); // always same sequence, to aid debugging
 			OutputStream os = makeOutputStream();
@@ -135,6 +136,10 @@ public class CCNSecureInputStreamTest {
 			}
 			read_data = readFile(v2, encrLength);
 			Assert.assertFalse(encrData.equals(read_data));
+		}
+		public void seekZero() throws IOException, NoSuchAlgorithmException {
+			CCNInputStream i = makeInputStream();
+			i.seek(0);
 		}
 
 		public void seeking() throws IOException, NoSuchAlgorithmException {
@@ -228,7 +233,7 @@ public class CCNSecureInputStreamTest {
 	 * Handle naming for the test
 	 */
 	static CCNTestHelper testHelper = new CCNTestHelper(CCNSecureInputStreamTest.class);
-	
+
 	static CCNHandle outputLibrary;
 	static CCNHandle inputLibrary;
 	static Flosser flosser;
@@ -237,15 +242,16 @@ public class CCNSecureInputStreamTest {
 	static StreamFactory basic;
 	static StreamFactory versioned;
 	static StreamFactory file;
+	static StreamFactory emptyFile;
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		outputLibrary = CCNHandle.open();
 		inputLibrary = CCNHandle.open();
-				
+
 		flosser = new Flosser();
-		
-		basic = new StreamFactory("basic.txt"){
+
+		basic = new StreamFactory("basic.txt", 25*1024+301){
 			public CCNInputStream makeInputStream() throws IOException {
 				return new CCNInputStream(name, null, null, keys, inputLibrary);
 			}
@@ -254,7 +260,7 @@ public class CCNSecureInputStreamTest {
 			}
 		};
 
-		versioned = new StreamFactory("versioned.txt"){
+		versioned = new StreamFactory("versioned.txt", 25*1024+302){
 			public CCNInputStream makeInputStream() throws IOException {
 				return new CCNVersionedInputStream(name, 0L, null, keys, inputLibrary);
 			}
@@ -263,7 +269,16 @@ public class CCNSecureInputStreamTest {
 			}
 		};
 
-		file = new StreamFactory("file.txt"){
+		file = new StreamFactory("file.txt",  25*1024+303){
+			public CCNInputStream makeInputStream() throws IOException {
+				return new CCNFileInputStream(name, null, null, keys, inputLibrary);
+			}
+			public OutputStream makeOutputStream() throws IOException {
+				return new CCNFileOutputStream(name, keys, outputLibrary);
+			}
+		};
+
+		emptyFile = new StreamFactory("emptyFile.txt",  0){
 			public CCNInputStream makeInputStream() throws IOException {
 				return new CCNFileInputStream(name, null, null, keys, inputLibrary);
 			}
@@ -273,13 +288,13 @@ public class CCNSecureInputStreamTest {
 		};
 		flosser.stop();
 	}
-	
+
 	@AfterClass
 	public static void cleanupAfterClass() {
 		outputLibrary.close();
 		inputLibrary.close();
 	}
-	
+
 	public static byte [] readFile(InputStream inputStream, int fileLength) throws IOException {
 		ByteArrayOutputStream bos = null;
 		bos = new ByteArrayOutputStream();
@@ -295,14 +310,14 @@ public class CCNSecureInputStreamTest {
 				try {
 					Thread.sleep(10);
 				} catch (InterruptedException e) {
-					
+
 				}
 			}
 			elapsed += read;
 		}
 		return bos.toByteArray();
 	}
-	
+
 	/**
 	 * Test cipher encryption & decryption work
 	 * @throws ContentEncodingException 
@@ -317,7 +332,7 @@ public class CCNSecureInputStreamTest {
 		d = c.doFinal(d);
 		// check we get identical data back out
 		Assert.assertArrayEquals(basic.encrData, d);
-		
+
 		Log.info(Log.FAC_TEST, "Completed cipherEncryptDecrypt");
 	}
 
@@ -333,20 +348,23 @@ public class CCNSecureInputStreamTest {
 		InputStream is = new ByteArrayInputStream(basic.encrData, 0, basic.encrData.length);
 		is = new UnbufferedCipherInputStream(is, c);
 		byte [] cipherText = new byte[4096];
-		for(int total = 0, res = 0; res >= 0 && total < 4096; total+=res)
+		int total, res;
+		for(total = 0, res = 0; res >= 0 && total < 4096; total+=(res > 0) ? res : 0)
 			res = is.read(cipherText,total,4096-total);
 
 		c = basic.keys.getSegmentDecryptionCipher(basic.name, outputLibrary.getDefaultPublisher(), 0);
-		is = new ByteArrayInputStream(cipherText);
+		is = new ByteArrayInputStream(cipherText, 0, total);
 		is = new UnbufferedCipherInputStream(is, c);
-		byte [] output = new byte[4096];
-		for(int total = 0, res = 0; res >= 0 && total < 4096; total+=res)
-			res = is.read(output,total,4096-total);
+		byte [] buf = new byte[4096];
+		for(total = 0, res = 0; res >= 0 && total < 4096; total+=(res > 0) ? res : 0)
+			res = is.read(buf,total,4096-total);
 		// check we get identical data back out
 		byte [] input = new byte[Math.min(4096, basic.encrLength)];
+		byte [] output = new byte[Math.min(4096, total)];
 		System.arraycopy(basic.encrData, 0, input, 0, input.length);
+		System.arraycopy(buf, 0, output, 0, output.length);
 		Assert.assertArrayEquals(input, output);
-		
+
 		Log.info(Log.FAC_TEST, "Completed cipherStreamEncryptDecrypt");
 	}
 
@@ -366,9 +384,10 @@ public class CCNSecureInputStreamTest {
 		ContentName rootName = SegmentationProfile.segmentRoot(basic.name);
 		PrivateKey signingKey = outputLibrary.keyManager().getSigningKey(publisher);
 		byte [] finalBlockID = SegmentationProfile.getSegmentNumberNameComponent(1);
+		int coLength = Math.min(4096, basic.encrData.length);
 		ContentObject co = new ContentObject(SegmentationProfile.segmentName(rootName, 0),
 				new SignedInfo(publisher, null, ContentType.ENCR, outputLibrary.keyManager().getKeyLocator(signingKey), new Integer(300), finalBlockID),
-				is, 4096);
+				is, coLength);
 
 		// attempt to decrypt the data
 		c = basic.keys.getSegmentDecryptionCipher(basic.name, publisher, 0);
@@ -377,10 +396,10 @@ public class CCNSecureInputStreamTest {
 		for(int total = 0, res = 0; res >= 0 && total < output.length; total+=res)
 			res = is.read(output, total, output.length-total);
 		// check we get identical data back out
-		byte [] input = new byte[Math.min(4096, co.contentLength())];
+		byte [] input = new byte[coLength];
 		System.arraycopy(basic.encrData, 0, input, 0, input.length);
 		Assert.assertArrayEquals(input, output);
-		
+
 		Log.info(Log.FAC_TEST, "Completed contentEncryptDecrypt");
 	}
 
@@ -406,10 +425,45 @@ public class CCNSecureInputStreamTest {
 		Log.info(Log.FAC_TEST, "Completed fileStreamEncryptDecrypt");
 	}
 
+	@Test
+	public void emptyFileStreamEncryptDecrypt() throws IOException {
+		Log.info(Log.FAC_TEST, "Starting emptyFileStreamEncryptDecrypt");
+		emptyFile.streamEncryptDecrypt();
+		Log.info(Log.FAC_TEST, "Completed emptyFileStreamEncryptDecrypt");
+	}
+
 	/**
 	 * seek forward, read, seek back, read and check the results
 	 * do it for different size parts of the data
 	 */
+	@Test
+	public void basicSeekZero() throws IOException, NoSuchAlgorithmException {
+		Log.info(Log.FAC_TEST, "Starting basicSeekZero");
+		basic.seekZero();
+		Log.info(Log.FAC_TEST, "Completed basicSeekZero");
+	}
+
+	@Test
+	public void versionedSeekZero() throws IOException, NoSuchAlgorithmException {
+		Log.info(Log.FAC_TEST, "Starting versionedSeekZero");
+		versioned.seekZero();
+		Log.info(Log.FAC_TEST, "Completed versionedSeekZero");
+	}
+
+	@Test
+	public void fileSeekZero() throws IOException, NoSuchAlgorithmException {
+		Log.info(Log.FAC_TEST, "Starting fileSeekZero");
+		file.seekZero();
+		Log.info(Log.FAC_TEST, "Completed fileSeekZero");
+	}
+
+	@Test
+	public void emptyFileSeekZero() throws IOException, NoSuchAlgorithmException {
+		Log.info(Log.FAC_TEST, "Starting emptyFileSeekZero");
+		emptyFile.seekZero();
+		Log.info(Log.FAC_TEST, "Completed emptyFileSeekZero");
+	}
+
 	@Test
 	public void basicSeeking() throws IOException, NoSuchAlgorithmException {
 		Log.info(Log.FAC_TEST, "Starting basicSeeking");

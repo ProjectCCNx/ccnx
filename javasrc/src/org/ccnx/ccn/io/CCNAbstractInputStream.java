@@ -1508,7 +1508,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 					throw new IOException("BadPaddingException: " + e.getMessage());
 				}
 				if ((null == tailData) || (0 == tailData.length)) {
-					_segmentReadStream = new ByteArrayInputStream(bodyData);
+					if (null == bodyData)
+						_segmentReadStream = new ByteArrayInputStream(new byte[0]);
+					else 
+						_segmentReadStream = new ByteArrayInputStream(bodyData);
 				}
 				else if ((null == bodyData) || (0 == bodyData.length)) {
 					_segmentReadStream = new ByteArrayInputStream(tailData);
