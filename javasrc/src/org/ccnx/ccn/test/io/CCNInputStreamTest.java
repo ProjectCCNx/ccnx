@@ -26,7 +26,11 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNOutputStream;
 import org.ccnx.ccn.io.CCNAbstractInputStream.FlagTypes;
+import org.ccnx.ccn.profiles.SegmentationProfile;
+import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 import org.ccnx.ccn.test.CCNTestBase;
 import org.ccnx.ccn.test.CCNTestHelper;
 import org.ccnx.ccn.test.ThreadAssertionRunner;
@@ -112,6 +116,25 @@ public class CCNInputStreamTest extends CCNTestBase {
 		Log.info(Log.FAC_TEST, "Completed testBlockAfterFirstSegment");
 	}
 
+	
+	@Test
+	public void testBasename() {
+		//create a segment object to open a stream with, then check basename
+		ContentName streamName = testHelper.getTestNamespace("testBasename");
+		streamName = VersioningProfile.addVersion(streamName);
+		ContentName fullStreamName = SegmentationProfile.segmentName(streamName, SegmentationProfile.BASE_SEGMENT);
+		ContentObject co = ContentObject.buildContentObject(fullStreamName, ContentType.DATA, "here is some content to name".getBytes(), null, null, null, null, SegmentationProfile.getSegmentNumberNameComponent(SegmentationProfile.BASE_SEGMENT));
+
+		try {
+			CCNInputStream stream = new CCNInputStream(co, null, getHandle);
+			Assert.assertTrue(streamName.equals(stream.getBaseName()));
+		} catch (IOException e) {
+			Assert.fail("failed to open stream: "+e.getMessage());
+		}
+
+	}
+	
+	
 	protected class BackgroundStreamer implements Runnable {
 		CCNInputStream _stream = null;
 

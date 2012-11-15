@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -18,13 +18,17 @@
 package org.ccnx.ccn.test.protocol;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNInterestHandler;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.ConcurrencyUtils.Waiter;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Exclude;
+import org.ccnx.ccn.protocol.ExcludeComponent;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.test.LibraryTestBase;
@@ -44,6 +48,8 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNInterest
 	private final static int TIMEOUT = 3000;
 	
 	private int interestCount = 0;
+	
+	private ContentObject toReturn;
 
 	
 	@Test
@@ -74,7 +80,45 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNInterest
 		Log.info(Log.FAC_TEST, "Completed testInterestEndToEnd");
 	}
 
+	@Test
+	public void testExcludeDigestEndToEnd() throws MalformedContentNameStringException, IOException {
+		Log.info(Log.FAC_TEST, "Starting testExcludeDigestEndToEnd");
+		ContentName cname = ContentName.fromNative(_prefix +"/excludeDigest");
+		
+		putHandle.registerFilter(ContentName.fromNative(_prefix), this);
+			
+		Interest firstInterest = Interest.constructInterest(cname, null, null, null, null, null);
+		
+		ContentObject co = ContentObject.buildContentObject(cname, "here is content 1".getBytes());
+		ContentObject co2 = ContentObject.buildContentObject(cname, "Here is content 2".getBytes());
+		toReturn = co;
+		
+		ContentObject returned = getHandle.get(firstInterest, SystemConfiguration.MEDIUM_TIMEOUT);
+		Assert.assertNotNull(returned);
+
+		Interest excludeInterest =  Interest.constructInterest(cname, new Exclude(), null, null, null, null);
+		excludeInterest.exclude().add(new byte[][] {returned.digest()});
+		
+		toReturn = co2;
+		
+		returned = getHandle.get(excludeInterest, SystemConfiguration.MEDIUM_TIMEOUT);
+		Assert.assertEquals(co2, returned);
+		
+		toReturn = null;
+		putHandle.unregisterFilter(ContentName.fromNative(_prefix), this);
+	
+		Log.info(Log.FAC_TEST, "Completed testExcludeDigestEndToEnd");
+	}
+	
 	public boolean handleInterest(Interest interest) {
+		if (toReturn != null && interest.matches(toReturn)) {
+			try {
+				putHandle.put(toReturn);
+			} catch (IOException e) {
+				Assert.fail("IOException while handling testExcludeDigestEndToEnd interest: "+e.getMessage());
+			}
+			return true;
+		}
 		Assert.assertTrue(_interestSent.equals(interest));
 		synchronized(this) {
 			interestCount++;
