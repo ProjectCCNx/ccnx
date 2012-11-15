@@ -251,6 +251,7 @@ struct face {
 #define CCN_FACE_LC    (1 << 19) /** A link check has been issued recently */
 #define CCN_FACE_BC    (1 << 20) /** Needs SO_BROADCAST to send */
 #define CCN_FACE_NBC   (1 << 21) /** Don't use SO_BROADCAST to send */
+#define CCN_FACE_ADJ   (1 << 22) /** Adjacency guid has been negotiatied */
 #define CCN_NOFACEID    (~0U)    /** denotes no face */
 
 /**
