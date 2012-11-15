@@ -142,7 +142,7 @@ ms_to_tu(int m)
  *        version has already been provided.
  * @param timeout_ms is a time value in milliseconds. This is the total time
  *        that the caller can wait.
- * @returns -1 for error, 0 if name could not be extended, 1 if was.
+ * @returns -1 for error, 0 if name was not extended, 1 if was.
  */
 int
 ccn_resolve_version(struct ccn *h, struct ccn_charbuf *name,
@@ -195,6 +195,7 @@ ccn_resolve_version(struct ccn *h, struct ccn_charbuf *name,
      * lifetime that should get a retransmit.   If there is no response,
      * return the highest version found so far.
      */
+    myres = 0;
     res = ccn_get(h, prefix, templ, timeout_ms, cobj, pco, ndx, 0);
     while (cobj->length != 0) {
         if (pco->type == CCN_CONTENT_NACK) // XXX - also check for number of components
@@ -207,7 +208,7 @@ ccn_resolve_version(struct ccn *h, struct ccn_charbuf *name,
             name->length = 0;
             ccn_charbuf_append(name, prefix->buf, prefix->length);
             ccn_name_append(name, vers, vers_size);
-            myres = 0;
+            myres = 1;
             if ((versioning_flags & CCN_V_EST) == 0)
                 break;
             gettimeofday(&now, NULL);
