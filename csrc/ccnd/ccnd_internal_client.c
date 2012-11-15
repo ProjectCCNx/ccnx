@@ -54,8 +54,7 @@
 /* The ping responder is deprecated, but enable it by default for now */
 #define CCND_PING 1
 #endif
-int bug;
-void debugme(int line) {bug=line;}
+
 static void ccnd_start_notice(struct ccnd_handle *ccnd);
 
 static struct ccn_charbuf *
@@ -284,7 +283,6 @@ solicit_response(struct ccn_closure *selfp,
             face = ccnd_face_from_faceid(ccnd, selfp->intdata);
             if (face == NULL)
                 return(CCN_UPCALL_RESULT_ERR);
-            ccnd_msg(ccnd, "face %u adjstate %#x kind %d", face->faceid, face->adjstate, (int)kind);
             if ((face->adjstate & (ADJ_SOL_SENT)) != 0) {
                 ccnd_forget_face_guid(ccnd, face);
                 face->adjstate = ADJ_TIMEDWAIT;
@@ -695,7 +693,6 @@ ccnd_answer_req(struct ccn_closure *selfp,
             break;
         case OP_ADJACENCY:
             face = ccnd_face_from_faceid(ccnd, ccnd->interest_faceid);
-            debugme(__LINE__);
             if (face == NULL)
                 goto Bail;
             if (info->pi->prefix_comps == 1 && face->guid == NULL) {
