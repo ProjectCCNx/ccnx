@@ -111,7 +111,7 @@ Any or all variables in the file may also be expressed as environment variables 
      where _<store state flag>_ specifies whether storing of Sync state to the Repository is disabled (0) or enabled. If not specified, the default is 1 (enabled).
 
 *CCNS_ROOT_ADVISE_FRESH=_<freshness>_*::
-     where _<freshness>_ is the amount of time a response to a Sync RoodAdvise will stay "fresh" (valid) in a ccnd cache in seconds, and must be an integer in the range 1-30. If not specified, the default is 4.
+     where _<freshness>_ is the amount of time a response to a Sync RootAdvise will stay "fresh" (valid) in a ccnd cache in seconds, and must be an integer in the range 1-30. If not specified, the default is 4.
 
 *CCNS_ROOT_ADVISE_LIFETIME=_<ra lifetime>_*::
      where _<ra lifetime>_ is the maximum amount of time in seconds to wait for a response to a RootAdvise request, and must be an integer in the range 1-30. If not specified, the default is 20.
