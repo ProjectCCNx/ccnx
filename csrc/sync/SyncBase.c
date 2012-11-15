@@ -174,7 +174,7 @@ sync_start_default(struct sync_plumbing *sd,
     priv->deltasLimit = getEnvLimited("CCNS_DELTAS_LIMIT",
                                       0, 8000, 0);
     
-    // # of bytes permitted for RootAdvise delta mode
+    // scope for generated interests
     priv->syncScope = getEnvLimited("CCNS_SYNC_SCOPE",
                                     0, 2, 2);
     
