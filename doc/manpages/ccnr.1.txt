@@ -119,6 +119,9 @@ Any or all variables in the file may also be expressed as environment variables 
 *CCNS_STABLE_ENABLED=_<store stable flag>_*::
      where _<store stable flag>_ specifies whether storing of Sync stable points to the Repository is disabled (0) or enabled (1). If not specified, the default is 1 (enabled).
 
+*CCNS_SYNC_SCOPE=_<sync scope>_*::
+     where _<sync scope>_ is the scope applied to sync generated interests (RootAdvise and remote fetch).  The value must be 0 (unscoped), 1 (local host), or 2 (next host).  If not specified the default is 2.
+
 OPTIONS
 -------
 *-h*::
