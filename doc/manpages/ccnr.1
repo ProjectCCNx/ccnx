@@ -1,13 +1,13 @@
 '\" t
 .\"     Title: ccnr
 .\"    Author: [see the "AUTHOR" section]
-.\" Generator: DocBook XSL Stylesheets v1.76.0 <http://docbook.sf.net/>
-.\"      Date: 10/09/2012
+.\" Generator: DocBook XSL Stylesheets v1.76.1 <http://docbook.sf.net/>
+.\"      Date: 11/14/2012
 .\"    Manual: \ \&
 .\"    Source: \ \& 0.7.0pa1
 .\"  Language: English
 .\"
-.TH "CCNR" "1" "10/09/2012" "\ \& 0\&.7\&.0pa1" "\ \&"
+.TH "CCNR" "1" "11/14/2012" "\ \& 0\&.7\&.0pa1" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -331,7 +331,7 @@ specifies whether storing of Sync state to the Repository is disabled (0) or ena
 .RS 4
 where
 \fI<freshness>\fR
-is the amount of time a response to a Sync RoodAdvise will stay "fresh" (valid) in a ccnd cache in seconds, and must be an integer in the range 1\-30\&. If not specified, the default is 4\&.
+is the amount of time a response to a Sync RootAdvise will stay "fresh" (valid) in a ccnd cache in seconds, and must be an integer in the range 1\-30\&. If not specified, the default is 4\&.
 .RE
 .PP
 \fBCCNS_ROOT_ADVISE_LIFETIME=\fR\fB\fI<ra lifetime>\fR\fR
@@ -346,6 +346,13 @@ is the maximum amount of time in seconds to wait for a response to a RootAdvise 
 where
 \fI<store stable flag>\fR
 specifies whether storing of Sync stable points to the Repository is disabled (0) or enabled (1)\&. If not specified, the default is 1 (enabled)\&.
+.RE
+.PP
+\fBCCNS_SYNC_SCOPE=\fR\fB\fI<sync scope>\fR\fR
+.RS 4
+where
+\fI<sync scope>\fR
+is the scope applied to sync generated interests (RootAdvise and remote fetch)\&. The value must be 0 (unscoped), 1 (local host), or 2 (next host)\&. If not specified the default is 2\&.
 .RE
 .SH "OPTIONS"
 .PP
