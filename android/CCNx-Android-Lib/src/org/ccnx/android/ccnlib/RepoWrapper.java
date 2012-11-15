@@ -64,7 +64,8 @@ public final class RepoWrapper extends CCNxWrapper {
 		CCNS_NODE_FETCH_LIFETIME,
 		CCNS_MAX_FETCH_BUSY,
 		CCNS_MAX_COMPARES_BUSY,
-		CCNS_NOTE_ERR
+		CCNS_NOTE_ERR,
+		CCNS_SYNC_SCOPE
 	}
 	
 	public RepoWrapper(Context ctx) {
