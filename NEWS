@@ -5,8 +5,10 @@ Refer to http://redmine.ccnx.org/projects/ccn/versions/13 for more details on
 CCNx 0.7.0.
 
   * Issues Resolved:
-	* Feature #100862: Routing agents need to learn about the adjacency of the network that they 
+	* Feature #100862: Routing agents need to learn about the adjacency of the network that they
 	find themselves participating in. Add support for this to ccnd
+	* Bug #100856 : ccn_disconnect followed by ccn_connect leaves connection in a semi-functional
+	state
 
 Changes between 0.6.1 and 0.6.2:
 --------------------------------
