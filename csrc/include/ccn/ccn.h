@@ -764,9 +764,13 @@ int ccn_content_get_value(const unsigned char *data, size_t data_size,
                           const struct ccn_parsed_ContentObject *content,
                           const unsigned char **value, size_t *size);
 
-/* checking for final block */
-int
-ccn_is_final_block(struct ccn_upcall_info *info);
+/* checking for final block given upcall info */
+int ccn_is_final_block(struct ccn_upcall_info *info);
+
+/* checking for final block given parsed content object */
+int ccn_is_final_pco(const unsigned char *ccnb,
+                     struct ccn_parsed_ContentObject *pco,
+                     struct ccn_indexbuf *comps);
 
 /* content-object signing */
 
@@ -977,6 +981,12 @@ int ccnb_element_end(struct ccn_charbuf *c);
  */
 int ccnb_append_tagged_blob(struct ccn_charbuf *c, enum ccn_dtag dtag,
                             const void *data, size_t size);
+
+/*
+ * Append a tagged binary number
+ */
+int ccnb_append_tagged_binary_number(struct ccn_charbuf *cb, enum ccn_dtag dtag,
+                                      uintmax_t val);
 
 /*
  * Append a tagged UDATA string, with printf-style formatting
