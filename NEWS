@@ -14,6 +14,7 @@ CCNx 0.7.0.
 	* Bug #100442: ccn_charbuf_append_datetime_now unimplemented
 	* Bug #100242: AbstractInputStream null pointer when content length 0
 	* Bug #100177: CCNFileInputStream mishandles filename with segment number present
+	* Bug #100011: java Exclude filters should be able to match implicit digest name component
 
 Changes between 0.6.1 and 0.6.2:
 --------------------------------
