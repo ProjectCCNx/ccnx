@@ -7,8 +7,10 @@ CCNx 0.7.0.
   * Issues Resolved:
 	* Feature #100862: Routing agents need to learn about the adjacency of the network that they
 	find themselves participating in. Add support for this to ccnd
-	* Bug #100856 : ccn_disconnect followed by ccn_connect leaves connection in a semi-functional
+	* Bug #100856: ccn_disconnect followed by ccn_connect leaves connection in a semi-functional
 	state
+	* Bug #100855: ccn_destroy() call to EVP_cleanup() causes trouble for any remaining handles 
+	and other users of the OpenSSL services
 
 Changes between 0.6.1 and 0.6.2:
 --------------------------------
