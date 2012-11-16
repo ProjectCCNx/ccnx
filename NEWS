@@ -11,6 +11,7 @@ CCNx 0.7.0.
 	state
 	* Bug #100855: ccn_destroy() call to EVP_cleanup() causes trouble for any remaining handles 
 	and other users of the OpenSSL services
+	* Bug #100442: ccn_charbuf_append_datetime_now unimplemented
 
 Changes between 0.6.1 and 0.6.2:
 --------------------------------
