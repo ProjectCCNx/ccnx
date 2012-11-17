@@ -7,7 +7,7 @@
  *
  * Part of ccnd - the CCNx Daemon.
  *
- * Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -84,10 +84,6 @@ ccnd_init_service_ccnb(struct ccnd_handle *ccnd, const char *baseuri, int freshn
     ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_KeyName, CCN_DTAG);
     ccn_charbuf_append_charbuf(sp.template_ccnb, name);
     ccn_charbuf_append_closer(sp.template_ccnb);
-//    ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_PublisherPublicKeyDigest,
-//                          CCN_DTAG);
-//    ccn_charbuf_append_charbuf(sp.template_ccnb, pubid);
-//    ccn_charbuf_append_closer(sp.template_ccnb);
     ccn_charbuf_append_closer(sp.template_ccnb);
     ccn_charbuf_append_closer(sp.template_ccnb);
     sp.sp_flags |= CCN_SP_TEMPL_KEY_LOCATOR;
@@ -105,6 +101,437 @@ ccnd_init_service_ccnb(struct ccnd_handle *ccnd, const char *baseuri, int freshn
     return(cob);
 }
 
+/* These are used in face->adjstate to track our state */
+#define ADJ_SOL_SENT (1U << 0)
+#define ADJ_SOL_RECV (1U << 1)
+#define ADJ_OFR_SENT (1U << 2)
+#define ADJ_OFR_RECV (1U << 3)
+#define ADJ_CRQ_SENT (1U << 4)
+#define ADJ_CRQ_RECV (1U << 5)
+#define ADJ_DAT_SENT (1U << 6)
+#define ADJ_DAT_RECV (1U << 7)
+#define ADJ_TIMEDWAIT (1U << 8)
+
+static int
+append_adjacency_uri(struct ccnd_handle *ccnd,
+                     struct ccn_charbuf *cb, struct face *face)
+{
+    struct ccn_charbuf *name = NULL;
+    struct ccn_charbuf *comp = NULL;
+    int res;
+    
+    if (face->guid == NULL)
+        return(-1);
+    comp = ccn_charbuf_create();
+    name = ccn_charbuf_create();
+    ccn_name_from_uri(name, "ccnx:/%C1.M.FACE");
+    ccn_charbuf_append_value(comp, CCN_MARKER_CONTROL, 1);
+    ccn_charbuf_append_string(comp, ".M.G");
+    ccn_charbuf_append_value(comp, 0, 1);
+    ccnd_append_face_guid(ccnd, comp, face);
+    ccn_name_append(name, comp->buf, comp->length);
+    res = ccn_uri_append(cb, name->buf, name->length, 1);
+    ccn_charbuf_destroy(&comp);
+    ccn_charbuf_destroy(&name);
+    return(res < 0 ? -1 : 0);
+}
+
+static void
+ccnd_register_adjacency(struct ccnd_handle *ccnd, struct face *face)
+{
+    struct ccn_charbuf *uri = NULL;
+    unsigned both;
+    int res;
+    
+    both = ADJ_DAT_RECV | ADJ_DAT_SENT;
+    if ((face->adjstate & both) != both)
+        return;
+    if ((face->flags & CCN_FACE_ADJ) != 0)
+        return;
+    uri = ccn_charbuf_create();
+    res = append_adjacency_uri(ccnd, uri, face);
+    if (res >= 0)
+        res = ccnd_reg_uri(ccnd, ccn_charbuf_as_string(uri), face->faceid,
+                CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE, 0x7FFFFFFF);
+    if (res >= 0) {
+        face->flags |= CCN_FACE_ADJ;
+        ccnd_face_status_change(ccnd, face->faceid);
+    }
+    ccn_charbuf_destroy(&uri);
+}
+
+static void
+ccnd_init_face_guid_cob(struct ccnd_handle *ccnd, struct face *face)
+{
+    struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
+    struct ccn *h = ccnd->internal_client;
+    struct ccn_charbuf *name = NULL;
+    struct ccn_charbuf *payload = NULL;
+    struct ccn_charbuf *comp = NULL;
+    struct ccn_charbuf *cob = NULL;
+    int res;
+    
+    if (face->guid == NULL || face->guid_cob != NULL)
+        return;
+    if ((face->adjstate & (ADJ_OFR_SENT | ADJ_OFR_RECV)) == 0)
+        return;
+    name = ccn_charbuf_create();
+    payload = ccn_charbuf_create();
+    comp = ccn_charbuf_create();
+    cob = ccn_charbuf_create();
+    
+    ccn_name_from_uri(name, "ccnx:/%C1.M.FACE");
+    /* %C1.G.%00<guid> */
+    ccn_charbuf_reset(comp);
+    ccn_charbuf_append_value(comp, CCN_MARKER_CONTROL, 1);
+    ccn_charbuf_append_string(comp, ".M.G");
+    ccn_charbuf_append_value(comp, 0, 1);
+    ccnd_append_face_guid(ccnd, comp, face);
+    ccn_name_append(name, comp->buf, comp->length);
+    ccn_name_from_uri(name, "%C1.M.NODE");
+    /* %C1.K.%00<ccndid> */
+    ccn_charbuf_reset(comp);
+    ccn_charbuf_append_value(comp, CCN_MARKER_CONTROL, 1);
+    ccn_charbuf_append_string(comp, ".M.K");
+    ccn_charbuf_append_value(comp, 0, 1);
+    ccn_charbuf_append(comp, ccnd->ccnd_id, sizeof(ccnd->ccnd_id));
+    ccn_name_append(name, comp->buf, comp->length);
+    ccn_charbuf_reset(comp);
+    ccn_charbuf_putf(comp, "face~%u", face->faceid);
+    ccn_name_append(name, comp->buf, comp->length);
+    ccn_create_version(h, name, CCN_V_NOW, 0, 0);
+    ccn_name_from_uri(name, "%00");
+    sp.sp_flags |= CCN_SP_FINAL_BLOCK;
+    sp.freshness = 120;
+    res = ccn_sign_content(h, cob, name, &sp, payload->buf, payload->length);
+    if (res != 0)
+        ccn_charbuf_destroy(&cob);
+    ccn_charbuf_destroy(&name);
+    ccn_charbuf_destroy(&payload);
+    ccn_charbuf_destroy(&comp);
+    ccn_charbuf_destroy(&sp.template_ccnb);
+    face->guid_cob = cob;
+}
+
+/**
+ * Isolate the lower and upper bounds for the guid component from Exclude
+ *
+ * This is used as part of the adjacency protocol.
+ */
+static int
+extract_bounds(const unsigned char *ccnb, struct ccn_parsed_interest *pi,
+               const unsigned char **plo, const unsigned char **phi)
+{
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d = NULL;
+    int res = -1;
+    int x;
+    int y;
+    int z;
+    size_t sz;
+    
+    /* We are interested only in the Exclude element. */
+    ccnb = ccnb + pi->offset[CCN_PI_B_Exclude];
+    sz = pi->offset[CCN_PI_E_Exclude] - pi->offset[CCN_PI_B_Exclude];
+    if (sz != 0) {
+        d = ccn_buf_decoder_start(&decoder, ccnb, sz);
+        if (ccn_buf_match_dtag(d, CCN_DTAG_Exclude)) {
+            ccn_buf_advance(d);
+            if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
+                ccn_buf_advance(d);
+                ccn_buf_check_close(d);
+            }
+            else return(-1);
+            x = d->decoder.token_index;
+            ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Component, 8, 70);
+            y = d->decoder.token_index;
+            ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Component, 8, 70);
+            z = d->decoder.token_index;
+            if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
+                ccn_buf_advance(d);
+                ccn_buf_check_close(d);
+            }
+            else return(-1);
+            ccn_buf_check_close(d);
+            if (d->decoder.state < 0)
+                return (-1);
+            if (y - x != z - y)
+                return(-1);
+            res = ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb, x, y, plo, &sz);
+            if (res < 0) return(-1);
+            res = ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb, y, z, phi, &sz);
+            if (res < 0) return(-1);
+            return(sz);
+        }
+    }
+    return(-1);
+}
+
+static enum ccn_upcall_res
+solicit_response(struct ccn_closure *selfp,
+                   enum ccn_upcall_kind kind,
+                   struct ccn_upcall_info *info)
+{
+    struct face *face = NULL;
+    struct ccnd_handle *ccnd = selfp->data;
+    
+    switch (kind) {
+        case CCN_UPCALL_FINAL:
+            free(selfp);
+            return(CCN_UPCALL_RESULT_OK);
+        default:
+            face = ccnd_face_from_faceid(ccnd, selfp->intdata);
+            if (face == NULL)
+                return(CCN_UPCALL_RESULT_ERR);
+            if ((face->adjstate & (ADJ_SOL_SENT)) != 0) {
+                ccnd_forget_face_guid(ccnd, face);
+                face->adjstate = ADJ_TIMEDWAIT;
+            }
+            return(CCN_UPCALL_RESULT_ERR);
+    }
+}
+
+static int
+send_adjacency_solicit(struct ccnd_handle *ccnd, struct face *face)
+{
+    struct ccn_charbuf *name;
+    struct ccn_charbuf *c;
+    struct ccn_charbuf *g;
+    struct ccn_charbuf *templ;
+    struct ccn_closure *action = NULL;
+    int i;
+    int ans = -1;
+
+    if (face == NULL || face->guid != NULL || face->adjstate != 0)
+        return(-1);
+    name = ccn_charbuf_create();
+    c = ccn_charbuf_create();
+    g = ccn_charbuf_create();
+    templ = ccn_charbuf_create();
+    /* Construct a proposed partial guid, without marker bytes */
+    ccn_charbuf_reset(g);
+    ccn_charbuf_append_value(g, 0, 1); /* 1 reserved byte of zero */
+    /* The first half is chosen by our side */
+    for (i = 0; i < 6; i++)
+        ccn_charbuf_append_value(g, nrand48(ccnd->seed) & 0xff, 1);
+    /* The second half will be chosen by the other side */
+    for (i = 0; i < 6; i++)
+        ccn_charbuf_append_value(g, 0, 1);
+    /* Construct the interest */
+    ccn_charbuf_reset(templ);
+    ccnb_element_begin(templ, CCN_DTAG_Interest);
+    ccn_name_from_uri(name, "ccnx:/%C1.M.FACE");
+    ccn_charbuf_append_charbuf(templ, name);
+    /* This interest excludes all but a range of possible guid components */
+    ccnb_element_begin(templ, CCN_DTAG_Exclude);
+    ccnb_tagged_putf(templ, CCN_DTAG_Any, "");
+    ccn_charbuf_reset(c);
+    ccn_charbuf_append_string(c, "\xC1.M.G");
+    ccn_charbuf_append_value(c, 0, 1);
+    ccn_charbuf_append(c, g->buf, g->length);
+    ccnb_append_tagged_blob(templ, CCN_DTAG_Component, c->buf, c->length);
+    ccn_charbuf_reset(c);
+    ccn_charbuf_append_string(c, "\xC1.M.G");
+    ccn_charbuf_append_value(c, 0, 1);
+    ccn_charbuf_append(c, g->buf, g->length - 6);
+    for (i = 0; i < 6; i++)
+        ccn_charbuf_append_value(c, 0xff, 1);
+    ccnb_append_tagged_blob(templ, CCN_DTAG_Component, c->buf, c->length);
+    ccnb_tagged_putf(templ, CCN_DTAG_Any, "");
+    ccnb_element_end(templ); /* Exclude */
+    /* We don't want to get confused by cached content */
+    ccnb_tagged_putf(templ, CCN_DTAG_AnswerOriginKind, "%d", 0);
+    /* Only talk to direct peers */
+    ccnb_tagged_putf(templ, CCN_DTAG_Scope, "2");
+    /* Bypass the FIB - send to just the face we want */
+    ccnb_tagged_putf(templ, CCN_DTAG_FaceID, "%u", face->faceid);
+    ccnb_element_end(templ); /* Interest */
+    action = calloc(1, sizeof(*action));
+    if (action != NULL) {
+        action->p = &solicit_response;
+        action->intdata = face->faceid;
+        action->data = ccnd;
+        ans = ccn_express_interest(ccnd->internal_client, name, action, templ);
+        /* Use the guid slot to hold out proposal */
+        if (ans >= 0)
+            ans = ccnd_set_face_guid(ccnd, face,  g->buf, g->length);
+        if (ans >= 0) {
+            face->adjstate = ADJ_SOL_SENT;
+            ccnd_internal_client_has_somthing_to_say(ccnd);
+        }
+        ans = (ans < 0) ? -1 : 0;
+    }
+    ccn_charbuf_destroy(&name);
+    ccn_charbuf_destroy(&c);
+    ccn_charbuf_destroy(&g);
+    ccn_charbuf_destroy(&templ);
+    return(ans);
+}
+
+static int
+ccnd_do_solicit(struct ccn_schedule *sched,
+                void *clienth,
+                struct ccn_scheduled_event *ev,
+                int flags)
+{
+    struct ccnd_handle *ccnd = clienth;
+    struct face *face = NULL;
+    unsigned faceid;
+    unsigned check, want;
+    
+    if ((flags & CCN_SCHEDULE_CANCEL) != 0)
+        return(0);
+    
+    faceid = ev->evint;
+    face = ccnd_face_from_faceid(ccnd, faceid);
+    if (face == NULL)
+        return(0);
+    check = CCN_FACE_CONNECTING | CCN_FACE_UNDECIDED | CCN_FACE_NOSEND |
+            CCN_FACE_GG | CCN_FACE_MCAST | CCN_FACE_PASSIVE | CCN_FACE_NORECV |
+            CCN_FACE_NOSEND;
+    want = 0;
+    if (face->adjstate == 0 && (face->flags & check) == want)
+        send_adjacency_solicit(ccnd, face);
+    return(0);
+}
+
+static void send_adjacency_offer_or_commit_req(struct ccnd_handle *ccnd,
+                                               struct face *face);
+
+static enum ccn_upcall_res
+incoming_adjacency(struct ccn_closure *selfp,
+                   enum ccn_upcall_kind kind,
+                   struct ccn_upcall_info *info)
+{
+    struct face *face = NULL;
+    struct ccnd_handle *ccnd = selfp->data;
+    switch (kind) {
+        case CCN_UPCALL_FINAL:
+            free(selfp);
+            return(CCN_UPCALL_RESULT_OK);
+        case CCN_UPCALL_CONTENT:
+            face = ccnd_face_from_faceid(ccnd, selfp->intdata);
+            if (face == NULL)
+                return(CCN_UPCALL_RESULT_ERR);
+            if ((face->adjstate & (ADJ_TIMEDWAIT)) != 0)
+                return(CCN_UPCALL_RESULT_ERR);
+            /* XXX - this should scrutinize the data to make sure it is OK */
+            if ((face->adjstate & (ADJ_OFR_SENT | ADJ_CRQ_SENT)) != 0)
+                face->adjstate |= ADJ_DAT_RECV;
+            if ((face->adjstate & (ADJ_CRQ_RECV)) != 0 &&
+                (face->adjstate & (ADJ_DAT_SENT)) == 0 &&
+                face->guid_cob != 0) {
+                ccn_put(info->h, face->guid_cob->buf,
+                                 face->guid_cob->length);
+                face->adjstate |= ADJ_DAT_SENT;
+                send_adjacency_offer_or_commit_req(ccnd, face);
+            }
+            ccnd_register_adjacency(ccnd, face);
+            return(CCN_UPCALL_RESULT_OK);
+        case CCN_UPCALL_INTEREST_TIMED_OUT:
+            face = ccnd_face_from_faceid(ccnd, selfp->intdata);
+            if (face == NULL)
+                return(CCN_UPCALL_RESULT_ERR);
+            if ((face->adjstate & (ADJ_OFR_SENT | ADJ_CRQ_SENT)) != 0)
+                ccnd_forget_face_guid(ccnd, face);
+            face->adjstate = ADJ_TIMEDWAIT;
+            return(CCN_UPCALL_RESULT_OK);
+        default:
+            return(CCN_UPCALL_RESULT_ERR);
+    }
+}
+
+static void
+send_adjacency_offer_or_commit_req(struct ccnd_handle *ccnd, struct face *face)
+{
+    struct ccn_charbuf *name;
+    struct ccn_charbuf *c;
+    struct ccn_charbuf *templ;
+    struct ccn_closure *action = NULL;
+    
+    if (face == NULL || face->guid == NULL)
+        return;
+    if ((face->adjstate & (ADJ_OFR_SENT | ADJ_SOL_SENT | ADJ_TIMEDWAIT)) != 0)
+        return;
+    name = ccn_charbuf_create();
+    c = ccn_charbuf_create();
+    templ = ccn_charbuf_create();
+    ccn_name_from_uri(name, "ccnx:/%C1.M.FACE");
+    ccn_charbuf_reset(c);
+    ccn_charbuf_append_string(c, "\xC1.M.G");
+    ccn_charbuf_append_value(c, 0, 1);
+    ccnd_append_face_guid(ccnd, c, face);
+    ccn_name_append(name, c->buf, c->length);
+    ccn_name_from_uri(name, "%C1.M.NODE");
+    ccn_charbuf_reset(templ);
+    ccnb_element_begin(templ, CCN_DTAG_Interest);
+    ccn_charbuf_append_charbuf(templ, name);
+    ccnb_element_begin(templ, CCN_DTAG_Exclude);
+    ccn_charbuf_reset(c);
+    ccn_charbuf_append_string(c, "\xC1.M.K");
+    ccn_charbuf_append_value(c, 0, 1);
+    ccn_charbuf_append(c, ccnd->ccnd_id, sizeof(ccnd->ccnd_id));
+    ccnb_append_tagged_blob(templ, CCN_DTAG_Component, c->buf, c->length);
+    ccnb_element_end(templ); /* Exclude */
+    ccnb_tagged_putf(templ, CCN_DTAG_AnswerOriginKind, "%d", 0);
+    ccnb_tagged_putf(templ, CCN_DTAG_Scope, "2");
+    ccnb_tagged_putf(templ, CCN_DTAG_FaceID, "%u", face->faceid);
+    ccnb_element_end(templ); /* Interest */
+    action = calloc(1, sizeof(*action));
+    if (action != NULL) {
+        action->p = &incoming_adjacency;
+        action->intdata = face->faceid;
+        action->data = ccnd;
+        ccn_express_interest(ccnd->internal_client, name, action, templ);
+        if ((face->adjstate & ADJ_OFR_RECV) != 0)
+            face->adjstate |= ADJ_CRQ_SENT;
+        else
+            face->adjstate |= ADJ_OFR_SENT;
+    }
+    ccn_charbuf_destroy(&name);
+    ccn_charbuf_destroy(&c);
+    ccn_charbuf_destroy(&templ);
+}
+
+static void
+check_offer_matches_my_solicit(struct ccnd_handle *ccnd, struct face *face,
+                               struct ccn_upcall_info *info)
+{
+    const unsigned char *p = NULL;
+    size_t size = 0;
+    int res;
+    const char *mg = "\xC1.M.G";
+    const char *mn = "\xC1.M.NODE";
+    
+    if (info->pi->prefix_comps != 3)
+        return;
+    if ((face->adjstate & ADJ_SOL_SENT) == 0)
+        return;
+    if (face->guid == NULL)
+        return;
+    res = ccn_name_comp_get(info->interest_ccnb, info->interest_comps, 2,
+                            &p, &size);
+    if (res < 0)
+        return;
+    if (size != strlen(mn) || 0 != memcmp(p, mn, size))
+        return;
+    res = ccn_name_comp_get(info->interest_ccnb, info->interest_comps, 1,
+                            &p, &size);
+    if (res < 0)
+        return;
+    res = strlen(mg) + 1;
+    if (size != res + face->guid[0] || face->guid[0] <= 6)
+        return;
+    if (0 != memcmp(p, mg, res + 1))
+        return;
+    if (0 != memcmp(p + res, face->guid + 1, face->guid[0] - 6))
+        return;
+    ccnd_forget_face_guid(ccnd, face);
+    ccnd_set_face_guid(ccnd, face, p + res, size - res);
+    face->adjstate &= ~ADJ_SOL_SENT;
+    face->adjstate |= ADJ_OFR_RECV;
+}
+
 /**
  * Local interpretation of selfp->intdata
  */
@@ -120,6 +547,8 @@ ccnd_init_service_ccnb(struct ccnd_handle *ccnd, const char *baseuri, int freshn
 #define OP_UNREG       0x0600
 #define OP_NOTICE      0x0700
 #define OP_SERVICE     0x0800
+#define OP_ADJACENCY   0x0900
+
 /**
  * Common interest handler for ccnd_internal_client
  */
@@ -141,6 +570,7 @@ ccnd_answer_req(struct ccn_closure *selfp,
     const unsigned char *final_comp = NULL;
     size_t final_size = 0;
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
+    struct face *face = NULL;
     
     switch (kind) {
         case CCN_UPCALL_FINAL:
@@ -160,13 +590,15 @@ ccnd_answer_req(struct ccn_closure *selfp,
     morecomps = selfp->intdata & MORECOMPS_MASK;
     if ((info->pi->answerfrom & CCN_AOK_NEW) == 0 &&
         selfp->intdata != OP_SERVICE &&
-        selfp->intdata != OP_NOTICE)
+        selfp->intdata != OP_NOTICE &&
+        selfp->intdata != OP_ADJACENCY)
         return(CCN_UPCALL_RESULT_OK);
     if (info->matched_comps >= info->interest_comps->n)
         goto Bail;
     if (selfp->intdata != OP_PING &&
         selfp->intdata != OP_NOTICE &&
         selfp->intdata != OP_SERVICE &&
+        selfp->intdata != OP_ADJACENCY &&
         info->pi->prefix_comps != info->matched_comps + morecomps)
         goto Bail;
     if (morecomps == 1) {
@@ -259,6 +691,58 @@ ccnd_answer_req(struct ccn_closure *selfp,
             }
             goto Bail;
             break;
+        case OP_ADJACENCY:
+            face = ccnd_face_from_faceid(ccnd, ccnd->interest_faceid);
+            if (face == NULL)
+                goto Bail;
+            if (info->pi->prefix_comps == 1 && face->guid == NULL) {
+                const unsigned char *lo = NULL;
+                const unsigned char *hi = NULL;
+                int size = 0;
+                unsigned char mb[6] = "\xC1.M.G\x00";
+                
+                size = extract_bounds(info->interest_ccnb, info->pi, &lo, &hi);
+                if (size > (int)sizeof(mb) &&
+                    0 == memcmp(mb, lo, sizeof(mb)) &&
+                    0 == memcmp(mb, hi, sizeof(mb))) {
+                    size -= sizeof(mb);
+                    lo += sizeof(mb);
+                    hi += sizeof(mb);
+                    // XXX - we may want to be selective about proceeding
+                    face->adjstate |= ADJ_SOL_RECV;
+                    ccnd_generate_face_guid(ccnd, face, size, lo, hi);
+                    if (face->guid != NULL) {
+                        send_adjacency_offer_or_commit_req(ccnd, face);
+                        res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
+                        goto Finish;
+                    }
+                }
+            }
+            check_offer_matches_my_solicit(ccnd, face, info);
+            if (face->guid_cob == NULL)
+                ccnd_init_face_guid_cob(ccnd, face);
+            if (face->guid_cob == NULL)
+                goto Bail;
+            if (ccn_content_matches_interest(face->guid_cob->buf,
+                                             face->guid_cob->length,
+                                             1,
+                                             NULL,
+                                             info->interest_ccnb,
+                                             info->pi->offset[CCN_PI_E],
+                                             info->pi
+                                             )) {
+                if (info->pi->prefix_comps == 3)
+                    face->adjstate |= ADJ_CRQ_RECV;
+                if ((face->adjstate & (ADJ_DAT_RECV | ADJ_OFR_RECV)) != 0) {
+                    ccn_put(info->h, face->guid_cob->buf,
+                            face->guid_cob->length);
+                    face->adjstate |= ADJ_DAT_SENT;
+                    send_adjacency_offer_or_commit_req(ccnd, face);
+                }
+                ccnd_register_adjacency(ccnd, face);
+                res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
+            }
+            goto Finish;
         default:
             goto Bail;
     }
@@ -474,20 +958,28 @@ post_face_notice(struct ccnd_handle *ccnd, unsigned faceid)
     struct ccn_charbuf *msg = ccn_charbuf_create();
     int res = -1;
     int port;
+    int n;
     
     // XXX - text version for trying out stream stuff - replace with ccnb
     if (face == NULL)
         ccn_charbuf_putf(msg, "destroyface(%u);\n", faceid);
     else {
         ccn_charbuf_putf(msg, "newface(%u, 0x%x", faceid, face->flags);
+        n = 2;
         if (face->addr != NULL &&
             (face->flags & (CCN_FACE_INET | CCN_FACE_INET6)) != 0) {
             ccn_charbuf_putf(msg, ", ");
+            n++;
             port = ccn_charbuf_append_sockaddr(msg, face->addr);
             if (port < 0)
                 msg->length--;
             else if (port > 0)
                 ccn_charbuf_putf(msg, ":%d", port);
+        }
+        if ((face->flags & CCN_FACE_ADJ) != 0) {
+            for (; n < 4; n++)
+                ccn_charbuf_putf(msg, ", ");
+            append_adjacency_uri(ccnd, msg, face);
         }
         ccn_charbuf_putf(msg, ");\n", faceid);
     }
@@ -540,6 +1032,9 @@ void
 ccnd_face_status_change(struct ccnd_handle *ccnd, unsigned faceid)
 {
     struct ccn_indexbuf *chface = ccnd->chface;
+    struct face *face = ccnd_face_from_faceid(ccnd, faceid);
+    unsigned check, want;
+    
     if (chface != NULL) {
         ccn_indexbuf_set_insert(chface, faceid);
         if (ccnd->notice_push == NULL)
@@ -547,6 +1042,14 @@ ccnd_face_status_change(struct ccnd_handle *ccnd, unsigned faceid)
                                                    ccnd_notice_push,
                                                    NULL, 0);
     }
+    /* Schedule negotiation of a link guid if appropriate. */
+    check = CCN_FACE_CONNECTING | CCN_FACE_UNDECIDED | CCN_FACE_NOSEND |
+            CCN_FACE_GG | CCN_FACE_MCAST | CCN_FACE_PASSIVE | CCN_FACE_NORECV |
+            CCN_FACE_NOSEND;
+    want = 0;
+    if (ccnd->sched != NULL && face != NULL && (face->flags & check) == want)
+        ccn_schedule_event(ccnd->sched, 2000 + nrand48(ccnd->seed) % 131072U,
+                           ccnd_do_solicit, NULL, faceid);
 }
 
 static void
@@ -617,6 +1120,8 @@ ccnd_internal_client_start(struct ccnd_handle *ccnd)
                     &ccnd_answer_req, OP_SERVICE);
     ccnd_uri_listen(ccnd, "ccnx:/%C1.M.S.neighborhood",
                     &ccnd_answer_req, OP_SERVICE);
+    ccnd_uri_listen(ccnd, "ccnx:/%C1.M.FACE",
+                    &ccnd_answer_req, OP_ADJACENCY);
     ccnd_reg_ccnx_ccndid(ccnd);
     ccnd_reg_uri(ccnd, "ccnx:/%C1.M.S.localhost",
                  0, /* special faceid for internal client */
