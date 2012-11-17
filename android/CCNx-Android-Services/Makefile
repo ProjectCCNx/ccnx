@@ -46,7 +46,7 @@ $(TARGET): $(JARS) ccnd local.properties project.properties build.xml
 
 local.properties project.properties:
 	@mkdir -p libs
-	$(ANDROID_SDK)/tools/android update project --name CCNx-Android-Services -p . -t android-7 --library ../CCNx-Android-Lib/
+	$(ANDROID_SDK)/tools/android update project --name CCNx-Android-Services -p . -t android-15 --library ../CCNx-Android-Lib/
 
 # Need to revisit this for newer NDK.
 # Compensate for the lack of proper dependencies by removing any ccnx object
