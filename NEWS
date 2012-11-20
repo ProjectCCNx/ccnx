@@ -15,6 +15,11 @@ CCNx 0.7.0.
 	* Bug #100242: AbstractInputStream null pointer when content length 0
 	* Bug #100177: CCNFileInputStream mishandles filename with segment number present
 	* Bug #100011: java Exclude filters should be able to match implicit digest name component
+	* Bug #100854: CCNx Android build is broken, missing a string
+	* Bug #100853: Delays with VLC playing ccnx hosted content
+	* Bug #100851: looping in ccnd when running schedule
+	* Feature #100850: ccn_resolve_version() needs to manage timeout/retransmit of interests better
+	* Feture #100816: CCNx Android Service needs a WebView to load ccndstatus from itself
 
 Changes between 0.6.1 and 0.6.2:
 --------------------------------
