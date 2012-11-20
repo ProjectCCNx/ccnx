@@ -112,6 +112,11 @@ ccnd_init_service_ccnb(struct ccnd_handle *ccnd, const char *baseuri, int freshn
 #define ADJ_DAT_RECV (1U << 7)
 #define ADJ_TIMEDWAIT (1U << 8)
 
+/**
+ * Append the URI representation of the adjacency prefix for face to the
+ * charbuf cb.
+ * @returns 0 for success, -1 for error.
+ */
 static int
 append_adjacency_uri(struct ccnd_handle *ccnd,
                      struct ccn_charbuf *cb, struct face *face)
@@ -136,30 +141,63 @@ append_adjacency_uri(struct ccnd_handle *ccnd,
     return(res < 0 ? -1 : 0);
 }
 
+/**
+ * Register the adjacency prefix with the given forwarding flags.
+ */
 static void
-ccnd_register_adjacency(struct ccnd_handle *ccnd, struct face *face)
+ccnd_register_adjacency(struct ccnd_handle *ccnd, struct face *face,
+                        unsigned forwarding_flags)
 {
     struct ccn_charbuf *uri = NULL;
     unsigned both;
     int res;
+    int adj = 0;
+    int lifetime = 0;
     
+    if ((forwarding_flags & CCN_FORW_ACTIVE) != 0) {
+        adj = CCN_FACE_ADJ;
+        lifetime = 0x7FFFFFFF;
+    }
     both = ADJ_DAT_RECV | ADJ_DAT_SENT;
     if ((face->adjstate & both) != both)
         return;
-    if ((face->flags & CCN_FACE_ADJ) != 0)
+    if ((face->flags & CCN_FACE_ADJ) == adj)
         return;
     uri = ccn_charbuf_create();
     res = append_adjacency_uri(ccnd, uri, face);
     if (res >= 0)
         res = ccnd_reg_uri(ccnd, ccn_charbuf_as_string(uri), face->faceid,
-                CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE, 0x7FFFFFFF);
+                           forwarding_flags, lifetime);
     if (res >= 0) {
-        face->flags |= CCN_FACE_ADJ;
+        face->flags ^= CCN_FACE_ADJ;
         ccnd_face_status_change(ccnd, face->faceid);
     }
     ccn_charbuf_destroy(&uri);
 }
 
+/**
+ * Scheduled event for getting rid of an old guid cob.
+ */
+static int
+ccnd_flush_guid_cob(struct ccn_schedule *sched,
+                    void *clienth,
+                    struct ccn_scheduled_event *ev,
+                    int flags)
+{
+    struct ccnd_handle *ccnd = clienth;
+    struct face *face = NULL;
+    
+    if ((flags & CCN_SCHEDULE_CANCEL) != 0)
+        return(0);
+    face = ccnd_face_from_faceid(ccnd, ev->evint);
+    if (face != NULL)
+        ccn_charbuf_destroy(&face->guid_cob);
+    return(0);
+}
+
+/**
+ * Create the adjacency content object for our endpoint of the face.
+ */
 static void
 ccnd_init_face_guid_cob(struct ccnd_handle *ccnd, struct face *face)
 {
@@ -170,6 +208,8 @@ ccnd_init_face_guid_cob(struct ccnd_handle *ccnd, struct face *face)
     struct ccn_charbuf *comp = NULL;
     struct ccn_charbuf *cob = NULL;
     int res;
+    int seconds = 3; /* freshness in the object */
+    int nfresh = 5; /* don't flush it until after this many freshness periods */
     
     if (face->guid == NULL || face->guid_cob != NULL)
         return;
@@ -202,7 +242,7 @@ ccnd_init_face_guid_cob(struct ccnd_handle *ccnd, struct face *face)
     ccn_create_version(h, name, CCN_V_NOW, 0, 0);
     ccn_name_from_uri(name, "%00");
     sp.sp_flags |= CCN_SP_FINAL_BLOCK;
-    sp.freshness = 120;
+    sp.freshness = seconds;
     res = ccn_sign_content(h, cob, name, &sp, payload->buf, payload->length);
     if (res != 0)
         ccn_charbuf_destroy(&cob);
@@ -211,6 +251,9 @@ ccnd_init_face_guid_cob(struct ccnd_handle *ccnd, struct face *face)
     ccn_charbuf_destroy(&comp);
     ccn_charbuf_destroy(&sp.template_ccnb);
     face->guid_cob = cob;
+    if (cob != NULL)
+        ccn_schedule_event(ccnd->sched, nfresh * seconds * 1000000 - 800000,
+                           ccnd_flush_guid_cob, NULL, face->faceid);
 }
 
 /**
@@ -395,6 +438,58 @@ ccnd_do_solicit(struct ccn_schedule *sched,
     return(0);
 }
 
+/**
+ * Answer an adjacency guid request from any face, based on the guid
+ * in the name.
+ *
+ * @returns CCN_UPCALL_RESULT_INTEREST_CONSUMED if an answer was sent,
+ *  otherwise -1.
+ */
+static int
+ccnd_answer_by_guid(struct ccnd_handle *ccnd, struct ccn_upcall_info *info)
+{
+    struct face *face = NULL;
+    unsigned char mb[6] = "\xC1.M.G\x00";
+    const unsigned char *p = NULL;
+    size_t size = 0;
+    unsigned faceid;
+    int res;
+    
+    res = ccn_name_comp_get(info->interest_ccnb, info->interest_comps, 1,
+                            &p, &size);
+    if (res < 0)
+        return(-1);
+    if (size < sizeof(mb))
+        return(-1);
+    if (memcmp(p, mb, sizeof(mb)) != 0)
+        return(-1);
+    faceid = ccnd_faceid_from_guid(ccnd, p + sizeof(mb), size - sizeof(mb));
+    if (faceid == CCN_NOFACEID)
+        return(-1);
+    face = ccnd_face_from_faceid(ccnd, faceid);
+    if (face == NULL)
+        return(-1);
+    if ((face->flags & CCN_FACE_ADJ) == 0)
+        return(-1);
+    if (face->guid_cob == NULL)
+        ccnd_init_face_guid_cob(ccnd, face);
+    if (face->guid_cob == NULL)
+        return(-1);
+    res = -1;
+    if (ccn_content_matches_interest(face->guid_cob->buf,
+                                     face->guid_cob->length,
+                                     1,
+                                     NULL,
+                                     info->interest_ccnb,
+                                     info->pi->offset[CCN_PI_E],
+                                     info->pi
+                                     )) {
+        ccn_put(info->h, face->guid_cob->buf, face->guid_cob->length);
+        res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
+    }
+    return(res);
+}
+
 static void send_adjacency_offer_or_commit_req(struct ccnd_handle *ccnd,
                                                struct face *face);
 
@@ -426,7 +521,8 @@ incoming_adjacency(struct ccn_closure *selfp,
                 face->adjstate |= ADJ_DAT_SENT;
                 send_adjacency_offer_or_commit_req(ccnd, face);
             }
-            ccnd_register_adjacency(ccnd, face);
+            ccnd_register_adjacency(ccnd, face,
+                                    CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE);
             return(CCN_UPCALL_RESULT_OK);
         case CCN_UPCALL_INTEREST_TIMED_OUT:
             face = ccnd_face_from_faceid(ccnd, selfp->intdata);
@@ -718,6 +814,11 @@ ccnd_answer_req(struct ccn_closure *selfp,
                     }
                 }
             }
+            if (info->pi->prefix_comps >= 2) {
+                res = ccnd_answer_by_guid(ccnd, info);
+                if (res == CCN_UPCALL_RESULT_INTEREST_CONSUMED)
+                    goto Finish;
+            }
             check_offer_matches_my_solicit(ccnd, face, info);
             if (face->guid_cob == NULL)
                 ccnd_init_face_guid_cob(ccnd, face);
@@ -739,7 +840,8 @@ ccnd_answer_req(struct ccn_closure *selfp,
                     face->adjstate |= ADJ_DAT_SENT;
                     send_adjacency_offer_or_commit_req(ccnd, face);
                 }
-                ccnd_register_adjacency(ccnd, face);
+                ccnd_register_adjacency(ccnd, face,
+                      CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE);
                 res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
             }
             goto Finish;

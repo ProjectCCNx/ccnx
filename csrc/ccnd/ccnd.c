@@ -443,7 +443,7 @@ ccnd_close_fd(struct ccnd_handle *h, unsigned faceid, int *pfd)
 /**
  * Associate a guid with a face.
  *
- * The same guid is shared amoing all the peers that communicate over the
+ * The same guid is shared among all the peers that communicate over the
  * face, and no two faces at a node should have the same guid.
  *
  * @returns 0 for success, -1 for error.
@@ -480,6 +480,30 @@ ccnd_set_face_guid(struct ccnd_handle *h, struct face *face,
         res = -1;
     hashtb_end(e);
     return(res);
+}
+
+/**
+ * Return the faceid associated with the guid.
+ */
+unsigned
+ccnd_faceid_from_guid(struct ccnd_handle *h,
+                      const unsigned char *guid, size_t size)
+{
+    struct ccn_charbuf *c = NULL;
+    unsigned *pfaceid = NULL;
+    
+    if (size > 255)
+        return(CCN_NOFACEID);
+    if (h->faceid_by_guid == NULL)
+        return(CCN_NOFACEID);
+    c = ccn_charbuf_create();
+    ccn_charbuf_append_value(c, size, 1);
+    ccn_charbuf_append(c, guid, size);
+    pfaceid = hashtb_lookup(h->faceid_by_guid, c->buf, c->length);
+    ccn_charbuf_destroy(&c);
+    if (pfaceid == NULL)
+        return(CCN_NOFACEID);
+    return(*pfaceid);
 }
 
 /**
