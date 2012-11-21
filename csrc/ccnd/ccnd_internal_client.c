@@ -208,8 +208,8 @@ ccnd_init_face_guid_cob(struct ccnd_handle *ccnd, struct face *face)
     struct ccn_charbuf *comp = NULL;
     struct ccn_charbuf *cob = NULL;
     int res;
-    int seconds = 3; /* freshness in the object */
-    int nfresh = 5; /* don't flush it until after this many freshness periods */
+    int seconds = 6; /* freshness in the object */
+    int nfresh = 20; /* flush it after this many freshness periods */
     
     if (face->guid == NULL || face->guid_cob != NULL)
         return;
