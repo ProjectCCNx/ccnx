@@ -117,6 +117,7 @@ static void ccn_append_link_stuff(struct ccnd_handle *h,
 static int process_incoming_link_message(struct ccnd_handle *h,
                                          struct face *face, enum ccn_dtag dtag,
                                          unsigned char *msg, size_t size);
+static void process_internal_client_buffer(struct ccnd_handle *h);
 static void
 pfi_destroy(struct ccnd_handle *h, struct interest_entry *ie,
             struct pit_face_item *p);
@@ -2105,6 +2106,7 @@ check_dgram_faces(struct ccnd_handle *h)
     int count = 0;
     int checkflags = CCN_FACE_DGRAM;
     int wantflags = CCN_FACE_DGRAM;
+    int adj_req = 0;
     
     hashtb_start(h->dgram_faces, e);
     while (e->data != NULL) {
@@ -2119,6 +2121,10 @@ check_dgram_faces(struct ccnd_handle *h)
                 }
             }
             else if (face->recvcount == 1) {
+                if ((face->flags & CCN_FACE_ADJ) != 0) {
+                    ccnd_adjacency_offer_or_commit_req(h, face);
+                    adj_req = 1;
+                }
                 face->recvcount = 0;
             }
             else {
@@ -2128,6 +2134,9 @@ check_dgram_faces(struct ccnd_handle *h)
         hashtb_next(e);
     }
     hashtb_end(e);
+    if (adj_req) {
+        process_internal_client_buffer(h);
+    }
     return(count);
 }
 

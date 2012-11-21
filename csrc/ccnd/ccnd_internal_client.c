@@ -395,9 +395,9 @@ send_adjacency_solicit(struct ccnd_handle *ccnd, struct face *face)
         action->intdata = face->faceid;
         action->data = ccnd;
         ans = ccn_express_interest(ccnd->internal_client, name, action, templ);
-        /* Use the guid slot to hold out proposal */
+        /* Use the guid slot to hold our proposal */
         if (ans >= 0)
-            ans = ccnd_set_face_guid(ccnd, face,  g->buf, g->length);
+            ans = ccnd_set_face_guid(ccnd, face, g->buf, g->length);
         if (ans >= 0) {
             face->adjstate = ADJ_SOL_SENT;
             ccnd_internal_client_has_somthing_to_say(ccnd);
@@ -490,9 +490,6 @@ ccnd_answer_by_guid(struct ccnd_handle *ccnd, struct ccn_upcall_info *info)
     return(res);
 }
 
-static void send_adjacency_offer_or_commit_req(struct ccnd_handle *ccnd,
-                                               struct face *face);
-
 static enum ccn_upcall_res
 incoming_adjacency(struct ccn_closure *selfp,
                    enum ccn_upcall_kind kind,
@@ -519,7 +516,7 @@ incoming_adjacency(struct ccn_closure *selfp,
                 ccn_put(info->h, face->guid_cob->buf,
                                  face->guid_cob->length);
                 face->adjstate |= ADJ_DAT_SENT;
-                send_adjacency_offer_or_commit_req(ccnd, face);
+                ccnd_adjacency_offer_or_commit_req(ccnd, face);
             }
             ccnd_register_adjacency(ccnd, face,
                                     CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE);
@@ -537,8 +534,11 @@ incoming_adjacency(struct ccn_closure *selfp,
     }
 }
 
-static void
-send_adjacency_offer_or_commit_req(struct ccnd_handle *ccnd, struct face *face)
+/**
+ * Express an interest to pull adjacency information from the other side
+ */
+void
+ccnd_adjacency_offer_or_commit_req(struct ccnd_handle *ccnd, struct face *face)
 {
     struct ccn_charbuf *name;
     struct ccn_charbuf *c;
@@ -808,7 +808,7 @@ ccnd_answer_req(struct ccn_closure *selfp,
                     face->adjstate |= ADJ_SOL_RECV;
                     ccnd_generate_face_guid(ccnd, face, size, lo, hi);
                     if (face->guid != NULL) {
-                        send_adjacency_offer_or_commit_req(ccnd, face);
+                        ccnd_adjacency_offer_or_commit_req(ccnd, face);
                         res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
                         goto Finish;
                     }
@@ -838,7 +838,7 @@ ccnd_answer_req(struct ccn_closure *selfp,
                     ccn_put(info->h, face->guid_cob->buf,
                             face->guid_cob->length);
                     face->adjstate |= ADJ_DAT_SENT;
-                    send_adjacency_offer_or_commit_req(ccnd, face);
+                    ccnd_adjacency_offer_or_commit_req(ccnd, face);
                 }
                 ccnd_register_adjacency(ccnd, face,
                       CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE);
