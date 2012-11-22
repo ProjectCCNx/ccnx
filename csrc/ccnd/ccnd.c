@@ -2122,6 +2122,7 @@ check_dgram_faces(struct ccnd_handle *h)
             }
             else if (face->recvcount == 1) {
                 if ((face->flags & CCN_FACE_ADJ) != 0) {
+                    face->flags |= CCN_FACE_LC;
                     ccnd_adjacency_offer_or_commit_req(h, face);
                     adj_req = 1;
                 }
