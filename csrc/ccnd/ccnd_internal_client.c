@@ -431,7 +431,7 @@ ccnd_do_solicit(struct ccn_schedule *sched,
         return(0);
     check = CCN_FACE_CONNECTING | CCN_FACE_UNDECIDED | CCN_FACE_NOSEND |
             CCN_FACE_GG | CCN_FACE_MCAST | CCN_FACE_PASSIVE | CCN_FACE_NORECV |
-            CCN_FACE_NOSEND;
+            CCN_FACE_NOSEND | CCN_FACE_BC;
     want = 0;
     if (face->adjstate == 0 && (face->flags & check) == want)
         send_adjacency_solicit(ccnd, face);
@@ -1147,7 +1147,7 @@ ccnd_face_status_change(struct ccnd_handle *ccnd, unsigned faceid)
     /* Schedule negotiation of a link guid if appropriate. */
     check = CCN_FACE_CONNECTING | CCN_FACE_UNDECIDED | CCN_FACE_NOSEND |
             CCN_FACE_GG | CCN_FACE_MCAST | CCN_FACE_PASSIVE | CCN_FACE_NORECV |
-            CCN_FACE_NOSEND;
+            CCN_FACE_NOSEND | CCN_FACE_BC;
     want = 0;
     if (ccnd->sched != NULL && face != NULL && (face->flags & check) == want)
         ccn_schedule_event(ccnd->sched, 2000 + nrand48(ccnd->seed) % 131072U,
