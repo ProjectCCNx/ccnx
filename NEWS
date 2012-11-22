@@ -20,6 +20,7 @@ CCNx 0.7.0.
 	* Bug #100851: looping in ccnd when running schedule
 	* Feature #100850: ccn_resolve_version() needs to manage timeout/retransmit of interests better
 	* Feture #100816: CCNx Android Service needs a WebView to load ccndstatus from itself
+	* Bug #100861: ccnd expiry of stale data can wait too long when traffic is high
 
 Changes between 0.6.1 and 0.6.2:
 --------------------------------
