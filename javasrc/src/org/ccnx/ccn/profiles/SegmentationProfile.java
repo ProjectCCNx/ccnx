@@ -23,6 +23,7 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
@@ -203,32 +204,62 @@ public class SegmentationProfile implements CCNProfile {
 		}
 
 		ContentName segmentName = segmentName(desiredContent, desiredSegmentNumber);
-
+		Interest interest = null;
+		boolean keepTrying = true;
+		
+		long remainingTime = timeout;
+		long elapsedTime = 0;
+		long startTime = System.currentTimeMillis();
+		
 		// TODO use better exclude filters to ensure we're only getting segments.
 		if (Log.isLoggable(Log.FAC_IO, Level.INFO))
 			Log.info("getSegment: getting segment {0}", segmentName);
-		ContentObject segment = handle.get(Interest.lower(segmentName, 1, publisher), timeout);
+		interest = Interest.lower(segmentName, 1, publisher);
+		
+		while(keepTrying) {
 
-		if (null == segment) {
-			if (Log.isLoggable(Log.FAC_IO, Level.INFO))
-				Log.info(Log.FAC_IO, "Cannot get segment {0} of file {1} expected segment: {2}.", desiredSegmentNumber, desiredContent,  segmentName);
-			return null; // used to throw IOException, which was wrong. Do we want to be more aggressive?
-		} else {
-			if (Log.isLoggable(Log.FAC_IO, Level.INFO))
-				Log.info(Log.FAC_IO, "getsegment: retrieved segment {0}.", segment.name());
-		}
+			ContentObject segment = handle.get(interest, remainingTime);
 
-		if (null == verifier) {
-			verifier = ContentObject.SimpleVerifier.getDefaultVerifier();
+			if (null == segment) {
+				if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+					Log.info(Log.FAC_IO, "Cannot get segment {0} of file {1} expected segment: {2}.", desiredSegmentNumber, desiredContent,  segmentName);
+				return null; // used to throw IOException, which was wrong. Do we want to be more aggressive?
+			} else {
+				if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+					Log.info(Log.FAC_IO, "getsegment: retrieved segment {0}.", segment.name());
+			}
+
+			if (null == verifier) {
+				verifier = ContentObject.SimpleVerifier.getDefaultVerifier();
+			}
+			// So for the segment, we assume we have a potential document.
+			if (!verifier.verify(segment)) {
+				// TODO eventually try to go and look for another option
+				if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+					Log.info(Log.FAC_IO, "Retrieved segment {0}, but it didn't verify.", segment.name());
+
+				//failed verification...  do we have time to try again?
+				elapsedTime = System.currentTimeMillis() - startTime;
+				if (elapsedTime < timeout || timeout == SystemConfiguration.NO_TIMEOUT) {
+					//we need to try again...  add this digest to the exclude
+					if (interest.exclude() == null) {
+						//add exclude
+						interest.exclude(new Exclude());
+					}
+					interest.exclude().add(new byte[][] {segment.digest()});
+					remainingTime = timeout - elapsedTime;
+				} else {
+					if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+						Log.info(Log.FAC_IO, "Segment did not verify, out of time, will return null");
+					return null;
+				}
+				if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+					Log.info(Log.FAC_IO, "Segment did not verify, excluding the digest ({0}) and trying again, remainingTime = {1}", segment.fullName(), remainingTime);
+			} else {
+				return segment;
+			}
 		}
-		// So for the segment, we assume we have a potential document.
-		if (!verifier.verify(segment)) {
-			// TODO eventually try to go and look for another option
-			if (Log.isLoggable(Log.FAC_IO, Level.INFO))
-				Log.info(Log.FAC_IO, "Retrieved segment {0}, but it didn't verify.", segment.name());
-			return null;
-		}
-		return segment;
+		return null;
 	}
 
 

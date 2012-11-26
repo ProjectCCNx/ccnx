@@ -206,6 +206,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		// to get interest that matches everything, should
 		// use / (ROOT)
 		boolean digest = co.name().count()+1 == name().count();
+		
+		if (co.name().count() == name().count() && (exclude() != null && !exclude().empty())) {
+			//the interest does not have a digest in the name, but it does have at least one excluded
+			digest = true;
+		}
 		ContentName name = digest ? co.fullName() : co.name();
 		if (isPrefixOf(name)) {
 			return internalMatch(name, digest, resultPublisherKeyID);
