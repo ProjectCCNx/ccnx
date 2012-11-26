@@ -805,6 +805,14 @@ ccnd_answer_req(struct ccn_closure *selfp,
                     lo += sizeof(mb);
                     hi += sizeof(mb);
                     // XXX - we may want to be selective about proceeding
+                    if ((face->adjstate & ADJ_SOL_SENT) != 0) {
+                        /* The solicitations crossed in the mail. Arbitrate. */
+                        if (face->guid != NULL && size >= face->guid[0] &&
+                            memcmp(lo, face->guid + 1, face->guid[0]) > 0) {
+                            ccnd_forget_face_guid(ccnd, face);
+                            face->adjstate &= ~ADJ_SOL_SENT;
+                        }
+                    }
                     face->adjstate |= ADJ_SOL_RECV;
                     ccnd_generate_face_guid(ccnd, face, size, lo, hi);
                     if (face->guid != NULL) {
