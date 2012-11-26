@@ -111,6 +111,7 @@ ccnd_init_service_ccnb(struct ccnd_handle *ccnd, const char *baseuri, int freshn
 #define ADJ_DAT_SENT (1U << 6)
 #define ADJ_DAT_RECV (1U << 7)
 #define ADJ_TIMEDWAIT (1U << 8)
+#define ADJ_RETRYING (1U << 9)
 
 /**
  * Append the URI representation of the adjacency prefix for face to the
@@ -525,6 +526,10 @@ incoming_adjacency(struct ccn_closure *selfp,
             face = ccnd_face_from_faceid(ccnd, selfp->intdata);
             if (face == NULL)
                 return(CCN_UPCALL_RESULT_ERR);
+            if ((face->adjstate & (ADJ_RETRYING | ADJ_TIMEDWAIT)) == 0) {
+                face->adjstate |= ADJ_RETRYING;
+                return(CCN_UPCALL_RESULT_REEXPRESS);
+            }
             if ((face->adjstate & (ADJ_OFR_SENT | ADJ_CRQ_SENT)) != 0)
                 ccnd_forget_face_guid(ccnd, face);
             face->adjstate = ADJ_TIMEDWAIT;
@@ -578,6 +583,7 @@ ccnd_adjacency_offer_or_commit_req(struct ccnd_handle *ccnd, struct face *face)
         action->p = &incoming_adjacency;
         action->intdata = face->faceid;
         action->data = ccnd;
+        face->adjstate &= ~ADJ_RETRYING;
         ccn_express_interest(ccnd->internal_client, name, action, templ);
         if ((face->adjstate & ADJ_OFR_RECV) != 0)
             face->adjstate |= ADJ_CRQ_SENT;
