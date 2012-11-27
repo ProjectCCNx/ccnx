@@ -150,6 +150,8 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 	public int _leafCount;
 	public int _treeDepth;
 	public int _byteCount = 0;
+	public boolean _retrievable = true;	// Its "retrievable" if we got it from the network
+										// If we built it ourselves, we may not know how to redo that
 	
 	public SyncNodeComposite() {}
 	
@@ -163,6 +165,7 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 		_version = Sync.SYNC_VERSION;
 		
 		_treeDepth = depth;
+		_retrievable= false;
 	}
 	
 	public ArrayList<SyncNodeElement> getRefs() {
@@ -256,6 +259,10 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 
 	public long getElementLabel() {
 		return CCNProtocolDTags.SyncNode;
+	}
+	
+	public boolean retrievable() {
+		return _retrievable;
 	}
 
 	public boolean validate() {

@@ -33,6 +33,7 @@ import org.ccnx.ccn.io.content.SyncNodeComposite;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.metadata.MetadataProfile;
 import org.ccnx.ccn.profiles.sync.Sync;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -273,7 +274,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		 * Test for start with empty root.  This should start at the time we start sync, but not give
 		 * us anything before that.
 		 */
-		Log.fine(Log.FAC_TEST, "Starting sync for empty root");
+		Log.info(Log.FAC_TEST, "Starting sync for empty root");
 		ContentName rootAdvise = new ContentName(slice7.topo, Sync.SYNC_ROOT_ADVISE_MARKER, slice7.getHash());
 		Interest interest = new Interest(rootAdvise);
 		interest.scope(1);
@@ -296,6 +297,8 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 	
 		SyncNodeComposite snc = SyncTestCommon.getRootAdviseNode(slice7, getHandle);
 		Assert.assertTrue(null != snc);
+
+		Log.info(Log.FAC_TEST, "Starting sync for predefined root: {0}", Component.printURI(snc.getHash()));
 
 		synchronized (callbackNames) {
 			callbackNames.clear();
@@ -490,6 +493,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 	public class SyncHandler2 implements CCNSyncHandler {
 
 		public void handleContentName(ConfigSlice syncSlice, ContentName syncedContent) {
+			Log.fine(Log.FAC_TEST, "Saw a name for callbackNames2");
 			doHandleContentName(2, syncSlice, syncedContent, callbackNames2);
 		}	
 	}
@@ -497,6 +501,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 	public class SyncHandler3 implements CCNSyncHandler {
 
 		public void handleContentName(ConfigSlice syncSlice, ContentName syncedContent) {
+			Log.fine(Log.FAC_TEST, "Saw a name for callbackNames3");
 			doHandleContentName(3, syncSlice, syncedContent, callbackNames3);
 		}	
 	}

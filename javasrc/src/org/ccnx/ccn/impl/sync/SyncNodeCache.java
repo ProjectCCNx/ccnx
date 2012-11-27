@@ -23,9 +23,13 @@ import org.ccnx.ccn.io.content.SyncNodeComposite;
 
 /**
  * Nodes can be cached by hash across different comparators. We use WeakReferences to avoid accidentally caching nodes that
- * no longer have any real referents
+ * no longer have any real referents.
+ * 
+ * Since we only need to request nodes once per slice, the pending mechanism should be global
  */
 public class SyncNodeCache {
+	
+	private HashMap<SyncHashEntry, byte[]> _hashesPending = new HashMap<SyncHashEntry, byte[]>();
 	
 	protected HashMap<SyncHashEntry, WeakReference<SyncNodeComposite>> _nodes = new HashMap<SyncHashEntry, WeakReference<SyncNodeComposite>>();
 
@@ -49,6 +53,28 @@ public class SyncNodeCache {
 			if (null == wr)
 				return null;
 			return wr.get();
+		}
+	}
+	
+	/**
+	 * Returns false and sets pending if hash request not already pending
+	 * @param hash
+	 * @return
+	 */
+	public boolean pending(byte[] hash) {
+		synchronized (this) {
+			SyncHashEntry she = new SyncHashEntry(hash);
+			if (null == _hashesPending.get(she)) {
+				_hashesPending.put(she, hash);
+				return false;
+			}
+			return true;
+		}
+	}
+	
+	public void clearPending(byte[] hash) {
+		synchronized (this) {
+			_hashesPending.remove(new SyncHashEntry(hash));
 		}
 	}
 }
