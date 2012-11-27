@@ -58,6 +58,9 @@
 static void ccnd_start_notice(struct ccnd_handle *ccnd);
 static void adjacency_timed_reset(struct ccnd_handle *ccnd, unsigned faceid);
 
+/**
+ * Creates a key object using the service discovery name profile.
+ */
 static struct ccn_charbuf *
 ccnd_init_service_ccnb(struct ccnd_handle *ccnd, const char *baseuri, int freshness)
 {
@@ -312,6 +315,13 @@ extract_bounds(const unsigned char *ccnb, struct ccn_parsed_interest *pi,
     return(-1);
 }
 
+/**
+ * Handle the data that comes back in response to interest sent by
+ * send_adjacency_solicit.
+ *
+ * We don't actually need to do much here, since the protocol is actually
+ * looking for an interest from the other side.
+ */
 static enum ccn_upcall_res
 solicit_response(struct ccn_closure *selfp,
                    enum ccn_upcall_kind kind,
@@ -334,6 +344,10 @@ solicit_response(struct ccn_closure *selfp,
     }
 }
 
+/**
+ * Send an adjacency solitiation interest, to elicit an offer from the
+ * other side.
+ */
 static int
 send_adjacency_solicit(struct ccnd_handle *ccnd, struct face *face)
 {
@@ -411,6 +425,9 @@ send_adjacency_solicit(struct ccnd_handle *ccnd, struct face *face)
     return(ans);
 }
 
+/**
+ * Scheduled event to call send_adjacency_solicit.
+ */
 static int
 ccnd_do_solicit(struct ccn_schedule *sched,
                 void *clienth,
@@ -490,6 +507,9 @@ ccnd_answer_by_guid(struct ccnd_handle *ccnd, struct ccn_upcall_info *info)
     return(res);
 }
 
+/**
+ * Handle the data comming back from an adjacency offer or commit request.
+ */
 static enum ccn_upcall_res
 incoming_adjacency(struct ccn_closure *selfp,
                    enum ccn_upcall_kind kind,
@@ -526,6 +546,7 @@ incoming_adjacency(struct ccn_closure *selfp,
             if (face == NULL)
                 return(CCN_UPCALL_RESULT_ERR);
             if ((face->adjstate & (ADJ_RETRYING | ADJ_TIMEDWAIT)) == 0) {
+                /* Retry one time */
                 face->adjstate |= ADJ_RETRYING;
                 return(CCN_UPCALL_RESULT_REEXPRESS);
             }
@@ -592,6 +613,9 @@ ccnd_adjacency_offer_or_commit_req(struct ccnd_handle *ccnd, struct face *face)
     ccn_charbuf_destroy(&templ);
 }
 
+/**
+ * Determine whether an offer matches up with our solicitation.
+ */
 static void
 check_offer_matches_my_solicit(struct ccnd_handle *ccnd, struct face *face,
                                struct ccn_upcall_info *info)
