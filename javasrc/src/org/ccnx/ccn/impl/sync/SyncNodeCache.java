@@ -18,6 +18,7 @@ package org.ccnx.ccn.impl.sync;
 
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
+import java.util.concurrent.Semaphore;
 
 import org.ccnx.ccn.io.content.SyncNodeComposite;
 
@@ -29,7 +30,7 @@ import org.ccnx.ccn.io.content.SyncNodeComposite;
  */
 public class SyncNodeCache {
 	
-	private HashMap<SyncHashEntry, byte[]> _hashesPending = new HashMap<SyncHashEntry, byte[]>();
+	private HashMap<SyncHashEntry, Semaphore> _hashesPending = new HashMap<SyncHashEntry, Semaphore>();
 	
 	protected HashMap<SyncHashEntry, WeakReference<SyncNodeComposite>> _nodes = new HashMap<SyncHashEntry, WeakReference<SyncNodeComposite>>();
 
@@ -56,25 +57,27 @@ public class SyncNodeCache {
 		}
 	}
 	
-	/**
-	 * Returns false and sets pending if hash request not already pending
-	 * @param hash
-	 * @return
-	 */
-	public boolean pending(byte[] hash) {
+	public Semaphore pending(byte[] hash) {
+		Semaphore sem = null;
 		synchronized (this) {
 			SyncHashEntry she = new SyncHashEntry(hash);
-			if (null == _hashesPending.get(she)) {
-				_hashesPending.put(she, hash);
-				return false;
+			sem = _hashesPending.get(she);
+			if (null == sem) {
+				sem = new Semaphore(1);
+				_hashesPending.put(she, sem);
 			}
-			return true;
+			return sem;
 		}
 	}
 	
 	public void clearPending(byte[] hash) {
 		synchronized (this) {
-			_hashesPending.remove(new SyncHashEntry(hash));
+			SyncHashEntry she = new SyncHashEntry(hash);
+			Semaphore sem = _hashesPending.get(she);
+			if (null != sem) {
+				sem.release();
+				_hashesPending.remove(she);
+			}
 		}
 	}
 }
