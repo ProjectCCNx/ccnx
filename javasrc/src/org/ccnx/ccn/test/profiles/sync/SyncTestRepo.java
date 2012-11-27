@@ -312,7 +312,22 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		sync1.shutdown(slice7);
 		for (ContentName n: callbackNames) {
 			Assert.assertFalse("Saw unexpected data in arbitrary root test: " + n, prefix1a.isPrefixOf(n));
-		}		
+		}
+		
+		Log.info(Log.FAC_TEST, "Testing predefined root after total shutdown: {0}", Component.printURI(snc.getHash()));
+		
+		synchronized (callbackNames) {
+			callbackNames.clear();
+		}
+		slice7 = sync1.startSync(getHandle, topo, prefix1, null, snc.getHash(), null, this);
+		segments = SyncTestCommon.writeFile(prefix1c, true, 0, putHandle);
+		segmentCheck = checkCallbacks(callbackNames, prefix1c, segments, 0);
+		if (segmentCheck!=0)
+			Assert.fail("Did not receive all of the callbacks");
+		sync1.shutdown(slice7);
+		for (ContentName n: callbackNames) {
+			Assert.assertFalse("Saw unexpected data in arbitrary root test: " + n, prefix1a.isPrefixOf(n));
+		}
 
 		Log.info(Log.FAC_TEST,"Finished running testSyncRoot");
 	}
