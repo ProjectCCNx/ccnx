@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.BloomFilter;
 import org.ccnx.ccn.protocol.ContentName;
@@ -206,5 +207,37 @@ public class InterestTest extends CCNTestBase {
 		Assert.assertFalse(interest.matches(co));
 		
 		Log.info(Log.FAC_TEST, "Completed testMatchDigest");
+	}
+	
+	@Test
+	public void testMatchWithExcludedDigest() throws MalformedContentNameStringException {
+		Log.info(Log.FAC_TEST, "Starting testMatchWithExcludedDigest");
+
+		ContentName name = SegmentationProfile.segmentName(ContentName.fromNative("/here/is/a/content/object"), SegmentationProfile.BASE_SEGMENT);
+		
+		ContentObject co = ContentObject.buildContentObject(name, "here is content".getBytes());
+
+		//use the same interest construction method used in the scenario that discovered the bug
+		Interest interest = Interest.lower(name, 1, null);
+		
+		Assert.assertTrue(interest.matches(co));
+		
+		interest.exclude(new Exclude());
+		interest.exclude().add(new byte[][] {co.digest()});
+		
+		Assert.assertFalse(interest.matches(co));
+		
+		//now test the general interest constructor
+		
+		interest = new Interest(name);
+		Assert.assertTrue(interest.matches(co));
+		
+		interest.exclude(new Exclude());
+		interest.exclude().add(new byte[][] {co.digest()});
+		
+		Assert.assertFalse(interest.matches(co));
+
+		
+		Log.info(Log.FAC_TEST, "Completed testMatchWithExcludedDigest");
 	}
 }
