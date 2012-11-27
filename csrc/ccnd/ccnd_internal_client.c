@@ -663,6 +663,7 @@ schedule_adjacency_negotiation(struct ccnd_handle *ccnd, unsigned faceid)
 {
     struct face *face = ccnd_face_from_faceid(ccnd, faceid);
     unsigned check, want;
+    int delay;
     
     if (face == NULL)
         return;
@@ -670,9 +671,13 @@ schedule_adjacency_negotiation(struct ccnd_handle *ccnd, unsigned faceid)
             CCN_FACE_GG | CCN_FACE_MCAST | CCN_FACE_PASSIVE | CCN_FACE_NORECV |
             CCN_FACE_BC | CCN_FACE_ADJ;
     want = 0;
-    if (ccnd->sched != NULL && (face->flags & check) == want)
-        ccn_schedule_event(ccnd->sched, 2000 + nrand48(ccnd->seed) % 131072U,
-                           ccnd_do_solicit, NULL, faceid);
+    if (ccnd->sched != NULL && (face->flags & check) == want) {
+        /* If face creation was initiated remotely, dally a bit longer. */
+        delay = 2000 + nrand48(ccnd->seed) % 131072U;
+        if ((face->flags & CCN_FACE_PERMANENT) == 0)
+            delay += 200000;
+        ccn_schedule_event(ccnd->sched, delay, ccnd_do_solicit, NULL, faceid);
+    }
 }
 
 /**
