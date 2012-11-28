@@ -118,6 +118,29 @@ ccnd_init_service_ccnb(struct ccnd_handle *ccnd, const char *baseuri, int freshn
 #define ADJ_RETRYING (1U << 9)
 
 /**
+ * Update face->adjstate by setting / clearing the indicated bits.
+ *
+ * If a bit is in both masks, it is set.
+ * @returns the old values, or -1 for an error.
+ */
+int
+adjstate_change(struct ccnd_handle *ccnd, struct face *face, int set, int clear)
+{
+    int new;
+    int old;
+    
+    if (face == NULL)
+        return(-1);
+    old = face->adjstate;
+    new = (old & ~clear) | set;
+    if (new != old) {
+        face->adjstate = new;
+        // XXX - a good place to log
+    }
+    return(old);
+}
+
+/**
  * Append the URI representation of the adjacency prefix for face to the
  * charbuf cb.
  * @returns 0 for success, -1 for error.
@@ -440,7 +463,7 @@ send_adjacency_solicit(struct ccnd_handle *ccnd, struct face *face)
         if (ans >= 0)
             ans = ccnd_set_face_guid(ccnd, face, g->buf, g->length);
         if (ans >= 0) {
-            face->adjstate = ADJ_SOL_SENT;
+            adjstate_change(ccnd, face, ADJ_SOL_SENT, 0);
             ccnd_internal_client_has_somthing_to_say(ccnd);
         }
         ans = (ans < 0) ? -1 : 0;
@@ -556,13 +579,13 @@ incoming_adjacency(struct ccn_closure *selfp,
                 return(CCN_UPCALL_RESULT_ERR);
             /* XXX - this should scrutinize the data to make sure it is OK */
             if ((face->adjstate & (ADJ_OFR_SENT | ADJ_CRQ_SENT)) != 0)
-                face->adjstate |= ADJ_DAT_RECV;
+                adjstate_change(ccnd, face, ADJ_DAT_RECV, 0);
             if ((face->adjstate & (ADJ_CRQ_RECV)) != 0 &&
                 (face->adjstate & (ADJ_DAT_SENT)) == 0 &&
                 face->guid_cob != 0) {
                 ccn_put(info->h, face->guid_cob->buf,
                                  face->guid_cob->length);
-                face->adjstate |= ADJ_DAT_SENT;
+                adjstate_change(ccnd, face, ADJ_DAT_SENT, 0);
                 ccnd_adjacency_offer_or_commit_req(ccnd, face);
             }
             ccnd_register_adjacency(ccnd, face,
@@ -574,7 +597,7 @@ incoming_adjacency(struct ccn_closure *selfp,
                 return(CCN_UPCALL_RESULT_ERR);
             if ((face->adjstate & (ADJ_RETRYING | ADJ_TIMEDWAIT)) == 0) {
                 /* Retry one time */
-                face->adjstate |= ADJ_RETRYING;
+                adjstate_change(ccnd, face, ADJ_RETRYING, 0);
                 return(CCN_UPCALL_RESULT_REEXPRESS);
             }
             adjacency_timed_reset(ccnd, face->faceid);
@@ -628,12 +651,12 @@ ccnd_adjacency_offer_or_commit_req(struct ccnd_handle *ccnd, struct face *face)
         action->p = &incoming_adjacency;
         action->intdata = face->faceid;
         action->data = ccnd;
-        face->adjstate &= ~ADJ_RETRYING;
+        adjstate_change(ccnd, face, 0, ADJ_RETRYING);
         ccn_express_interest(ccnd->internal_client, name, action, templ);
         if ((face->adjstate & ADJ_OFR_RECV) != 0)
-            face->adjstate |= ADJ_CRQ_SENT;
+            adjstate_change(ccnd, face, ADJ_CRQ_SENT, 0);
         else
-            face->adjstate |= ADJ_OFR_SENT;
+            adjstate_change(ccnd, face, ADJ_OFR_SENT, 0);
     }
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&c);
@@ -678,8 +701,7 @@ check_offer_matches_my_solicit(struct ccnd_handle *ccnd, struct face *face,
         return;
     ccnd_forget_face_guid(ccnd, face);
     ccnd_set_face_guid(ccnd, face, p + res, size - res);
-    face->adjstate &= ~ADJ_SOL_SENT;
-    face->adjstate |= ADJ_OFR_RECV;
+    adjstate_change(ccnd, face, ADJ_OFR_RECV, ADJ_SOL_SENT);
 }
 
 /**
@@ -727,11 +749,11 @@ adjacency_do_reset(struct ccn_schedule *sched,
     if ((face->adjstate & ADJ_TIMEDWAIT) == 0)
         return(0);
     if (face->adjstate != ADJ_TIMEDWAIT) {
-        face->adjstate = ADJ_TIMEDWAIT;
+        adjstate_change(ccnd, face, ADJ_TIMEDWAIT, ~ADJ_TIMEDWAIT);
         ccnd_forget_face_guid(ccnd, face);
         return(5000000);
     }
-    face->adjstate = 0;
+    adjstate_change(ccnd, face, 0, ~0);
     schedule_adjacency_negotiation(ccnd, face->faceid);
     return(0);
 }
@@ -751,7 +773,7 @@ adjacency_timed_reset(struct ccnd_handle *ccnd, unsigned faceid)
         face->flags &= ~CCN_FACE_ADJ;
         // XXX - Should also unregister the prefix
     }
-    face->adjstate = ADJ_TIMEDWAIT;
+    adjstate_change(ccnd, face, ADJ_TIMEDWAIT, ~ADJ_TIMEDWAIT);
     ccnd_forget_face_guid(ccnd, face);
     ccn_schedule_event(ccnd->sched, 9000000 + nrand48(ccnd->seed) % 8000000U,
                        adjacency_do_reset, NULL, faceid);
@@ -939,10 +961,10 @@ ccnd_answer_req(struct ccn_closure *selfp,
                         if (face->guid != NULL && size >= face->guid[0] &&
                             memcmp(lo, face->guid + 1, face->guid[0]) > 0) {
                             ccnd_forget_face_guid(ccnd, face);
-                            face->adjstate &= ~ADJ_SOL_SENT;
+                            adjstate_change(ccnd, face, 0, ADJ_SOL_SENT);
                         }
                     }
-                    face->adjstate |= ADJ_SOL_RECV;
+                    adjstate_change(ccnd, face, ADJ_SOL_RECV, 0);
                     ccnd_generate_face_guid(ccnd, face, size, lo, hi);
                     if (face->guid != NULL) {
                         ccnd_adjacency_offer_or_commit_req(ccnd, face);
@@ -970,11 +992,11 @@ ccnd_answer_req(struct ccn_closure *selfp,
                                              info->pi
                                              )) {
                 if (info->pi->prefix_comps == 3)
-                    face->adjstate |= ADJ_CRQ_RECV;
+                    adjstate_change(ccnd, face, ADJ_CRQ_RECV, 0);
                 if ((face->adjstate & (ADJ_DAT_RECV | ADJ_OFR_RECV)) != 0) {
                     ccn_put(info->h, face->guid_cob->buf,
-                            face->guid_cob->length);
-                    face->adjstate |= ADJ_DAT_SENT;
+                            face->guid_cob->length);                    
+                    adjstate_change(ccnd, face, ADJ_DAT_SENT, 0);
                     ccnd_adjacency_offer_or_commit_req(ccnd, face);
                 }
                 ccnd_register_adjacency(ccnd, face,
