@@ -34,6 +34,10 @@ public class SyncNodeCache {
 	
 	protected HashMap<SyncHashEntry, WeakReference<SyncNodeComposite>> _nodes = new HashMap<SyncHashEntry, WeakReference<SyncNodeComposite>>();
 
+	/**
+	 * Put a newly decoded node into the cache
+	 * @param node
+	 */
 	public void putNode(SyncNodeComposite node) {
 		synchronized (this) {
 			WeakReference<SyncNodeComposite> wr = new WeakReference<SyncNodeComposite>(node);
@@ -42,7 +46,7 @@ public class SyncNodeCache {
 	}
 	
 	/**
-	 * Get a SyncTreeEntry for a hash if there is one
+	 * Get a node associated with a hash if there is one
 	 * @param hash
 	 * @return
 	 */
@@ -57,6 +61,18 @@ public class SyncNodeCache {
 		}
 	}
 	
+	/**
+	 * Activate the mechanism to avoid multiple requests for the same node and to wait for a
+	 * node in the process of being fetched by another comparator if it is.
+	 * This is a "get and set" routine which creates and stores a semaphore for sharing if one hasn't
+	 * already been created for this hash. The caller must acquire or attempt to acquire the semaphore.
+	 * The first caller should acquire it and request the node. Subsequent callers can either wait for
+	 * the node to return by acquiring the semaphore, or check whether the request has already been
+	 * sent by testing whether the semaphore can be acquired.
+	 * 
+	 * @param hash
+	 * @return Semaphore for waiting for the node
+	 */
 	public Semaphore pending(byte[] hash) {
 		Semaphore sem = null;
 		synchronized (this) {
@@ -70,13 +86,17 @@ public class SyncNodeCache {
 		}
 	}
 	
+	/**
+	 * Call this after a node has been returned. It releases the semaphore (allowing waiters to
+	 * continue) and removes the entry from the array of pending node requests
+	 * @param hash
+	 */
 	public void clearPending(byte[] hash) {
 		synchronized (this) {
 			SyncHashEntry she = new SyncHashEntry(hash);
-			Semaphore sem = _hashesPending.get(she);
+			Semaphore sem = _hashesPending.remove(she);
 			if (null != sem) {
 				sem.release();
-				_hashesPending.remove(she);
 			}
 		}
 	}

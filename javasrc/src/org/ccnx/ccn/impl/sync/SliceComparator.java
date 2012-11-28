@@ -16,7 +16,6 @@
  */
 package org.ccnx.ccn.impl.sync;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.NoSuchElementException;
 import java.util.Queue;
@@ -110,13 +109,16 @@ public class SliceComparator implements Runnable {
 	protected SyncHashCache _shc = new SyncHashCache();
 	
 	/**
-	 * Start a comparison on a slice which will call back "callback" each time
+	 * Start a comparison on a slice which will call back each registered "callback" each time
 	 * a previously unseen name is seen. Note that with the 0 length hash we can only base the "start" of our
 	 * reporting on the hash we get back from the root advise request. If there is more than one repository reporting
 	 * and the first answer we get is disjoint from some other answer, we may receive names later that are earlier than
 	 * the "start" so this is just a best attempt.
 	 * 
-	 * @param pbsm the SyncMonitor which created us
+	 * @param leadComparator - the lead comparator on this slice. If we have multiple comparators for a slice, we only
+	 * 				need to check differences for one round after the first one starts (which becomes the lead comparator), 
+	 *              then the callbacks can just be reregistered with the lead comparator
+	 * @param snc global node cache to use
 	 * @param callback callback to user code
 	 * @param slice corresponding slice
 	 * @param startHash if null, report all names seen, if 0 length attempt to not report anything before this was called,
@@ -225,6 +227,13 @@ public class SliceComparator implements Runnable {
 		return best;
 	}
 	
+	/**
+	 * Pending content is used when we don't know the hash ahead of time - we can
+	 * only find it by decoding the content. We store and retrieve it because we don't
+	 * want to do the decoding in a handler.
+	 * 
+	 * @return the raw content
+	 */
 	protected byte[] getPendingContent() {
 		synchronized (this) {
 			try {
@@ -268,6 +277,10 @@ public class SliceComparator implements Runnable {
 		}
 	}
 	
+	/**
+	 * "Useless" is defined as having no callbacks registered
+	 * @return
+	 */
 	public boolean shutdownIfUseless() {
 		synchronized (this) {
 			if (_callbacks.size() == 0) {
@@ -351,12 +364,16 @@ public class SliceComparator implements Runnable {
 	}
 	
 	/**
-	 * Either retrieve or request a node and do the associated synchronization
-	 * Don't call this from handlers because it may try to decode a node
+	 * Nodes can be shared across comparators so if we are missing a node, we really only want to
+	 * do one request for the node for the whole slice. Then when the node is returned other comparators
+	 * that want it can just retrieve the information from the cache. We use a semaphore to accomplish this.
+	 * In some cases (preload) we want to issue the request but we don't want to wait for an answer. That's
+	 * what the wait flag is for.
 	 * 
 	 * @param srt
-	 * @return true if request made
-	 * @throws IOException 
+	 * @param wait Wait for the node if true
+	 * @return null if node not found but request made
+	 * @throws SyncException 
 	 */
 	private SyncNodeComposite getOrRequestNode(SyncTreeEntry srt, boolean wait) throws SyncException {
 		boolean pending = false;
@@ -635,7 +652,7 @@ public class SliceComparator implements Runnable {
 	}
 	
 	/**
-	 * Here's where we do the callback back to the user for an unseen content name (which
+	 * Here's where we do the callback(s) back to the user for an unseen content name (which
 	 * is within a node). We have to be sure we aren't holding any locks when this is called.
 	 * We also add this name to the names already seen so we can update the X tree after this
 	 * pass.
