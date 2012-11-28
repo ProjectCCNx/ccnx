@@ -441,6 +441,149 @@ ccnd_close_fd(struct ccnd_handle *h, unsigned faceid, int *pfd)
 }
 
 /**
+ * Associate a guid with a face.
+ *
+ * The same guid is shared amoing all the peers that communicate over the
+ * face, and no two faces at a node should have the same guid.
+ *
+ * @returns 0 for success, -1 for error.
+ */
+int
+ccnd_set_face_guid(struct ccnd_handle *h, struct face *face,
+                   const unsigned char *guid, size_t size)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct ccn_charbuf *c = NULL;
+    int res;
+    
+    if (size > 255)
+        return(-1);
+    if (face->guid != NULL)
+        return(-1);
+    if (h->faceid_by_guid == NULL)
+        return(-1);
+    c = ccn_charbuf_create();
+    ccn_charbuf_append_value(c, size, 1);
+    ccn_charbuf_append(c, guid, size);
+    hashtb_start(h->faceid_by_guid, e);
+    res = hashtb_seek(e, c->buf, c->length, 0);
+    ccn_charbuf_destroy(&c);
+    if (res < 0)
+        return(-1);
+    if (res == HT_NEW_ENTRY) {
+        face->guid = e->key;
+        *(unsigned *)(e->data) = face->faceid;
+        res = 0;
+    }
+    else
+        res = -1;
+    hashtb_end(e);
+    return(res);
+}
+
+/**
+ * Append the guid associated with a face to a charbuf
+ *
+ * @returns the length of the appended guid, or -1 for error.
+ */
+int
+ccnd_append_face_guid(struct ccnd_handle *h, struct ccn_charbuf *cb,
+                      struct face *face)
+{
+    if (face == NULL || face->guid == NULL)
+        return(-1);
+    ccn_charbuf_append(cb, face->guid + 1, face->guid[0]);
+    return(face->guid[0]);
+}
+
+/**
+ * Forget the guid associated with a face.
+ *
+ * The first byte of face->guid is the length of the actual guid bytes.
+ */
+void
+ccnd_forget_face_guid(struct ccnd_handle *h, struct face *face)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    const unsigned char *guid;
+    int res;
+    
+    guid = face->guid;
+    face->guid = NULL;
+    ccn_charbuf_destroy(&face->guid_cob);
+    if (guid == NULL)
+        return;
+    if (h->faceid_by_guid == NULL)
+        return;
+    hashtb_start(h->faceid_by_guid, e);
+    res = hashtb_seek(e, guid, guid[0] + 1, 0);
+    if (res < 0)
+        return;
+    hashtb_delete(e);
+    hashtb_end(e);
+}
+
+/**
+ * Generate a new guid for a face
+ *
+ * This guid is useful for routing agents, as it gives an unambiguous way
+ * to talk about a connection between two nodes.
+ *
+ * lo and hi, if not NULL, are exclusive bounds for the generated guid.
+ * The size is in bytes, and refers to both the bounds and the result.
+ */
+void
+ccnd_generate_face_guid(struct ccnd_handle *h, struct face *face, int size,
+                        const unsigned char *lo, const unsigned char *hi)
+{
+    int i;
+    unsigned check = CCN_FACE_GG | CCN_FACE_UNDECIDED | CCN_FACE_PASSIVE;
+    unsigned want = 0;
+    uint_least64_t range;
+    uint_least64_t r;
+    struct ccn_charbuf *c = NULL;
+    
+    if ((face->flags & check) != want)
+        return;
+     /* XXX - This should be using higher-quality randomness */
+    if (lo != NULL && hi != NULL) {
+        /* Generate up to 64 additional random bits to augment guid */
+        for (i = 0; i < size && lo[i] == hi[i];)
+            i++;
+        if (i == size || lo[i] > hi[i])
+            return;
+        if (size - i > sizeof(range))
+            range = ~0;
+        else {
+            range = 0;
+            for (i = i; i < size; i++)
+                range = (range << 8) + hi[i] - lo[i];
+        }
+        if (range < 2)
+            return;
+        c = ccn_charbuf_create();
+        ccn_charbuf_append(c, lo, size);
+        r = nrand48(h->seed);
+        r = (r << 20) ^ nrand48(h->seed);
+        r = (r << 20) ^ nrand48(h->seed);
+        r = r % (range - 1) + 1;
+        for (i = size - 1; r != 0 && i >= 0; i--) {
+            r = r + c->buf[i];
+            c->buf[i] = r & 0xff;
+            r = r >> 8;
+        }
+    }
+    else {
+        for (i = 0; i < size; i++)
+            ccn_charbuf_append_value(c, nrand48(h->seed) & 0xff, 1);
+    }
+    ccnd_set_face_guid(h, face, c->buf, c->length);
+    ccn_charbuf_destroy(&c);
+}
+
+/**
  * Clean up when a face is being destroyed.
  *
  * This is called when an entry is deleted from one of the hash tables that
@@ -461,6 +604,9 @@ finalize_face(struct hashtb_enumerator *e)
             ccnd_face_status_change(h, face->faceid);
         if (e->ht == h->faces_by_fd)
             ccnd_close_fd(h, face->faceid, &face->recv_fd);
+        if ((face->guid) != NULL)
+            ccnd_forget_face_guid(h, face);
+        ccn_charbuf_destroy(&face->guid_cob);
         h->faces_by_faceid[i] = NULL;
         if ((face->flags & CCN_FACE_UNDECIDED) != 0 &&
               face->faceid == ((h->face_rover - 1) | h->face_gen)) {
@@ -1801,7 +1947,6 @@ Bail:
 /**
  * Stuff a PDU with interest messages that will fit.
  *
- * Note by default stuffing does not happen due to the setting of h->mtu.
  * @returns the number of messages that were stuffed.
  */
 static int
@@ -1809,8 +1954,8 @@ ccn_stuff_interest(struct ccnd_handle *h,
                    struct face *face, struct ccn_charbuf *c)
 {
     int n_stuffed = 0;
-    if (stuff_link_check(h, face, c) > 0)
-        n_stuffed++;
+    
+    n_stuffed += stuff_link_check(h, face, c);
     return(n_stuffed);
 }
 
@@ -2125,7 +2270,7 @@ remove_content(struct ccnd_handle *h, struct content_entry *content)
  * Periodic content cleaning
  */
 static int
-clean_deamon(struct ccn_schedule *sched,
+clean_daemon(struct ccn_schedule *sched,
              void *clienth,
              struct ccn_scheduled_event *ev,
              int flags)
@@ -2153,8 +2298,10 @@ clean_deamon(struct ccn_schedule *sched,
         return(0);
     }
     n = hashtb_n(h->content_tab);
-    if (n <= h->capacity)
-        return(15000000);
+    if (n <= h->capacity) {
+        h->clean = NULL;
+        return(0);
+    }
     /* Toss unsolicited content first */
     for (i = 0; i < h->unsol->n; i++) {
         if (i == check_limit) {
@@ -2169,8 +2316,8 @@ clean_deamon(struct ccn_schedule *sched,
             (content->flags & CCN_CONTENT_ENTRY_PRECIOUS) == 0)
             remove_content(h, content);
     }
-    n = hashtb_n(h->content_tab);
     h->unsol->n = 0;
+    n = hashtb_n(h->content_tab);
     if (h->min_stale <= h->max_stale) {
         /* clean out stale content next */
         limit = h->max_stale;
@@ -2224,20 +2371,20 @@ clean_deamon(struct ccn_schedule *sched,
             }
         }
         ev->evint = 0;
-        return(1000000);
+        return(5000);
     }
-    ev->evint = 0;
-    return(15000000);
+    h->clean = NULL;
+    return(0);
 }
 
 /**
- * Schedule clean_deamon, if it is not already scheduled.
+ * Schedule clean_daemon, if it is not already scheduled.
  */
 static void
 clean_needed(struct ccnd_handle *h)
 {
     if (h->clean == NULL)
-        h->clean = ccn_schedule_event(h->sched, 1000000, clean_deamon, NULL, 0);
+        h->clean = ccn_schedule_event(h->sched, 5000, clean_daemon, NULL, 0);
 }
 
 /**
@@ -3082,7 +3229,20 @@ get_outbound_faces(struct ccnd_handle *h,
     if (npe->fgen != h->forward_to_gen)
         update_forward_to(h, npe);
     x = ccn_indexbuf_create();
-    if (pi->scope == 0 || npe->forward_to == NULL || npe->forward_to->n == 0)
+    if (pi->scope == 0)
+        return(x);
+    if (from != NULL && (from->flags & CCN_FACE_GG) != 0) {
+        i = ccn_fetch_tagged_nonNegativeInteger(CCN_DTAG_FaceID, msg,
+              pi->offset[CCN_PI_B_OTHER], pi->offset[CCN_PI_E_OTHER]);
+        if (i != -1) {
+            faceid = i;
+            ccn_indexbuf_append_element(x, faceid);
+            if (h->debug & 32)
+                ccnd_msg(h, "outbound.%d adding %u", __LINE__, faceid);
+            return(x);
+        }
+    }
+    if (npe->forward_to == NULL || npe->forward_to->n == 0)
         return(x);
     if ((npe->flags & CCN_FORW_LOCAL) != 0)
         checkmask = (from != NULL && (from->flags & CCN_FACE_GG) != 0) ? CCN_FACE_GG : (~0);
@@ -4379,6 +4539,10 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
             content->flags &= ~CCN_CONTENT_ENTRY_STALE;
             h->n_stale--;
             set_content_timer(h, content, &obj);
+            /* Record the new arrival face only if the old face is gone */
+            // XXX - it is not clear that this is the most useful choice
+            if (face_from_faceid(h, content->arrival_faceid) == NULL)
+                content->arrival_faceid = face->faceid;
             // XXX - no counter for this case
         }
         else {
@@ -4389,7 +4553,11 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         }
     }
     else if (res == HT_NEW_ENTRY) {
+        unsigned long n = hashtb_n(h->content_tab);
+        if (n > h->capacity + (h->capacity >> 3))
+            clean_needed(h);
         content->accession = ++(h->accession);
+        content->arrival_faceid = face->faceid;
         enroll_content(h, content);
         if (content == content_from_accession(h, content->accession)) {
             content->ncomps = comps->n;
@@ -4402,7 +4570,6 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
                 res = -__LINE__;
                 hashtb_end(e);
                 goto Bail;
-                
             }
         }
         content->key_size = e->keysize;
@@ -4820,8 +4987,8 @@ process_icb_action(
  * This little dance keeps us from destroying an interest
  * entry while we are in the middle of processing it.
  */
-static void
-process_internal_client_buffer_needed(struct ccnd_handle *h)
+void
+ccnd_internal_client_has_somthing_to_say(struct ccnd_handle *h)
 {
     ccn_schedule_event(h->sched, 0, process_icb_action, NULL, 0);
 }
@@ -4915,7 +5082,7 @@ ccnd_send(struct ccnd_handle *h,
     if (face == h->face0) {
         ccnd_meter_bump(h, face->meter[FM_BYTO], size);
         ccn_dispatch_message(h->internal_client, (void *)data, size);
-        process_internal_client_buffer_needed(h);
+        ccnd_internal_client_has_somthing_to_say(h);
         return;
     }
     if ((face->flags & CCN_FACE_DGRAM) == 0)
@@ -5504,6 +5671,8 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     param.finalize = &finalize_face;
     h->faces_by_fd = hashtb_create(sizeof(struct face), &param);
     h->dgram_faces = hashtb_create(sizeof(struct face), &param);
+    param.finalize = 0;
+    h->faceid_by_guid = hashtb_create(sizeof(unsigned), &param);
     param.finalize = &finalize_content;
     h->content_tab = hashtb_create(sizeof(struct content_entry), &param);
     param.finalize = &finalize_nameprefix;
@@ -5616,7 +5785,6 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->flood = (h->autoreg != NULL);
     h->ipv4_faceid = h->ipv6_faceid = CCN_NOFACEID;
     ccnd_listen_on(h, listen_on);
-    clean_needed(h);
     reap_needed(h, 55000);
     age_forwarding_needed(h);
     ccnd_internal_client_start(h);
@@ -5657,6 +5825,7 @@ ccnd_destroy(struct ccnd_handle **pccnd)
     ccn_schedule_destroy(&h->sched);
     hashtb_destroy(&h->dgram_faces);
     hashtb_destroy(&h->faces_by_fd);
+    hashtb_destroy(&h->faceid_by_guid);
     hashtb_destroy(&h->content_tab);
     hashtb_destroy(&h->interest_tab);
     hashtb_destroy(&h->nameprefix_tab);

@@ -456,6 +456,34 @@ ccn_disconnect(struct ccn *h)
     }
     ccn_charbuf_destroy(&h->inbuf);
     ccn_charbuf_destroy(&h->outbuf);
+    /* a stored ccndid may no longer be valid */
+    ccn_charbuf_destroy(&h->ccndid);
+    /* all interest filters expire */
+    if (h->interest_filters != NULL) {
+        struct hashtb_enumerator ee;
+        struct hashtb_enumerator *e = &ee;
+        for (hashtb_start(h->interest_filters, e); e->data != NULL; hashtb_next(e)) {
+            struct interest_filter *i = e->data;
+            i->expiry = h->now;
+        }
+        hashtb_end(e);
+    }
+    /* all pending interests are no longer outstanding */
+    if (h->interests_by_prefix != NULL) {
+        struct hashtb_enumerator ee;
+        struct hashtb_enumerator *e = &ee;
+        for (hashtb_start(h->interests_by_prefix, e); e->data != NULL; hashtb_next(e)) {
+            struct interests_by_prefix *entry = e->data;
+            if (entry->list != NULL) {
+                struct expressed_interest *ie;
+                for (ie = entry->list; ie != NULL; ie = ie->next) {
+                    ie->outstanding = 0;                
+                }
+            }
+        }
+        hashtb_end(e);
+    }
+
     res = close(h->sock);
     h->sock = -1;
     if (res == -1)
@@ -579,7 +607,6 @@ ccn_destroy(struct ccn **hp)
         close(h->tap);
     free(h);
     *hp = NULL;
-    EVP_cleanup();
 }
 
 /*

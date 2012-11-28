@@ -78,6 +78,7 @@ struct ccnd_handle {
     unsigned char ccnd_id[32];      /**< sha256 digest of our public key */
     struct hashtb *faces_by_fd;     /**< keyed by fd */
     struct hashtb *dgram_faces;     /**< keyed by sockaddr */
+    struct hashtb *faceid_by_guid;  /**< keyed by guid */
     struct hashtb *content_tab;     /**< keyed by portion of ContentObject */
     struct hashtb *nameprefix_tab;  /**< keyed by name prefix components */
     struct hashtb *interest_tab;    /**< keyed by interest msg sans Nonce */
@@ -210,6 +211,8 @@ struct face {
     int surplus;                /**< sends since last successful recv */
     unsigned faceid;            /**< internal face id */
     unsigned recvcount;         /**< for activity level monitoring */
+    const unsigned char *guid;  /**< guid name for channel, shared w/ peers */
+    struct ccn_charbuf *guid_cob; /**< content object publishing face guid */
     struct content_queue *q[CCN_CQ_N]; /**< outgoing content, per delay class */
     struct ccn_charbuf *inbuf;
     struct ccn_skeleton_decoder decoder;
@@ -221,7 +224,8 @@ struct face {
     unsigned rrun;
     uintmax_t rseq;
     struct ccnd_meter *meter[CCND_FACE_METER_N];
-    unsigned short pktseq;     /**< sequence number for sent packets */
+    unsigned short pktseq;      /**< sequence number for sent packets */
+    unsigned short adjstate;    /**< state of adjacency negotiotiation */
 };
 
 /** face flags */
@@ -247,6 +251,7 @@ struct face {
 #define CCN_FACE_LC    (1 << 19) /** A link check has been issued recently */
 #define CCN_FACE_BC    (1 << 20) /** Needs SO_BROADCAST to send */
 #define CCN_FACE_NBC   (1 << 21) /** Don't use SO_BROADCAST to send */
+#define CCN_FACE_ADJ   (1 << 22) /** Adjacency guid has been negotiatied */
 #define CCN_NOFACEID    (~0U)    /** denotes no face */
 
 /**
@@ -261,6 +266,7 @@ struct face {
  */
 struct content_entry {
     ccn_accession_t accession;  /**< assigned in arrival order */
+    unsigned arrival_faceid;    /**< the faceid of first arrival */
     unsigned short *comps;      /**< Name Component byte boundary offsets */
     int ncomps;                 /**< Number of name components plus one */
     int flags;                  /**< see below */
@@ -473,6 +479,16 @@ int ccnd_reg_uri(struct ccnd_handle *h,
                  unsigned faceid,
                  int flags,
                  int expires);
+
+void ccnd_generate_face_guid(struct ccnd_handle *h, struct face *face, int size,
+                             const unsigned char *lo, const unsigned char *hi);
+int ccnd_set_face_guid(struct ccnd_handle *h, struct face *face,
+                       const unsigned char *guid, size_t size);
+void ccnd_forget_face_guid(struct ccnd_handle *h, struct face *face);
+int ccnd_append_face_guid(struct ccnd_handle *h, struct ccn_charbuf *cb,
+                          struct face *face);
+
+void ccnd_internal_client_has_somthing_to_say(struct ccnd_handle *h);
 
 struct face *ccnd_face_from_faceid(struct ccnd_handle *, unsigned);
 void ccnd_face_status_change(struct ccnd_handle *, unsigned);
