@@ -664,6 +664,7 @@ public class SliceComparator implements Runnable {
 		ContentName name = sne.getName();
 		_updateNames.add(name); // we want the digest here
 		name = name.parent();  // remove digest here
+		Log.info("Here name is {0}, callbacks = {0}, {1}", name, _doCallbacks, _callbacks.size());
 		if (!_doCallbacks) {
 			if (!name.equals(_startName))
 				return;
@@ -1003,14 +1004,14 @@ public class SliceComparator implements Runnable {
 				case DONE:	// Compare is done. Start over again if we have pending data
 							// for another compare
 					synchronized (this) {
-						if (this != _leadComparator) {
+						if (this != _leadComparator  && !_needToCompare) {
 							// If we aren't the lead comparator for this slice we don't need to 
 							// continue - instead we can just add ourselves to its callbacks
 							// Note that eventually this will lead to this comparator being culled.
 							// We might want to do that explicitly but for now I'm not going to 
 							// worry about it.
-							// TODO - could there be a gap here if we had pending inputs that the
-							// leader was already working on?
+							// We also don't want to do this if we've been kicked because the leader
+							// could already be working on the next round and we want to see that also.
 							if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
 								Log.info(Log.FAC_SYNC, "Moving {0} callbacks to lead comparator", _callbacks.size());
 							for (CCNSyncHandler callback : _callbacks)							
