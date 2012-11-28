@@ -478,7 +478,8 @@ public class SliceComparator implements Runnable {
 			if (null == sneX) {
 				// We only have a Y tree so we will output all LEAF names that we see	
 				if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST))
-					Log.finest(Log.FAC_SYNC, "Y hash only for {0}, type is {1}", Component.printURI(srtY.getHash()), sneY.getType());
+					Log.finest(Log.FAC_SYNC, "Y hash only for {0}, type is {1}, pos is {2}", 
+							Component.printURI(srtY.getHash()), sneY.getType(), srtY.getPos());
 				switch (sneY.getType()) {
 				case LEAF:
 					newName(sneY);
@@ -1010,6 +1011,8 @@ public class SliceComparator implements Runnable {
 							// worry about it.
 							// TODO - could there be a gap here if we had pending inputs that the
 							// leader was already working on?
+							if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
+								Log.info(Log.FAC_SYNC, "Moving {0} callbacks to lead comparator", _callbacks.size());
 							for (CCNSyncHandler callback : _callbacks)							
 								_leadComparator.addCallback(callback);
 							_shutdown = true;
