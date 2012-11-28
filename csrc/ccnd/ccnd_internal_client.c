@@ -147,6 +147,30 @@ append_adjacency_uri(struct ccnd_handle *ccnd,
 }
 
 /**
+ * Scheduled event to refresh adjacency
+ */
+static int
+adjacency_do_refresh(struct ccn_schedule *sched,
+                     void *clienth,
+                     struct ccn_scheduled_event *ev,
+                     int flags)
+{
+    struct ccnd_handle *ccnd = clienth;
+    struct face *face = NULL;
+    unsigned both;
+    
+    if ((flags & CCN_SCHEDULE_CANCEL) != 0)
+        return(0);
+    face = ccnd_face_from_faceid(ccnd, ev->evint);
+    if (face == NULL)
+        return(0);
+    both = ADJ_DAT_RECV | ADJ_DAT_SENT;
+    if ((face->adjstate & both) == both)
+        ccnd_adjacency_offer_or_commit_req(ccnd, face);
+    return(0);
+}
+
+/**
  * Register the adjacency prefix with the given forwarding flags.
  */
 static void
@@ -161,12 +185,10 @@ ccnd_register_adjacency(struct ccnd_handle *ccnd, struct face *face,
     
     if ((forwarding_flags & CCN_FORW_ACTIVE) != 0) {
         adj = CCN_FACE_ADJ;
-        lifetime = 0x7FFFFFFF;
+        lifetime = 10; /* seconds */ // XXX make larger before release
     }
     both = ADJ_DAT_RECV | ADJ_DAT_SENT;
     if ((face->adjstate & both) != both)
-        return;
-    if ((face->flags & CCN_FACE_ADJ) == adj)
         return;
     uri = ccn_charbuf_create();
     res = append_adjacency_uri(ccnd, uri, face);
@@ -174,8 +196,13 @@ ccnd_register_adjacency(struct ccnd_handle *ccnd, struct face *face,
         res = ccnd_reg_uri(ccnd, ccn_charbuf_as_string(uri), face->faceid,
                            forwarding_flags, lifetime);
     if (res >= 0) {
-        face->flags ^= CCN_FACE_ADJ;
-        ccnd_face_status_change(ccnd, face->faceid);
+        if ((face->flags & CCN_FACE_ADJ) != adj) {
+            face->flags ^= CCN_FACE_ADJ;
+            ccnd_face_status_change(ccnd, face->faceid);
+        }
+        if (lifetime != 0)
+            ccn_schedule_event(ccnd->sched, lifetime * 1000000,
+                               adjacency_do_refresh, NULL, face->faceid);
     }
     ccn_charbuf_destroy(&uri);
 }
