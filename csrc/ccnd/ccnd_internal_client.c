@@ -708,7 +708,7 @@ check_offer_matches_my_solicit(struct ccnd_handle *ccnd, struct face *face,
     res = strlen(mg) + 1;
     if (size != res + face->guid[0] || face->guid[0] <= 6)
         return;
-    if (0 != memcmp(p, mg, res + 1))
+    if (0 != memcmp(p, mg, res))
         return;
     if (0 != memcmp(p + res, face->guid + 1, face->guid[0] - 6))
         return;
