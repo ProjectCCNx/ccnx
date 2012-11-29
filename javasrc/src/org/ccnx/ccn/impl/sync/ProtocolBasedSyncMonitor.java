@@ -76,7 +76,7 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 					cg = new ComparatorGroup(sc);
 				}
 				cg._activeComparators.add(sc);
-				_comparators.put(new SyncHashEntry(slice.getHash()), cg);
+				_comparators.put(she, cg);
 			}
 		}
 		if (sendRootAdviseRequest) {
@@ -112,6 +112,8 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 	}
 	
 	public void shutdown(ConfigSlice slice) {
+		if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
+			Log.info(Log.FAC_SYNC, "Shutting down sync on slice: {0}", slice.prefix);
 		SyncHashEntry she = new SyncHashEntry(slice.getHash());
 		synchronized (this) {
 			ComparatorGroup cg = _comparators.get(she);

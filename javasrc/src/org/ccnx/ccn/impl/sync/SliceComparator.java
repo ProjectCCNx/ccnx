@@ -137,7 +137,7 @@ public class SliceComparator implements Runnable {
 		_snc = snc;
 		_slice = slice;
 		_callbacks.add(callback);
-Log.info("Our callback is {0}", callback);
+Log.info("Our callback is {0} and we {1} the lead", callback, leadComparator == this ? "are" : "are not");
 		_handle = handle;
 		if (null != startHash)
 			_startHash = _shc.addHash(startHash, _snc);
@@ -274,6 +274,7 @@ Log.info("Our callback is {0}", callback);
 	 */
 	public void removeCallback(CCNSyncHandler callback) {
 		synchronized (this) {
+Log.info("Removing callback: {0}", callback);
 			_callbacks.remove(callback);
 		}
 	}
@@ -665,7 +666,7 @@ Log.info("Our callback is {0}", callback);
 		ContentName name = sne.getName();
 		_updateNames.add(name); // we want the digest here
 		name = name.parent();  // remove digest here
-		Log.info("Here name is {0}, callbacks = {1}, {2}", name, _doCallbacks, _callbacks.size());
+Log.info("Here name is {0}, callbacks = {1}, {2}", name, _doCallbacks, _callbacks.size());
 		if (!_doCallbacks) {
 			if (!name.equals(_startName))
 				return;
