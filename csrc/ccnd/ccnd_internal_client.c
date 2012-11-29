@@ -124,8 +124,8 @@ ccnd_init_service_ccnb(struct ccnd_handle *ccnd, const char *baseuri, int freshn
  * @returns the old values, or -1 for an error.
  */
 int
-adjstate_change(struct ccnd_handle *ccnd, struct face *face,
-                int set, int clear)
+adjstate_change_db(struct ccnd_handle *ccnd, struct face *face,
+                int set, int clear, int line)
 {
     int new;
     int old;
@@ -136,19 +136,19 @@ adjstate_change(struct ccnd_handle *ccnd, struct face *face,
     new = (old & ~clear) | set;
     if (new != old) {
         face->adjstate = new;
-        if (ccnd->debug) {
+        if (1) {
             char f[11] = "sSoOcCdDTR";
             int i;
             for (i = 0; i < 10; i++)
                 if (((new >> i) & 1) == 0)
                     f[i] = '.';
-            ccnd_msg(ccnd, "ic.%d adjstate %u %s %#x", __LINE__,
+            ccnd_msg(ccnd, "ic.%d adjstate %u %s %#x", line,
                      face->faceid, f, face->flags);
         }
     }
     return(old);
 }
-
+#define adjstate_change(h, f, s, c) adjstate_change_db(h, f, s, c, __LINE__)
 /**
  * Append the URI representation of the adjacency prefix for face to the
  * charbuf cb.
