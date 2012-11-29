@@ -420,6 +420,8 @@ send_adjacency_solicit(struct ccnd_handle *ccnd, struct face *face)
 
     if (face == NULL || face->guid != NULL || face->adjstate != 0)
         return(-1);
+    /* Need to poke the client library here so that it gets the curren time */
+    ccn_process_scheduled_operations(ccnd->internal_client);
     name = ccn_charbuf_create();
     c = ccn_charbuf_create();
     g = ccn_charbuf_create();
@@ -631,6 +633,8 @@ ccnd_adjacency_offer_or_commit_req(struct ccnd_handle *ccnd, struct face *face)
         return;
     if ((face->adjstate & (ADJ_OFR_SENT | ADJ_SOL_SENT | ADJ_TIMEDWAIT)) != 0)
         return;
+    /* Need to poke the client library here so that it gets the curren time */
+    ccn_process_scheduled_operations(ccnd->internal_client);
     name = ccn_charbuf_create();
     c = ccn_charbuf_create();
     templ = ccn_charbuf_create();
