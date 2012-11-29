@@ -952,6 +952,11 @@ ccnd_answer_req(struct ccn_closure *selfp,
             goto Bail;
             break;
         case OP_ADJACENCY:
+            if (info->pi->prefix_comps >= 2 && (info->pi->answerfrom & CCN_AOK_CS) != 0) {
+                res = ccnd_answer_by_guid(ccnd, info);
+                if (res == CCN_UPCALL_RESULT_INTEREST_CONSUMED)
+                    goto Finish;
+            }
             face = ccnd_face_from_faceid(ccnd, ccnd->interest_faceid);
             if (face == NULL)
                 goto Bail;
@@ -986,17 +991,11 @@ ccnd_answer_req(struct ccn_closure *selfp,
                     }
                 }
             }
-            if (info->pi->prefix_comps >= 2) {
-                res = ccnd_answer_by_guid(ccnd, info);
-                if (res == CCN_UPCALL_RESULT_INTEREST_CONSUMED)
-                    goto Finish;
-            }
             check_offer_matches_my_solicit(ccnd, face, info);
             if (face->guid_cob == NULL)
                 ccnd_init_face_guid_cob(ccnd, face);
-            if (face->guid_cob == NULL)
-                goto Bail;
-            if (ccn_content_matches_interest(face->guid_cob->buf,
+            if (face->guid_cob != NULL &&
+                ccn_content_matches_interest(face->guid_cob->buf,
                                              face->guid_cob->length,
                                              1,
                                              NULL,
@@ -1015,8 +1014,9 @@ ccnd_answer_req(struct ccn_closure *selfp,
                 ccnd_register_adjacency(ccnd, face,
                       CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE);
                 res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
+                goto Finish;
             }
-            goto Finish;
+            goto Bail;
         default:
             goto Bail;
     }
