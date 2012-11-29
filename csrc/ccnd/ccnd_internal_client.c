@@ -977,7 +977,7 @@ ccnd_answer_req(struct ccn_closure *selfp,
                             adjstate_change(ccnd, face, 0, ADJ_SOL_SENT);
                         }
                     }
-                    adjstate_change(ccnd, face, ADJ_SOL_RECV, 0);
+                    adjstate_change(ccnd, face, ADJ_SOL_RECV, ADJ_TIMEDWAIT);
                     ccnd_generate_face_guid(ccnd, face, size, lo, hi);
                     if (face->guid != NULL) {
                         ccnd_adjacency_offer_or_commit_req(ccnd, face);
