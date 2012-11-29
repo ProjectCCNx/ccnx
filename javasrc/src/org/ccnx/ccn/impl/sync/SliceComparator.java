@@ -137,7 +137,6 @@ public class SliceComparator implements Runnable {
 		_snc = snc;
 		_slice = slice;
 		_callbacks.add(callback);
-Log.info("Our callback is {0} and we {1} the lead", callback, leadComparator == this ? "are" : "are not");
 		_handle = handle;
 		if (null != startHash)
 			_startHash = _shc.addHash(startHash, _snc);
@@ -274,7 +273,6 @@ Log.info("Our callback is {0} and we {1} the lead", callback, leadComparator == 
 	 */
 	public void removeCallback(CCNSyncHandler callback) {
 		synchronized (this) {
-Log.info("Removing callback: {0}", callback);
 			_callbacks.remove(callback);
 		}
 	}
@@ -384,12 +382,14 @@ Log.info("Removing callback: {0}", callback);
 			return node;
 		Semaphore sem = _snc.pending(srt.getHash());
 		try {
-			if (wait)
+			if (wait) {
+Log.info("Waiting for data for {0}", Component.printURI(srt.getHash()));
 				sem.acquire();
-			else
-				pending = !sem.tryAcquire();
-				
+Log.info("Got data for {0}", Component.printURI(srt.getHash()));
+			} else
+				pending = !sem.tryAcquire();				
 		} catch (InterruptedException e) {
+			_snc.clearPending(srt.getHash());
 			return null;
 		}
 		
@@ -397,7 +397,7 @@ Log.info("Removing callback: {0}", callback);
 			// Now that we have the semaphore, check again that we don't have the node
 			node = srt.getNode(_decoder);
 			if (null != node) {
-				_snc.clearPending(srt.getHash());
+				_snc.clearPending(srt.getHash());	// releases semaphore
 				return node;
 			}
 		}
@@ -666,7 +666,6 @@ Log.info("Removing callback: {0}", callback);
 		ContentName name = sne.getName();
 		_updateNames.add(name); // we want the digest here
 		name = name.parent();  // remove digest here
-Log.info("Here name is {0}, callbacks = {1}, {2}", name, _doCallbacks, _callbacks.size());
 		if (!_doCallbacks) {
 			if (!name.equals(_startName))
 				return;

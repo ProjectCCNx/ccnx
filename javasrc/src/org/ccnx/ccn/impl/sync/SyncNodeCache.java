@@ -20,7 +20,9 @@ import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.concurrent.Semaphore;
 
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.SyncNodeComposite;
+import org.ccnx.ccn.protocol.Component;
 
 /**
  * Nodes can be cached by hash across different comparators. We use WeakReferences to avoid accidentally caching nodes that
@@ -97,7 +99,8 @@ public class SyncNodeCache {
 			Semaphore sem = _hashesPending.remove(she);
 			if (null != sem) {
 				sem.release();
-			}
+			} else
+Log.info("No semaphore for {0}", Component.printURI(hash));
 		}
 	}
 }
