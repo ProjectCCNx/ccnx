@@ -366,9 +366,16 @@ public class SliceComparator implements Runnable {
 	/**
 	 * Nodes can be shared across comparators so if we are missing a node, we really only want to
 	 * do one request for the node for the whole slice. Then when the node is returned other comparators
-	 * that want it can just retrieve the information from the cache. We use a semaphore to accomplish this.
+	 * that want it can just retrieve the information from the cache. We use a boolean lock to accomplish this.
 	 * In some cases (preload) we want to issue the request but we don't want to wait for an answer. That's
 	 * what the wait flag is for.
+	 * 
+	 * Note: Since we are potentially waiting for an outside object here, we probably don't want to call
+	 * this synchronized to avoid potential deadlocks.
+	 * 
+	 * Also note that there should not be a potential wait forever here because we never wait until we are
+	 * sure we have issued at least one request. So the worst that could happen is in some circumstances we
+	 * might issue a double request but that should be OK
 	 * 
 	 * @param srt
 	 * @param wait Wait for the node if true
@@ -376,33 +383,30 @@ public class SliceComparator implements Runnable {
 	 * @throws SyncException 
 	 */
 	private SyncNodeComposite getOrRequestNode(SyncTreeEntry srt, boolean wait) throws SyncException {
-		boolean pending = false;
 		SyncNodeComposite node = srt.getNode(_decoder);
 		if (null != node)
 			return node;
-		Semaphore sem = _snc.pending(srt.getHash());
-		try {
-			if (wait) {
-Log.info("Waiting for data for {0}", Component.printURI(srt.getHash()));
-				sem.acquire();
-Log.info("Got data for {0}", Component.printURI(srt.getHash()));
-			} else
-				pending = !sem.tryAcquire();				
-		} catch (InterruptedException e) {
-			_snc.clearPending(srt.getHash());
-			return null;
-		}
-		
-		if (wait) {
-			// Now that we have the semaphore, check again that we don't have the node
-			node = srt.getNode(_decoder);
-			if (null != node) {
-				_snc.clearPending(srt.getHash());	// releases semaphore
-				return node;
+		Boolean lock = _snc.pending(srt.getHash());
+		while (wait && lock) {
+			try {
+				synchronized (lock) {
+					lock.wait();
+					node = srt.getNode(_decoder);
+					if (null != node) {
+						_snc.clearPending(srt.getHash()); // probably don't need to do this...
+						return node;
+					}
+				}
+			} catch (InterruptedException e) {
+				return null;
 			}
+
+		}			
+		
+		synchronized (lock) {
+			lock = true;
 		}
-		if (!pending)
-			ProtocolBasedSyncMonitor.requestNode(_slice, srt.getHash(), _handle, _nfh);
+		ProtocolBasedSyncMonitor.requestNode(_slice, srt.getHash(), _handle, _nfh);
 		return null;
 	}
 	

@@ -18,11 +18,8 @@ package org.ccnx.ccn.impl.sync;
 
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
-import java.util.concurrent.Semaphore;
 
-import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.SyncNodeComposite;
-import org.ccnx.ccn.protocol.Component;
 
 /**
  * Nodes can be cached by hash across different comparators. We use WeakReferences to avoid accidentally caching nodes that
@@ -32,7 +29,8 @@ import org.ccnx.ccn.protocol.Component;
  */
 public class SyncNodeCache {
 	
-	private HashMap<SyncHashEntry, Semaphore> _hashesPending = new HashMap<SyncHashEntry, Semaphore>();
+	// For holding objects used as locks for each pending hash
+	private HashMap<SyncHashEntry, Boolean> _hashesPending = new HashMap<SyncHashEntry, Boolean>();
 	
 	protected HashMap<SyncHashEntry, WeakReference<SyncNodeComposite>> _nodes = new HashMap<SyncHashEntry, WeakReference<SyncNodeComposite>>();
 
@@ -66,41 +64,43 @@ public class SyncNodeCache {
 	/**
 	 * Activate the mechanism to avoid multiple requests for the same node and to wait for a
 	 * node in the process of being fetched by another comparator if it is.
-	 * This is a "get and set" routine which creates and stores a semaphore for sharing if one hasn't
-	 * already been created for this hash. The caller must acquire or attempt to acquire the semaphore.
-	 * The first caller should acquire it and request the node. Subsequent callers can either wait for
-	 * the node to return by acquiring the semaphore, or check whether the request has already been
-	 * sent by testing whether the semaphore can be acquired.
+	 * This is a "get and set" routine which creates and stores a lock for sharing if one hasn't
+	 * already been created for this hash. The caller must acquire or attempt to acquire the lock.
+	 * The first caller should request the node and notify waiters when it has it. Subsequent callers 
+	 * will wait for the node to return by acquiring the lock.
 	 * 
 	 * @param hash
-	 * @return Semaphore for waiting for the node
+	 * @return Lock object for waiting for the node
 	 */
-	public Semaphore pending(byte[] hash) {
-		Semaphore sem = null;
+	public Boolean pending(byte[] hash) {
+		Boolean lock = null;
 		synchronized (this) {
 			SyncHashEntry she = new SyncHashEntry(hash);
-			sem = _hashesPending.get(she);
-			if (null == sem) {
-				sem = new Semaphore(1);
-				_hashesPending.put(she, sem);
+			lock = _hashesPending.get(she);
+			if (null == lock) {
+				lock = new Boolean(false);
+				_hashesPending.put(she, lock);
 			}
-			return sem;
+			return lock;
 		}
 	}
-	
+		
 	/**
 	 * Call this after a node has been returned. It releases the semaphore (allowing waiters to
 	 * continue) and removes the entry from the array of pending node requests
 	 * @param hash
 	 */
 	public void clearPending(byte[] hash) {
+		Boolean lock;
 		synchronized (this) {
 			SyncHashEntry she = new SyncHashEntry(hash);
-			Semaphore sem = _hashesPending.remove(she);
-			if (null != sem) {
-				sem.release();
-			} else
-Log.info("No semaphore for {0}", Component.printURI(hash));
+			lock = _hashesPending.remove(she);
+		}
+		if (null != lock) {
+			synchronized (lock) {
+				lock = false;
+				lock.notifyAll();
+			}
 		}
 	}
 }
