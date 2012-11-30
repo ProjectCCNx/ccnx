@@ -32,6 +32,7 @@ import java.util.logging.Level;
 import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNSyncHandler;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.encoding.BinaryXMLDecoder;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
@@ -388,15 +389,12 @@ public class SliceComparator implements Runnable {
 		if (null != node)
 			return node;
 		Pending lock = _snc.pending(srt.getHash());
-		while (wait && lock.getPending()) {
+		if (wait && lock.getPending()) {
 			try {
 				synchronized (lock) {
-					lock.wait();
+					lock.wait(SystemConfiguration.LONG_TIMEOUT);
 					node = srt.getNode(_decoder);
-					if (null != node) {
-						_snc.clearPending(srt.getHash()); // probably don't need to do this...
-						return node;
-					}
+					return node;	// If we timed out we'll abort this round but that's "the best we can do"
 				}
 			} catch (InterruptedException e) {
 				return null;

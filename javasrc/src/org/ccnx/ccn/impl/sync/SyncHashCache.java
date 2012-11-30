@@ -33,8 +33,7 @@ public class SyncHashCache {
 			if (null == entry) {
 				entry = new SyncTreeEntry(hash, snc);
 				_hashes.put(new SyncHashEntry(hash), entry);
-			} else
-				entry.setPos(0);
+			}
 			return entry;
 		}
 	}
