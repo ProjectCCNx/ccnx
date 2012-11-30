@@ -117,6 +117,7 @@ static void ccn_append_link_stuff(struct ccnd_handle *h,
 static int process_incoming_link_message(struct ccnd_handle *h,
                                          struct face *face, enum ccn_dtag dtag,
                                          unsigned char *msg, size_t size);
+static void process_internal_client_buffer(struct ccnd_handle *h);
 static void
 pfi_destroy(struct ccnd_handle *h, struct interest_entry *ie,
             struct pit_face_item *p);
@@ -443,7 +444,7 @@ ccnd_close_fd(struct ccnd_handle *h, unsigned faceid, int *pfd)
 /**
  * Associate a guid with a face.
  *
- * The same guid is shared amoing all the peers that communicate over the
+ * The same guid is shared among all the peers that communicate over the
  * face, and no two faces at a node should have the same guid.
  *
  * @returns 0 for success, -1 for error.
@@ -480,6 +481,30 @@ ccnd_set_face_guid(struct ccnd_handle *h, struct face *face,
         res = -1;
     hashtb_end(e);
     return(res);
+}
+
+/**
+ * Return the faceid associated with the guid.
+ */
+unsigned
+ccnd_faceid_from_guid(struct ccnd_handle *h,
+                      const unsigned char *guid, size_t size)
+{
+    struct ccn_charbuf *c = NULL;
+    unsigned *pfaceid = NULL;
+    
+    if (size > 255)
+        return(CCN_NOFACEID);
+    if (h->faceid_by_guid == NULL)
+        return(CCN_NOFACEID);
+    c = ccn_charbuf_create();
+    ccn_charbuf_append_value(c, size, 1);
+    ccn_charbuf_append(c, guid, size);
+    pfaceid = hashtb_lookup(h->faceid_by_guid, c->buf, c->length);
+    ccn_charbuf_destroy(&c);
+    if (pfaceid == NULL)
+        return(CCN_NOFACEID);
+    return(*pfaceid);
 }
 
 /**
@@ -2081,6 +2106,7 @@ check_dgram_faces(struct ccnd_handle *h)
     int count = 0;
     int checkflags = CCN_FACE_DGRAM;
     int wantflags = CCN_FACE_DGRAM;
+    int adj_req = 0;
     
     hashtb_start(h->dgram_faces, e);
     while (e->data != NULL) {
@@ -2088,7 +2114,7 @@ check_dgram_faces(struct ccnd_handle *h)
         if (face->addr != NULL && (face->flags & checkflags) == wantflags) {
             face->flags &= ~CCN_FACE_LC; /* Rate limit link check interests */
             if (face->recvcount == 0) {
-                if ((face->flags & CCN_FACE_PERMANENT) == 0) {
+                if ((face->flags & (CCN_FACE_PERMANENT | CCN_FACE_ADJ)) == 0) {
                     count += 1;
                     hashtb_delete(e);
                     continue;
@@ -2104,6 +2130,9 @@ check_dgram_faces(struct ccnd_handle *h)
         hashtb_next(e);
     }
     hashtb_end(e);
+    if (adj_req) {
+        process_internal_client_buffer(h);
+    }
     return(count);
 }
 

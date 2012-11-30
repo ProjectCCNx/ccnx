@@ -22,6 +22,7 @@ Interest ::= Name
              Scope?
              InterestLifetime?
              Nonce?
+             FaceID?
 .......................................................
 
 The hierarchical *Name* is the only required element in an Interest message.
@@ -159,6 +160,14 @@ It is the application that chooses the value for *InterestLifetime*.
 Nonce ::= BLOB
 ...........................................................
 The Nonce carries a randomly-genenerated bytestring that is used to detect and discard duplicate Interest messages.  Applications generally do not need to generate or check the Nonce.  Note that the Nonce is not the only basis for detecting and discarding duplicate Interest messages that arrive at a node, but can be used to improve the efficiency of the detection.
+
+== FaceID
+...........................................................
+FaceID ::= nonNegativeInteger
+...........................................................
+The *FaceID* may be used to specify the desired outgoing face for forwarding the interest.
+This is restricted to local applications that need to bypass the normal FIB lookup.
+The *FaceID* element is removed before the interest message is forwarded.
 
 [[example]]
 == Example
