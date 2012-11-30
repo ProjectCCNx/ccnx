@@ -138,7 +138,7 @@ adjstate_change_db(struct ccnd_handle *ccnd, struct face *face,
     new = (old & ~clear) | set;
     if (new != old) {
         face->adjstate = new;
-        if (1) {
+        if (ccnd->debug & (2 | 4)) {
             /* display the bits in face->adjstate */
             char f[] = "sSoOcCdDTPRA\0";
             int i;
