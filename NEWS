@@ -23,6 +23,7 @@ CCNx 0.7.0.
 	* Bug #100861: ccnd expiry of stale data can wait too long when traffic is high
 	* Feature #100858: VLC plugin could use separate preferences for version timeout and media 
 	header timeout
+	* Bug #100693: Remove some obsolete code from ccnd matching loop
 
 Changes between 0.6.1 and 0.6.2:
 --------------------------------
