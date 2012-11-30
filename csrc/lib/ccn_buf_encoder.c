@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -31,6 +31,7 @@
 
 /**
  * Create SignedInfo.
+ *
  *
  * @param c is used to hold the result.
  * @param publisher_key_id points to the digest of the publisher key id.

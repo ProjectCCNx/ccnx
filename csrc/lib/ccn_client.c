@@ -2554,7 +2554,7 @@ ccn_get_public_key(struct ccn *h,
     struct ccn_keystore *keystore = NULL;
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     int res;
-    res = ccn_chk_signing_params(h, params, &sp, NULL, NULL, NULL);
+    res = ccn_chk_signing_params(h, params, &sp, NULL, NULL, NULL, NULL);
     if (res < 0)
         return(res);
     hashtb_start(h->keystores, e);
@@ -2684,7 +2684,8 @@ ccn_chk_signing_params(struct ccn *h,
                        struct ccn_signing_params *result,
                        struct ccn_charbuf **ptimestamp,
                        struct ccn_charbuf **pfinalblockid,
-                       struct ccn_charbuf **pkeylocator)
+                       struct ccn_charbuf **pkeylocator,
+                       struct ccn_charbuf **pextopt)
 {
     int res = 0;
     int i;
@@ -2698,7 +2699,8 @@ ccn_chk_signing_params(struct ccn *h,
                               CCN_SP_TEMPL_FRESHNESS      |
                               CCN_SP_TEMPL_KEY_LOCATOR    |
                               CCN_SP_FINAL_BLOCK          |
-                              CCN_SP_OMIT_KEY_LOCATOR
+                              CCN_SP_OMIT_KEY_LOCATOR     |
+                              CCN_SP_TEMPL_EXT_OPT
                               )) != 0)
         return(NOTE_ERR(h, EINVAL));
     conflicting = CCN_SP_TEMPL_FINAL_BLOCK_ID | CCN_SP_FINAL_BLOCK;
@@ -2720,7 +2722,8 @@ ccn_chk_signing_params(struct ccn *h,
     needed = result->sp_flags & (CCN_SP_TEMPL_TIMESTAMP      |
                                  CCN_SP_TEMPL_FINAL_BLOCK_ID |
                                  CCN_SP_TEMPL_FRESHNESS      |
-                                 CCN_SP_TEMPL_KEY_LOCATOR    );
+                                 CCN_SP_TEMPL_KEY_LOCATOR    |
+                                 CCN_SP_TEMPL_EXT_OPT        );
     if (result->template_ccnb != NULL) {
         struct ccn_buf_decoder decoder;
         struct ccn_buf_decoder *d;
@@ -2789,6 +2792,19 @@ ccn_chk_signing_params(struct ccn *h,
                 }
                 needed &= ~CCN_SP_TEMPL_KEY_LOCATOR;
             }
+            start = d->decoder.token_index;
+            if (ccn_buf_match_dtag(d, CCN_DTAG_ExtOpt))
+                ccn_buf_advance_past_element(d);
+            stop = d->decoder.token_index;
+            if ((needed & CCN_SP_TEMPL_EXT_OPT) != 0 && 
+                d->decoder.state >= 0 && stop > start) {
+                if (pextopt != NULL) {
+                    *pextopt = ccn_charbuf_create();
+                    ccn_charbuf_append(*pextopt,
+                                       d->buf + start, stop - start);
+                }
+                needed &= ~CCN_SP_TEMPL_EXT_OPT;
+            }
             ccn_buf_check_close(d);
         }
         if (d->decoder.state < 0)
@@ -2825,10 +2841,11 @@ ccn_sign_content(struct ccn *h,
     struct ccn_charbuf *timestamp = NULL;
     struct ccn_charbuf *finalblockid = NULL;
     struct ccn_charbuf *keylocator = NULL;
+    struct ccn_charbuf *extopt = NULL;
     int res;
 
     res = ccn_chk_signing_params(h, params, &p,
-                                 &timestamp, &finalblockid, &keylocator);
+                                 &timestamp, &finalblockid, &keylocator, &extopt);
     if (res < 0)
         return(res);
     hashtb_start(h->keystores, e);
@@ -2874,6 +2891,17 @@ ccn_sign_content(struct ccn *h,
                                          p.freshness,
                                          finalblockid,
                                          keylocator);
+        if (res >= 0 && extopt != NULL) {
+            /* ExtOpt not currently part of ccn_signed_info_create */
+            if (signed_info->length > 0 &&
+                signed_info->buf[signed_info->length - 1] == 0) {
+                signed_info->length -= 1; /* remove closer */
+                ccn_charbuf_append_charbuf(signed_info, extopt);
+                ccn_charbuf_append_closer(signed_info);
+            }
+            else
+                NOTE_ERR(h, -1);
+        }
         if (res >= 0)
             res = ccn_encode_ContentObject(resultbuf,
                                            name_prefix,

@@ -74,7 +74,8 @@
                          Type?,
                          FreshnessSeconds?,
                          FinalBlockID?,
-                         KeyLocator?)>
+                         KeyLocator?,
+                         ExtOpt?)>
 <!ATTLIST SignedInfo %commonattrs;>
 
 <!ELEMENT NameComponentCount (#PCDATA)> <!-- nonNegativeInteger -->
@@ -167,6 +168,9 @@
 
 <!ELEMENT KeyName	(Name, (%publisherid;)?)>
 <!ATTLIST KeyName	%commonattrs;>
+
+<!ELEMENT ExtOpt        (#PCDATA)>      <!-- base64Binary -->
+<!ATTLIST ExtOpt        ccnbencoding CDATA #FIXED 'base64Binary'>
 
 <!ELEMENT FaceInstance  (Action?,
                          PublisherPublicKeyDigest?,

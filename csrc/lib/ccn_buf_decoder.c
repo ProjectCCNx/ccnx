@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2008, 2009, 2010, 2011, 2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -795,6 +795,11 @@ ccn_parse_SignedInfo(struct ccn_buf_decoder *d, struct ccn_parsed_ContentObject 
             ccn_buf_check_close(d);
         }
         x->offset[CCN_PCO_E_KeyLocator] = d->decoder.token_index;
+        
+        x->offset[CCN_PCO_B_ExtOpt] = d->decoder.token_index;
+        ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_ExtOpt, 2, -1);
+        x->offset[CCN_PCO_E_ExtOpt] = d->decoder.token_index;
+        
         ccn_buf_check_close(d);
     }
     else

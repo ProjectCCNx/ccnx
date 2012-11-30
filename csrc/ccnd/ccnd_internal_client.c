@@ -1234,7 +1234,7 @@ Finish:
         ccnd_msg(ccnd, "%s: %s:\n", ccn_charbuf_as_string(culprit), strerror(errno));
         culprit = NULL;
     }
-    res = ccn_chk_signing_params(ccnd->internal_client, NULL, &sp, NULL, NULL, NULL);
+    res = ccn_chk_signing_params(ccnd->internal_client, NULL, &sp, NULL, NULL, NULL, NULL);
     if (res != 0)
         abort();
     memcpy(ccnd->ccnd_id, sp.pubid, sizeof(ccnd->ccnd_id));

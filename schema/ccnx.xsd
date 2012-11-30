@@ -170,6 +170,10 @@
 		 publisher's locator with another that pointed to the same key
 		 but made it seem as if it lacked those credentials. -->
     <xs:element name="KeyLocator" type="KeyLocatorType" minOccurs="0" maxOccurs="1"/>
+    <!-- The optional ExtOpt is for carrying extended options without
+		 requiring changes to the base protocol.  Refer to the technical docs
+		 for details about how the binary data should be structured. -->
+    <xs:element name="ExtOpt" type="Base64BinaryType" minOccurs="0" maxOccurs="1"/>
   </xs:sequence>
 </xs:complexType>
 

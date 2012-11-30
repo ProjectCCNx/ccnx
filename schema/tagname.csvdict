@@ -18,6 +18,7 @@
 31,Link
 32,LinkAuthenticator
 33,NameComponentCount,DeprecatedInInterest
+34,ExtOpt
 36,RootDigest
 37,Signature
 38,Start

@@ -5,7 +5,7 @@
  *
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -78,6 +78,7 @@ enum ccn_dtag {
     CCN_DTAG_Link = 31,
     CCN_DTAG_LinkAuthenticator = 32,
     CCN_DTAG_NameComponentCount = 33,	/* DeprecatedInInterest */
+    CCN_DTAG_ExtOpt = 34,
     CCN_DTAG_RootDigest = 36,
     CCN_DTAG_Signature = 37,
     CCN_DTAG_Start = 38,
