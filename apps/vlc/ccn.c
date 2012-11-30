@@ -67,6 +67,13 @@
 #define SEEKABLE_TEXT N_("CCN streams can seek")
 #define SEEKABLE_LONGTEXT N_(               \
 "Enable or disable seeking within a CCN stream.")
+#define VERSION_TIMEOUT_TEXT N_("Version timeout (ms)")
+#define VERSION_TIMEOUT_LONGTEXT N_(                                          \
+"Maximum number of milliseconds to wait for resolving latest version of media.")
+#define HEADER_TIMEOUT_TEXT N_("Header timeout (ms)")
+#define HEADER_TIMEOUT_LONGTEXT N_(                                          \
+"Maximum number of milliseconds to wait for resolving latest version of header.")
+
 
 static int  CCNOpen(vlc_object_t *);
 static void CCNClose(vlc_object_t *);
@@ -97,6 +104,10 @@ add_integer("ccn-fifo-maxblocks", CCN_FIFO_MAX_BLOCKS,
             MAX_FIFO_TEXT, MAX_FIFO_LONGTEXT, true);
 add_integer("ccn-prefetch", CCN_DEFAULT_PREFETCH,
             PREFETCH_TEXT, PREFETCH_LONGTEXT, true);
+add_integer("ccn-version-timeout", CCN_VERSION_TIMEOUT,
+            VERSION_TIMEOUT_TEXT, VERSION_TIMEOUT_LONGTEXT, true);
+add_integer("ccn-header-timeout", CCN_HEADER_TIMEOUT,
+            HEADER_TIMEOUT_TEXT, HEADER_TIMEOUT_LONGTEXT, true);
 add_bool("ccn-streams-seekable", true,
          SEEKABLE_TEXT, SEEKABLE_LONGTEXT, true )
 #endif
@@ -122,6 +133,8 @@ struct access_sys_t
     int timeouts;           /**< number of timeouts without good data received */
     int i_fifo_max;         /**< maximum number of blocks in FIFO */
     int i_prefetch;         /**< offset for prefetching */
+    int i_version_timeout;  /**< timeout in seconds for getting latest media version */
+    int i_header_timeout;   /**< timeout in seconds for getting latest header version */
     block_fifo_t *p_fifo;   /**< FIFO for blocks delivered to VLC */
     struct ccn *ccn;        /**< CCN handle */
     struct ccn_closure *incoming;   /**< current closure for incoming content handling */
@@ -175,6 +188,8 @@ CCNOpen(vlc_object_t *p_this)
     p_sys->i_chunksize = -1;
     p_sys->i_fifo_max = var_CreateGetInteger(p_access, "ccn-fifo-maxblocks");
     p_sys->i_prefetch = var_CreateGetInteger(p_access, "ccn-prefetch");
+    p_sys->i_version_timeout = var_CreateGetInteger(p_access, "ccn-version-timeout");
+    p_sys->i_header_timeout = var_CreateGetInteger(p_access, "ccn-header-timeout");
     msg_Info(p_access, "CCN.Open: ccn-fifo-maxblocks %d", p_sys->i_fifo_max);
     p_access->info.i_size = LLONG_MAX;	/* don't know yet, but bigger is better */
     vlc_mutex_init(&p_sys->lock);
@@ -322,21 +337,21 @@ static int CCNSeek(access_t *p_access, uint64_t i_pos)
     p_sys->incoming->data = p_access; /* so CCN callbacks can find p_sys */
     p_sys->incoming->p = &incoming_content; /* the CCN callback */
     p_sys->i_pos = i_pos;
-    /* prefetch, but only do full amount if going forward */
+    /* fetch */
+    p_name = sequenced_name(p_sys->p_name, p_sys->i_pos / p_sys->i_chunksize);
+    ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming, p_sys->p_data_template);
+    ccn_charbuf_destroy(&p_name);
+    /* and prefetch, but only do full amount if going forward */
     if (i_pos > p_access->info.i_pos)
       i_prefetch = p_sys->i_prefetch;
     else
       i_prefetch = p_sys->i_prefetch / 2;
-    for (i = 0; i <= i_prefetch; i++) {
+    for (i = 1; i <= i_prefetch; i++) {
         p_name = sequenced_name(p_sys->p_name, i + p_sys->i_pos / p_sys->i_chunksize);
         ccn_express_interest(p_sys->ccn, p_name, p_sys->prefetch,
                                      p_sys->p_prefetch_template);
         ccn_charbuf_destroy(&p_name);        
     }
-    /* and fetch */
-    p_name = sequenced_name(p_sys->p_name, p_sys->i_pos / p_sys->i_chunksize);
-    ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming, p_sys->p_data_template);
-    ccn_charbuf_destroy(&p_name);
     
     p_access->info.i_pos = i_pos;
     p_access->info.b_eof = false;
@@ -452,25 +467,27 @@ ccn_event_thread(void *p_this)
     p_sys->p_name = ccn_charbuf_create_n(p_name->length + 16);
     CHECK_NOMEM(p_sys->p_name, "CCN.Input failed: no memory for global name charbuf");
     i_ret = ccn_resolve_version(p_sys->ccn, p_name,
-                                CCN_V_HIGHEST, CCN_VERSION_TIMEOUT);
-    ccn_charbuf_append_charbuf(p_sys->p_name, p_name);
-    if (i_ret == 0) {
-        /* name is versioned, so get the header to obtain the length */
-        p_header = ccn_get_header(p_sys->ccn, p_name, CCN_HEADER_TIMEOUT);
-        if (p_header != NULL) {
-            p_access->info.i_size = p_header->length;
-            p_sys->i_chunksize = p_header->block_size;
-            ccn_header_destroy(&p_header);
-        }
-        msg_Dbg(p_access, "CCN.Input set length %"PRId64, p_access->info.i_size);
+                                CCN_V_HIGHEST, p_sys->i_version_timeout);
+    if (i_ret < 0) {
+        msg_Err(p_access, "CCN.Input failed: unable to determine version");
+        goto exit;
     }
+    ccn_charbuf_append_charbuf(p_sys->p_name, p_name);
+    /* name is versioned, get the header, if possible, to obtain the length */
+    p_header = ccn_get_header(p_sys->ccn, p_name, p_sys->i_header_timeout);
+    if (p_header != NULL) {
+        p_access->info.i_size = p_header->length;
+        p_sys->i_chunksize = p_header->block_size;
+        ccn_header_destroy(&p_header);
+    }
+    msg_Dbg(p_access, "CCN.Input set length %"PRId64, p_access->info.i_size);
     ccn_charbuf_destroy(&p_name);
-
+    
     p_co = ccn_charbuf_create();
     CHECK_NOMEM(p_co, "CCN.Input failed: no memory for initial content");
     /* make sure we can get the first block, or fail early */
     p_name = sequenced_name(p_sys->p_name, 0);
-    i_ret = ccn_get(p_sys->ccn, p_name, p_sys->p_data_template, 5000, p_co, NULL, NULL, 0);
+    i_ret = ccn_get(p_sys->ccn, p_name, p_sys->p_data_template, p_sys->i_version_timeout, p_co, NULL, NULL, 0);
     ccn_charbuf_destroy(&p_co);
     if (i_ret < 0) {
         msg_Err(p_access, "CCN.Input failed: unable to locate specified input");
@@ -656,7 +673,8 @@ incoming_content(struct ccn_closure *selfp,
             ccn_charbuf_destroy(&name);
             if (res < 0) abort();
             /* and prefetch a fragment if it's not past the end */
-            if (p_sys->i_prefetch * p_sys->i_chunksize <= p_access->info.i_size - i_nextpos) {
+            if (p_sys->i_prefetch > 0 &&
+                (p_sys->i_prefetch * p_sys->i_chunksize <= p_access->info.i_size - i_nextpos)) {
                 name = sequenced_name(p_sys->p_name, p_sys->i_prefetch + i_nextpos / p_sys->i_chunksize);
                 res = ccn_express_interest(info->h, name, p_sys->prefetch, p_sys->p_prefetch_template);
                 ccn_charbuf_destroy(&name);
