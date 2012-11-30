@@ -35,6 +35,7 @@ import org.ccnx.ccn.CCNSyncHandler;
 import org.ccnx.ccn.impl.encoding.BinaryXMLDecoder;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.impl.sync.SyncNodeCache.Pending;
 import org.ccnx.ccn.io.content.ConfigSlice;
 import org.ccnx.ccn.io.content.SyncNodeComposite;
 import org.ccnx.ccn.io.content.SyncNodeComposite.SyncNodeElement;
@@ -386,8 +387,8 @@ public class SliceComparator implements Runnable {
 		SyncNodeComposite node = srt.getNode(_decoder);
 		if (null != node)
 			return node;
-		Boolean lock = _snc.pending(srt.getHash());
-		while (wait && lock) {
+		Pending lock = _snc.pending(srt.getHash());
+		while (wait && lock.getPending()) {
 			try {
 				synchronized (lock) {
 					lock.wait();
@@ -404,7 +405,7 @@ public class SliceComparator implements Runnable {
 		}			
 		
 		synchronized (lock) {
-			lock = true;
+			lock.setPending(true);
 		}
 		ProtocolBasedSyncMonitor.requestNode(_slice, srt.getHash(), _handle, _nfh);
 		return null;

@@ -29,8 +29,20 @@ import org.ccnx.ccn.io.content.SyncNodeComposite;
  */
 public class SyncNodeCache {
 	
+	public class Pending {
+		boolean _pending = false;
+		
+		public void setPending(boolean value) {
+			_pending = value;
+		}
+		
+		public boolean getPending() {
+			return _pending;
+		}
+	}
+	
 	// For holding objects used as locks for each pending hash
-	private HashMap<SyncHashEntry, Boolean> _hashesPending = new HashMap<SyncHashEntry, Boolean>();
+	private HashMap<SyncHashEntry, Pending> _hashesPending = new HashMap<SyncHashEntry, Pending>();
 	
 	protected HashMap<SyncHashEntry, WeakReference<SyncNodeComposite>> _nodes = new HashMap<SyncHashEntry, WeakReference<SyncNodeComposite>>();
 
@@ -72,13 +84,13 @@ public class SyncNodeCache {
 	 * @param hash
 	 * @return Lock object for waiting for the node
 	 */
-	public Boolean pending(byte[] hash) {
-		Boolean lock = null;
+	public Pending pending(byte[] hash) {
+		Pending lock = null;
 		synchronized (this) {
 			SyncHashEntry she = new SyncHashEntry(hash);
 			lock = _hashesPending.get(she);
 			if (null == lock) {
-				lock = new Boolean(false);
+				lock = new Pending();
 				_hashesPending.put(she, lock);
 			}
 			return lock;
@@ -91,14 +103,14 @@ public class SyncNodeCache {
 	 * @param hash
 	 */
 	public void clearPending(byte[] hash) {
-		Boolean lock;
+		Pending lock;
 		synchronized (this) {
 			SyncHashEntry she = new SyncHashEntry(hash);
 			lock = _hashesPending.remove(she);
 		}
 		if (null != lock) {
 			synchronized (lock) {
-				lock = false;
+				lock.setPending(false);
 				lock.notifyAll();
 			}
 		}
