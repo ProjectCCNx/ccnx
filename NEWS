@@ -21,8 +21,6 @@ CCNx 0.7.0.
 	* Feature #100850: ccn_resolve_version() needs to manage timeout/retransmit of interests better
 	* Feture #100816: CCNx Android Service needs a WebView to load ccndstatus from itself
 	* Bug #100861: ccnd expiry of stale data can wait too long when traffic is high
-	* Feature #100862: Routing agents need to learn about the adjacency of the network that they
-	find themselves participating in. Add support for this to ccnd.
 
 Changes between 0.6.1 and 0.6.2:
 --------------------------------
