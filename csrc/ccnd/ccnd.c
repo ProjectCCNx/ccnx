@@ -4279,17 +4279,6 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                     ccn_content_matches_interest(content->key,
                                        content->size,
                                        0, NULL, msg, size, pi)) {
-                    if ((pi->orderpref & 1) == 0 && // XXX - should be symbolic
-                        pi->prefix_comps != comps->n - 1 &&
-                        comps->n == content->ncomps &&
-                        content_matches_interest_prefix(h, content, msg,
-                                                        comps, comps->n - 1)) {
-                        if (h->debug & 8)
-                            ccnd_debug_ccnb(h, __LINE__, "skip_match", NULL,
-                                            content->key,
-                                            content->size);
-                        goto move_along;
-                    }
                     if (h->debug & 8)
                         ccnd_debug_ccnb(h, __LINE__, "matches", NULL,
                                         content->key,
@@ -4300,7 +4289,6 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                     content = next_child_at_level(h, content, comps->n - 1);
                     goto check_next_prefix;
                 }
-            move_along:
                 content = content_from_accession(h, content_skiplist_next(h, content));
             check_next_prefix:
                 if (content != NULL &&
