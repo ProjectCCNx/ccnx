@@ -181,6 +181,8 @@ append_adjacency_uri(struct ccnd_handle *ccnd,
     return(res < 0 ? -1 : 0);
 }
 
+#define ADJ_REFRESH_SEC 120
+#define ADJ_MICROS (ADJ_REFRESH_SEC * 1000000)
 /**
  * Scheduled event to refresh adjacency
  */
@@ -205,7 +207,7 @@ adjacency_do_refresh(struct ccn_schedule *sched,
     if ((face->adjstate & both) == both) {
         ccnd_adjacency_offer_or_commit_req(ccnd, face);
         if ((face->adjstate & ADJ_PINGING) != 0)
-            return(10 * 1000000);
+            return((ADJ_MICROS + nrand48(ccnd->seed) % ADJ_MICROS) / 2);
     }
     adjstate_change(ccnd, face, 0, ADJ_ACTIVE);
     return(0);
@@ -226,7 +228,7 @@ ccnd_register_adjacency(struct ccnd_handle *ccnd, struct face *face,
     
     if ((forwarding_flags & CCN_FORW_ACTIVE) != 0) {
         adj = CCN_FACE_ADJ;
-        lifetime = 10; /* seconds */ // XXX make larger before release
+        lifetime = ADJ_REFRESH_SEC; /* seconds */
     }
     both = ADJ_DAT_RECV | ADJ_DAT_SENT;
     if ((face->adjstate & both) != both)
