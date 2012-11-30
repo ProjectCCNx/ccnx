@@ -394,7 +394,9 @@ public class SliceComparator implements Runnable {
 				synchronized (lock) {
 					lock.wait(SystemConfiguration.LONG_TIMEOUT);
 					node = srt.getNode(_decoder);
-					return node;	// If we timed out we'll abort this round but that's "the best we can do"
+					if (node == null) {
+						throw new SyncException("Node fetch timeout");
+					}
 				}
 			} catch (InterruptedException e) {
 				return null;
@@ -1064,7 +1066,8 @@ public class SliceComparator implements Runnable {
 			} while (keepComparing);
 			_compareSemaphore.release();
 		} catch (Exception ex) {Log.logStackTrace(Log.FAC_SYNC, Level.WARNING, ex);} 	
-		  catch (Error er) {Log.logStackTrace(Log.FAC_SYNC, Level.WARNING, er);} 
+		  catch (Error er) {Log.logStackTrace(Log.FAC_SYNC, Level.WARNING, er);}
+		changeState(SyncCompareState.INIT);
 	}
 	
 	/**
