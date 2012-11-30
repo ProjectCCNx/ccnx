@@ -2114,18 +2114,13 @@ check_dgram_faces(struct ccnd_handle *h)
         if (face->addr != NULL && (face->flags & checkflags) == wantflags) {
             face->flags &= ~CCN_FACE_LC; /* Rate limit link check interests */
             if (face->recvcount == 0) {
-                if ((face->flags & CCN_FACE_PERMANENT) == 0) {
+                if ((face->flags & (CCN_FACE_PERMANENT | CCN_FACE_ADJ)) == 0) {
                     count += 1;
                     hashtb_delete(e);
                     continue;
                 }
             }
             else if (face->recvcount == 1) {
-                if ((face->flags & CCN_FACE_ADJ) != 0) {
-                    face->flags |= CCN_FACE_LC;
-                    ccnd_adjacency_offer_or_commit_req(h, face);
-                    adj_req = 1;
-                }
                 face->recvcount = 0;
             }
             else {
