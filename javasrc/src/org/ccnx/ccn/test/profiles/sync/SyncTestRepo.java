@@ -71,8 +71,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 				s.deleteSlice(getHandle);
 			} catch (IOException e) {
 				Log.warning(Log.FAC_TEST, "failed to get handle to clean up sync slices:{0}", e.getMessage());
-			}
-		
+			}	
 	}
 	
 	@Test
@@ -406,8 +405,8 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 
 		ContentName prefix1b = prefix1.append("round2");
 		segments = SyncTestCommon.writeFile(prefix1b, false, SystemConfiguration.BLOCK_SIZE * 40, putHandle);
-		segmentCheck2 = checkCallbacks(callbackNames2, prefix1, segments, 0);
-		segmentCheck3 = checkCallbacks(callbackNames3, prefix1, segments, 0);
+		segmentCheck2 = checkCallbacks(callbackNames2, prefix1b, segments, 0);
+		segmentCheck3 = checkCallbacks(callbackNames3, prefix1b, segments, 0);
 		if (segmentCheck2 != 0 || segmentCheck3 != 0)
 			Assert.fail("Did not receive all of the callbacks");
 		else
