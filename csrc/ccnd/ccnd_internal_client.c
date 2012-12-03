@@ -56,7 +56,11 @@
 #endif
 
 static void ccnd_start_notice(struct ccnd_handle *ccnd);
+static void adjacency_timed_reset(struct ccnd_handle *ccnd, unsigned faceid);
 
+/**
+ * Creates a key object using the service discovery name profile.
+ */
 static struct ccn_charbuf *
 ccnd_init_service_ccnb(struct ccnd_handle *ccnd, const char *baseuri, int freshness)
 {
@@ -111,7 +115,48 @@ ccnd_init_service_ccnb(struct ccnd_handle *ccnd, const char *baseuri, int freshn
 #define ADJ_DAT_SENT (1U << 6)
 #define ADJ_DAT_RECV (1U << 7)
 #define ADJ_TIMEDWAIT (1U << 8)
+#define ADJ_PINGING  (1U << 9)
+#define ADJ_RETRYING (1U << 10)
+#define ADJ_ACTIVE   (1U << 11)
 
+/**
+ * Update face->adjstate by setting / clearing the indicated bits.
+ *
+ * If a bit is in both masks, it is set.
+ * @returns the old values, or -1 for an error.
+ */
+int
+adjstate_change_db(struct ccnd_handle *ccnd, struct face *face,
+                int set, int clear, int line)
+{
+    int new;
+    int old;
+    
+    if (face == NULL)
+        return(-1);
+    old = face->adjstate;
+    new = (old & ~clear) | set;
+    if (new != old) {
+        face->adjstate = new;
+        if (ccnd->debug & (2 | 4)) {
+            /* display the bits in face->adjstate */
+            char f[] = "sSoOcCdDTPRA\0";
+            int i;
+            for (i = 0; f[i] != 0; i++)
+                if (((new >> i) & 1) == 0)
+                    f[i] = '.';
+            ccnd_msg(ccnd, "ic.%d adjstate %u %s %#x", line,
+                     face->faceid, f, face->flags);
+        }
+    }
+    return(old);
+}
+#define adjstate_change(h, f, s, c) adjstate_change_db(h, f, s, c, __LINE__)
+/**
+ * Append the URI representation of the adjacency prefix for face to the
+ * charbuf cb.
+ * @returns 0 for success, -1 for error.
+ */
 static int
 append_adjacency_uri(struct ccnd_handle *ccnd,
                      struct ccn_charbuf *cb, struct face *face)
@@ -136,30 +181,100 @@ append_adjacency_uri(struct ccnd_handle *ccnd,
     return(res < 0 ? -1 : 0);
 }
 
+#define ADJ_REFRESH_SEC 120
+#define ADJ_MICROS (ADJ_REFRESH_SEC * 1000000)
+/**
+ * Scheduled event to refresh adjacency
+ */
+static int
+adjacency_do_refresh(struct ccn_schedule *sched,
+                     void *clienth,
+                     struct ccn_scheduled_event *ev,
+                     int flags)
+{
+    struct ccnd_handle *ccnd = clienth;
+    struct face *face = NULL;
+    unsigned both;
+    
+    face = ccnd_face_from_faceid(ccnd, ev->evint);
+    if (face == NULL)
+        return(0);
+    if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
+        adjstate_change(ccnd, face, 0, ADJ_ACTIVE);
+        return(0);
+    }
+    both = ADJ_DAT_RECV | ADJ_DAT_SENT;
+    if ((face->adjstate & both) == both) {
+        ccnd_adjacency_offer_or_commit_req(ccnd, face);
+        if ((face->adjstate & ADJ_PINGING) != 0)
+            return((ADJ_MICROS + nrand48(ccnd->seed) % ADJ_MICROS) / 2);
+    }
+    adjstate_change(ccnd, face, 0, ADJ_ACTIVE);
+    return(0);
+}
+
+/**
+ * Register the adjacency prefix with the given forwarding flags.
+ */
 static void
-ccnd_register_adjacency(struct ccnd_handle *ccnd, struct face *face)
+ccnd_register_adjacency(struct ccnd_handle *ccnd, struct face *face,
+                        unsigned forwarding_flags)
 {
     struct ccn_charbuf *uri = NULL;
     unsigned both;
     int res;
+    int adj = 0;
+    int lifetime = 0;
     
+    if ((forwarding_flags & CCN_FORW_ACTIVE) != 0) {
+        adj = CCN_FACE_ADJ;
+        lifetime = ADJ_REFRESH_SEC; /* seconds */
+    }
     both = ADJ_DAT_RECV | ADJ_DAT_SENT;
     if ((face->adjstate & both) != both)
-        return;
-    if ((face->flags & CCN_FACE_ADJ) != 0)
         return;
     uri = ccn_charbuf_create();
     res = append_adjacency_uri(ccnd, uri, face);
     if (res >= 0)
         res = ccnd_reg_uri(ccnd, ccn_charbuf_as_string(uri), face->faceid,
-                CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE, 0x7FFFFFFF);
+                           forwarding_flags, lifetime);
     if (res >= 0) {
-        face->flags |= CCN_FACE_ADJ;
-        ccnd_face_status_change(ccnd, face->faceid);
+        if ((face->flags & CCN_FACE_ADJ) != adj) {
+            face->flags ^= CCN_FACE_ADJ;
+            ccnd_face_status_change(ccnd, face->faceid);
+        }
+        if (lifetime != 0 && (face->adjstate & ADJ_ACTIVE) == 0) {
+            ccn_schedule_event(ccnd->sched, lifetime * 1000000,
+                               adjacency_do_refresh, NULL, face->faceid);
+            adjstate_change(ccnd, face, ADJ_ACTIVE, 0);
+        }
     }
     ccn_charbuf_destroy(&uri);
 }
 
+/**
+ * Scheduled event for getting rid of an old guid cob.
+ */
+static int
+ccnd_flush_guid_cob(struct ccn_schedule *sched,
+                    void *clienth,
+                    struct ccn_scheduled_event *ev,
+                    int flags)
+{
+    struct ccnd_handle *ccnd = clienth;
+    struct face *face = NULL;
+    
+    if ((flags & CCN_SCHEDULE_CANCEL) != 0)
+        return(0);
+    face = ccnd_face_from_faceid(ccnd, ev->evint);
+    if (face != NULL)
+        ccn_charbuf_destroy(&face->guid_cob);
+    return(0);
+}
+
+/**
+ * Create the adjacency content object for our endpoint of the face.
+ */
 static void
 ccnd_init_face_guid_cob(struct ccnd_handle *ccnd, struct face *face)
 {
@@ -170,6 +285,8 @@ ccnd_init_face_guid_cob(struct ccnd_handle *ccnd, struct face *face)
     struct ccn_charbuf *comp = NULL;
     struct ccn_charbuf *cob = NULL;
     int res;
+    int seconds = 60; /* freshness in the object */
+    int nfresh = 20; /* flush it after this many freshness periods */
     
     if (face->guid == NULL || face->guid_cob != NULL)
         return;
@@ -202,7 +319,7 @@ ccnd_init_face_guid_cob(struct ccnd_handle *ccnd, struct face *face)
     ccn_create_version(h, name, CCN_V_NOW, 0, 0);
     ccn_name_from_uri(name, "%00");
     sp.sp_flags |= CCN_SP_FINAL_BLOCK;
-    sp.freshness = 120;
+    sp.freshness = seconds;
     res = ccn_sign_content(h, cob, name, &sp, payload->buf, payload->length);
     if (res != 0)
         ccn_charbuf_destroy(&cob);
@@ -211,6 +328,9 @@ ccnd_init_face_guid_cob(struct ccnd_handle *ccnd, struct face *face)
     ccn_charbuf_destroy(&comp);
     ccn_charbuf_destroy(&sp.template_ccnb);
     face->guid_cob = cob;
+    if (cob != NULL)
+        ccn_schedule_event(ccnd->sched, nfresh * seconds * 1000000 - 800000,
+                           ccnd_flush_guid_cob, NULL, face->faceid);
 }
 
 /**
@@ -267,6 +387,13 @@ extract_bounds(const unsigned char *ccnb, struct ccn_parsed_interest *pi,
     return(-1);
 }
 
+/**
+ * Handle the data that comes back in response to interest sent by
+ * send_adjacency_solicit.
+ *
+ * We don't actually need to do much here, since the protocol is actually
+ * looking for an interest from the other side.
+ */
 static enum ccn_upcall_res
 solicit_response(struct ccn_closure *selfp,
                    enum ccn_upcall_kind kind,
@@ -283,14 +410,16 @@ solicit_response(struct ccn_closure *selfp,
             face = ccnd_face_from_faceid(ccnd, selfp->intdata);
             if (face == NULL)
                 return(CCN_UPCALL_RESULT_ERR);
-            if ((face->adjstate & (ADJ_SOL_SENT)) != 0) {
-                ccnd_forget_face_guid(ccnd, face);
-                face->adjstate = ADJ_TIMEDWAIT;
-            }
+            if ((face->adjstate & (ADJ_SOL_SENT)) != 0)
+                adjacency_timed_reset(ccnd, face->faceid);
             return(CCN_UPCALL_RESULT_ERR);
     }
 }
 
+/**
+ * Send an adjacency solitiation interest, to elicit an offer from the
+ * other side.
+ */
 static int
 send_adjacency_solicit(struct ccnd_handle *ccnd, struct face *face)
 {
@@ -304,6 +433,8 @@ send_adjacency_solicit(struct ccnd_handle *ccnd, struct face *face)
 
     if (face == NULL || face->guid != NULL || face->adjstate != 0)
         return(-1);
+    /* Need to poke the client library here so that it gets the curren time */
+    ccn_process_scheduled_operations(ccnd->internal_client);
     name = ccn_charbuf_create();
     c = ccn_charbuf_create();
     g = ccn_charbuf_create();
@@ -352,11 +483,11 @@ send_adjacency_solicit(struct ccnd_handle *ccnd, struct face *face)
         action->intdata = face->faceid;
         action->data = ccnd;
         ans = ccn_express_interest(ccnd->internal_client, name, action, templ);
-        /* Use the guid slot to hold out proposal */
+        /* Use the guid slot to hold our proposal */
         if (ans >= 0)
-            ans = ccnd_set_face_guid(ccnd, face,  g->buf, g->length);
+            ans = ccnd_set_face_guid(ccnd, face, g->buf, g->length);
         if (ans >= 0) {
-            face->adjstate = ADJ_SOL_SENT;
+            adjstate_change(ccnd, face, ADJ_SOL_SENT, 0);
             ccnd_internal_client_has_somthing_to_say(ccnd);
         }
         ans = (ans < 0) ? -1 : 0;
@@ -368,6 +499,9 @@ send_adjacency_solicit(struct ccnd_handle *ccnd, struct face *face)
     return(ans);
 }
 
+/**
+ * Scheduled event to call send_adjacency_solicit.
+ */
 static int
 ccnd_do_solicit(struct ccn_schedule *sched,
                 void *clienth,
@@ -388,16 +522,68 @@ ccnd_do_solicit(struct ccn_schedule *sched,
         return(0);
     check = CCN_FACE_CONNECTING | CCN_FACE_UNDECIDED | CCN_FACE_NOSEND |
             CCN_FACE_GG | CCN_FACE_MCAST | CCN_FACE_PASSIVE | CCN_FACE_NORECV |
-            CCN_FACE_NOSEND;
+            CCN_FACE_BC | CCN_FACE_ADJ;
     want = 0;
     if (face->adjstate == 0 && (face->flags & check) == want)
         send_adjacency_solicit(ccnd, face);
     return(0);
 }
 
-static void send_adjacency_offer_or_commit_req(struct ccnd_handle *ccnd,
-                                               struct face *face);
+/**
+ * Answer an adjacency guid request from any face, based on the guid
+ * in the name.
+ *
+ * @returns CCN_UPCALL_RESULT_INTEREST_CONSUMED if an answer was sent,
+ *  otherwise -1.
+ */
+static int
+ccnd_answer_by_guid(struct ccnd_handle *ccnd, struct ccn_upcall_info *info)
+{
+    struct face *face = NULL;
+    unsigned char mb[6] = "\xC1.M.G\x00";
+    const unsigned char *p = NULL;
+    size_t size = 0;
+    unsigned faceid;
+    int res;
+    
+    res = ccn_name_comp_get(info->interest_ccnb, info->interest_comps, 1,
+                            &p, &size);
+    if (res < 0)
+        return(-1);
+    if (size < sizeof(mb))
+        return(-1);
+    if (memcmp(p, mb, sizeof(mb)) != 0)
+        return(-1);
+    faceid = ccnd_faceid_from_guid(ccnd, p + sizeof(mb), size - sizeof(mb));
+    if (faceid == CCN_NOFACEID)
+        return(-1);
+    face = ccnd_face_from_faceid(ccnd, faceid);
+    if (face == NULL)
+        return(-1);
+    if ((face->flags & CCN_FACE_ADJ) == 0)
+        return(-1);
+    if (face->guid_cob == NULL)
+        ccnd_init_face_guid_cob(ccnd, face);
+    if (face->guid_cob == NULL)
+        return(-1);
+    res = -1;
+    if (ccn_content_matches_interest(face->guid_cob->buf,
+                                     face->guid_cob->length,
+                                     1,
+                                     NULL,
+                                     info->interest_ccnb,
+                                     info->pi->offset[CCN_PI_E],
+                                     info->pi
+                                     )) {
+        ccn_put(info->h, face->guid_cob->buf, face->guid_cob->length);
+        res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
+    }
+    return(res);
+}
 
+/**
+ * Handle the data comming back from an adjacency offer or commit request.
+ */
 static enum ccn_upcall_res
 incoming_adjacency(struct ccn_closure *selfp,
                    enum ccn_upcall_kind kind,
@@ -417,32 +603,44 @@ incoming_adjacency(struct ccn_closure *selfp,
                 return(CCN_UPCALL_RESULT_ERR);
             /* XXX - this should scrutinize the data to make sure it is OK */
             if ((face->adjstate & (ADJ_OFR_SENT | ADJ_CRQ_SENT)) != 0)
-                face->adjstate |= ADJ_DAT_RECV;
+                adjstate_change(ccnd, face, ADJ_DAT_RECV, 0);
+            adjstate_change(ccnd, face, 0, ADJ_PINGING | ADJ_RETRYING);
             if ((face->adjstate & (ADJ_CRQ_RECV)) != 0 &&
                 (face->adjstate & (ADJ_DAT_SENT)) == 0 &&
                 face->guid_cob != 0) {
                 ccn_put(info->h, face->guid_cob->buf,
                                  face->guid_cob->length);
-                face->adjstate |= ADJ_DAT_SENT;
-                send_adjacency_offer_or_commit_req(ccnd, face);
+                adjstate_change(ccnd, face, ADJ_DAT_SENT, 0);
+                if ((face->adjstate & (ADJ_DAT_RECV)) == 0)
+                    ccnd_adjacency_offer_or_commit_req(ccnd, face);
             }
-            ccnd_register_adjacency(ccnd, face);
+            ccnd_register_adjacency(ccnd, face,
+                                    CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE);
             return(CCN_UPCALL_RESULT_OK);
         case CCN_UPCALL_INTEREST_TIMED_OUT:
             face = ccnd_face_from_faceid(ccnd, selfp->intdata);
             if (face == NULL)
                 return(CCN_UPCALL_RESULT_ERR);
-            if ((face->adjstate & (ADJ_OFR_SENT | ADJ_CRQ_SENT)) != 0)
-                ccnd_forget_face_guid(ccnd, face);
-            face->adjstate = ADJ_TIMEDWAIT;
+            if ((face->adjstate & (ADJ_RETRYING | ADJ_TIMEDWAIT)) == 0) {
+                /* Retry one time */
+                adjstate_change(ccnd, face, ADJ_RETRYING, 0);
+                return(CCN_UPCALL_RESULT_REEXPRESS);
+            }
+            adjacency_timed_reset(ccnd, face->faceid);
             return(CCN_UPCALL_RESULT_OK);
         default:
+            face = ccnd_face_from_faceid(ccnd, selfp->intdata);
+            if (face != NULL)
+                adjacency_timed_reset(ccnd, face->faceid);
             return(CCN_UPCALL_RESULT_ERR);
     }
 }
 
-static void
-send_adjacency_offer_or_commit_req(struct ccnd_handle *ccnd, struct face *face)
+/**
+ * Express an interest to pull adjacency information from the other side
+ */
+void
+ccnd_adjacency_offer_or_commit_req(struct ccnd_handle *ccnd, struct face *face)
 {
     struct ccn_charbuf *name;
     struct ccn_charbuf *c;
@@ -451,8 +649,12 @@ send_adjacency_offer_or_commit_req(struct ccnd_handle *ccnd, struct face *face)
     
     if (face == NULL || face->guid == NULL)
         return;
-    if ((face->adjstate & (ADJ_OFR_SENT | ADJ_SOL_SENT | ADJ_TIMEDWAIT)) != 0)
+    if ((face->adjstate & (ADJ_SOL_SENT | ADJ_TIMEDWAIT)) != 0)
         return;
+    if ((face->adjstate & (ADJ_PINGING)) != 0)
+        return;
+    /* Need to poke the client library here so that it gets the current time */
+    ccn_process_scheduled_operations(ccnd->internal_client);
     name = ccn_charbuf_create();
     c = ccn_charbuf_create();
     templ = ccn_charbuf_create();
@@ -482,17 +684,21 @@ send_adjacency_offer_or_commit_req(struct ccnd_handle *ccnd, struct face *face)
         action->p = &incoming_adjacency;
         action->intdata = face->faceid;
         action->data = ccnd;
+        adjstate_change(ccnd, face, ADJ_PINGING, ADJ_RETRYING);
         ccn_express_interest(ccnd->internal_client, name, action, templ);
         if ((face->adjstate & ADJ_OFR_RECV) != 0)
-            face->adjstate |= ADJ_CRQ_SENT;
+            adjstate_change(ccnd, face, ADJ_CRQ_SENT, 0);
         else
-            face->adjstate |= ADJ_OFR_SENT;
+            adjstate_change(ccnd, face, ADJ_OFR_SENT, 0);
     }
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&c);
     ccn_charbuf_destroy(&templ);
 }
 
+/**
+ * Determine whether an offer matches up with our solicitation.
+ */
 static void
 check_offer_matches_my_solicit(struct ccnd_handle *ccnd, struct face *face,
                                struct ccn_upcall_info *info)
@@ -522,14 +728,87 @@ check_offer_matches_my_solicit(struct ccnd_handle *ccnd, struct face *face,
     res = strlen(mg) + 1;
     if (size != res + face->guid[0] || face->guid[0] <= 6)
         return;
-    if (0 != memcmp(p, mg, res + 1))
+    if (0 != memcmp(p, mg, res))
         return;
     if (0 != memcmp(p + res, face->guid + 1, face->guid[0] - 6))
         return;
     ccnd_forget_face_guid(ccnd, face);
     ccnd_set_face_guid(ccnd, face, p + res, size - res);
-    face->adjstate &= ~ADJ_SOL_SENT;
-    face->adjstate |= ADJ_OFR_RECV;
+    adjstate_change(ccnd, face, ADJ_OFR_RECV, ADJ_SOL_SENT);
+}
+
+/**
+ * Schedule negotiation of a link guid if appropriate
+ */
+static void
+schedule_adjacency_negotiation(struct ccnd_handle *ccnd, unsigned faceid)
+{
+    struct face *face = ccnd_face_from_faceid(ccnd, faceid);
+    unsigned check, want;
+    int delay;
+    
+    if (face == NULL)
+        return;
+    check = CCN_FACE_CONNECTING | CCN_FACE_UNDECIDED | CCN_FACE_NOSEND |
+            CCN_FACE_GG | CCN_FACE_MCAST | CCN_FACE_PASSIVE | CCN_FACE_NORECV |
+            CCN_FACE_BC | CCN_FACE_ADJ;
+    want = 0;
+    if (ccnd->sched != NULL && (face->flags & check) == want) {
+        /* If face creation was initiated remotely, dally a bit longer. */
+        delay = 2000 + nrand48(ccnd->seed) % 131072U;
+        if ((face->flags & CCN_FACE_PERMANENT) == 0)
+            delay += 200000;
+        ccn_schedule_event(ccnd->sched, delay, ccnd_do_solicit, NULL, faceid);
+    }
+}
+
+/**
+ * Scheduled event for recovering from a broken adjacency negotiation
+ */
+static int
+adjacency_do_reset(struct ccn_schedule *sched,
+                   void *clienth,
+                   struct ccn_scheduled_event *ev,
+                   int flags)
+{
+    struct ccnd_handle *ccnd = clienth;
+    struct face *face = NULL;
+    
+    if ((flags & CCN_SCHEDULE_CANCEL) != 0)
+        return(0);
+    face = ccnd_face_from_faceid(ccnd, ev->evint);
+    if (face == NULL)
+        return(0);
+    if ((face->adjstate & ADJ_TIMEDWAIT) == 0)
+        return(0);
+    if (face->adjstate != ADJ_TIMEDWAIT) {
+        adjstate_change(ccnd, face, ADJ_TIMEDWAIT, ~ADJ_ACTIVE);
+        ccnd_forget_face_guid(ccnd, face);
+        return(666666);
+    }
+    adjstate_change(ccnd, face, 0, ~0);
+    schedule_adjacency_negotiation(ccnd, face->faceid);
+    return(0);
+}
+
+/**
+ * Schedule recovery from a broken adjacency negotiation
+ */
+static void
+adjacency_timed_reset(struct ccnd_handle *ccnd, unsigned faceid)
+{
+    struct face *face = ccnd_face_from_faceid(ccnd, faceid);
+    
+    if (face == NULL || ccnd->sched == NULL)
+        return;
+    if ((face->flags & CCN_FACE_ADJ) != 0) {
+        ccnd_face_status_change(ccnd, faceid);
+        face->flags &= ~CCN_FACE_ADJ;
+    }
+    adjstate_change(ccnd, face, ADJ_TIMEDWAIT, ~ADJ_ACTIVE);
+    ccnd_forget_face_guid(ccnd, face);
+    ccn_schedule_event(ccnd->sched, 9000000 + nrand48(ccnd->seed) % 8000000U,
+                       adjacency_do_reset, NULL, faceid);
 }
 
 /**
@@ -692,6 +971,11 @@ ccnd_answer_req(struct ccn_closure *selfp,
             goto Bail;
             break;
         case OP_ADJACENCY:
+            if (info->pi->prefix_comps >= 2 && (info->pi->answerfrom & CCN_AOK_CS) != 0) {
+                res = ccnd_answer_by_guid(ccnd, info);
+                if (res == CCN_UPCALL_RESULT_INTEREST_CONSUMED)
+                    goto Finish;
+            }
             face = ccnd_face_from_faceid(ccnd, ccnd->interest_faceid);
             if (face == NULL)
                 goto Bail;
@@ -709,10 +993,18 @@ ccnd_answer_req(struct ccn_closure *selfp,
                     lo += sizeof(mb);
                     hi += sizeof(mb);
                     // XXX - we may want to be selective about proceeding
-                    face->adjstate |= ADJ_SOL_RECV;
+                    if ((face->adjstate & ADJ_SOL_SENT) != 0) {
+                        /* The solicitations crossed in the mail. Arbitrate. */
+                        if (face->guid != NULL && size >= face->guid[0] &&
+                            memcmp(lo, face->guid + 1, face->guid[0]) > 0) {
+                            ccnd_forget_face_guid(ccnd, face);
+                            adjstate_change(ccnd, face, 0, ADJ_SOL_SENT);
+                        }
+                    }
+                    adjstate_change(ccnd, face, ADJ_SOL_RECV, ADJ_TIMEDWAIT);
                     ccnd_generate_face_guid(ccnd, face, size, lo, hi);
                     if (face->guid != NULL) {
-                        send_adjacency_offer_or_commit_req(ccnd, face);
+                        ccnd_adjacency_offer_or_commit_req(ccnd, face);
                         res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
                         goto Finish;
                     }
@@ -721,9 +1013,8 @@ ccnd_answer_req(struct ccn_closure *selfp,
             check_offer_matches_my_solicit(ccnd, face, info);
             if (face->guid_cob == NULL)
                 ccnd_init_face_guid_cob(ccnd, face);
-            if (face->guid_cob == NULL)
-                goto Bail;
-            if (ccn_content_matches_interest(face->guid_cob->buf,
+            if (face->guid_cob != NULL &&
+                ccn_content_matches_interest(face->guid_cob->buf,
                                              face->guid_cob->length,
                                              1,
                                              NULL,
@@ -732,17 +1023,20 @@ ccnd_answer_req(struct ccn_closure *selfp,
                                              info->pi
                                              )) {
                 if (info->pi->prefix_comps == 3)
-                    face->adjstate |= ADJ_CRQ_RECV;
+                    adjstate_change(ccnd, face, ADJ_CRQ_RECV, 0);
                 if ((face->adjstate & (ADJ_DAT_RECV | ADJ_OFR_RECV)) != 0) {
                     ccn_put(info->h, face->guid_cob->buf,
-                            face->guid_cob->length);
-                    face->adjstate |= ADJ_DAT_SENT;
-                    send_adjacency_offer_or_commit_req(ccnd, face);
+                            face->guid_cob->length);                    
+                    adjstate_change(ccnd, face, ADJ_DAT_SENT, 0);
+                    if ((face->adjstate & (ADJ_DAT_RECV)) == 0)
+                        ccnd_adjacency_offer_or_commit_req(ccnd, face);
                 }
-                ccnd_register_adjacency(ccnd, face);
+                ccnd_register_adjacency(ccnd, face,
+                      CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE);
                 res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
+                goto Finish;
             }
-            goto Finish;
+            goto Bail;
         default:
             goto Bail;
     }
@@ -940,7 +1234,7 @@ Finish:
         ccnd_msg(ccnd, "%s: %s:\n", ccn_charbuf_as_string(culprit), strerror(errno));
         culprit = NULL;
     }
-    res = ccn_chk_signing_params(ccnd->internal_client, NULL, &sp, NULL, NULL, NULL);
+    res = ccn_chk_signing_params(ccnd->internal_client, NULL, &sp, NULL, NULL, NULL, NULL);
     if (res != 0)
         abort();
     memcpy(ccnd->ccnd_id, sp.pubid, sizeof(ccnd->ccnd_id));
@@ -1032,8 +1326,6 @@ void
 ccnd_face_status_change(struct ccnd_handle *ccnd, unsigned faceid)
 {
     struct ccn_indexbuf *chface = ccnd->chface;
-    struct face *face = ccnd_face_from_faceid(ccnd, faceid);
-    unsigned check, want;
     
     if (chface != NULL) {
         ccn_indexbuf_set_insert(chface, faceid);
@@ -1042,14 +1334,7 @@ ccnd_face_status_change(struct ccnd_handle *ccnd, unsigned faceid)
                                                    ccnd_notice_push,
                                                    NULL, 0);
     }
-    /* Schedule negotiation of a link guid if appropriate. */
-    check = CCN_FACE_CONNECTING | CCN_FACE_UNDECIDED | CCN_FACE_NOSEND |
-            CCN_FACE_GG | CCN_FACE_MCAST | CCN_FACE_PASSIVE | CCN_FACE_NORECV |
-            CCN_FACE_NOSEND;
-    want = 0;
-    if (ccnd->sched != NULL && face != NULL && (face->flags & check) == want)
-        ccn_schedule_event(ccnd->sched, 2000 + nrand48(ccnd->seed) % 131072U,
-                           ccnd_do_solicit, NULL, faceid);
+    schedule_adjacency_negotiation(ccnd, faceid);
 }
 
 static void

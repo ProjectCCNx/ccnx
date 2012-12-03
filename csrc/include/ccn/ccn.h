@@ -37,7 +37,7 @@
  * Thus CCN_API_VERSION=1000 would have corresponded to the first public
  * release (0.1.0), but that version did not have this macro defined.
  */
-#define CCN_API_VERSION 6004
+#define CCN_API_VERSION 7000
 
 /**
  * Interest lifetime default.
@@ -673,6 +673,8 @@ enum ccn_parsed_content_object_offsetid {
     CCN_PCO_E_KeyName_Pub,
     CCN_PCO_E_Key_Certificate_KeyName,
     CCN_PCO_E_KeyLocator,
+    CCN_PCO_B_ExtOpt,
+    CCN_PCO_E_ExtOpt,
     CCN_PCO_E_SignedInfo,
     CCN_PCO_B_Content,
     CCN_PCO_E_Content,
@@ -817,6 +819,7 @@ struct ccn_signing_params {
 #define CCN_SP_TEMPL_KEY_LOCATOR    0x0008
 #define CCN_SP_FINAL_BLOCK          0x0010
 #define CCN_SP_OMIT_KEY_LOCATOR     0x0020
+#define CCN_SP_TEMPL_EXT_OPT        0x0040
 
 int ccn_sign_content(struct ccn *h,
                      struct ccn_charbuf *resultbuf,
@@ -843,7 +846,8 @@ int ccn_chk_signing_params(struct ccn *h,
                            struct ccn_signing_params *result,
                            struct ccn_charbuf **ptimestamp,
                            struct ccn_charbuf **pfinalblockid,
-                           struct ccn_charbuf **pkeylocator);
+                           struct ccn_charbuf **pkeylocator,
+                           struct ccn_charbuf **pextopt);
 
 /* low-level content-object signing */
 

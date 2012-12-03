@@ -40,6 +40,7 @@ SignedInfo ::= PublisherPublicKeyDigest
 	       FreshnessSeconds?
 	       FinalBlockID?
 	       KeyLocator?
+	       ExtOpt?
 .......................................................
 
 === PublisherPublicKeyDigest
@@ -102,6 +103,23 @@ KeyLocator ::= Key
 	     | Certificate
 	     | KeyName
 .......................................................
+
+== ExtOpt
+
+.......................................................
+ExtOpt ::= BLOB
+.......................................................
+
+An ExtOpt may be used to hold additional signed meta-information.
+At the transport level, this is treated as an opaque payload.
+To make it possible for various processing elements to make use of
+this information without interfering with each other,
+there is a structure imposed on the contained binary data.
+The initial portion of the BLOB consists of zero or more complete,
+well-formed elements of ccnb-encoded data.
+This may be followed by a null(_0_) byte and one or more bytes of unstructured data.
+If both the ccnb-encoded data and the unstructured data are obsent,
+the entire ExtOpt element should be omitted.
 
 == Content
 .......................................................

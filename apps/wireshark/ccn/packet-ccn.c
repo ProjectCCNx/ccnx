@@ -83,6 +83,7 @@ static gint hf_ccn_contentdata = -1;
 static gint hf_ccn_contenttype = -1;
 static gint hf_ccn_freshnessseconds = -1;
 static gint hf_ccn_finalblockid = -1;
+static gint hf_ccn_extopt = -1;
 
 static gint hf_ccn_minsuffixcomponents = -1;
 static gint hf_ccn_maxsuffixcomponents = -1;
@@ -168,6 +169,9 @@ proto_register_ccn(void)
         {&hf_ccn_finalblockid,
             {"FinalBlockID", "ccn.finalblockid", FT_BYTES, BASE_NONE, NULL,
                 0x0, "Indicates the identifier of the final block in a sequence of fragments", HFILL}},
+        {&hf_ccn_extopt,
+            {"ExtOpt", "ccn.extopt", FT_BYTES, BASE_NONE, NULL,
+                0x0, "Extension/Options field", HFILL}},
         {&hf_ccn_contentdata,
             {"Data", "ccn.data", FT_BYTES, BASE_NONE, NULL,
                 0x0, "Raw data", HFILL}},
@@ -664,6 +668,15 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
         titem = proto_tree_add_item(signedinfo_tree, hf_ccn_finalblockid, tvb, blob - ccnb, blob_size, FALSE);
     }
     /* TODO: KeyLocator */
+    l = pco->offset[CCN_PCO_E_ExtOpt] - pco->offset[CCN_PCO_B_ExtOpt];
+    if (l > 0) {
+        res = ccn_ref_tagged_BLOB(CCN_DTAG_ExtOpt, ccnb,
+                                  pco->offset[CCN_PCO_B_ExtOpt],
+                                  pco->offset[CCN_PCO_E_ExtOpt],
+                                  &blob, &blob_size);
+        
+        titem = proto_tree_add_item(signedinfo_tree, hf_ccn_extopt, tvb, blob - ccnb, blob_size, FALSE);
+    }
     /* /SignedInfo */
     
     /* Content */

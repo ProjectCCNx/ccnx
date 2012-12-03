@@ -68,7 +68,7 @@ ccn-bad06.xml:6: element SpublisherIssuerKeyDigest: validity error : No declarat
 ccn-bad06.xml:6: element SpublisherIssuerKeyDigest: validity error : No declaration for attribute ccnbencoding of element SpublisherIssuerKeyDigest
 Document ccn-bad06.xml does not validate against ccnx.dtd
 ./shouldfail xmllint --noout --dtdvalid ccnx.dtd ccn-bad09.xml
-ccn-bad09.xml:12: element SignedInfo: validity error : Element SignedInfo content does not follow the DTD, expecting (PublisherPublicKeyDigest , Timestamp , Type? , FreshnessSeconds? , FinalBlockID? , KeyLocator?), got (PublisherPublicKeyDigest FinalBlockID KeyLocator )
+ccn-bad09.xml:12: element SignedInfo: validity error : Element SignedInfo content does not follow the DTD, expecting (PublisherPublicKeyDigest , Timestamp , Type? , FreshnessSeconds? , FinalBlockID? , KeyLocator? , ExtOpt?), got (PublisherPublicKeyDigest FinalBlockID KeyLocator )
 Document ccn-bad09.xml does not validate against ccnx.dtd
 ./shouldfail xmllint --noout --dtdvalid ccnx.dtd ccn-bad11.xml
 ccn-bad11.xml:4: element Exclude: validity error : Element Exclude content does not follow the DTD, expecting ((Any | Bloom)? , (Component , (Any | Bloom)?)*), got (Bloom Bloom Component Any Component )
