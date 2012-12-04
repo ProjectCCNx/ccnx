@@ -430,7 +430,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		synchronized (callbackNames) {
 			for (ContentName name : callbackNames) {
 				if (name.equals(syncedContent)) {
-					errorMessage = "Saw duplicate name: " + syncedContent;
+					errorMessage = "Saw duplicate name for callerID: " + callerId + ": " + syncedContent;
 				}
 			}
 			callbackNames.add(syncedContent);

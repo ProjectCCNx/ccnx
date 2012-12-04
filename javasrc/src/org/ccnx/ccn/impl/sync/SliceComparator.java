@@ -920,7 +920,8 @@ public class SliceComparator implements Runnable {
 			if (_shutdown)
 				return;
 		}
-Log.info("Starting run - state is {0}, sc is {1}", _state, this);
+		if (Log.isLoggable(Log.FAC_SYNC, Level.FINE))
+			Log.fine(Log.FAC_SYNC, "Starting comparator run - state is {0}, sc is {1}", _state, this);
 		_compareSemaphore.acquireUninterruptibly();
 		boolean keepComparing = true;
 		try {
@@ -1067,9 +1068,14 @@ Log.info("Starting run - state is {0}, sc is {1}", _state, this);
 				}
 			} while (keepComparing);
 			_compareSemaphore.release();
-		} catch (Exception ex) {Log.logStackTrace(Log.FAC_SYNC, Level.WARNING, ex);} 	
-		  catch (Error er) {Log.logStackTrace(Log.FAC_SYNC, Level.WARNING, er);}
-		changeState(SyncCompareState.INIT);
+		} catch (Exception ex) {
+			Log.logStackTrace(Log.FAC_SYNC, Level.WARNING, ex);
+			changeState(SyncCompareState.INIT);
+
+		} catch (Error er) {
+			Log.logStackTrace(Log.FAC_SYNC, Level.WARNING, er);
+			changeState(SyncCompareState.INIT);
+		}
 	}
 	
 	/**
