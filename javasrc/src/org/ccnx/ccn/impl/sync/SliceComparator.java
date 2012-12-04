@@ -375,34 +375,33 @@ public class SliceComparator implements Runnable {
 	 * Note: Since we are potentially waiting for an outside object here, we probably don't want to call
 	 * this synchronized to avoid potential deadlocks.
 	 * 
-	 * Also note that there should not be a potential wait forever here because we never wait until we are
-	 * sure we have issued at least one request. So the worst that could happen is in some circumstances we
-	 * might issue a double request but that should be OK
-	 * 
 	 * @param srt
 	 * @param wait Wait for the node if true
 	 * @return null if node not found but request made
-	 * @throws SyncException 
+	 * @throws SyncException
 	 */
 	private SyncNodeComposite getOrRequestNode(SyncTreeEntry srt, boolean wait) throws SyncException {
 		SyncNodeComposite node = srt.getNode(_decoder);
 		if (null != node)
 			return node;
 		Pending lock = _snc.pending(srt.getHash());
-		if (wait && lock.getPending()) {
+		long ourTime = System.currentTimeMillis();
+		long endTime = ourTime + SystemConfiguration.LONG_TIMEOUT;
+		while (wait && lock.getPending()) {
 			try {
 				synchronized (lock) {
 					lock.wait(SystemConfiguration.LONG_TIMEOUT);
 					node = srt.getNode(_decoder);
-					if (node == null) {
-						throw new SyncException("Node fetch timeout for: " + Component.printURI(srt.getHash()));
-					}
-					return node;
+					if (null != node)
+						return node;
 				}
 			} catch (InterruptedException e) {
 				return null;
 			}
-
+			ourTime = System.currentTimeMillis();
+			if (ourTime > endTime) {
+				throw new SyncException("Node fetch timeout for: " + Component.printURI(srt.getHash()));
+			}
 		}			
 		
 		synchronized (lock) {
