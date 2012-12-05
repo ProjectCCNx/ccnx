@@ -402,9 +402,11 @@ public class SliceComparator implements Runnable {
 			if (ourTime > endTime) {
 				throw new SyncException("Node fetch timeout for: " + Component.printURI(srt.getHash()));
 			}
-		}			
+		}
 		
 		synchronized (lock) {
+			if (lock.getPending())	// For non wait case when someone else already requested it
+				return null;
 			lock.setPending(true);
 		}
 		ProtocolBasedSyncMonitor.requestNode(_slice, srt.getHash(), _handle, _nfh);
