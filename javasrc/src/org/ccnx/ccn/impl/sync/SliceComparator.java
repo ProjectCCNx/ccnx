@@ -887,7 +887,7 @@ public class SliceComparator implements Runnable {
 				Log.info(Log.FAC_SYNC, "Resetting current to created head: {0}", Component.printURI(newHead.getHash()));
 		} else {
 			origSte.setPos(0);
-			push(origSte, _current);  // Should already be _currentRoot
+			_currentRoot = origSte;
 		}
 		return true;
 	}
@@ -959,7 +959,7 @@ public class SliceComparator implements Runnable {
 								_currentRoot = ste;
 								_startHash = null;
 								nextRound();
-							} else {        // No sense doing a compare with ours
+							} else {        // No sense doing a compare with ourself
 								addPending(ste);
 							}
 						}
@@ -972,6 +972,8 @@ public class SliceComparator implements Runnable {
 						push(ste, _next);
 						if (null == _currentRoot)
 							_currentRoot = ste;
+						else
+							nextRound();
 						changeState(SyncCompareState.PRELOAD);
 					}
 						
