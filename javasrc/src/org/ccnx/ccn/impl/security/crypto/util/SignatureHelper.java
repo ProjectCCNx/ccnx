@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.security.AlgorithmParameters;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -58,7 +59,7 @@ public class SignatureHelper {
 	 */
 	public static byte [] sign(String digestAlgorithm,
 							   byte [] toBeSigned,
-							   PrivateKey signingKey) throws SignatureException, 
+							   Key signingKey) throws SignatureException, 
 							   			NoSuchAlgorithmException, InvalidKeyException {
 		if (null == toBeSigned) {
 			Log.info("sign: null content to be signed!");
@@ -79,7 +80,7 @@ public class SignatureHelper {
 		// Protect against GC on platforms that don't do JNI for crypto properly
 		SignatureLocks.signingLock();
 		try {
-			sig.initSign(signingKey);
+			sig.initSign((PrivateKey)signingKey);
 			sig.update(toBeSigned);
 			return sig.sign();
 		} finally {
@@ -292,7 +293,7 @@ public class SignatureHelper {
 	 * @returns the JCA string alias for the signature algorithm.
 	 */
 	public static String getSignatureAlgorithmName(
-			String hashAlgorithm, PrivateKey signingKey)
+			String hashAlgorithm, Key signingKey)
 	{
 		return getSignatureAlgorithmName(hashAlgorithm, signingKey.getAlgorithm());
 	}

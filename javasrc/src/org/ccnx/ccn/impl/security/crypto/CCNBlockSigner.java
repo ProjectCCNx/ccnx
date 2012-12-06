@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -19,8 +19,8 @@ package org.ccnx.ccn.impl.security.crypto;
 
 import java.io.IOException;
 import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
 import java.security.SignatureException;
 
 import org.ccnx.ccn.protocol.ContentObject;
@@ -34,7 +34,7 @@ public class CCNBlockSigner implements CCNAggregatedSigner {
 	
 	public void signBlocks(
 			ContentObject [] contentObjects, 
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException, 
+			Key signingKey) throws InvalidKeyException, SignatureException, 
 											 NoSuchAlgorithmException, IOException {
 			
 		if (null == signingKey) {

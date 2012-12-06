@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -75,11 +75,11 @@ public class SecureKeyCache implements Serializable {
 	 * TODO bug -- should merge key caches, not just load signing keys.
 	 */
 	public SecureKeyCache(KeyManager keyManagerToLoadFrom) {
-		PrivateKey [] pks = keyManagerToLoadFrom.getSigningKeys();
-		for (PrivateKey pk : pks) {
+		Key [] pks = keyManagerToLoadFrom.getSigningKeys();
+		for (Key pk : pks) {
 			PublisherPublicKeyDigest ppkd = keyManagerToLoadFrom.getPublisherKeyID(pk);
 			Log.info("KeyCache: loading signing key {0}", ppkd);
-			addMyPrivateKey(ppkd.digest(), pk);
+			addMySigningKey(ppkd.digest(), pk);
 		}
 	}
 		
@@ -112,7 +112,7 @@ public class SecureKeyCache implements Serializable {
 						if (null != certificate) {
 							PublisherPublicKeyDigest ppkd = new PublisherPublicKeyDigest(certificate.getPublicKey());
 							Log.info("KeyCache: loading signing key {0}, remembering public key in public key cache.", ppkd);
-							addMyPrivateKey(ppkd.digest(), pk);
+							addMySigningKey(ppkd.digest(), pk);
 							publicKeyCache.remember(certificate, keyStoreInfo.getVersion());
 						} else {
 							Log.warning("Private key for alias: " + alias + " has no certificate entry. No way to get public key. Not caching.");
@@ -281,9 +281,9 @@ public class SecureKeyCache implements Serializable {
 	 * @param publicKeyIdentifier the digest of the public key.
 	 * @param pk the corresponding private key.
 	 */
-	public synchronized void addMyPrivateKey(byte [] publicKeyIdentifier, PrivateKey pk) {
+	public synchronized void addMySigningKey(byte [] publicKeyIdentifier, Key pk) {
 		_privateKeyIdentifierMap.put(getKeyIdentifier(pk), publicKeyIdentifier);
-		_myKeyMap.put(publicKeyIdentifier, pk);
+		_myKeyMap.put(publicKeyIdentifier, (PrivateKey)pk);
 		Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding my private key {0}",
 				DataUtils.printHexBytes(publicKeyIdentifier));			
 	}
@@ -306,7 +306,7 @@ public class SecureKeyCache implements Serializable {
 		}
 	}
 	
-	public PublisherPublicKeyDigest getPublicKeyIdentifier(PrivateKey pk) {
+	public PublisherPublicKeyDigest getPublicKeyIdentifier(Key pk) {
 		return new PublisherPublicKeyDigest(_privateKeyIdentifierMap.get(getKeyIdentifier(pk)));
 	}
 	
@@ -362,7 +362,7 @@ public class SecureKeyCache implements Serializable {
 		for (PrivateKey pkey : cache._myKeyMap.values()) {
 			byte[] identifier = cache.getPublicKeyIdentifier(pkey).digest();
 			if (!this._myKeyMap.containsKey(identifier)) {
-				this.addMyPrivateKey(identifier, pkey);
+				this.addMySigningKey(identifier, pkey);
 			}
 		}
 		

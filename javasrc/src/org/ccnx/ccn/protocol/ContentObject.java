@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.DigestOutputStream;
 import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
@@ -244,7 +245,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	public ContentObject(ContentName name, 
 			SignedInfo signedInfo,
 			byte [] content, int offset, int length,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException {
+			Key signingKey) throws InvalidKeyException, SignatureException {
 		
 		this(name, signedInfo, content, offset, length, (Signature)null);
 		setSignature(sign(_name, _signedInfo, _content, 0, _content.length, signingKey));
@@ -252,7 +253,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 
 	public ContentObject(ContentName name, 
 			SignedInfo signedInfo,
-			byte [] content, PrivateKey signingKey) throws InvalidKeyException, SignatureException {
+			byte [] content, Key signingKey) throws InvalidKeyException, SignatureException {
 		this(name, signedInfo, content, 0, ((null == content) ? 0 : content.length), signingKey);
 	}
 	
@@ -267,7 +268,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			if (null == keyManager) {
 				keyManager = KeyManager.getDefaultKeyManager();
 			}
-			PrivateKey signingKey = keyManager.getSigningKey(publisher);
+			Key signingKey = keyManager.getSigningKey(publisher);
 			if ((null == publisher) || (null == signingKey)) {
 				signingKey = keyManager.getDefaultSigningKey();
 				publisher = keyManager.getPublisherKeyID(signingKey);
@@ -469,7 +470,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		_signature = signature;
 	}
 
-	public void sign(PrivateKey signingKey) throws InvalidKeyException, SignatureException {
+	public void sign(Key signingKey) throws InvalidKeyException, SignatureException {
 		// Use _content to avoid case where content() might want to clone.
 		setSignature(sign(this.name(), this.signedInfo(), this._content, 0, this._content.length, signingKey));
 	}
@@ -482,7 +483,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	public static Signature sign(ContentName name, 
 			SignedInfo signedInfo,
 			byte [] content, int offset, int length,
-			PrivateKey signingKey) 
+			Key signingKey) 
 	throws SignatureException, InvalidKeyException {
 		try {
 			return sign(name, signedInfo, content, offset, length,
@@ -510,7 +511,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			SignedInfo signedInfo,
 			byte [] content, int offset, int length,
 			String digestAlgorithm, 
-			PrivateKey signingKey) 
+			Key signingKey) 
 	throws SignatureException, InvalidKeyException, NoSuchAlgorithmException {
 	
 		// Build XML document

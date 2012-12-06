@@ -22,8 +22,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
 import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.logging.Level;
@@ -476,7 +476,7 @@ public class CCNSegmenter {
 		if (null == publisher) {
 			publisher = getFlowControl().getHandle().keyManager().getDefaultKeyID();
 		}
-		PrivateKey signingKey = getFlowControl().getHandle().keyManager().getSigningKey(publisher);
+		Key signingKey = getFlowControl().getHandle().keyManager().getSigningKey(publisher);
 
 		if (null == locator)
 			locator = getFlowControl().getHandle().keyManager().getKeyLocator(publisher);
@@ -580,7 +580,7 @@ public class CCNSegmenter {
 		if (null == publisher) {
 			publisher = getFlowControl().getHandle().keyManager().getDefaultKeyID();
 		}
-		PrivateKey signingKey = getFlowControl().getHandle().keyManager().getSigningKey(publisher);
+		Key signingKey = getFlowControl().getHandle().keyManager().getSigningKey(publisher);
 
 		if (null == locator)
 			locator = getFlowControl().getHandle().keyManager().getKeyLocator(publisher);
@@ -647,7 +647,7 @@ public class CCNSegmenter {
 	 * @throws NoSuchAlgorithmException
 	 * @throws IOException
 	 */
-	protected void outputCurrentBlocks(PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+	protected void outputCurrentBlocks(Key signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 		if (_blocks.size() == 0)
 			return;
 
@@ -724,7 +724,7 @@ public class CCNSegmenter {
 		if (null == publisher) {
 			publisher = _handle.keyManager().getDefaultKeyID();
 		}
-		PrivateKey signingKey = _handle.keyManager().getSigningKey(publisher);
+		Key signingKey = _handle.keyManager().getSigningKey(publisher);
 
 		if (null == locator)
 			locator = _handle.keyManager().getKeyLocator(publisher);
@@ -773,7 +773,7 @@ public class CCNSegmenter {
 	protected long buildBlocks(ContentName rootName,
 			long baseSegmentNumber, SignedInfo signedInfo,
 			byte[] content, int offset, int length, int blockWidth,
-			ContentKeys keys, PrivateKey signingKey, boolean finalFlush)
+			ContentKeys keys, Key signingKey, boolean finalFlush)
 	throws InvalidKeyException, InvalidAlgorithmParameterException, IOException, SignatureException, NoSuchAlgorithmException {
 
 		int blockCount = CCNMerkleTree.blockCount(length, blockWidth);

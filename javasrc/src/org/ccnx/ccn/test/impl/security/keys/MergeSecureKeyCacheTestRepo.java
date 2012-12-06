@@ -154,7 +154,7 @@ public class MergeSecureKeyCacheTestRepo {
 		ContentName newPrivName = ContentName.fromNative("/test/newpriv");
 		cache2.addPrivateKey(newPrivName, pubIdentifier1, pair1.getPrivate());
 		
-		cache2.addMyPrivateKey(myPubIdentifier1, myPair1.getPrivate());
+		cache2.addMySigningKey(myPubIdentifier1, myPair1.getPrivate());
 		
 		ContentName newKeyName = ContentName.fromNative("/test/newkey");
 		cache2.addKey(newKeyName, key1);
@@ -199,7 +199,7 @@ public class MergeSecureKeyCacheTestRepo {
 		// My private key
 		myPair1 = kpg.generateKeyPair();
 		myPubIdentifier1 = new PublisherPublicKeyDigest(myPair1.getPublic()).digest();
-		cache1.addMyPrivateKey(myPubIdentifier1, myPair1.getPrivate());
+		cache1.addMySigningKey(myPubIdentifier1, myPair1.getPrivate());
 		
 		// a symmetric key
 	    key1 =  WrappedKey.generateNonceKey();
@@ -219,7 +219,7 @@ public class MergeSecureKeyCacheTestRepo {
 		// My private key
 		myPair2 = kpg.generateKeyPair();
 		myPubIdentifier2 = new PublisherPublicKeyDigest(myPair2.getPublic()).digest();
-		cache2.addMyPrivateKey(myPubIdentifier2, myPair2.getPrivate());
+		cache2.addMySigningKey(myPubIdentifier2, myPair2.getPrivate());
 		
 		// a symmetric key
 	    key2 =  WrappedKey.generateNonceKey();

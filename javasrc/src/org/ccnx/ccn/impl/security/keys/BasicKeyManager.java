@@ -30,6 +30,7 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.net.URI;
 import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
@@ -59,9 +60,9 @@ import org.ccnx.ccn.profiles.security.access.AccessControlManager;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.KeyLocator.KeyLocatorType;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
-import org.ccnx.ccn.protocol.KeyLocator.KeyLocatorType;
 
 
 /**
@@ -956,7 +957,7 @@ public class BasicKeyManager extends KeyManager {
 	 * Helper method to get the key locator for one of our signing keys.
 	 */
 	@Override
-	public KeyLocator getKeyLocator(PrivateKey signingKey) {
+	public KeyLocator getKeyLocator(Key signingKey) {
 		PublisherPublicKeyDigest keyID = _privateKeyCache.getPublicKeyIdentifier(signingKey);
 		return getKeyLocator(keyID);
 	}
@@ -989,7 +990,7 @@ public class BasicKeyManager extends KeyManager {
 	 * @return private key
 	 */
 	@Override
-	public PrivateKey getDefaultSigningKey() {
+	public Key getDefaultSigningKey() {
 		return _privateKeyCache.getPrivateKey(getDefaultKeyID().digest());
 	}
 	
@@ -1000,7 +1001,7 @@ public class BasicKeyManager extends KeyManager {
 	 * keys. Replace with getPrivateKeys with getMyPrivateKeys once we're sure it won't cause trouble.
 	 */
 	@Override
-	public PrivateKey [] getSigningKeys() {
+	public Key [] getSigningKeys() {
 		return _privateKeyCache.getPrivateKeys();
 	}
 	
@@ -1032,7 +1033,7 @@ public class BasicKeyManager extends KeyManager {
 	 * @return private signing key or null
 	 */
 	@Override
-	public PrivateKey getSigningKey(PublisherPublicKeyDigest publisher) {
+	public Key getSigningKey(PublisherPublicKeyDigest publisher) {
 		if (Log.isLoggable(Log.FAC_KEYS, Level.FINER) )
 			Log.finer(Log.FAC_KEYS, "getSigningKey: retrieving key: " + publisher);
 		if (null == publisher)
@@ -1102,7 +1103,7 @@ public class BasicKeyManager extends KeyManager {
 	 * @return publisher public key digest
 	 */
 	@Override
-	public PublisherPublicKeyDigest getPublisherKeyID(PrivateKey signingKey) {
+	public PublisherPublicKeyDigest getPublisherKeyID(Key signingKey) {
 		return _privateKeyCache.getPublicKeyIdentifier(signingKey);
 	}
 
