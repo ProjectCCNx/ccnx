@@ -24,7 +24,9 @@ CCNx 0.7.0.
 	* Feature #100858: VLC plugin could use separate preferences for version timeout and media 
 	header timeout
 	* Bug #100693: Remove some obsolete code from ccnd matching loop
-	* Bug: #100857: Define a way carry experimental extension fields in the ContentObject schema
+	* Feature: #100857: Define a way carry experimental extension fields in the ContentObject 
+	schema
+	* Bug: #100860: LogTest tests can fail due to unsynchronized parallel execution
 
 Changes between 0.6.1 and 0.6.2:
 --------------------------------
