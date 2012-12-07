@@ -27,6 +27,7 @@ CCNx 0.7.0.
 	* Feature: #100857: Define a way carry experimental extension fields in the ContentObject 
 	schema
 	* Bug: #100860: LogTest tests can fail due to unsynchronized parallel execution
+	* Bug: #100814: minor C api cleanups
 
 Changes between 0.6.1 and 0.6.2:
 --------------------------------
