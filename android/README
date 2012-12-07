@@ -81,7 +81,17 @@ Android 2.3
 Android 3.x
 Android 4.x
 
-Newer tablet oriented versions of Android, such as 3.x and 4.x have been tested and verified.  These will be the focus platforms going forward, though we will continue to support older release targets for the near future.
+Your Android SDK should have installed at a minimum API target 14, though
+it may be possible Google will only have later versions available in the 
+SDK Manager tool.  We will still run on older Eclair devices but
+compilation now requires a newer API target in the SDK.  Runtime detection
+ensures that the correct classes are used with regards to fallinb back
+to older UI widgets if newer ICS widgets are not available in the OS.
+
+Newer tablet oriented versions of Android, such as 3.x and 4.x have 
+been tested and verified.  These will be the focus platforms going forward,
+though we will continue to support older release targets for the near 
+future.
 
 For example (Use the path to desired tools for your platform):
 

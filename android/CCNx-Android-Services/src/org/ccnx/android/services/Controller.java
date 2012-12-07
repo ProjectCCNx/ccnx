@@ -22,6 +22,7 @@ import org.ccnx.android.ccnlib.CCNxServiceCallback;
 import org.ccnx.android.ccnlib.CCNxServiceStatus.SERVICE_STATUS;
 import org.ccnx.android.ccnlib.CcndWrapper.CCND_OPTIONS;
 import org.ccnx.android.ccnlib.RepoWrapper.CCNR_OPTIONS;
+import org.ccnx.android.ccnlib.RepoWrapper.REPO_OPTIONS;
 import org.ccnx.android.ccnlib.RepoWrapper.CCNS_OPTIONS;
 
 import android.app.Activity;
@@ -35,6 +36,8 @@ import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.os.Build;
+import android.os.AsyncTask;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -46,6 +49,8 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.EditText;
 import android.widget.Toast;
+import android.widget.CompoundButton;
+import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.Spinner;
 import android.net.Uri;
 
@@ -62,7 +67,7 @@ public final class Controller extends Activity implements OnClickListener {
     public static final String CCNX_WS_URL = "http://127.0.0.1:9695";
 	private Button mAllBtn;
 	private ProgressDialog pd;
-	
+
 	private Context _ctx;
 	
 	private TextView tvCcndStatus;
@@ -111,8 +116,9 @@ public final class Controller extends Activity implements OnClickListener {
         
         _ctx = this.getApplicationContext();
         
-       	initUI();
-        init();
+		init();
+		initUI();
+		updateState();
     }
     
     @Override
@@ -137,7 +143,8 @@ public final class Controller extends Activity implements OnClickListener {
             @Override
             public void onReceive(Context context, Intent intent) {
                 Log.d(TAG, "Received android.net.conn.CONNECTIVITY_CHANGE");
-                updateIPAddress();
+                // updateIPAddress();
+                new GetIPAddrAsyncTask().execute();
             }
         };
         this.registerReceiver(mReceiver, intentfilter);
@@ -145,7 +152,8 @@ public final class Controller extends Activity implements OnClickListener {
         // Update on resume, as frequently, in old Android esp, WIFI gets
         // shut off and may lose the address it had
         //
-        updateIPAddress();
+        // updateIPAddress();
+        new GetIPAddrAsyncTask().execute();
 
         // We should updateState on resuming, in case Service state has changed
         updateState();
@@ -184,6 +192,7 @@ public final class Controller extends Activity implements OnClickListener {
 	    }
 	}
     private void init(){
+		Log.d(TAG, "init()");
     	control = new CCNxServiceControl(this);
     	control.registerCallback(cb);
     	control.connect();
@@ -193,7 +202,6 @@ public final class Controller extends Activity implements OnClickListener {
 		} catch(NameNotFoundException e) {
 			Log.e(TAG, "Could not find package name.  Reason: " + e.getMessage());
 		}
-    	updateState();
     }
 
 	public void onClick(View v) {
@@ -299,14 +307,75 @@ public final class Controller extends Activity implements OnClickListener {
         tvCcndStatus = (TextView)findViewById(R.id.tvCcndStatus);
         tvRepoStatus = (TextView)findViewById(R.id.tvRepoStatus);
         deviceIPAddress = (TextView)findViewById(R.id.deviceIPAddress);
-        String ipaddr = getIPAddress();
+        new GetIPAddrAsyncTask().execute();
+        //
+        // Grab the LinearLayout in the 0th child element
+        //
         
-        if (ipaddr != null) {
-        	deviceIPAddress.setText(ipaddr);
-        } else {
-        	deviceIPAddress.setText("Unable to determine IP Address");
-        }
+        ViewGroup layout = (ViewGroup) findViewById(R.id.scrollcontainer); // .getChildAt(0);
+        ViewGroup layoutchild = (ViewGroup) layout.getChildAt(0);
+        if (Build.VERSION.SDK_INT >= 0x0000000e) { // ICS or greater, requires at least SDK 14 to compile
+			final android.widget.Switch swbtn = new android.widget.Switch(this);
+			swbtn.setOnCheckedChangeListener(new ToggleOptionChangeListener(CCNS_OPTIONS.CCNS_ENABLE));
+			swbtn.setChecked(true);
+			layoutchild.addView(swbtn);
+		} else { // Fall back to pre-ICS widget
+			android.widget.ToggleButton tbtn = new android.widget.ToggleButton(this);
+			tbtn.setOnCheckedChangeListener(new ToggleOptionChangeListener(CCNS_OPTIONS.CCNS_ENABLE));
+			tbtn.setChecked(true);
+			layoutchild.addView(tbtn);
+		}
 	}
+
+	private class ToggleOptionChangeListener implements CompoundButton.OnCheckedChangeListener {
+		//
+		// In principle, it would be nice to have a generalized listener for toggle poperties, rather than writing
+		// one for each property.  Due to the fact our OPTIONS are not Strings or int primitives, it gets a little
+		// messy to make this in a general way.  We should consider changing the OPTIONS to be int primitives while
+		// the impact of such changes will be minimal rather than maintaining this as a set of enums, which has been a
+		// pain
+		//
+		private CCNS_OPTIONS mCcns_option = null;
+		private CCNR_OPTIONS mCcnr_option = null;
+		private REPO_OPTIONS mRepo_option = null;
+		private CCND_OPTIONS mCcnd_option = null;
+
+		public ToggleOptionChangeListener(CCNS_OPTIONS option) {
+			mCcns_option = option;
+		}
+
+		public ToggleOptionChangeListener(CCNR_OPTIONS option) {
+			mCcnr_option = option;
+		}
+
+		public ToggleOptionChangeListener(REPO_OPTIONS option) {
+			mRepo_option = option;
+		}
+
+		public ToggleOptionChangeListener(CCND_OPTIONS option) {
+			mCcnd_option = option;
+		}
+
+		public void onCheckedChanged (CompoundButton buttonView, boolean isChecked) {
+			String val = isChecked ? "1" : "0";
+			if (control == null) {
+				Log.e(TAG, "control is null, failing");
+				return;
+			}
+			if (mCcns_option != null) {
+				control.setSyncOption(mCcns_option, val);
+			} else if (mCcnr_option != null) {
+				control.setCcnrOption(mCcnr_option, val);
+			} else if (mRepo_option != null) {
+				control.setRepoOption(mRepo_option, val);
+			} else if (mCcnd_option != null) {
+				control.setCcndOption(mCcnd_option, val);
+			} else {
+				Log.e(TAG, "null OPTION specificed for ToggleOptionChangeListener, ignoring.");
+			}
+		}
+	}
+
 	private String getIPAddress() {
 		try {
 			for (Enumeration<NetworkInterface> e = NetworkInterface.getNetworkInterfaces(); e.hasMoreElements();) {
@@ -343,9 +412,7 @@ public final class Controller extends Activity implements OnClickListener {
 		return (!((val == null) || (val.length() == 0)));
 	}
 
-    private void updateIPAddress() {
-        String ipaddr = getIPAddress();
-
+    private void updateIPAddress(String ipaddr) {
         if (ipaddr != null) {
             deviceIPAddress.setText(ipaddr);
         } else {
@@ -358,5 +425,21 @@ public final class Controller extends Activity implements OnClickListener {
 		setContentView(R.layout.controllermain);
 		initUI();
 		updateState();
+	}
+
+	private class GetIPAddrAsyncTask extends AsyncTask<Void, Void, String>  {
+
+	    @Override
+		protected String doInBackground(Void... params) {
+			String result = getIPAddress();
+			Log.d(TAG, "GetIPAddrAsyncTask result = " + result);
+			return getIPAddress();
+		}
+
+	    @Override
+	    protected void onPostExecute(String result) {
+			super.onPostExecute(result);
+			Controller.this.updateIPAddress(result);
+	    }
 	}
 }
