@@ -91,7 +91,7 @@ public class SliceComparator implements Runnable {
 	
 	protected ConfigSlice _slice;
 	protected ArrayList<CCNSyncHandler> _callbacks = new ArrayList<CCNSyncHandler>();
-	protected ArrayList<CCNSyncHandler> _pendingCallbacks = new ArrayList<CCNSyncHandler>();
+	protected ArrayList<CallbackAndHash> _pendingCallbacks = new ArrayList<CallbackAndHash>();
 	protected SliceComparator _leadComparator;
 	protected CCNHandle _handle;
 	protected SyncNodeCache _snc = null;
@@ -109,6 +109,24 @@ public class SliceComparator implements Runnable {
 	protected NodeBuilder _nBuilder = new NodeBuilder();
 	
 	protected SyncHashCache _shc = new SyncHashCache();
+	
+	protected class CallbackAndHash {
+		protected CCNSyncHandler _callback;
+		protected byte[] _hash;
+		
+		protected CallbackAndHash(CCNSyncHandler callback, byte[] hash) {
+			_callback = callback;
+			_hash = hash;
+		}
+		
+		protected byte[] getHash() {
+			return _hash;
+		}
+		
+		protected CCNSyncHandler getCallback() {
+			return _callback;
+		}
+	}
 	
 	/**
 	 * Start a comparison on a slice which will call back each registered "callback" each time
@@ -254,9 +272,9 @@ public class SliceComparator implements Runnable {
 		}
 	}
 	
-	public void addCallback(CCNSyncHandler callback) {
+	public void addCallback(CCNSyncHandler callback, byte[] hash) {
 		synchronized (this) {
-			_pendingCallbacks.add(callback);
+			_pendingCallbacks.add(new CallbackAndHash(callback, hash));
 		}
 	}
 	
@@ -934,10 +952,6 @@ public class SliceComparator implements Runnable {
 				}
 				switch (getState()) {
 				case INIT:		// Starting a new compare
-					synchronized (this) {
-						_callbacks.addAll(_pendingCallbacks);
-						_pendingCallbacks.clear();
-					}
 					byte[] data = null;
 					if (null != _startHash) {
 						_currentRoot = _startHash;
@@ -986,6 +1000,15 @@ public class SliceComparator implements Runnable {
 									(null == getHead(_current) ? "null" : Component.printURI(getHead(_current).getHash())),
 									Component.printURI(getHead(_next).getHash()));
 					}
+					ArrayList<CallbackAndHash> removes = new ArrayList<CallbackAndHash>();
+					byte[] current = (getHead(_current) == null) ? null : getHead(_current).getHash();
+					for (CallbackAndHash cah : _pendingCallbacks) {
+						if (DataUtils.compare(current, cah.getHash()) >= 0) {
+							_callbacks.add(cah.getCallback());
+							removes.add(cah);
+						}
+					}
+					_pendingCallbacks.removeAll(removes);
 					// Fall through
 				case PRELOAD:	// Need to load data for the compare
 					synchronized (this) {
@@ -1016,27 +1039,9 @@ public class SliceComparator implements Runnable {
 					break;
 				case DONE:	// Compare is done. Start over again if we have pending data
 							// for another compare
-					synchronized (this) {
-						if (this != _leadComparator  && !_needToCompare) {
-							// If we aren't the lead comparator for this slice we don't need to 
-							// continue - instead we can just add ourselves to its callbacks
-							// Note that eventually this will lead to this comparator being culled.
-							// We might want to do that explicitly but for now I'm not going to 
-							// worry about it.
-							// We also don't want to do this if we've been kicked because the leader
-							// could already be working on the next round and we want to see that also.
-							if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
-								Log.info(Log.FAC_SYNC, "Moving {0} callbacks to lead comparator", _callbacks.size());
-							for (CCNSyncHandler callback : _callbacks)							
-								_leadComparator.addCallback(callback);
-							_shutdown = true;
-						}
-						if (_shutdown)
-							return;
-					}
 					nextRound();
 					changeState(SyncCompareState.UPDATE);
-					
+					// Fall Through
 				case UPDATE:
 					synchronized (this) {
 						if (_shutdown)
@@ -1049,6 +1054,21 @@ public class SliceComparator implements Runnable {
 							break;
 					}
 					synchronized (this) {
+						if (this != _leadComparator  && !_needToCompare) {
+							// If we aren't the lead comparator for this slice we don't need to 
+							// continue - instead we can just add ourselves to its callbacks
+							// Note that eventually this will lead to this comparator being culled.
+							// We might want to do that explicitly but for now I'm not going to 
+							// worry about it.
+							// We also don't want to do this if we've been kicked because the leader
+							// could already be working on the next round and we want to see that also.
+							if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
+								Log.info(Log.FAC_SYNC, "Moving {0} callbacks to lead comparator", _callbacks.size());
+							current = (getHead(_current) == null) ? null : getHead(_current).getHash();
+							for (CCNSyncHandler callback : _callbacks)					
+								_leadComparator.addCallback(callback, current);
+							_shutdown = true;
+						}
 						changeState(SyncCompareState.INIT);
 						if (_pendingEntries.size() > 0) {
 							break;

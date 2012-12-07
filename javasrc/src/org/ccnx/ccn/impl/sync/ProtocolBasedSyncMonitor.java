@@ -68,7 +68,7 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 			if (null != cg && null != startHash && startHash.length == 0) {
 				// For 0 length hash (== start with current hash) we can just add the handler to the leadComparator if there is one since it should
 				// already know the latest hash
-				cg._leadComparator.addCallback(syncHandler);
+				cg._leadComparator.addCallback(syncHandler, startHash);
 				sendRootAdviseRequest = false;
 			} else {
 				SliceComparator sc = new SliceComparator(null == cg ? null : cg._leadComparator, _snc, syncHandler, slice, startHash, startName, _handle);
