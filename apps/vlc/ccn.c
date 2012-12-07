@@ -724,17 +724,6 @@ sequenced_name(struct ccn_charbuf *basename, uintmax_t seq)
     return(name);
 }
 
-static int
-append_tagged_binary_number(struct ccn_charbuf *cb, enum ccn_dtag dtag, uintmax_t val) {
-    unsigned char buf[sizeof(val)];
-    int pos;
-    int res = 0;
-    for (pos = sizeof(buf); val != 0 && pos > 0; val >>= 8)
-        buf[--pos] = val & 0xff;
-    res |= ccnb_append_tagged_blob(cb, dtag, buf+pos, sizeof(buf)-pos);
-    return(res);
-}
-
 static struct ccn_charbuf *
 make_prefetch_template()
 {
@@ -745,7 +734,7 @@ make_prefetch_template()
     ccn_charbuf_append_tt(templ, CCN_DTAG_MaxSuffixComponents, CCN_DTAG);
     ccnb_append_number(templ, 1);
     ccn_charbuf_append_closer(templ); /* </MaxSuffixComponents> */
-    append_tagged_binary_number(templ, CCN_DTAG_InterestLifetime, CCN_PREFETCH_LIFETIME);
+    ccnb_append_tagged_binary_number(templ, CCN_DTAG_InterestLifetime, CCN_PREFETCH_LIFETIME);
     ccn_charbuf_append_closer(templ); /* </Interest> */
     return(templ);
 }
@@ -760,7 +749,7 @@ make_data_template()
     ccn_charbuf_append_tt(templ, CCN_DTAG_MaxSuffixComponents, CCN_DTAG);
     ccnb_append_number(templ, 1);
     ccn_charbuf_append_closer(templ); /* </MaxSuffixComponents> */
-    append_tagged_binary_number(templ, CCN_DTAG_InterestLifetime, CCN_DATA_LIFETIME);
+    ccnb_append_tagged_binary_number(templ, CCN_DTAG_InterestLifetime, CCN_DATA_LIFETIME);
     ccn_charbuf_append_closer(templ); /* </Interest> */
     return(templ);
 }
