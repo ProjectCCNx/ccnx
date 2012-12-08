@@ -17,9 +17,14 @@
 APP_PLATFORM := android-5
 
 # Set APP_ABI
-# You should manually change this if you need other arm or x86 or mips ABIs
+# You should this if you need other arm or x86 or mips ABIs
 # left blank, default is just for armeabi
-APP_ABI := armeabi armeabi-v7a
+# APP_ABI := armeabi armeabi-v7a
+# For the purposes of most builds it is recommended not to set this unless you
+# intend to target a specific CPU Architecture supported by the Android NDK.
+# Please review ANDROID_NDK docs/CPU-ARCH-ABIS.html for more information.
+#
+# To dynamically set the APP_ABI, use 'ndk-build APP_ABI=<CPU ARCH>'
 
 # Don't need this in a jni/Application.mk
 #APP_PROJECT_PATH := 
