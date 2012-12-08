@@ -17,47 +17,59 @@
 
 package org.ccnx.ccn.impl.sync;
 
-import java.util.ArrayList;
+import java.lang.ref.SoftReference;
 import java.util.Arrays;
-import java.util.TreeSet;
 import java.util.logging.Level;
 
-import org.ccnx.ccn.CCNSync;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
-import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.io.content.SyncNodeComposite;
-import org.ccnx.ccn.io.content.SyncNodeComposite.SyncNodeElement;
 import org.ccnx.ccn.protocol.Component;
-import org.ccnx.ccn.protocol.ContentName;
 
 /**
  * Entry used for navigating trees of hashes
  * 
- * IMPORTANT NOTE: For now we rely on external synchronization for access to internal values of this class
+ * The policy about how to save nodes is: If the node came from the network, it can be retrieved via a request so
+ * we use a SoftReference to allow these to be garbage collected when necessary. If the node is local, we built it so
+ * can't be guaranteed that we know how to rebuild it if we lose it. So we hold onto these directly here, and remove
+ * them explicitly when no longer needed in the higher level code.
  */
 public class SyncTreeEntry {
 	// Flags values
-	protected final static long PENDING = 1; 	// Indicates a request for the node has been sent but not yet
-												// answered
-	protected final static long COVERED = 2;	// Indicates that all names covered by these references have been seen
+	protected final static long COVERED = 1;	// Indicates that all names covered by these references have been seen
+	protected final static long LOCAL = 2;		// Indicates that the node associated with this entry was created locally
 
 	protected long _flags;
 	protected byte[] _hash = null;				// The hash associated with the node associated with this entry
-	protected SyncNodeComposite _node = null;
+	protected SyncNodeComposite _node = null;	// If it wasn't created by us, it can be retrieved so saved via SoftReference
+	protected SoftReference<SyncNodeComposite> _softNodeRef = null;
 	protected byte[] _rawContent = null;
 	protected int _position = 0;
+	protected SyncNodeCache _snc = null;
 	
-	public SyncTreeEntry(byte[] hash) {
+	public SyncTreeEntry(byte[] hash, SyncNodeCache cache) {
 		_hash = new byte[hash.length];
 		System.arraycopy(hash, 0, _hash, 0, hash.length);
+		_snc = cache;
+		SyncNodeComposite node = retrieveFromCache();
+		if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST) && node != null)
+			Log.finest(Log.FAC_SYNC, "Found existing node: {0}", Component.printURI(hash));
 	}
 	
 	public void setNode(SyncNodeComposite snc) {
-		_node = snc;
+		synchronized (this) {
+			if (getNodeByReference() != null)
+				return;
+			if ((_flags & LOCAL) == 0) {
+				SoftReference<SyncNodeComposite> sr = new SoftReference<SyncNodeComposite>(snc);
+				_softNodeRef = sr;
+			} else
+				_node = snc;
+			_snc.putNode(snc);			
+		}
 		if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
-			SyncNodeComposite.decodeLogging(_node);
+			SyncNodeComposite.decodeLogging(snc);
 		}
 	}
 	
@@ -68,9 +80,12 @@ public class SyncTreeEntry {
 	 * @param content
 	 */
 	public void setRawContent(byte[] content) {
-		_node = null;
-		_rawContent = content;
-		_position = 0;
+		synchronized (this) {
+			if (getNodeIfPossible() != null)
+				return;
+			_rawContent = content;
+			_position = 0;
+		}
 	}
 	
 	/**
@@ -84,25 +99,34 @@ public class SyncTreeEntry {
 	 * @return
 	 */
 	public SyncNodeComposite getNode(XMLDecoder decoder) {
-		if (null == _node && null != _rawContent) {
-			if (null == decoder)
-				return null;
-			_node = new SyncNodeComposite();
+		SyncNodeComposite node = getNodeIfPossible();
+		synchronized (this) {
+			if (null != node || null == _rawContent || null == decoder) {
+				if (null != node)
+					_rawContent = null;
+				return node;
+			}
+			
+			// If we have to decode it, its not local by definition
+			node = new SyncNodeComposite();
 			try {
-				_node.decode(_rawContent, decoder);
+				node.decode(_rawContent, decoder);
 			} catch (ContentDecodingException e) {
 				Log.warning("Couldn't decode node {0} due to: {1}", (_hash == null ? "(unknown)"
 						: Component.printURI(_hash)), e.getMessage());
-				_node = null;
 				_rawContent = null;
 				return null;
 			}
 			_rawContent = null;
-			if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
-				SyncNodeComposite.decodeLogging(_node);
-			}
+			_softNodeRef = new SoftReference<SyncNodeComposite>(node);
+			_snc.clearPending(_hash);
+			if (null != _snc)
+				_snc.putNode(node);
 		}
-		return _node;
+		if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
+			SyncNodeComposite.decodeLogging(node);
+		}
+		return node;
 	}
 	
 	public SyncNodeComposite getNode() {
@@ -110,146 +134,41 @@ public class SyncTreeEntry {
 	}
 	
 	/**
-	 * Create a new composite node based on the input set of content names in
-	 * canonical order.
-	 * 
-	 * @param names
-	 * @return entry for the new node or null if none
-	 */
-	public static SyncTreeEntry newNode(TreeSet<ContentName> names) {
-		ArrayList<SyncNodeElement> snes = new ArrayList<SyncNodeElement>();
-		int leafCount = names.size();
-		SyncTreeEntry ourEntry = null;
-		SyncNodeElement firstElement = null;
-		SyncNodeElement lastElement = null; 
-		while (names.size() > 0) {
-			ourEntry = newLeafNode(names);
-			SyncNodeElement sne = new SyncNodeElement(ourEntry.getHash());
-			if (names.size() > 0) {
-				if (null == firstElement)
-					firstElement = ourEntry.getNode().getRefs().get(0);
-				snes.add(sne);
-			} else if (snes.size() > 0) {
-				int nRefs = ourEntry.getNode().getRefs().size();
-				lastElement = ourEntry.getNode().getRefs().get(nRefs - 1);
-				snes.add(sne);
-			}
-		}
-		if (snes.size() > 0) {
-			SyncNodeComposite snc = new SyncNodeComposite(snes, firstElement, lastElement, leafCount);
-			ourEntry = new SyncTreeEntry(snc.getHash());
-			ourEntry.setNode(snc);
-		}
-		return ourEntry;
-	}
-	
-	/**
-	 * Create a new leaf node from the names entered. We use only as many names as will fit into
-	 * the node, and remove those names from the input list so that after this has completed, the
-	 * list contains the remaining names which are not yet in a node.
-	 * 
-	 * @param names - the set of names in canonical order
-	 * @return
-	 */
-	public static SyncTreeEntry newLeafNode(TreeSet<ContentName> names) {
-		ArrayList<SyncNodeComposite.SyncNodeElement> refs = new ArrayList<SyncNodeComposite.SyncNodeElement>();
-		int total = 0;
-		int limit = CCNSync.NODE_SPLIT_TRIGGER - CCNSync.NODE_SPLIT_TRIGGER/8;
-		int minLen = CCNSync.NODE_SPLIT_TRIGGER/2;
-		int maxLen = 0;
-		int prevMatch = 0;
-		int split = 0;
-		ContentName tname = null;
-		for (ContentName nextName : names) {
-			if (null != tname) {
-				byte[] lengthTest;
-				try {
-					lengthTest = tname.encode();
-					int nameLen = lengthTest.length + 8;
-					if (nameLen > maxLen) maxLen = nameLen;
-					total += (nameLen + ((maxLen - nameLen) * 2));
-				} catch (ContentEncodingException e) {} // Shouldn't happen because we built the data
-				int match = tname.matchLength(nextName);
-				if (total > minLen) {
-					if (match < prevMatch || match > prevMatch + 1) {
-						if (Log.isLoggable(Log.FAC_SYNC, Level.FINE)) {
-							Log.fine(Log.FAC_SYNC, "Node split due to level change - nbytes {0}, match {1}, prev {2}", 
-									total, match, prevMatch);
-						}
-						prevMatch = match;
-						break;
-					}
-					byte[] lc = tname.lastComponent();
-					if (lc.length > 8) {
-						int c = (int)(lc[lc.length - 7] & 255);
-						if (c < CCNSync.HASH_SPLIT_TRIGGER) {
-							if (Log.isLoggable(Log.FAC_SYNC, Level.FINE)) {
-								Log.fine(Log.FAC_SYNC, "Node split due to hash split - nbytes {0}, val {1}", total, c);
-							}
-							break;
-						}
-					}
-				}
-				prevMatch = match;
-				if (total > limit)
-					break;
-			}
-			tname = nextName;
-			split = split + 1;
-		}
-		for (int i = 0; i < split; i++) {
-			tname = names.first();
-			SyncNodeElement sne = new SyncNodeComposite.SyncNodeElement(tname);
-			refs.add(sne);
-			names.remove(tname);
-		}
-		SyncNodeComposite snc = new SyncNodeComposite(refs, refs.get(0), refs.get(refs.size() - 1), refs.size());
-		SyncTreeEntry ste = new SyncTreeEntry(snc.getHash());
-		ste.setNode(snc);
-		return ste;
-	}
-	
-	/**
 	 * Routines for getting and cycling through the references
 	 * @return
 	 */
-	public SyncNodeComposite.SyncNodeElement getCurrentElement() {
-		if (null == _node)
+	public synchronized SyncNodeComposite.SyncNodeElement getCurrentElement() {
+		SyncNodeComposite node = getNodeIfPossible();
+		if (null == node) {
 			return null;
-		return _node.getElement(_position);
+		}
+		return node.getElement(_position);
 	}
 	
-	public void incPos() {
+	public synchronized void incPos() {
 		_position++;
 	}
 	
-	public void setPos(int position) {
+	public synchronized void setPos(int position) {
 		_position = position;
 	}
 	
-	public int getPos() {
-		return _position;
+	public synchronized int getPos() {
+			return _position;
 	}
 	
-	public boolean lastPos() {
-		if (_node == null)
+	public synchronized boolean lastPos() {
+		SyncNodeComposite node = getNodeIfPossible();
+		if (node == null)
 			return false;	// Needed to prompt a getNode
-		return (_position >= _node.getRefs().size());
+		return (_position >= node.getRefs().size());
 	}
 	
-	public byte[] getHash() {
+	public synchronized byte[] getHash() {
 		return _hash;
 	}
-	
-	public void setPending(boolean flag) {
-		setFlag(flag, PENDING);
-	}
-	
-	public boolean getPending() {
-		return (_flags & PENDING) != 0;
-	}
 		
-	public boolean isCovered() {
+	public synchronized boolean isCovered() {
 		return (_flags & COVERED) != 0;
 	}
 	
@@ -257,14 +176,56 @@ public class SyncTreeEntry {
 		setFlag(flag, COVERED);
 	}
 	
-	public boolean equals(SyncTreeEntry ste) {
+	public void setLocal(boolean flag) {
+		synchronized (this) {
+			if (flag && (_node != null))
+				return;		// Switch to local not allowed
+		}
+		setFlag(flag, LOCAL);
+	}
+	
+	public synchronized boolean isLocal() {
+		return (_flags & LOCAL) != 0;
+	}
+	
+	public synchronized boolean equals(SyncTreeEntry ste) {
 		return Arrays.equals(_hash, ste.getHash());
 	}
 	
+	private SyncNodeComposite retrieveFromCache() {
+		SyncNodeComposite snc = _snc.getNode(_hash);
+		if (null != snc) {
+			if (snc.retrievable()) {
+				SoftReference<SyncNodeComposite> sr = new SoftReference<SyncNodeComposite>(snc);
+				_softNodeRef = sr;
+			} else {
+				_node = snc;
+				setFlag(true, LOCAL);
+			}
+		}
+		return snc;
+	}
+	
 	private void setFlag(boolean flag, long type) {
-		if (flag)
-			_flags |= type;
-		else
-			_flags &= ~type;
+		synchronized (this) {
+			if (flag)
+				_flags |= type;
+			else
+				_flags &= ~type;
+		}
+	}
+	
+	private SyncNodeComposite getNodeByReference() {
+		synchronized (this) {
+			boolean local = (_flags & LOCAL) != 0;
+			return local ? _node : (null == _softNodeRef ? null : _softNodeRef.get());
+		}
+	}
+	
+	private SyncNodeComposite getNodeIfPossible() {
+		SyncNodeComposite node = getNodeByReference();
+		if (null == node)
+			node = retrieveFromCache();
+		return node;
 	}
 }

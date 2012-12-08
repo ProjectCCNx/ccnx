@@ -89,4 +89,12 @@ public abstract class SyncMonitor {
 	 */
 	public abstract void removeCallback(CCNSyncHandler syncHandler, ConfigSlice slice) throws IOException;
 	
+	/**
+	 * Shutdown all sync watching for this slice
+	 * @param slice
+	 * @throws IOException
+	 */
+	public abstract void shutdown(ConfigSlice slice);
+
+	
 }

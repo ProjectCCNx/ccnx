@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNSyncHandler;
 import org.ccnx.ccn.config.ConfigurationException;
@@ -298,5 +299,12 @@ public class FileBasedSyncMonitor extends SyncMonitor implements Runnable{
 		// remove callback from hashmap.  turn off thread if no longer needed
 		processRemoveCallback(syncHandler, slice);
 	}
-
+	
+	public void shutdown(ConfigSlice slice) {
+		ArrayList<CCNSyncHandler> cb = callbacks.get(slice);
+		
+		// Will automatically shutdown when all are removed
+		for (CCNSyncHandler syncHandler : cb)
+			removeCallback(syncHandler, slice);		
+	}
 }
