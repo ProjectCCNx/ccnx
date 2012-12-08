@@ -26,10 +26,12 @@ CCNx 0.7.0.
 	* Bug #100693: Remove some obsolete code from ccnd matching loop
 	* Feature: #100857: Define a way carry experimental extension fields in the ContentObject 
 	schema
-	* Bug: #100860: LogTest tests can fail due to unsynchronized parallel execution
-	* Bug: #100814: minor C api cleanups
+	* Bug #100860: LogTest tests can fail due to unsynchronized parallel execution
+	* Bug #100814: minor C api cleanups
 	* Feature #100847: CCNx Android Services needs to have a toggle to enable/disable sync on
 	startup
+	* Bug #100859: Bugs/problems in sync implementation
+	* Feature #100852: Local ccnd / local prefix auto-configuration
 
 Changes between 0.6.1 and 0.6.2:
 --------------------------------
