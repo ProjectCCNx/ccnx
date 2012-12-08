@@ -6,7 +6,7 @@
  */
 
 /*
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011-2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -374,7 +374,7 @@ ccnr_init_repo_keystore(struct ccnr_handle *ccnr, struct ccn *h)
         res = ccn_load_default_key(h, keystore_path, CCNR_KEYSTORE_PASS);
 Finish:
     if (res >= 0 && h != NULL)
-        res = ccn_chk_signing_params(h, NULL, &sp, NULL, NULL, NULL);
+        res = ccn_chk_signing_params(h, NULL, &sp, NULL, NULL, NULL, NULL);
     if (res >= 0 && h != NULL) {
         memcpy(ccnr->ccnr_id, sp.pubid, sizeof(ccnr->ccnr_id));
         if (ccnr->ccnr_keyid == NULL)

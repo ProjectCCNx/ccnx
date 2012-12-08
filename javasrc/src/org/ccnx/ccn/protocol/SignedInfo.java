@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -106,7 +106,8 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
     protected ContentType 	_type;
     protected KeyLocator 	_locator;
     protected Integer 		_freshnessSeconds;
-    protected byte []		_finalBlockID; 
+    protected byte []		_finalBlockID;
+    protected byte []		_extOpt;
 
     /**
      * Constructor
@@ -184,6 +185,27 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 			Integer freshnessSeconds,
 			byte [] finalBlockID
 			) {
+    	this(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID, null);
+    };
+    /**
+     * Constructor
+     * @param publisher
+     * @param timestamp
+     * @param type
+     * @param locator
+     * @param freshnessSeconds
+     * @param finalBlockID
+     * @param extOpt
+     */
+    public SignedInfo(
+    		PublisherPublicKeyDigest publisher, 
+    		CCNTime timestamp, 
+			ContentType type,
+			KeyLocator locator,
+			Integer freshnessSeconds,
+			byte [] finalBlockID,
+			byte [] extOpt
+			) {
     	super();
     	this._publisher = publisher;
     	if (null == timestamp) {
@@ -196,6 +218,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
     	this._locator = locator;
     	this._freshnessSeconds = freshnessSeconds;
     	this._finalBlockID = finalBlockID;
+    	this._extOpt = extOpt;
      }
 
     /**
@@ -208,7 +231,8 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
     		 other.getType(), 
        		 other.getKeyLocator(),
        		 other.getFreshnessSeconds(),
-       		 other.getFinalBlockID());
+       		 other.getFinalBlockID(),
+       		 other.getExtOpt());
     }
 
     /**
@@ -262,6 +286,13 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
     }
     
     /**
+     * Do we have an ExtOpt
+     * @return true if KeyLocator is empty, false if we have one
+     */
+    public boolean emptyExtOpt() { 
+    	return (null == _extOpt); 
+    }
+     /**
      * Return the publisher
      * @return the publisher
      */
@@ -315,6 +346,18 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 	 */
 	public void setFinalBlockID(byte [] finalBlockID) { _finalBlockID = finalBlockID; }
 
+	/**
+	 * Get the extOpt as binary
+	 * @return the extOpt
+	 */
+	public void setExtOpt(byte [] extOpt) { _extOpt = extOpt; }
+	
+	/**
+	 * Get the extOpt as binary
+	 * @return the extOpt
+	 */
+	public final byte [] getExtOpt() { return _extOpt; }
+	
 	/**
 	 * Set the content type for this content object
 	 * @param type
@@ -436,7 +479,11 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 			_locator = new KeyLocator();
 			_locator.decode(decoder);
 		}
-				
+		
+		if (decoder.peekStartElement(CCNProtocolDTags.ExtOpt)) {
+			_extOpt = decoder.readBinaryElement(CCNProtocolDTags.ExtOpt);
+		}
+
 		decoder.readEndElement();
 	}
 
@@ -470,6 +517,10 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 
 		if (!emptyKeyLocator()) {
 			getKeyLocator().encode(encoder);
+		}
+		
+		if (!emptyExtOpt()) {
+			encoder.writeElement(CCNProtocolDTags.ExtOpt, getExtOpt());
 		}
 
 		encoder.writeEndElement();   		

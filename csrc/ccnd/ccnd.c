@@ -117,6 +117,7 @@ static void ccn_append_link_stuff(struct ccnd_handle *h,
 static int process_incoming_link_message(struct ccnd_handle *h,
                                          struct face *face, enum ccn_dtag dtag,
                                          unsigned char *msg, size_t size);
+static void process_internal_client_buffer(struct ccnd_handle *h);
 static void
 pfi_destroy(struct ccnd_handle *h, struct interest_entry *ie,
             struct pit_face_item *p);
@@ -443,7 +444,7 @@ ccnd_close_fd(struct ccnd_handle *h, unsigned faceid, int *pfd)
 /**
  * Associate a guid with a face.
  *
- * The same guid is shared amoing all the peers that communicate over the
+ * The same guid is shared among all the peers that communicate over the
  * face, and no two faces at a node should have the same guid.
  *
  * @returns 0 for success, -1 for error.
@@ -480,6 +481,30 @@ ccnd_set_face_guid(struct ccnd_handle *h, struct face *face,
         res = -1;
     hashtb_end(e);
     return(res);
+}
+
+/**
+ * Return the faceid associated with the guid.
+ */
+unsigned
+ccnd_faceid_from_guid(struct ccnd_handle *h,
+                      const unsigned char *guid, size_t size)
+{
+    struct ccn_charbuf *c = NULL;
+    unsigned *pfaceid = NULL;
+    
+    if (size > 255)
+        return(CCN_NOFACEID);
+    if (h->faceid_by_guid == NULL)
+        return(CCN_NOFACEID);
+    c = ccn_charbuf_create();
+    ccn_charbuf_append_value(c, size, 1);
+    ccn_charbuf_append(c, guid, size);
+    pfaceid = hashtb_lookup(h->faceid_by_guid, c->buf, c->length);
+    ccn_charbuf_destroy(&c);
+    if (pfaceid == NULL)
+        return(CCN_NOFACEID);
+    return(*pfaceid);
 }
 
 /**
@@ -2081,6 +2106,7 @@ check_dgram_faces(struct ccnd_handle *h)
     int count = 0;
     int checkflags = CCN_FACE_DGRAM;
     int wantflags = CCN_FACE_DGRAM;
+    int adj_req = 0;
     
     hashtb_start(h->dgram_faces, e);
     while (e->data != NULL) {
@@ -2088,7 +2114,7 @@ check_dgram_faces(struct ccnd_handle *h)
         if (face->addr != NULL && (face->flags & checkflags) == wantflags) {
             face->flags &= ~CCN_FACE_LC; /* Rate limit link check interests */
             if (face->recvcount == 0) {
-                if ((face->flags & CCN_FACE_PERMANENT) == 0) {
+                if ((face->flags & (CCN_FACE_PERMANENT | CCN_FACE_ADJ)) == 0) {
                     count += 1;
                     hashtb_delete(e);
                     continue;
@@ -2104,6 +2130,9 @@ check_dgram_faces(struct ccnd_handle *h)
         hashtb_next(e);
     }
     hashtb_end(e);
+    if (adj_req) {
+        process_internal_client_buffer(h);
+    }
     return(count);
 }
 
@@ -2270,7 +2299,7 @@ remove_content(struct ccnd_handle *h, struct content_entry *content)
  * Periodic content cleaning
  */
 static int
-clean_deamon(struct ccn_schedule *sched,
+clean_daemon(struct ccn_schedule *sched,
              void *clienth,
              struct ccn_scheduled_event *ev,
              int flags)
@@ -2298,8 +2327,10 @@ clean_deamon(struct ccn_schedule *sched,
         return(0);
     }
     n = hashtb_n(h->content_tab);
-    if (n <= h->capacity)
-        return(15000000);
+    if (n <= h->capacity) {
+        h->clean = NULL;
+        return(0);
+    }
     /* Toss unsolicited content first */
     for (i = 0; i < h->unsol->n; i++) {
         if (i == check_limit) {
@@ -2314,8 +2345,8 @@ clean_deamon(struct ccn_schedule *sched,
             (content->flags & CCN_CONTENT_ENTRY_PRECIOUS) == 0)
             remove_content(h, content);
     }
-    n = hashtb_n(h->content_tab);
     h->unsol->n = 0;
+    n = hashtb_n(h->content_tab);
     if (h->min_stale <= h->max_stale) {
         /* clean out stale content next */
         limit = h->max_stale;
@@ -2369,20 +2400,20 @@ clean_deamon(struct ccn_schedule *sched,
             }
         }
         ev->evint = 0;
-        return(1000000);
+        return(5000);
     }
-    ev->evint = 0;
-    return(15000000);
+    h->clean = NULL;
+    return(0);
 }
 
 /**
- * Schedule clean_deamon, if it is not already scheduled.
+ * Schedule clean_daemon, if it is not already scheduled.
  */
 static void
 clean_needed(struct ccnd_handle *h)
 {
     if (h->clean == NULL)
-        h->clean = ccn_schedule_event(h->sched, 1000000, clean_deamon, NULL, 0);
+        h->clean = ccn_schedule_event(h->sched, 5000, clean_daemon, NULL, 0);
 }
 
 /**
@@ -3314,18 +3345,6 @@ ie_next_usec(struct ccnd_handle *h, struct interest_entry *ie,
     return(ans);
 }
 
-// ZZZZ - append_tagged_binary_number should be in libccn
-static int
-append_tagged_binary_number(struct ccn_charbuf *cb, enum ccn_dtag dtag, uintmax_t val) {
-    unsigned char buf[sizeof(val)];
-    int pos;
-    int res = 0;
-    for (pos = sizeof(buf); val != 0 && pos > 0; val >>= 8)
-        buf[--pos] = val & 0xff;
-    res |= ccnb_append_tagged_blob(cb, dtag, buf+pos, sizeof(buf)-pos);
-    return(res);
-}
-
 /**
  *  Forward an interest message
  *
@@ -3357,7 +3376,7 @@ send_interest(struct ccnd_handle *h, struct interest_entry *ie,
     p->expiry = h->wtnow + (lifetime * WTHZ / 4096);
     ccn_charbuf_reset(c);
     if (lifetime != default_life)
-        append_tagged_binary_number(c, CCN_DTAG_InterestLifetime, lifetime);
+        ccnb_append_tagged_binary_number(c, CCN_DTAG_InterestLifetime, lifetime);
     noncesize = p->pfi_flags & CCND_PFI_NONCESZ;
     if (noncesize != 0)
         ccnb_append_tagged_blob(c, CCN_DTAG_Nonce, p->nonce, noncesize);
@@ -4277,17 +4296,6 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                     ccn_content_matches_interest(content->key,
                                        content->size,
                                        0, NULL, msg, size, pi)) {
-                    if ((pi->orderpref & 1) == 0 && // XXX - should be symbolic
-                        pi->prefix_comps != comps->n - 1 &&
-                        comps->n == content->ncomps &&
-                        content_matches_interest_prefix(h, content, msg,
-                                                        comps, comps->n - 1)) {
-                        if (h->debug & 8)
-                            ccnd_debug_ccnb(h, __LINE__, "skip_match", NULL,
-                                            content->key,
-                                            content->size);
-                        goto move_along;
-                    }
                     if (h->debug & 8)
                         ccnd_debug_ccnb(h, __LINE__, "matches", NULL,
                                         content->key,
@@ -4298,7 +4306,6 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                     content = next_child_at_level(h, content, comps->n - 1);
                     goto check_next_prefix;
                 }
-            move_along:
                 content = content_from_accession(h, content_skiplist_next(h, content));
             check_next_prefix:
                 if (content != NULL &&
@@ -4551,6 +4558,9 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         }
     }
     else if (res == HT_NEW_ENTRY) {
+        unsigned long n = hashtb_n(h->content_tab);
+        if (n > h->capacity + (h->capacity >> 3))
+            clean_needed(h);
         content->accession = ++(h->accession);
         content->arrival_faceid = face->faceid;
         enroll_content(h, content);
@@ -5780,7 +5790,6 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->flood = (h->autoreg != NULL);
     h->ipv4_faceid = h->ipv6_faceid = CCN_NOFACEID;
     ccnd_listen_on(h, listen_on);
-    clean_needed(h);
     reap_needed(h, 55000);
     age_forwarding_needed(h);
     ccnd_internal_client_start(h);

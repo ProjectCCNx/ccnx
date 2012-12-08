@@ -535,7 +535,7 @@ r_proto_policy_update(struct ccn_schedule *sched,
                                   pco.offset[CCN_PCO_E_Content],
                                   &buf, &length);
         ccn_charbuf_append(policy, buf, length);
-        final = r_util_is_final_pco(content_msg, &pco, nc);
+        final = ccn_is_final_pco(content_msg, &pco, nc);
     } while (!final);
     
     pp = ccnr_parsed_policy_create();

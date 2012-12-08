@@ -997,7 +997,7 @@ load_policy(struct ccnr_handle *ccnr)
                                       pco.offset[CCN_PCO_E_Content],
                                       &buf, &length);
             ccn_charbuf_append(policy, buf, length);
-            final = r_util_is_final_pco(content_msg, &pco, nc);
+            final = ccn_is_final_pco(content_msg, &pco, nc);
         } while (!final && segment < 100);
         if (policy->length == 0) {
             ccnr_msg(ccnr, "Policy link points to empty or non-existent policy.");

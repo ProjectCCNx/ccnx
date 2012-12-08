@@ -76,22 +76,6 @@ append_future_vcomp(struct ccn_charbuf *templ)
     ccn_charbuf_append_closer(templ); /* </Component> */
 }
 
-/**
- * Append InterestLifetime to partially constructed Interest.
- * XXX: when (ccnb_)append_tagged_binary_number shows up in the library
- * replace this function...
- */
-static void
-answer_lifetime(struct ccn_charbuf *templ, uintmax_t lifetime)
-{
-    unsigned char buf[sizeof(lifetime)] = {0};
-    int i;
-    for (i = sizeof(buf) - 1; i >= 0 && lifetime > 0; i--, lifetime >>= 8)
-        buf[i] = lifetime & 0xff;
-    ccnb_append_tagged_blob(templ, CCN_DTAG_InterestLifetime,
-                            buf + i + 1, sizeof(buf) - i - 1);
-}
-
 static struct ccn_charbuf *
 resolve_templ(struct ccn_charbuf *templ, unsigned const char *vcomp, int size, int lifetime)
 {
@@ -117,7 +101,7 @@ resolve_templ(struct ccn_charbuf *templ, unsigned const char *vcomp, int size, i
     answer_highest(templ);
     answer_passive(templ);
     if (lifetime > 0)
-        answer_lifetime(templ, lifetime);
+        ccnb_append_tagged_binary_number(templ, CCN_DTAG_InterestLifetime, lifetime);
     ccn_charbuf_append_closer(templ); /* </Interest> */
     return(templ);
 }

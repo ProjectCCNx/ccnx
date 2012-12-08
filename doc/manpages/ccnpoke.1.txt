@@ -20,8 +20,14 @@ OPTIONS
 *-h*::
     Generate the help message.
 
+*-e* 'file'::
+    Populate the optional ExtOpt element with the contents of the given file.
+    The provided data should generally  be ccnb encoded and limited in size,
+    although ccnpeek does not enforce this.
+
 *-f*::
     Force sending the ContentObject to ccnd even if there is no matching interest.
+    This should be used only for testing purposes.
     
 *-l*::
     Set the FinalBlockId based on the last component of the name.
@@ -51,9 +57,7 @@ OPTIONS
     Specifies the time to wait, in seconds, for an Interest to be received.
     
 *-x* 'freshness'::
-    Specifies the Freshness, in seconds, to be encoded in the ContentObject.
-
-    
+    Specifies the Freshness, in seconds, to be encoded in the ContentObject.    
 
 EXIT STATUS
 -----------
@@ -65,4 +69,4 @@ EXIT STATUS
 
 AUTHOR
 ------
-Nick Briggs
+Michael Plass, Nick Briggs

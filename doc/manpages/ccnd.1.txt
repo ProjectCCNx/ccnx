@@ -93,6 +93,69 @@ Options for *ccnd* are set via environment variables.
       interests matching these prefixes to any peer that talks to it.
       example: CCND_AUTOREG=ccnx:/ccnx.org/Users,ccnx:/ccnx.org/Chat
 
+NAME SPACES
+-----------
+After *ccnd* starts, control of its behavior takes place using CCNx protocols.
+For more information, please refer to
+link:../technical/NameConventions.html[NameConventions]
+int the technical documentation.
+
+This is where ccnd publishes its key, using the service discovery profile:
+
+    ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnd
+
+For the benefit of neighboring nodes, the key is published here as well:
+
+    ccnx:/%C1.M.S.neighborhood/%C1.M.SRV/ccnd
+
+The following is the main prefix used to communicate with this instance of ccnd.
+Here +<ccndid>+ refers to the SHA256 digest of the ccnd's public key.
+Note that, for historical reasons, this does not use the key marker convention.
+Each instance of ccnd may be assumed to be using a distict public key.
+See link:../technical/Registration.html[Registration] for a description of
+the protocols used in in this namespace.
+
+    ccnx:/ccnx/<ccndid>
+
+A stream of face status changes may be obtained through the the name below.
+This uses the standard versioning and segmentation profiles, so a utility
+such as *ccncat* may be used to read it.  At present, only one version of
+the stream is started when it is requested for the first time, so a program
+that needs to access it should start shortly after *ccnd* and run as long as
+the *ccnd* instance is around. The format of this stream is a simple
+text-based one.
+
+    ccnx:/ccnx/<ccndid>/notice.txt
+
+When two ccnds begin exchanging interest and data, an automatic handshake
+takes place to agree upon a name prefix that both nodes can use to refer
+to the communication channel.
+This prefix is registered on each node to forward interests to the other.
+An example of such a prefix is
+
+    ccnx:/%C1.M.FACE/%C1.M.G%00%00XL%DB%F0%0A%0APn%0F%B1%F2%1F
+
+The first name component is always the same.
+The second component is a randomly-generated guid, with a guid marker.
+(These guids are abbreviated below to make them easier to read.)
+
+As a byproduct of this handshake,
+each ccnd creates a content object that represents its endpoint.
+For example:
+
+    ccnx:/%C1.M.FACE/%C1.M.G%00%00XL42/%C1.M.NODE/%C1.M.K%00...1/face~7/%FD...
+    ccnx:/%C1.M.FACE/%C1.M.G%00%00XL42/%C1.M.NODE/%C1.M.K%00...2/face~9/%FD...
+
+The third component is the constant +%C1.M.NODE+,
+to allow the remainder if the namespace to be used for other purposes.
+The fourth component is the ccndid, with the key digest marker.  These have
+been abbreviated in the example.
+The fifth component is the faceid, in decimal ascii,
+with a leading distinguisher of 'face~'.
+The remaining two components are for standard versioning and segmentation.
+
+Currently there is no payload in these content objects.
+This is subject to change.
 
 EXIT STATUS
 -----------
