@@ -28,6 +28,8 @@ CCNx 0.7.0.
 	schema
 	* Bug: #100860: LogTest tests can fail due to unsynchronized parallel execution
 	* Bug: #100814: minor C api cleanups
+	* Feature #100847: CCNx Android Services needs to have a toggle to enable/disable sync on
+	startup
 
 Changes between 0.6.1 and 0.6.2:
 --------------------------------
