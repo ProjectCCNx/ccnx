@@ -408,6 +408,27 @@ ccnb_append_tagged_blob(struct ccn_charbuf *c,
     res |= ccn_charbuf_append_closer(c);
     return(res == 0 ? 0 : -1);
 }
+/**
+ * Append a tagged binary number as a blob containing the integer value
+ *
+ * This is a ccnb-encoded element holding a 
+ * @param cb is the buffer to append to.
+ * @param dtag is the element's dtab
+ * @param val is the unsigned integer to be appended
+ * @returns 0 for success or -1 for error.
+ */
+int
+ccnb_append_tagged_binary_number(struct ccn_charbuf *cb,
+                                 enum ccn_dtag dtag,
+                                 uintmax_t val) {
+    unsigned char buf[sizeof(val)];
+    int pos;
+    int res = 0;
+    for (pos = sizeof(buf); val != 0 && pos > 0; val >>= 8)
+        buf[--pos] = val & 0xff;
+    res |= ccnb_append_tagged_blob(cb, dtag, buf+pos, sizeof(buf)-pos);
+    return(res);
+}
 
 /**
  * Append a tagged UDATA string, with printf-style formatting

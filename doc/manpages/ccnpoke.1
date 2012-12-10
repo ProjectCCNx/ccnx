@@ -2,12 +2,12 @@
 .\"     Title: ccnpoke
 .\"    Author: [see the "AUTHOR" section]
 .\" Generator: DocBook XSL Stylesheets v1.76.0 <http://docbook.sf.net/>
-.\"      Date: 11/16/2012
+.\"      Date: 12/08/2012
 .\"    Manual: \ \&
-.\"    Source: \ \& 0.7.0rc1
+.\"    Source: \ \& 0.7.0
 .\"  Language: English
 .\"
-.TH "CCNPOKE" "1" "11/16/2012" "\ \& 0\&.7\&.0rc1" "\ \&"
+.TH "CCNPOKE" "1" "12/08/2012" "\ \& 0\&.7\&.0" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -42,9 +42,14 @@ The \fBccnpoke\fR utility reads data from stdin and generates a single ContentOj
 Generate the help message\&.
 .RE
 .PP
+\fB\-e\fR \fIfile\fR
+.RS 4
+Populate the optional ExtOpt element with the contents of the given file\&. The provided data should generally be ccnb encoded and limited in size, although ccnpeek does not enforce this\&.
+.RE
+.PP
 \fB\-f\fR
 .RS 4
-Force sending the ContentObject to ccnd even if there is no matching interest\&.
+Force sending the ContentObject to ccnd even if there is no matching interest\&. This should be used only for testing purposes\&.
 .RE
 .PP
 \fB\-l\fR
@@ -104,4 +109,4 @@ Failure (syntax or usage error, error sending ContentObject)
 .RE
 .SH "AUTHOR"
 .sp
-Nick Briggs
+Michael Plass, Nick Briggs

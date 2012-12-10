@@ -150,10 +150,12 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 	public int _leafCount;
 	public int _treeDepth;
 	public int _byteCount = 0;
+	public boolean _retrievable = true;	// Its "retrievable" if we got it from the network
+										// If we built it ourselves, we may not know how to redo that
 	
 	public SyncNodeComposite() {}
 	
-	public SyncNodeComposite(ArrayList<SyncNodeElement> refs, SyncNodeElement minName, SyncNodeElement maxName, int leafCount) {
+	public SyncNodeComposite(ArrayList<SyncNodeElement> refs, SyncNodeElement minName, SyncNodeElement maxName, int leafCount, int depth) {
 		_refs = refs;
 		_minName = minName;
 		_maxName = maxName;
@@ -162,18 +164,16 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 		
 		_version = Sync.SYNC_VERSION;
 		
-		// TODO: For now we just support trees here that are 1 or 2 nodes deep
-		_treeDepth = 1;
-		for (SyncNodeElement sne : refs) {
-			if (sne.getType() == SyncNodeType.HASH) {
-				_treeDepth = 2;
-				break;
-			}
-		}
+		_treeDepth = depth;
+		_retrievable= false;
 	}
 	
 	public ArrayList<SyncNodeElement> getRefs() {
 		return _refs;
+	}
+	
+	public void setLeafCount(int count) {
+		_leafCount = count;
 	}
 	
 	public SyncNodeElement getElement(int position) {
@@ -260,6 +260,10 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 	public long getElementLabel() {
 		return CCNProtocolDTags.SyncNode;
 	}
+	
+	public boolean retrievable() {
+		return _retrievable;
+	}
 
 	public boolean validate() {
 		return _version == Sync.SYNC_VERSION;
@@ -279,6 +283,10 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 	
 	public int getLeafCount() {
 		return _leafCount;
+	}
+	
+	public int getDepth() {
+		return _treeDepth;
 	}
 	
 	public static void decodeLogging(SyncNodeComposite node) {

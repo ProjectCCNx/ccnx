@@ -38,12 +38,18 @@ import org.ccnx.ccn.protocol.Interest;
  * Snoops on the sync protocol to report new files seen by sync on a slice to a registered handler
  */
 public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentHandler, CCNInterestHandler {
+	private class ComparatorGroup {
+		SliceComparator _leadComparator;
+		ArrayList<SliceComparator> _activeComparators;
+		
+		public ComparatorGroup(SliceComparator sc) {
+			_leadComparator = sc;
+			_activeComparators = new ArrayList<SliceComparator>();
+		}
+	}
 	protected CCNHandle _handle;
-	protected HashMap<SyncHashEntry, ArrayList<SliceComparator>> _comparators = new HashMap<SyncHashEntry, ArrayList<SliceComparator>>();
-	
-	// This contains all received hashes. These can be shared via different slice comparators (of course they
-	// would have to be on the same slice to have the same hashes).
-	protected HashMap<SyncHashEntry, SyncTreeEntry> _hashes = new HashMap<SyncHashEntry, SyncTreeEntry>();
+	protected HashMap<SyncHashEntry, ComparatorGroup> _comparators = new HashMap<SyncHashEntry, ComparatorGroup>();
+	protected SyncNodeCache _snc = new SyncNodeCache();
 	
 	public ProtocolBasedSyncMonitor(CCNHandle handle) {
 		_handle = handle;
@@ -55,90 +61,76 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 	 * which are used to notice new hashes coming through which may contain unseen files.
 	 */
 	public void registerCallback(CCNSyncHandler syncHandler, ConfigSlice slice, byte[] startHash, ContentName startName) throws IOException {
-		synchronized (callbacks) {
-			registerCallbackInternal(syncHandler, slice);
-		}
-		SyncTreeEntry ste = null;
-		if (null != startHash)
-			ste = addHash(startHash);
-		SliceComparator sc = new SliceComparator(this, syncHandler, slice, ste, startName, _handle);
+		boolean sendRootAdviseRequest = true;
 		synchronized (this) {
 			SyncHashEntry she = new SyncHashEntry(slice.getHash());
-			ArrayList<SliceComparator> al = _comparators.get(she);
-			if (null == al)
-				al = new ArrayList<SliceComparator>();
-			al.add(sc);
-			_comparators.put(new SyncHashEntry(slice.getHash()), al);
+			ComparatorGroup cg = _comparators.get(she);
+			if (null != cg && null != startHash && startHash.length == 0) {
+				// For 0 length hash (== start with current hash) we can just add the handler to the leadComparator if there is one since it should
+				// already know the latest hash
+				cg._leadComparator.addCallback(syncHandler, startHash);
+				sendRootAdviseRequest = false;
+			} else {
+				SliceComparator sc = new SliceComparator(null == cg ? null : cg._leadComparator, _snc, syncHandler, slice, startHash, startName, _handle);
+				if (null == cg) {
+					cg = new ComparatorGroup(sc);
+				}
+				cg._activeComparators.add(sc);
+				_comparators.put(she, cg);
+			}
 		}
-		ContentName rootAdvise = new ContentName(slice.topo, Sync.SYNC_ROOT_ADVISE_MARKER, slice.getHash());
-		Interest interest = new Interest(rootAdvise);
-		interest.scope(1);
-		_handle.registerFilter(rootAdvise, this);
-		_handle.expressInterest(interest, this);
+		if (sendRootAdviseRequest) {
+			ContentName rootAdvise = new ContentName(slice.topo, Sync.SYNC_ROOT_ADVISE_MARKER, slice.getHash());
+			Interest interest = new Interest(rootAdvise);
+			interest.scope(1);
+			_handle.registerFilter(rootAdvise, this);
+			_handle.expressInterest(interest, this);
+		}
 	}
 
+	/**
+	 * We don't want to shutdown just because there are no more callbacks because if someone asks
+	 * for a new sync starting at the current hash, having something running is the best way to
+	 * find the current hash. If someone wants to shutdown, they should explicitly ask for it.
+	 */
 	public void removeCallback(CCNSyncHandler syncHandler, ConfigSlice slice) {
-		synchronized (callbacks) {
-			removeCallbackInternal(syncHandler, slice);
-		}
+		ArrayList<SliceComparator> removes = new ArrayList<SliceComparator>();
 		SyncHashEntry she = new SyncHashEntry(slice.getHash());
 		synchronized (this) {
-			ArrayList<SliceComparator> al = _comparators.get(she);
-			SliceComparator thisOne = null;
-			for (SliceComparator sc : al) {
-				if (syncHandler == sc.getCallback()) {
-					thisOne = sc;
-					break;
+			ComparatorGroup cg = _comparators.get(she);
+			if (null != cg) {
+				for (SliceComparator sc : cg._activeComparators) {
+					sc.removeCallback(syncHandler);
+					if (sc != cg._leadComparator) {
+						if (sc.shutdownIfUseless())
+							removes.add(sc);
+					}
 				}
-			}
-			if (null != thisOne) {
-				al.remove(thisOne);
-				if (al.size() == 0)
-					_comparators.remove(she);
+				cg._activeComparators.removeAll(removes);
 			}
 		}
 	}
 	
-	/**
-	 * Add a new hash to the list of ones we've seen
-	 * @param hash
-	 * @return new SyncTreeEntry for the hash
-	 */
-	public SyncTreeEntry addHash(byte[] hash) {
+	public void shutdown(ConfigSlice slice) {
+		if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
+			Log.info(Log.FAC_SYNC, "Shutting down sync on slice: {0}", slice.prefix);
+		SyncHashEntry she = new SyncHashEntry(slice.getHash());
 		synchronized (this) {
-			SyncTreeEntry entry = _hashes.get(new SyncHashEntry(hash));
-			if (null == entry) {
-				entry = new SyncTreeEntry(hash);
-				_hashes.put(new SyncHashEntry(hash), entry);
-			} else
-				entry.setPos(0);
-			return entry;
-		}
-	}
-	
-	/**
-	 * Get a SyncTreeEntry for a hash if there is one
-	 * @param hash
-	 * @return
-	 */
-	public SyncTreeEntry getHash(byte[] hash) {
-		if (null == hash)
-			return null;
-		synchronized (this) {
-			return _hashes.get(new SyncHashEntry(hash));
-		}
-	}
-	
-	/**
-	 * Put a specific entry in for a hash
-	 */
-	public void putHashEntry(SyncTreeEntry entry) {
-		SyncHashEntry she = new SyncHashEntry(entry.getHash());
-		synchronized (this) {
-			SyncTreeEntry tste = _hashes.get(she);
-			if (null != tste)
-				_hashes.remove(she);
-			_hashes.put(she, entry);
+			ComparatorGroup cg = _comparators.get(she);
+			if (null != cg) {
+				// remove all callbacks - therefore shutting down all current comparators except
+				// the lead
+				for (SliceComparator sc : cg._activeComparators) {
+					ArrayList<CCNSyncHandler> callbacks = sc.getCallbacks();
+					ArrayList<CCNSyncHandler> shutdownCallbacks = new ArrayList<CCNSyncHandler>();
+					shutdownCallbacks.addAll(callbacks);
+					for (CCNSyncHandler syncHandler : shutdownCallbacks)
+						sc.removeCallback(syncHandler);
+				}
+				// Now shutdown the lead
+				cg._leadComparator.shutdownIfUseless();
+				_comparators.remove(she);
+			}
 		}
 	}
 	
@@ -179,12 +171,12 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 		}
 		if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
 			Log.info(Log.FAC_SYNC, "Saw new content from sync: {0}", name);
-		ArrayList<SliceComparator> al = null;
+		ComparatorGroup cg = null;
 		synchronized (this) {
-			al = _comparators.get(new SyncHashEntry(name.component(hashComponent + 1)));
+			cg = _comparators.get(new SyncHashEntry(name.component(hashComponent + 1)));
 		}
-		if (null != al) {
-			for (SliceComparator sc : al) {
+		if (null != cg) {
+			for (SliceComparator sc : cg._activeComparators) {
 				synchronized (sc) {
 					sc.addPendingContent(data.content());
 					sc.checkNextRound();
@@ -209,18 +201,18 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 		byte[] hash = name.component(hashComponent + 2);
 		if (hash.length == 0)
 			return false;
-		ArrayList<SliceComparator> al = null;
+		ComparatorGroup cg = null;
 		synchronized (this) {
-			al = _comparators.get(new SyncHashEntry(name.component(hashComponent + 1)));
-		}
-		if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
-			Log.info(Log.FAC_SYNC, "Saw data from interest: hash: {0}", Component.printURI(hash));
-		SyncTreeEntry ste = addHash(hash);
-		if (null != al) {
-			for (SliceComparator sc : al) {
-				if (sc.addPending(ste)) {
-					sc.checkNextRound();
-					sc.kickCompare();
+			cg = _comparators.get(new SyncHashEntry(name.component(hashComponent + 1)));
+			if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
+				Log.info(Log.FAC_SYNC, "Saw data from interest: hash: {0}", Component.printURI(hash));
+			if (null != cg) {
+				for (SliceComparator sc : cg._activeComparators) {
+					SyncTreeEntry ste = sc.getHashCache().addHash(hash, sc.getNodeCache());
+					if (sc.addPending(ste)) {
+						sc.checkNextRound();
+						sc.kickCompare();
+					}
 				}
 			}
 		}	

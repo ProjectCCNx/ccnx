@@ -3345,18 +3345,6 @@ ie_next_usec(struct ccnd_handle *h, struct interest_entry *ie,
     return(ans);
 }
 
-// ZZZZ - append_tagged_binary_number should be in libccn
-static int
-append_tagged_binary_number(struct ccn_charbuf *cb, enum ccn_dtag dtag, uintmax_t val) {
-    unsigned char buf[sizeof(val)];
-    int pos;
-    int res = 0;
-    for (pos = sizeof(buf); val != 0 && pos > 0; val >>= 8)
-        buf[--pos] = val & 0xff;
-    res |= ccnb_append_tagged_blob(cb, dtag, buf+pos, sizeof(buf)-pos);
-    return(res);
-}
-
 /**
  *  Forward an interest message
  *
@@ -3388,7 +3376,7 @@ send_interest(struct ccnd_handle *h, struct interest_entry *ie,
     p->expiry = h->wtnow + (lifetime * WTHZ / 4096);
     ccn_charbuf_reset(c);
     if (lifetime != default_life)
-        append_tagged_binary_number(c, CCN_DTAG_InterestLifetime, lifetime);
+        ccnb_append_tagged_binary_number(c, CCN_DTAG_InterestLifetime, lifetime);
     noncesize = p->pfi_flags & CCND_PFI_NONCESZ;
     if (noncesize != 0)
         ccnb_append_tagged_blob(c, CCN_DTAG_Nonce, p->nonce, noncesize);

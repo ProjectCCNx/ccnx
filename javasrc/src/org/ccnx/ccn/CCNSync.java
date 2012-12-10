@@ -27,6 +27,7 @@ import org.ccnx.ccn.impl.sync.ProtocolBasedSyncMonitor;
 import org.ccnx.ccn.impl.sync.SyncMonitor;
 import org.ccnx.ccn.io.content.ConfigSlice;
 import org.ccnx.ccn.io.content.ConfigSlice.Filter;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 
 public class CCNSync {
@@ -68,7 +69,8 @@ public class CCNSync {
 				Log.info("Started sync with topo: {0} and prefix: {1}", topo, prefix);
 			return slice;
 		} catch (Exception e) {
-			Log.warning(Log.FAC_REPO, "Error when starting sync for slice with prefix: {0}", prefix);
+			Log.warning(Log.FAC_REPO, "Error when starting sync for slice with prefix: {0} {1} {2}", prefix, null == startHash ? "" : ("with starthash : " + Component.printURI(startHash)),
+								null == startName ? "" : ("with startName: " + startName));
 			throw new IOException("Unable to create sync slice: "+e.getMessage());
 		}
 	}
@@ -80,5 +82,9 @@ public class CCNSync {
 	public void stopSync(CCNSyncHandler syncHandler, ConfigSlice syncSlice) throws IOException{
 		//will unregister the callback here
 		syncMon.removeCallback(syncHandler, syncSlice);
+	}
+	
+	public void shutdown(ConfigSlice slice) {
+		syncMon.shutdown(slice);
 	}
 }
