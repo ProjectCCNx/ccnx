@@ -100,7 +100,7 @@ public class SignatureHelper {
 	 */
 	public static byte [] sign(String digestAlgorithm,
 							   byte[][] toBeSigneds,
-							   PrivateKey signingKey) throws SignatureException,
+							   Key signingKey) throws SignatureException,
 							   	NoSuchAlgorithmException, InvalidKeyException {
 		if (null == toBeSigneds) {
 			Log.info("sign: null content to be signed!");
@@ -122,7 +122,7 @@ public class SignatureHelper {
 		// Protect against GC on platforms that don't do JNI for crypto properly
 		SignatureLocks.signingLock();
 		try {
-			sig.initSign(signingKey);
+			sig.initSign((PrivateKey)signingKey);
 			for (int i=0; i < toBeSigneds.length; ++i) {
 				sig.update(toBeSigneds[i]);
 			}
@@ -149,7 +149,7 @@ public class SignatureHelper {
 			final byte[][] data,
 			final byte [] signature,
 			String digestAlgorithm,
-			final PublicKey verificationKey) throws SignatureException, 
+			final Key verificationKey) throws SignatureException, 
 						NoSuchAlgorithmException, InvalidKeyException {
 		if (null == verificationKey) {
 			Log.info("verify: Verifying key cannot be null.");
@@ -169,7 +169,7 @@ public class SignatureHelper {
 				boolean verify() throws InvalidKeyException, SignatureException {
 					SignatureLocks.signingLock();
 					try {
-						engineInitVerify(verificationKey);
+						engineInitVerify((PublicKey)verificationKey);
 						if (null != data) {
 							for (int i=0; i < data.length; ++i) {
 								if (data[i] != null)
@@ -188,7 +188,7 @@ public class SignatureHelper {
 			// Protect against GC on platforms that don't do JNI for crypto properly
 			SignatureLocks.signingLock();
 			try {
-				sig.initVerify(verificationKey);
+				sig.initVerify((PublicKey)verificationKey);
 				if (null != data) {
 					for (int i=0; i < data.length; ++i) {
 						if (data[i] != null)
@@ -215,7 +215,7 @@ public class SignatureHelper {
 	 * @throws NoSuchAlgorithmException
 	 */
 	public static boolean verify(byte [] data, byte [] signature, String digestAlgorithm,
-										PublicKey verificationKey) 
+										Key verificationKey) 
 					throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
 		return verify(new byte[][]{data}, signature, digestAlgorithm, verificationKey);
 	}
@@ -236,7 +236,7 @@ public class SignatureHelper {
 	 * @throws InvalidAlgorithmParameterException
 	 */
 	public static AlgorithmIdentifier getSignatureAlgorithm(
-			String hashAlgorithm, PrivateKey signingKey)
+			String hashAlgorithm, Key signingKey)
 	throws NoSuchAlgorithmException, InvalidParameterSpecException, 
 	InvalidAlgorithmParameterException
 	{
@@ -287,7 +287,7 @@ public class SignatureHelper {
 	 *
 	 * @param hashAlgorithm the JCA standard name of the digest algorithm
 	 * (e.g. "SHA1").
-	 * @param signingKey the private key that will be used to compute the
+	 * @param signingKey the key that will be used to compute the
 	 * signature.
 	 *
 	 * @returns the JCA string alias for the signature algorithm.
@@ -296,12 +296,6 @@ public class SignatureHelper {
 			String hashAlgorithm, Key signingKey)
 	{
 		return getSignatureAlgorithmName(hashAlgorithm, signingKey.getAlgorithm());
-	}
-
-	public static String getSignatureAlgorithmName(
-			String hashAlgorithm, PublicKey publicKey)
-	{
-		return getSignatureAlgorithmName(hashAlgorithm, publicKey.getAlgorithm());
 	}
 
 	/**
