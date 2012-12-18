@@ -16,7 +16,6 @@
  */
 package org.ccnx.ccn.test.impl.security.keys;
 
-import java.io.File;
 import java.util.Random;
 
 import javax.crypto.KeyGenerator;
@@ -34,7 +33,6 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.test.CCNTestBase;
 import org.ccnx.ccn.test.CCNTestHelper;
 import org.ccnx.ccn.test.Flosser;
-import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
