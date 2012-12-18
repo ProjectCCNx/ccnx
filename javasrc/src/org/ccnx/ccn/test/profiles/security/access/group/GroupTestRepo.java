@@ -17,7 +17,7 @@
 
 package org.ccnx.ccn.test.profiles.security.access.group;
 
-import java.security.PrivateKey;
+import java.security.Key;
 import java.util.ArrayList;
 import java.util.Random;
 
@@ -179,7 +179,7 @@ public class GroupTestRepo {
 		Thread.sleep(1000);
 		newParentGroup.addMembers(addMembers);
 
-		PrivateKey privKey = _gm.getGroupPrivateKey(randomParentGroupName, null);
+		Key privKey = _gm.getGroupPrivateKey(randomParentGroupName, null);
 		System.out.println("retrieved group priv key for parent group:" + privKey.toString());
 
 		privKey = _gm.getGroupPrivateKey(_randomGroupName, null);

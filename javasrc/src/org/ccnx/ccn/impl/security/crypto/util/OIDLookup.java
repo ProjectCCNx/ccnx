@@ -256,6 +256,9 @@ public class OIDLookup {
 	 * @return the signature algorithm.
 	 */
 	public static String getSignatureAlgorithm(String digestAlg, String cipherAlg) {
+if (null != cipherAlg && cipherAlg.toUpperCase().startsWith("HMAC")) {
+	return cipherAlg;
+}
 
 		digestAlg = resolveDigestAlias(digestAlg);
 		cipherAlg = resolveCipherAlias(cipherAlg);

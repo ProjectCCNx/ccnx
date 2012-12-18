@@ -653,7 +653,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws IOException
 	 * @throws NoSuchAlgorithmException
 	 */
-	public PrivateKey getPrivateKey()
+	public Key getPrivateKey()
 	throws AccessDeniedException, InvalidKeyException,
 	ContentNotReadyException, ContentGoneException, ContentDecodingException,
 	IOException, NoSuchAlgorithmException {
@@ -696,7 +696,7 @@ public class KeyDirectory extends EnumeratedNameList {
 				Log.info(Log.FAC_ACCESSCONTROL, "Unwrapped private key is a private key, in fact it's a {0}", unwrappedPrivateKey.getClass().getName());
 			}
 		}
-		return (PrivateKey)unwrappedPrivateKey;
+		return unwrappedPrivateKey;
 	}
 
 	/**

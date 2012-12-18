@@ -1050,17 +1050,21 @@ public class BasicKeyManager extends KeyManager {
 	 * @return public key
 	 */
 	@Override
-	public PublicKey getPublicKey(
+	public Key getVerificationKey(
 			PublisherPublicKeyDigest desiredKeyID, KeyLocator keyLocator, 
 			long timeout) throws IOException {		
 		
 		if (Log.isLoggable(Log.FAC_KEYS, Level.FINER))
-			Log.finer(Log.FAC_KEYS, "getPublicKey: retrieving key: " + desiredKeyID + " located at: " + keyLocator);
+			Log.finer(Log.FAC_KEYS, "getVerificationKey: retrieving key: " + desiredKeyID + " located at: " + keyLocator);
+		if (null == keyLocator) {
+			// Presumably this means that the key is a symmetric key
+			return getSecureKeyCache().getPrivateKey(desiredKeyID.digest());
+		}
 		// this will try local caches, the locator itself, and if it 
 		// has to, will go to the network. The result will be stored in the cache.
 		// All this tells us is that the key matches the publisher. For whether
 		// or not we should trust it for some reason, we have to get fancy.
-		return getPublicKeyCache().getPublicKey(desiredKeyID, keyLocator, timeout, handle());
+		return (Key)getPublicKeyCache().getPublicKey(desiredKeyID, keyLocator, timeout, handle());
 	}
 	
 	/**

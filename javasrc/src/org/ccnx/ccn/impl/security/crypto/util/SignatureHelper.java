@@ -29,7 +29,10 @@ import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.security.spec.InvalidParameterSpecException;
+import java.util.Arrays;
 import java.util.logging.Level;
+
+import javax.crypto.Mac;
 
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.DEREncodable;
@@ -37,6 +40,7 @@ import org.bouncycastle.asn1.DERObjectIdentifier;
 import org.bouncycastle.asn1.DERTags;
 import org.bouncycastle.asn1.DERUnknownTag;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
+import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.PlatformConfiguration;
 import org.ccnx.ccn.impl.security.crypto.SignatureLocks;
 import org.ccnx.ccn.impl.security.crypto.gingerbreadfix.JDKDigestSignature;
@@ -74,6 +78,11 @@ public class SignatureHelper {
 			getSignatureAlgorithmName(((null == digestAlgorithm) || (digestAlgorithm.length() == 0)) ?
 					DigestHelper.DEFAULT_DIGEST_ALGORITHM : digestAlgorithm,
 					signingKey);
+		if (null != sigAlgName && sigAlgName.toUpperCase().startsWith("HMAC")) {
+			Mac mac = Mac.getInstance(sigAlgName, KeyManager.PROVIDER);
+			mac.init(signingKey);
+			return mac.doFinal(toBeSigned);
+		}
 		// DKS TODO if we switch to SHA256, this fails.
 		Signature sig = Signature.getInstance(sigAlgName);
 
@@ -160,6 +169,16 @@ public class SignatureHelper {
 			getSignatureAlgorithmName(((null == digestAlgorithm) || (digestAlgorithm.length() == 0)) ?
 					DigestHelper.DEFAULT_DIGEST_ALGORITHM : digestAlgorithm,
 					verificationKey);
+		
+		if (null != sigAlgName && sigAlgName.toUpperCase().startsWith("HMAC")) {
+			Mac mac = Mac.getInstance(sigAlgName, KeyManager.PROVIDER);
+			mac.init(verificationKey);
+			for (byte[] b : data) {
+				mac.update(b);
+			}
+			byte[] check = mac.doFinal();
+			return Arrays.equals(check, signature);
+		}
 		
 		if (PlatformConfiguration.workaroundGingerbreadBug) {
 			// this clause is only used when running on Android Gingerbread. It is

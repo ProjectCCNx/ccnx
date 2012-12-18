@@ -21,7 +21,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.math.BigInteger;
 import java.net.URISyntaxException;
-import java.security.PublicKey;
+import java.security.Key;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.logging.Level;
@@ -64,7 +64,7 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
      * Create a PublisherPublicKeyDigest from a PublicKey
      * @param key the key
      */
-    public PublisherPublicKeyDigest(PublicKey key) {
+    public PublisherPublicKeyDigest(Key key) {
     	_publisherPublicKeyDigest = PublisherID.generatePublicKeyDigest(key);
     }
     	

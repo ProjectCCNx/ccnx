@@ -533,7 +533,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 	public boolean validate() {
 		// We don't do partial matches any more, even though encoder/decoder
 		// is still pretty generous.
-		if (emptyPublisher() || emptyTimestamp() || emptyKeyLocator())
+		if (emptyPublisher() || emptyTimestamp())
 			return false;
 		return true;
 	}

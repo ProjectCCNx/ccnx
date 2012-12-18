@@ -594,7 +594,7 @@ public class Group {
 	public PrivateKey getPrivateKey() throws IOException, InvalidKeyException, NoSuchAlgorithmException {
 		// TODO might do a little unnecessary enumeration, but will pull from cache if in cache. 
 		PrincipalKeyDirectory privateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
-		PrivateKey privateKey = privateKeyDirectory.getPrivateKey();
+		PrivateKey privateKey = (PrivateKey)privateKeyDirectory.getPrivateKey();
 		if (null != privateKey) {
 			// Will redundantly re-add to cache. TODO move caching into getPrivateKey; it needs
 			// the public key to do that.

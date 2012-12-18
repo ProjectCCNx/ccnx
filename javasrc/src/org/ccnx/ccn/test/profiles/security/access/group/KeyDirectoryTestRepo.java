@@ -280,7 +280,7 @@ public class KeyDirectoryTestRepo {
 	 */
 	public void testGetPrivateKey() throws Exception {
 		Assert.assertTrue(kd.hasPrivateKeyBlock());
-		PrivateKey privKey = kd.getPrivateKey();
+		Key privKey = kd.getPrivateKey();
 		Assert.assertEquals(wrappedPrivateKey, privKey);
 	}
 	

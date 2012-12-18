@@ -25,11 +25,12 @@ import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.PublicKey;
 import java.security.SignatureException;
 import java.security.cert.CertificateEncodingException;
 import java.util.Arrays;
 import java.util.logging.Level;
+
+import javax.crypto.SecretKey;
 
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.KeyManager;
@@ -486,7 +487,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	throws SignatureException, InvalidKeyException {
 		try {
 			return sign(name, signedInfo, content, offset, length,
-					CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, signingKey);
+							CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, signingKey);
 		} catch (NoSuchAlgorithmException e) {
 			if (Log.isLoggable(Level.WARNING))
 				Log.warning("Cannot find default digest algorithm: " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
@@ -618,20 +619,20 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			if (null == keyManager)
 				keyManager = KeyManager.getDefaultKeyManager();
 			
-			PublicKey publicKey = keyManager.getPublicKey(
+			Key verificationKey = keyManager.getVerificationKey(
 					object.signedInfo().getPublisherKeyID(),
 					object.signedInfo().getKeyLocator());
 			
-			if (null == publicKey) {
-				throw new SignatureException("Cannot obtain public key to verify object. Publisher: " + 
+			if (null == verificationKey) {
+				throw new SignatureException("Cannot obtain key to verify object. Publisher: " + 
 						object.signedInfo().getPublisherKeyID() + " Key locator: " + 
 						object.signedInfo().getKeyLocator());
 			}
 			
-			return verify(object, publicKey);
+			return verify(object, verificationKey);
 			
 		} catch (IOException e) {
-			throw new SignatureException("Cannot obtain public key to verify object. Key locator: " + 
+			throw new SignatureException("Cannot obtain key to verify object. Key locator: " + 
 					object.signedInfo().getKeyLocator() + " exception: " + e.getMessage(), e);				
 		}
 	}
@@ -696,7 +697,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			if (null == keyManager)
 				keyManager = KeyManager.getDefaultKeyManager();
 			
-			PublicKey publicKey = keyManager.getPublicKey(
+			Key publicKey = keyManager.getVerificationKey(
 					signedInfo.getPublisherKeyID(),
 					signedInfo.getKeyLocator());
 			

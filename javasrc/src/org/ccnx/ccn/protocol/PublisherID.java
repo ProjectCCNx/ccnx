@@ -18,6 +18,7 @@
 package org.ccnx.ccn.protocol;
 
 import java.io.Serializable;
+import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.cert.CertificateEncodingException;
@@ -285,7 +286,7 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @param key the key to digest
 	 * @return the digest
 	 */
-	public static byte [] generatePublicKeyDigest(PublicKey key) {
+	public static byte [] generatePublicKeyDigest(Key key) {
 		return CryptoUtil.generateKeyID(PUBLISHER_ID_DIGEST_ALGORITHM, key);
 	}
 
