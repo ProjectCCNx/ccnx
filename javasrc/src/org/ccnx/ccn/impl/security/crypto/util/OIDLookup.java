@@ -90,6 +90,17 @@ public class OIDLookup {
 	 * Map from OID to DigestwithCipher names. Multiway -- all known OIDs listed.
 	 **/
 	private static Map<String,String> _oid2s = new HashMap<String,String>();
+	
+	/**
+	 * Map from OID to Mac algorithm names. Multiway -- all known OIDs listed.
+	 **/
+	private static Map<String,String> _oid2m = new HashMap<String,String>();
+	
+	/**
+	 * Map from Mac algorithm names to OIDs. Only one OID (the preferred one)
+	 * for a DigestwithCipher.
+	 **/
+	private static Map<String,String> _m2oid = new HashMap<String,String>();
 
 	/**
 	 * Map from engine type to OID maps.
@@ -114,10 +125,12 @@ public class OIDLookup {
 		_e2oid2alg.put("Signature", _oid2s);
 		_e2oid2alg.put("Cipher", _oid2c);
 		_e2oid2alg.put("MessageDigest", _oid2d);
+		_e2oid2alg.put("Mac", _oid2m);
 
 		_e2alg2oid.put("Signature", _s2oid);
 		_e2alg2oid.put("MessageDigest", _d2oid);
 		_e2alg2oid.put("Cipher", _c2oid);
+		_e2alg2oid.put("Mac", _m2oid);
 
 		_s2oid.put("SHA1withRSA", "1.2.840.113549.1.1.5");
 		_oid2s.put("1.2.840.113549.1.1.5", "SHA1withRSA");
@@ -224,6 +237,10 @@ public class OIDLookup {
 		_c2oid.put("DH", "1.2.840.113549.1.3.1");
 		_oid2c.put("1.2.840.113549.1.3.1", "DH");
 		_oid2c.put("1.2.840.10046.2.1", "DH"); // ANSI 942, used by BouncyCastle
+		
+		_m2oid.put("HMac-SHA256", "1.2.840.112549.2.9");
+		_m2oid.put("HMACSHA256", "1.2.840.112549.2.9");
+		_oid2m.put("1.2.840.112549.2.9", "HMac-SHA256");
 	
 		_aliasMap = initAliasLookup();
 	}
@@ -256,16 +273,16 @@ public class OIDLookup {
 	 * @return the signature algorithm.
 	 */
 	public static String getSignatureAlgorithm(String digestAlg, String cipherAlg) {
-if (null != cipherAlg && cipherAlg.toUpperCase().startsWith("HMAC")) {
-	return cipherAlg;
-}
-
+		
+		String resolvedCipherAlg = resolveCipherAlias(cipherAlg);
+		if (null == resolvedCipherAlg)
+			return resolveMacAlias(cipherAlg);
+		
 		digestAlg = resolveDigestAlias(digestAlg);
-		cipherAlg = resolveCipherAlias(cipherAlg);
 
 		StringBuffer signatureAlgorithm = new StringBuffer(digestAlg);
 		signatureAlgorithm.append("with");
-		signatureAlgorithm.append(cipherAlg);
+		signatureAlgorithm.append(resolvedCipherAlg);
 		String sigAlg = signatureAlgorithm.toString();
 
 		String oid = mapGet(_s2oid, sigAlg.toString());
@@ -593,6 +610,10 @@ if (null != cipherAlg && cipherAlg.toUpperCase().startsWith("HMAC")) {
 
 	public static String resolveDigestAlias(String alias) {
 		return resolveAlias("MessageDigest", alias);
+	}
+	
+	public static String resolveMacAlias(String alias) {
+		return resolveAlias("Mac", alias);
 	}
 
 	public static String resolveSignatureAlias(String alias) {

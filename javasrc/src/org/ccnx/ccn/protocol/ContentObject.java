@@ -30,8 +30,6 @@ import java.security.cert.CertificateEncodingException;
 import java.util.Arrays;
 import java.util.logging.Level;
 
-import javax.crypto.SecretKey;
-
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.SystemConfiguration;

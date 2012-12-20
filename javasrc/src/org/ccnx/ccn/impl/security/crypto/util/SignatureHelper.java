@@ -78,11 +78,15 @@ public class SignatureHelper {
 			getSignatureAlgorithmName(((null == digestAlgorithm) || (digestAlgorithm.length() == 0)) ?
 					DigestHelper.DEFAULT_DIGEST_ALGORITHM : digestAlgorithm,
 					signingKey);
-		if (null != sigAlgName && sigAlgName.toUpperCase().startsWith("HMAC")) {
+		if (null != sigAlgName && sigAlgName.toUpperCase().startsWith(CryptoConstants.HMAC)) {
 			Mac mac = Mac.getInstance(sigAlgName, KeyManager.PROVIDER);
 			mac.init(signingKey);
 			return mac.doFinal(toBeSigned);
 		}
+		
+		if (null == sigAlgName)
+			throw new InvalidKeyException("Key algorithm: " + signingKey.getAlgorithm() + "not supported");
+		
 		// DKS TODO if we switch to SHA256, this fails.
 		Signature sig = Signature.getInstance(sigAlgName);
 
@@ -125,7 +129,18 @@ public class SignatureHelper {
 			getSignatureAlgorithmName(((null == digestAlgorithm) || (digestAlgorithm.length() == 0)) ?
 					DigestHelper.DEFAULT_DIGEST_ALGORITHM : digestAlgorithm,
 					signingKey);
-
+		
+		if (null != sigAlgName && sigAlgName.toUpperCase().startsWith(CryptoConstants.HMAC)) {
+			Mac mac = Mac.getInstance(sigAlgName, KeyManager.PROVIDER);
+			mac.init(signingKey);
+			for (byte[] toBeSigned : toBeSigneds)
+				mac.update(toBeSigned);
+			return mac.doFinal();
+		}
+		
+		if (null == sigAlgName)
+			throw new InvalidKeyException("Key algorithm: " + signingKey.getAlgorithm() + "not supported");
+		
 		Signature sig = Signature.getInstance(sigAlgName);
 
 		// Protect against GC on platforms that don't do JNI for crypto properly
@@ -170,7 +185,7 @@ public class SignatureHelper {
 					DigestHelper.DEFAULT_DIGEST_ALGORITHM : digestAlgorithm,
 					verificationKey);
 		
-		if (null != sigAlgName && sigAlgName.toUpperCase().startsWith("HMAC")) {
+		if (null != sigAlgName && sigAlgName.toUpperCase().startsWith(CryptoConstants.HMAC)) {
 			Mac mac = Mac.getInstance(sigAlgName, KeyManager.PROVIDER);
 			mac.init(verificationKey);
 			for (byte[] b : data) {
@@ -202,6 +217,9 @@ public class SignatureHelper {
 				}
 			}.verify();
 		} else {
+			
+			if (null == sigAlgName)
+				throw new InvalidKeyException("Key algorithm: " + verificationKey.getAlgorithm() + "not supported");
 			Signature sig = Signature.getInstance(sigAlgName);
 
 			// Protect against GC on platforms that don't do JNI for crypto properly
