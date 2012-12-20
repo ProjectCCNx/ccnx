@@ -26,7 +26,6 @@ import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.versioning.InterestData;
 import org.ccnx.ccn.profiles.versioning.VersionNumber;
 import org.ccnx.ccn.profiles.versioning.VersioningInterestManager;
@@ -442,7 +441,7 @@ public class VersioningInterestManagerTestRepo {
 		
 		String mystring = "Hello, World!";
 
-		ContentName versionedNamed = VersioningProfile.addVersion(name, version);
+		ContentName versionedNamed = new ContentName(name, version);
 		ContentObject data = ContentObject.buildContentObject(versionedNamed, mystring.getBytes());
 		
 

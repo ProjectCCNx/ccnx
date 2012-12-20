@@ -377,7 +377,6 @@ public class ccndcontrol {
 	 *
 	 * @return void
 	 */
-	@SuppressWarnings("unused")
 	public static void main(String[] args) {
         if (executeCommand(args) < 0) {
             System.err.println("Error processing command, unable to complete");
