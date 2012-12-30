@@ -195,6 +195,14 @@ public class NodeBuilder {
 		return ste;
 	}
 	
+	/**
+	 * Create a sync tree from the input collection of elements
+	 * @param nodeElements the elements
+	 * @param shc hash cache
+	 * @param cache node cache
+	 * @param depth starting depth (but when called nonrecursively I think it will always be 2).
+	 * @return
+	 */
 	public SyncTreeEntry createHeadRecursive(Collection<SyncNodeElement> nodeElements, final SyncHashCache shc, SyncNodeCache cache, int depth) {
 		SyncTreeEntry ste = null;
 		ArrayList<SyncNodeElement> nextElements = new ArrayList<SyncNodeElement>();
@@ -211,6 +219,13 @@ public class NodeBuilder {
 		return ste;
 	}
 	
+	/**
+	 * Used to find the "first" or "last" LEAF element within the refs
+	 * @param refs
+	 * @param shc
+	 * @param start true if looking for the first element - otherwise look for last
+	 * @return
+	 */
 	private SyncNodeElement findit(ArrayList<SyncNodeElement> refs, SyncHashCache shc, boolean start) {
 		int position = start ? 0 : refs.size() - 1;
 		SyncNodeElement sne = refs.get(position);

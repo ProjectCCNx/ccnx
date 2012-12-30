@@ -29,6 +29,11 @@ import org.ccnx.ccn.io.content.SyncNodeComposite;
  */
 public class SyncNodeCache {
 	
+	/**
+	 * This mechanism is used to avoid requesting the same node more than once (see below). One of
+	 * these objects is created for each node request and used as a java synchronization object to
+	 * insure that we don't return without having retrieved the node when that is required.
+	 */
 	public class Pending {
 		boolean _pending = false;
 		

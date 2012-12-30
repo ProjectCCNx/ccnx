@@ -19,6 +19,11 @@ package org.ccnx.ccn.impl.sync;
 
 import java.util.HashMap;
 
+/**
+ * This cache hashes sync hashes to their "SyncTreeEntry" used to walk through trees of hashes.
+ * Since SyncTreeEntries can not be shared across comparators since they contain information about where
+ * in the walk the comparator currently is, these hashes can not be shared on a slice either.
+ */
 public class SyncHashCache {
 	protected HashMap<SyncHashEntry, SyncTreeEntry> _hashes = new HashMap<SyncHashEntry, SyncTreeEntry>();
 

@@ -36,6 +36,21 @@ import org.ccnx.ccn.protocol.Interest;
 
 /**
  * Snoops on the sync protocol to report new files seen by sync on a slice to a registered handler
+ * To do this we use "comparators" which compare a sync tree of "what we already have" to a sync tree
+ * from sync (@see {@link SliceComparator}). We can have multiple monitors on the same slice and initially
+ * these will each need their own comparator since the starting point of what we will monitor depends on
+ * user parameters. However once we have completed an initial round of comparison on a slice, we will have
+ * created a tree of "what we have" which will be the same for every comparator, and since all input from
+ * sync will also be identical, we could end up with multiple comparators all doing exactly the same thing.
+ * To avoid this, we introduce the "ComparatorGroup" which is per slice and contains a "lead comparator" and
+ * other "active comparators". The first comparator created on a slice becomes the "lead comparator" and
+ * subsequent ones are added to the active comparators. After a comparator which is not a lead comparator has
+ * completed its first round, its callback is added to the lead comparators callbacks and that comparator
+ * becomes deactivated. Except in the case noted below, this takes place within the comparator since it
+ * alone knows when it has completed a round.
+ * 
+ * Note also that all comparators can share the same node data but must keep their own version of where they
+ * are in the treewalk through the data. Node data is shared in _snc below.
  */
 public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentHandler, CCNInterestHandler {
 	private class ComparatorGroup {
