@@ -24,6 +24,7 @@ import java.io.OutputStream;
 import java.util.Collection;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.io.content.ConfigSlice.Filter;
 import org.ccnx.ccn.profiles.sync.Sync;
 import org.ccnx.ccn.protocol.ContentName;
@@ -72,14 +73,19 @@ public class ConfigSliceObject extends CCNNetworkObject<ConfigSlice> {
 	@Override
 	protected void writeObjectImpl(OutputStream output)
 			throws ContentEncodingException, IOException {
-		// TODO Auto-generated method stub
-		
+		if (null == data())
+			throw new ContentNotReadyException("No content available to save for object " + getBaseName());
+		byte [] data = getData().encode();
+		output.write(data);		
 	}
 
 	@Override
 	protected ConfigSlice readObjectImpl(InputStream input)
 			throws ContentDecodingException, IOException {
-		// TODO Auto-generated method stub
-		return null;
+		byte [] contentBytes = DataUtils.getBytesFromStream(input);
+		// do something if contentBytes is null?
+		ConfigSlice slice = new ConfigSlice();
+		slice.decode(contentBytes);
+		return slice;
 	}
 }

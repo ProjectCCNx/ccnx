@@ -23,6 +23,7 @@ import static org.ccnx.ccn.impl.encoding.CCNProtocolDTags.ConfigSliceOp;
 import static org.ccnx.ccn.impl.encoding.CCNProtocolDTags.SyncVersion;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedList;
 
@@ -77,6 +78,8 @@ public class ConfigSlice extends GenericXMLEncodable {
 			super.encode(encoder);
 		}
 	}
+	
+	public ConfigSlice() {}
 	
 	public ConfigSlice(ContentName topo, ContentName prefix, Collection<Filter> new_filters) {
 		this.topo = topo;
@@ -197,5 +200,9 @@ public class ConfigSlice extends GenericXMLEncodable {
 	@Override
 	public boolean validate() {
 		return true;
+	}
+	
+	public boolean equals(ConfigSlice otherSlice) {
+		return Arrays.equals(this.getHash(), otherSlice.getHash());
 	}
 }
