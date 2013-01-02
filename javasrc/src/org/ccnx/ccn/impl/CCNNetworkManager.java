@@ -165,6 +165,7 @@ public class CCNNetworkManager implements Runnable {
 	protected ScheduledThreadPoolExecutor _periodicTimer = null;
 	protected Object _timersSetupLock = new Object();
 	protected Boolean _timersSetup = false;
+	protected PeriodicWriter _periodicWriter = null;
 
 	// Attempt to break up non returning handlers
 	protected boolean _inHandler = false;
@@ -241,7 +242,7 @@ public class CCNNetworkManager implements Runnable {
                 Log.fine(Log.FAC_NETMANAGER, "Not Connected to ccnd, try again in {0}ms", CCNNetworkChannel.SOCKET_TIMEOUT);
                 _lastHeartbeat = 0;
                 if (_run)
-                        _periodicTimer.schedule(new PeriodicWriter(), CCNNetworkChannel.SOCKET_TIMEOUT, TimeUnit.MILLISECONDS);
+                        _periodicTimer.schedule(this, CCNNetworkChannel.SOCKET_TIMEOUT, TimeUnit.MILLISECONDS);
                 return;
             }
 
@@ -380,7 +381,7 @@ public class CCNNetworkManager implements Runnable {
 				useMe = 20;
 			}
 			if (_run)
-				_periodicTimer.schedule(new PeriodicWriter(), useMe, TimeUnit.MILLISECONDS);
+				_periodicTimer.schedule(this, useMe, TimeUnit.MILLISECONDS);
 		} /* run */
 	} /* private class PeriodicWriter extends TimerTask */
 
@@ -412,7 +413,8 @@ public class CCNNetworkManager implements Runnable {
 
 				// Create timer for periodic behavior
 				_periodicTimer = new ScheduledThreadPoolExecutor(1);
-				_periodicTimer.schedule(new PeriodicWriter(), PERIOD, TimeUnit.MILLISECONDS);
+				_periodicWriter = new PeriodicWriter();
+				_periodicTimer.schedule(_periodicWriter, PERIOD, TimeUnit.MILLISECONDS);
 			}
 		}
 	}
