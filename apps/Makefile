@@ -19,7 +19,7 @@
 
 SUBDIRS = HttpProxy ccnChat ccnFileProxy `cat local.subdirs 2>/dev/null || :`
 MAKEF =  -f ../conf.mk -f dir.mk -f ../subr.mk $(PASSTHRU)
-PASSTHRU = DINST_INC=$(DINST_INC) DINST_LIB=$(DINST_LIB) DINST_LIB=$(DINST_LIB)
+PASSTHRU = DINST_INC=$(DINST_INC) DINST_LIB=$(DINST_LIB) DINST_BIN=$(DINST_BIN)
 CSRCDIR = ../csrc
 CFLAGS = $(COPT)
 
