@@ -33,8 +33,8 @@ import java.rmi.server.RemoteObject;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -92,7 +92,7 @@ public class Daemon {
 		public Object status(String name) throws RemoteException;
 	}
 	
-	public class StopTimer extends TimerTask {
+	public class StopTimer implements Runnable {
 		private String _daemonName;
 		private String _pid;
 		
@@ -530,8 +530,8 @@ public class Daemon {
 			return;
 		}
 		
-		Timer stopTimer = new Timer(false);
-		stopTimer.schedule(daemon.new StopTimer(daemonName, pid), SystemConfiguration.SYSTEM_STOP_TIMEOUT);
+		ScheduledThreadPoolExecutor stopTimer = new ScheduledThreadPoolExecutor(1);
+		stopTimer.schedule(daemon.new StopTimer(daemonName, pid), SystemConfiguration.SYSTEM_STOP_TIMEOUT, TimeUnit.MILLISECONDS);
 
 		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName, pid)));
 
