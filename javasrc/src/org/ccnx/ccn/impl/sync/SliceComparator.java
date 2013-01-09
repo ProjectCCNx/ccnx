@@ -936,6 +936,7 @@ public class SliceComparator implements Runnable {
 	 * machine to figure out where it left off and where to start back in again.
 	 */
 	public void run() {
+		boolean didARound = false;
 		synchronized (this) {
 			if (_shutdown)
 				return;
@@ -952,8 +953,10 @@ public class SliceComparator implements Runnable {
 				}
 				switch (getState()) {
 				case INIT:		// Starting a new compare
+					if (Log.isLoggable(Log.FAC_SYNC, Level.FINE)  && null != _startHash)
+						Log.fine(Log.FAC_SYNC, "Init - startHash is {0}", Component.printURI(_startHash.getHash()));
 					byte[] data = null;
-					if (null != _startHash) {
+					if (null != _startHash && _startHash.getHash().length > 0) {
 						_currentRoot = _startHash;
 						_startHash = null;
 						nextRound();
@@ -989,6 +992,7 @@ public class SliceComparator implements Runnable {
 						else
 							nextRound();
 						changeState(SyncCompareState.PRELOAD);
+						didARound = true;
 					}
 						
 					if (getState() == SyncCompareState.INIT) {
@@ -1054,7 +1058,7 @@ public class SliceComparator implements Runnable {
 							break;
 					}
 					synchronized (this) {
-						if (this != _leadComparator  && !_needToCompare) {
+						if (this != _leadComparator  && !_needToCompare && didARound) {
 							// If we aren't the lead comparator for this slice we don't need to 
 							// continue - instead we can just add ourselves to its callbacks
 							// Note that eventually this will lead to this comparator being culled.
