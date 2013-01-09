@@ -834,7 +834,6 @@ public class SliceComparator implements Runnable {
 								neededNames.add(tsne.getName());
 							}
 							ste = pop(updateStack);
-							found = true;	// We didn't really find the name but we don't need to look anymore
 							break;
 						} else if (comp == 0) {
 							found = true;
@@ -861,26 +860,6 @@ public class SliceComparator implements Runnable {
 				}
 				redo = true;
 				neededNames.add(name);
-			}
-		}
-		
-		if (redo && newHasNodes && ste != null) {
-			// We are redoing a tree with nodes - finish off any leftover names at the end of the tree
-			while (null != ste) {
-				ste.incPos();
-				if (ste.lastPos())
-					ste = pop(updateStack);
-				if (null != ste) {
-					SyncNodeComposite snc = ste.getNode();
-					if (null != snc) {
-						SyncNodeElement sne = ste.getCurrentElement();
-						if (sne.getType() == SyncNodeType.HASH) {
-							SyncTreeEntry tste = _shc.getHash(sne.getData());
-							if (null != tste)
-								addNeededNames(neededNames, tste);
-						}
-					}
-				}
 			}
 		}
 		
