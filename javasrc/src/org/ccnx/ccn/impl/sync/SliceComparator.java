@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2012, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -339,7 +339,7 @@ public class SliceComparator implements Runnable {
 				return _currentRoot != null ? new SyncTreeEntry(_currentRoot.getHash(), _snc) : null;
 		}
 		synchronized (this) {
-			if (_state != SyncCompareState.INIT) {
+			while (_state != SyncCompareState.INIT) {
 				try {
 					wait();
 				} catch (InterruptedException e) {}
