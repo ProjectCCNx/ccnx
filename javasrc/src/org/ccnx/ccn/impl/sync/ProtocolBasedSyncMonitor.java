@@ -209,9 +209,11 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 			if (null != cg) {
 				for (SliceComparator sc : cg._activeComparators) {
 					SyncTreeEntry ste = sc.getHashCache().addHash(hash, sc.getNodeCache());
-					if (sc.addPending(ste)) {
-						sc.checkNextRound();
-						sc.kickCompare();
+					if (sc == cg._leadComparator || !sc.shutdownIfUseless()) {
+						if (sc.addPending(ste)) {
+							sc.checkNextRound();
+							sc.kickCompare();
+						}
 					}
 				}
 			}
