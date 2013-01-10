@@ -105,7 +105,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 		protected PublisherPublicKeyDigest _ccndId;
 		protected Integer		_faceID;
 		protected Integer		_flags;
-		protected Integer 		_lifetime;  // in seconds
+		protected Integer 		_lifetime = Integer.MAX_VALUE;  // in seconds
 
 
 		public ForwardingEntry(ContentName prefixName, Integer faceID, Integer flags) {
