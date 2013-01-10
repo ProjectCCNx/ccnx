@@ -307,4 +307,8 @@ public class FileBasedSyncMonitor extends SyncMonitor implements Runnable{
 		for (CCNSyncHandler syncHandler : cb)
 			removeCallback(syncHandler, slice);		
 	}
+
+	public SyncNodeCache getNodeCache(ConfigSlice slice) {
+		return null;
+	}
 }

@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2012, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -28,8 +28,10 @@ import org.ccnx.ccn.CCNSync;
 import org.ccnx.ccn.CCNSyncHandler;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.impl.sync.NodeBuilder;
 import org.ccnx.ccn.io.content.ConfigSlice;
 import org.ccnx.ccn.io.content.SyncNodeComposite;
+import org.ccnx.ccn.io.content.SyncNodeComposite.SyncNodeElement;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.metadata.MetadataProfile;
 import org.ccnx.ccn.profiles.sync.Sync;
@@ -351,6 +353,29 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		synchronized (callbackNames) {
 			callbackNames.clear();
 		}
+		
+		/*
+		 * Why go through all this rigamarole? Well besides the fact that it tests some weirdo functionality :-),
+		 * we hope to test that we see only the data we write down below in this test. But if sync is slow, there's
+		 * at least some chance it hasn't caught up yet and we'll still see some old data from earlier tests so
+		 * we don't want to fail the test in that case
+		 */
+		Thread.sleep(100);
+		boolean couldSeeRound4 = true;
+		snc = SyncTestCommon.getRootAdviseNode(slice7, getHandle);
+		SyncNodeElement sne = NodeBuilder.getFirstOrLast(snc, sync1.getNodeCache(slice7), false);
+		if (null != sne) {
+			ContentName lastName = sne.getName();
+			if (lastName.contains("round4".getBytes()) && lastName.contains(".header".getBytes())) {
+				couldSeeRound4 = false;
+			}
+		}
+		if (couldSeeRound4) {
+			Log.info(Log.FAC_TEST, "Too bad - We're running the poorer version of this test");
+		} else {
+			Log.info(Log.FAC_TEST, "We're running the better version of this test");
+		}
+		
 		slice7 = sync1.startSync(getHandle, topo, prefix1, null, new byte[]{}, null, this);
 		ContentName prefix1e = prefix1.append("round5");
 		int segments5 = SyncTestCommon.writeFile(prefix1e, true, 0, putHandle);
@@ -359,7 +384,8 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 			Assert.fail("Did not receive all of the callbacks");
 		sync1.shutdown(slice7);
 		for (ContentName n: callbackNames) {
-			Assert.assertTrue("Saw unexpected data in arbitrary root test: " + n, prefix1e.isPrefixOf(n));
+			Assert.assertTrue("Saw unexpected data in arbitrary root test: " + n, prefix1e.isPrefixOf(n)
+					|| (couldSeeRound4 ? prefix1d.isPrefixOf(n) : false));
 		}
 
 		Log.info(Log.FAC_TEST,"Finished running testSyncRoot");

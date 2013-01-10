@@ -247,5 +247,24 @@ public class NodeBuilder {
 			ourEntry = createHeadRecursive(snes, shc, cache, 2);
 		}
 		return ourEntry;
-	}	
+	}
+	
+	/**
+	 * Get the first or last leaf element of an arbitrary node given a cache. If we can't trace all the
+	 * way back to the leaf, return null.
+	 * @param snc the beginning node
+	 * @param cache
+	 * @param first if true looking for first
+	 * @return
+	 */
+	public static SyncNodeElement getFirstOrLast(SyncNodeComposite snc, SyncNodeCache cache, boolean first) {
+		int pos = first ? 0 : snc.getRefs().size() - 1;
+		SyncNodeElement sne = snc.getElement(pos);
+		if (sne.getType() == SyncNodeType.LEAF)
+			return sne;
+		snc = cache.getNode(sne.getData());
+		if (null == snc)
+			return null;
+		return getFirstOrLast(snc, cache, first);
+	}
 }
