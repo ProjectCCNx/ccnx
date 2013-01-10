@@ -18,17 +18,15 @@
 package org.ccnx.ccn.test.protocol;
 
 import java.io.IOException;
-import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.config.SystemConfiguration;
-import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.ConcurrencyUtils.Waiter;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Exclude;
-import org.ccnx.ccn.protocol.ExcludeComponent;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.test.LibraryTestBase;

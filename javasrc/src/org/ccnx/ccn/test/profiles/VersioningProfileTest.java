@@ -109,7 +109,7 @@ public class VersioningProfileTest {
 		CCNTime ts = new CCNTime(1000);
 		ts.setNanos(15722656);
 		
-		ContentName name = VersioningProfile.addVersion(abName, ts);
+		ContentName name = new ContentName(abName, ts);
 		if (!name.equals(abvName))
 			fail("timestamp encode version failed");
 		
@@ -254,7 +254,7 @@ public class VersioningProfileTest {
 		Log.info(Log.FAC_TEST, "Starting testGetVersionAsTimestamp");
 
 		CCNTime ts = VersioningProfile.getLastVersionAsTimestamp(abSegName);
-		ContentName name = VersioningProfile.addVersion(abName, ts);
+		ContentName name = new ContentName(abName, ts);
 		if (!name.equals(abvName))
 			fail();
 		
@@ -276,7 +276,7 @@ public class VersioningProfileTest {
 		
 		// now do it as ccntime
 		CCNTime t0 = CCNTime.fromBinaryTimeAsLong(v0);
-		vn0 = VersioningProfile.addVersion(name, t0);
+		vn0 = new ContentName(name, t0);
 		x0 = VersioningProfile.getLastVersionComponent(vn0);
 		System.out.println("From ccntime name: " + vn0.toString());
 		Assert.assertTrue(Arrays.areEqual(b0, x0));	
@@ -299,7 +299,7 @@ public class VersioningProfileTest {
 		
 		// now do it as ccntime
 		CCNTime t0 = CCNTime.fromBinaryTimeAsLong(v0);
-		vn0 = VersioningProfile.addVersion(name, t0);
+		vn0 = new ContentName(name, t0);
 		x0 = VersioningProfile.getLastVersionComponent(vn0);
 		System.out.println("From ccntime name: " + vn0.toString());
 		Assert.assertTrue(Arrays.areEqual(b0, x0));
@@ -360,7 +360,7 @@ public class VersioningProfileTest {
 		
 		try {
 			Log.info(Log.FAC_TEST, "testing name {0}:  componentBytes: {1}", validName, validName.component(3).length);
-			long val = VersioningProfile.getLastVersionAsLong(validName);
+			VersioningProfile.getLastVersionAsLong(validName);
 		} catch (VersionMissingException e) {
 			//this should work!!
 			Assert.fail("version deemed invalid.  error.  "+validName);

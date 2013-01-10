@@ -1,7 +1,7 @@
 /*
  * A CCNx command line utility.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -129,9 +129,7 @@ public class LocalSaveContentRetriever implements Runnable {
 			byte [] buffer = new byte[readsize];
 			
 			int readcount = 0;
-			int readtotal = 0;
 			while ((readcount = fis.read(buffer)) != -1){
-				readtotal += readcount;
 				output.write(buffer, 0, readcount);
 				output.flush();
 			}
