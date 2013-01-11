@@ -927,7 +927,8 @@ public class SliceComparator implements Runnable {
 				return;
 		}
 		if (Log.isLoggable(Log.FAC_SYNC, Level.FINE))
-			Log.fine(Log.FAC_SYNC, "Starting comparator run - state is {0}, sc is {1}", _state, this);
+			Log.fine(Log.FAC_SYNC, "Starting comparator run - state is {0}, sc is {1}, this {2} the lead", 
+					_state, this, (this == _leadComparator ? "is": "is not"));
 		_compareSemaphore.acquireUninterruptibly();
 		boolean keepComparing = true;
 		try {
@@ -942,6 +943,9 @@ public class SliceComparator implements Runnable {
 						Log.fine(Log.FAC_SYNC, "Init - startHash is {0}", Component.printURI(_startHash.getHash()));
 					byte[] data = null;
 					if (null != _startHash && _startHash.getHash().length > 0) {
+						if (Log.isLoggable(Log.FAC_SYNC, Level.FINE))
+							Log.fine(Log.FAC_SYNC, "Setting root to {0} based on startHash", 
+									Component.printURI(_startHash.getHash()));
 						_currentRoot = _startHash;
 						_startHash = null;
 						nextRound();
@@ -958,6 +962,9 @@ public class SliceComparator implements Runnable {
 								// This would be only in the case where we are starting a new
 								// sync with a 0 length hash request (the other is where we already
 								// had a sync running which is taken care of in ProtocolBasedSyncMonitor)
+								if (Log.isLoggable(Log.FAC_SYNC, Level.FINE))
+									Log.fine(Log.FAC_SYNC, "Setting root to {0} based on zero length startHash", 
+											Component.printURI(ste.getHash()));
 								_currentRoot = ste;
 								_startHash = null;
 								nextRound();
