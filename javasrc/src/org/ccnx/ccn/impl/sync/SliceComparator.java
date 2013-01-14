@@ -450,10 +450,12 @@ public class SliceComparator implements Runnable {
 	}
 	
 	/**
-	 * This is the critical routine which actually does the comparison. It continues
-	 * the compare as long as it can - either until completion or until it can't continue
-	 * due to missing information. A callback is generated for any node which hasn't been
-	 * seen before. Completed hashes on the Y side are marked "covered".
+	 * This is the critical routine which actually does the comparison. The algorithm involves a double tree 
+	 * walk of X and Y and comparison at the leaves.  The compare continues as long as it can - either until 
+	 * completion or until it can't continue due to missing information. Callbacks are generated for any node 
+	 * which hasn't been seen before. Completed hashes on the Y side are marked "covered". If we see a Y hash 
+	 * which matches an X hash marked "covered" we know we can immediately discard the Y hash as containing no 
+	 * new information.
 	 * 
 	 * @throws SyncException
 	 */

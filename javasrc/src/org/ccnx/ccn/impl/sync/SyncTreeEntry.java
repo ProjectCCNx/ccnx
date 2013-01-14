@@ -28,7 +28,9 @@ import org.ccnx.ccn.io.content.SyncNodeComposite;
 import org.ccnx.ccn.protocol.Component;
 
 /**
- * Entry used for navigating trees of hashes
+ * Entry used for navigating trees of hashes. It also does the work of saving and retrieving node data from the common node 
+ * cache. But these objects can not be shared across comparators because they contain data about where the comparator is in 
+ * a treewalk.
  * 
  * The policy about how to save nodes is: If the node came from the network, it can be retrieved via a request so
  * we use a SoftReference to allow these to be garbage collected when necessary. If the node is local, we built it so
