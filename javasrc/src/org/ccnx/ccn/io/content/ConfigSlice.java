@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2011-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -16,11 +16,17 @@
  */
 package org.ccnx.ccn.io.content;
 
+import static org.ccnx.ccn.impl.CCNFlowControl.SaveType.LOCALREPOSITORY;
+import static org.ccnx.ccn.impl.encoding.CCNProtocolDTags.ConfigSlice;
+import static org.ccnx.ccn.impl.encoding.CCNProtocolDTags.ConfigSliceList;
+import static org.ccnx.ccn.impl.encoding.CCNProtocolDTags.ConfigSliceOp;
+import static org.ccnx.ccn.impl.encoding.CCNProtocolDTags.SyncVersion;
+
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedList;
 
-import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
@@ -31,12 +37,6 @@ import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.sync.Sync;
 import org.ccnx.ccn.protocol.ContentName;
-
-import static org.ccnx.ccn.impl.CCNFlowControl.SaveType.LOCALREPOSITORY;
-import static org.ccnx.ccn.impl.encoding.CCNProtocolDTags.ConfigSlice;
-import static org.ccnx.ccn.impl.encoding.CCNProtocolDTags.ConfigSliceList;
-import static org.ccnx.ccn.impl.encoding.CCNProtocolDTags.ConfigSliceOp;
-import static org.ccnx.ccn.impl.encoding.CCNProtocolDTags.SyncVersion;
 
 /**
  * A ConfigSlice describes what names under a particular
@@ -135,8 +135,17 @@ public class ConfigSlice extends GenericXMLEncodable {
 
 	protected LinkedList<Filter> filters = new LinkedList<Filter>();
 
-	public boolean equals(ConfigSlice otherSlice) {
-		return Arrays.areEqual(this.getHash(), otherSlice.getHash());
+	public boolean equals(Object obj) {
+		if (null == obj)
+			return false;
+		if (! (obj instanceof ConfigSlice))
+			return false;
+		ConfigSlice otherSlice = (ConfigSlice)obj;
+		return Arrays.equals(this.getHash(), otherSlice.getHash());
+	}
+	
+	public int hashCode() {
+		return Arrays.hashCode(this.getHash());
 	}
 	
 	public byte[] getHash() {
