@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2010-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -28,7 +28,6 @@ import java.nio.channels.DatagramChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.util.Timer;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 
@@ -80,7 +79,6 @@ public class CCNNetworkChannel extends InputStream {
 	protected boolean _retry = true; // Attempt to reconnect
 
 	protected boolean _ncInitialized = false;
-	protected Timer _ncHeartBeatTimer = null;
 	protected Boolean _ncStarted = false;
 
 	protected BinaryXMLDecoder _decoder = null;
