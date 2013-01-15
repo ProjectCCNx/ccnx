@@ -363,6 +363,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		Thread.sleep(100);
 		boolean couldSeeRound4 = true;
 		snc = SyncTestCommon.getRootAdviseNode(slice7, getHandle);
+		Assert.assertNotNull("No answer from root advise request", snc);
 		SyncNodeElement sne = NodeBuilder.getFirstOrLast(snc, sync1.getNodeCache(slice7), false);
 		if (null != sne) {
 			ContentName lastName = sne.getName();
@@ -377,6 +378,8 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		}
 		
 		slice7 = sync1.startSync(getHandle, topo, prefix1, null, new byte[]{}, null, this);
+		snc = SyncTestCommon.getRootAdviseNode(slice7, getHandle);		// Make sure root advise went through
+		Assert.assertNotNull("No answer from root advise request", snc);
 		ContentName prefix1e = prefix1.append("round5");
 		int segments5 = SyncTestCommon.writeFile(prefix1e, true, 0, putHandle);
 		segmentCheck = checkCallbacks(callbackNames, prefix1e, segments5, 0);
