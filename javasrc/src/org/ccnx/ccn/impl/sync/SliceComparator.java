@@ -1054,7 +1054,7 @@ public class SliceComparator implements Runnable {
 
 					if (this != _leadComparator && didARound) {
 						synchronized (_leadComparator) {
-							if (! _leadComparator._needToCompare) {
+							if ((! _leadComparator._needToCompare) && (_leadComparator.getState() == SyncCompareState.INIT)) {
 								// If we aren't the lead comparator for this slice we don't need to 
 								// continue - instead we can just add ourselves to its callbacks
 								// Note that eventually this will lead to this comparator being culled.
