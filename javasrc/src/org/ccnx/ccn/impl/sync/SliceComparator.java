@@ -1127,7 +1127,6 @@ public class SliceComparator implements Runnable {
 				Log.fine(Log.FAC_SYNC, "Saw data from nodefind: hash: {0}", Component.printURI(hash));
 			SyncTreeEntry ste = _shc.addHash(hash, _snc);
 			ste.setRawContent(data.content());
-			_snc.clearPending(hash);
 			kickCompare();
 			return null;
 		}

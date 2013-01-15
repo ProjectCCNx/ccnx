@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2012, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -59,6 +59,7 @@ public class SyncNodeCache {
 		synchronized (this) {
 			WeakReference<SyncNodeComposite> wr = new WeakReference<SyncNodeComposite>(node);
 			_nodes.put((new SyncHashEntry(node.getHash())), wr);
+			clearPending(node.getHash());
 		}
 	}
 	
