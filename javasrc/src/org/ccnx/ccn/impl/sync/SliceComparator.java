@@ -1054,7 +1054,12 @@ public class SliceComparator implements Runnable {
 
 					if (this != _leadComparator && didARound) {
 						synchronized (_leadComparator) {
-							if ((! _leadComparator._needToCompare) && (_leadComparator.getState() == SyncCompareState.INIT)) {
+							boolean doSwitch;
+							synchronized (this) {
+								doSwitch = (! _leadComparator._needToCompare) && (_leadComparator.getState() == SyncCompareState.INIT)
+										&& _pendingEntries.size() == 0;
+							}
+							if (doSwitch) {
 								// If we aren't the lead comparator for this slice we don't need to 
 								// continue - instead we can just add ourselves to its callbacks
 								// Note that eventually this will lead to this comparator being culled.
@@ -1062,7 +1067,8 @@ public class SliceComparator implements Runnable {
 								// worry about it.
 								// We also don't want to do this if the lead comparator has been kicked 
 								// because it could already be working on the next round and we want to see 
-								// that also.
+								// that also. We also can't do it if we have pending entries because its
+								// possible the lead could have already seen those and finished them.
 								current = (getHead(_current) == null) ? null : getHead(_current).getHash();
 								for (CCNSyncHandler callback : _callbacks)					
 									_leadComparator.addCallback(callback, current);
