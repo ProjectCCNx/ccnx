@@ -22,6 +22,11 @@ Fail () {
 [ -z "$CCNR_GLOBAL_PREFIX" ] && \
   Fail CCNR_GLOBAL_PREFIX is not set in $HOME/.ccnx/ccndrc
 X=`mktemp ${TMPDIR:-/tmp}/policyXXXXXX`
+if ! type xmllint 2>/dev/null >/dev/null; then
+  xmllint () {
+    cat
+  }
+fi
 trap "rm -f $X $X.ccnb" EXIT
 ccncat $CCNR_GLOBAL_PREFIX/data/policy.xml | \
   ccn_ccnbtoxml -xv - | xmllint --format - > $X
