@@ -19,10 +19,12 @@ Fail () {
   exit 1
 }
 . $HOME/.ccnx/ccndrc
-[ -z "$CCNR_GLOBAL_PREFIX" ] && Fail CCNR_GLOBAL_PREFIX is not set in $HOME/.ccnx/ccndrc
+[ -z "$CCNR_GLOBAL_PREFIX" ] && \
+  Fail CCNR_GLOBAL_PREFIX is not set in $HOME/.ccnx/ccndrc
 X=`mktemp ${TMPDIR:-/tmp}/policyXXXXXX`
 trap "rm -f $X $X.ccnb" EXIT
-ccncat $CCNR_GLOBAL_PREFIX/data/policy.xml | ccn_ccnbtoxml -xv - | xmllint --format - > $X
+ccncat $CCNR_GLOBAL_PREFIX/data/policy.xml | \
+  ccn_ccnbtoxml -xv - | xmllint --format - > $X
 ${EDITOR:-vi} $X || Fail edit aborted
 ccn_xmltoccnb -w - < $X > $X.ccnb || Fail Malformed XML
 ccnseqwriter -r $CCNR_GLOBAL_PREFIX/data/policy.xml < $X.ccnb
