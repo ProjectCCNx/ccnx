@@ -362,6 +362,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		 */
 		Thread.sleep(100);
 		boolean couldSeeRound4 = true;
+		boolean couldSeeRound3 = true;
 		snc = SyncTestCommon.getRootAdviseNode(slice7, getHandle);
 		Assert.assertNotNull("No answer from root advise request", snc);
 		SyncNodeElement sne = NodeBuilder.getFirstOrLast(snc, sync1.getNodeCache(slice7), false);
@@ -369,6 +370,11 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 			ContentName lastName = sne.getName();
 			if (lastName.contains("round4".getBytes()) && lastName.contains(".header".getBytes())) {
 				couldSeeRound4 = false;
+				couldSeeRound3 = false;
+			} else {
+				if (lastName.contains("round3".getBytes()) && lastName.contains(".header".getBytes())) {
+					couldSeeRound3 = false;
+				}
 			}
 		}
 		if (couldSeeRound4) {
@@ -387,8 +393,9 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 			Assert.fail("Did not receive all of the callbacks");
 		sync1.shutdown(slice7);
 		for (ContentName n: callbackNames) {
-			Assert.assertTrue("Saw unexpected data in arbitrary root test: " + n, prefix1e.isPrefixOf(n)
-					|| (couldSeeRound4 ? prefix1d.isPrefixOf(n) : false));
+			Assert.assertTrue("Saw unexpected data in cold start zero length hash test: " + n, prefix1e.isPrefixOf(n)
+					|| (couldSeeRound4 ? prefix1d.isPrefixOf(n) : false)
+					|| (couldSeeRound3 ? prefix1c.isPrefixOf(n) : false));
 		}
 
 		Log.info(Log.FAC_TEST,"Finished running testSyncRoot");
