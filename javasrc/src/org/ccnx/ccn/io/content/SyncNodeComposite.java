@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2012, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -139,6 +139,12 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 			}
 			return true;
 		}
+		
+		public int hashCode() {
+			if (_type == SyncNodeType.LEAF)
+				return _name.hashCode();
+			return Arrays.hashCode(_data);
+		}
 	}
 	
 	public int _version;
@@ -255,6 +261,26 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 		if (_treeDepth != other._treeDepth)
 			return false;
 		return true;
+	}
+	
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + _version;
+		for (SyncNodeElement sne : _refs) {
+			result = prime * result + sne.hashCode();
+		}
+		result = prime
+				* result
+				+ ((_minName == null) ? 0 : _minName.hashCode());
+		result = prime
+				* result
+				+ ((_maxName == null) ? 0 : _maxName.hashCode());
+		result = prime * result + _kind;
+		result = prime * result + _leafCount;
+		result = prime * result + _treeDepth;
+		return result;
 	}
 
 	public long getElementLabel() {
