@@ -415,13 +415,13 @@ public class SliceComparator implements Runnable {
 			try {
 				synchronized (lock) {
 					lock.wait(SystemConfiguration.LONG_TIMEOUT);
-					node = srt.getNode(_decoder);
-					if (null != node)
-						return node;
 				}
 			} catch (InterruptedException e) {
 				return null;
 			}
+			node = srt.getNode(_decoder);
+			if (null != node)
+				return node;
 			ourTime = System.currentTimeMillis();
 			if (ourTime > endTime) {
 				throw new SyncException("Node fetch timeout for: " + Component.printURI(srt.getHash()));
@@ -1133,6 +1133,7 @@ public class SliceComparator implements Runnable {
 				Log.fine(Log.FAC_SYNC, "Saw data from nodefind: hash: {0}", Component.printURI(hash));
 			SyncTreeEntry ste = _shc.addHash(hash, _snc);
 			ste.setRawContent(data.content());
+			_snc.wakeupPending(hash);
 			kickCompare();
 			return null;
 		}

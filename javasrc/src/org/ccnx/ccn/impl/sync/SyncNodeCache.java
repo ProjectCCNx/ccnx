@@ -121,4 +121,21 @@ public class SyncNodeCache {
 			}
 		}
 	}
+	
+	/**
+	 * Wakeup waiters but leave lock pending
+	 * @param hash
+	 */
+	public void wakeupPending(byte[] hash) {
+		Pending lock;
+		synchronized (this) {
+			SyncHashEntry she = new SyncHashEntry(hash);
+			lock = _hashesPending.get(she);
+		}
+		if (null != lock) {
+			synchronized (lock) {
+				lock.notifyAll();
+			}
+		}
+	}
 }
