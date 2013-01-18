@@ -43,6 +43,7 @@ DERIVED_HTML =				\
 	sync.dtd.html			\
 	sync.xsd.html			\
 	DTAG.html			\
+	CCNDStatus.html			\
 
 DERIVED_INDEX = ../index.html index.html index.txt
 DEBRIS = .tagname.csv
@@ -152,6 +153,9 @@ CreateCollectionProtocol.html: CreateCollectionProtocol.txt
 
 LinkMessages.html: LinkMessages.txt
 	asciidoc LinkMessages.txt
+
+CCNDStatus.html: CCNDStatus.txt
+	asciidoc CCNDStatus.txt
 
 ../index.html: ../index.txt ../../README ../../LICENSE
 	asciidoc --unsafe ../index.txt
