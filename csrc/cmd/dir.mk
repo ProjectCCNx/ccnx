@@ -23,7 +23,9 @@ INSTALLED_PROGRAMS = \
     ccnsendchunks ccncatchunks ccncatchunks2 \
     ccnpoke ccnpeek ccnhexdumpdata \
     ccnseqwriter ccnsimplecat \
-    ccnfilewatch ccninitkeystore \
+    ccnfilewatch \
+    ccnguestprefix \
+    ccninitkeystore \
     ccnlibtest \
     ccnsyncwatch ccnsyncslice \
     $(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
@@ -33,8 +35,7 @@ PROGRAMS = $(INSTALLED_PROGRAMS) \
     dataresponsetest \
     ccn_fetch_test \
     ccnsnew \
-    ccnguestprefix \
-    $(PCAP_PROGRAMS)
+   $(PCAP_PROGRAMS)
 
 EXPAT_PROGRAMS = ccn_xmltoccnb
 #PCAP_PROGRAMS = ccndumppcap
