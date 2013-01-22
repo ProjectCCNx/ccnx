@@ -149,16 +149,16 @@ ccn_get_header(struct ccn *h, struct ccn_charbuf *name, int timeout)
     ccn_name_append(hn, meta, sizeof(meta));
     ccn_name_append_str(hn, ".header");
     res = ccn_resolve_version(h, hn, CCN_V_HIGHEST, timeout);
-    if (res != 0) {
-        /* Failed: try old header name from prior to 04/2010 */
+    if (res <= 0) {
+        /* Version not found: try old header name from prior to 04/2010 */
         ccn_charbuf_reset(hn);
         ccn_charbuf_append_charbuf(hn, name);
         ccn_name_append_str(hn, "_meta_");
         ccn_name_append_str(hn, ".header");
         res = ccn_resolve_version(h, hn, CCN_V_HIGHEST, timeout);
     }
-    
-    if (res == 0) {
+    /* headers must be versioned */
+    if (res > 0) {
         struct ccn_charbuf *ho = ccn_charbuf_create();
         struct ccn_parsed_ContentObject pcobuf = { 0 };
         const unsigned char *hc;
