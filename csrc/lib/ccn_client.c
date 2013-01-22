@@ -2989,7 +2989,7 @@ ccn_guest_prefix(struct ccn *h, struct ccn_charbuf *result, int ms)
     struct ccn_charbuf *templ = NULL;
     struct ccn_charbuf *cob = NULL;
     const unsigned char *p = NULL;
-    unsigned char me[] = "\xC1.M.K~XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+    unsigned char me[] = "\xC1.M.K\x00XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
     size_t p_size;
     int res;
     
