@@ -3,7 +3,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -37,7 +37,7 @@ StuffPreload () {
 export CCN_LOCAL_PORT CCND_CAP CCND_DEBUG CCND_AUTOREG CCND_LISTEN_ON CCND_MTU
 # The following are rarely used, but include them for completeness
 export CCN_LOCAL_SOCKNAME CCND_DATA_PAUSE_MICROSEC CCND_KEYSTORE_DIRECTORY
-export CCND_DEFAULT_TIME_TO_STALE CCND_MAX_TIME_TO_STALE
+export CCND_DEFAULT_TIME_TO_STALE CCND_MAX_TIME_TO_STALE CCND_PREFIX
 
 # If a ccnd is already running, try to shut it down cleanly.
 ccndsmoketest kill 2>/dev/null
