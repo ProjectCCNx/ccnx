@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -82,8 +82,9 @@ ccnd_stats.o: ccnd_stats.c ../include/ccn/ccn.h ../include/ccn/coding.h \
 ccnd_internal_client.o: ccnd_internal_client.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/ccn_private.h \
-  ../include/ccn/keystore.h ../include/ccn/schedule.h \
-  ../include/ccn/sockaddrutil.h ../include/ccn/uri.h ccnd_private.h \
-  ../include/ccn/reg_mgmt.h ../include/ccn/seqwriter.h
+  ../include/ccn/hashtb.h ../include/ccn/keystore.h \
+  ../include/ccn/schedule.h ../include/ccn/sockaddrutil.h \
+  ../include/ccn/uri.h ccnd_private.h ../include/ccn/reg_mgmt.h \
+  ../include/ccn/seqwriter.h
 ccndsmoketest.o: ccndsmoketest.c ../include/ccn/ccnd.h \
   ../include/ccn/ccn_private.h
