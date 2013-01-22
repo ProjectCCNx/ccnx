@@ -3,7 +3,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -55,3 +55,13 @@ fi
 
 # Run ccndc if a static config file is present.
 test -f $HOME/.ccnx/ccnd.conf && ccndc -f $HOME/.ccnx/ccnd.conf
+
+# Start a repository as well, if a global prefix has been configured.
+if [ "$CCNR_GLOBAL_PREFIX" != "" ]
+then
+mkdir -p $HOME/.ccnx/repository
+export CCNR_DIRECTORY=$HOME/.ccnx/repository
+export CCNR_GLOBAL_PREFIX
+ccnr 2>>$CCNR_DIRECTORY/log &
+fi
+

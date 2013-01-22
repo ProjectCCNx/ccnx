@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2012, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -189,12 +189,19 @@ public class NodeBuilder {
 						leafCount += tste.getNode().getLeafCount();
 				}
 			}
-			theNode.setLeafCount(theNode.getRefs().size());
+			theNode.setLeafCount(leafCount);
 		}
-		theNode.setLeafCount(leafCount);
 		return ste;
 	}
 	
+	/**
+	 * Create a sync tree from the input collection of elements
+	 * @param nodeElements the elements
+	 * @param shc hash cache
+	 * @param cache node cache
+	 * @param depth starting depth (but when called nonrecursively I think it will always be 2).
+	 * @return
+	 */
 	public SyncTreeEntry createHeadRecursive(Collection<SyncNodeElement> nodeElements, final SyncHashCache shc, SyncNodeCache cache, int depth) {
 		SyncTreeEntry ste = null;
 		ArrayList<SyncNodeElement> nextElements = new ArrayList<SyncNodeElement>();
@@ -211,6 +218,13 @@ public class NodeBuilder {
 		return ste;
 	}
 	
+	/**
+	 * Used to find the "first" or "last" LEAF element within the refs
+	 * @param refs
+	 * @param shc
+	 * @param start true if looking for the first element - otherwise look for last
+	 * @return
+	 */
 	private SyncNodeElement findit(ArrayList<SyncNodeElement> refs, SyncHashCache shc, boolean start) {
 		int position = start ? 0 : refs.size() - 1;
 		SyncNodeElement sne = refs.get(position);
@@ -247,5 +261,24 @@ public class NodeBuilder {
 			ourEntry = createHeadRecursive(snes, shc, cache, 2);
 		}
 		return ourEntry;
-	}	
+	}
+	
+	/**
+	 * Get the first or last leaf element of an arbitrary node given a cache. If we can't trace all the
+	 * way back to the leaf, return null.
+	 * @param snc the beginning node
+	 * @param cache
+	 * @param first if true looking for first
+	 * @return
+	 */
+	public static SyncNodeElement getFirstOrLast(SyncNodeComposite snc, SyncNodeCache cache, boolean first) {
+		int pos = first ? 0 : snc.getRefs().size() - 1;
+		SyncNodeElement sne = snc.getElement(pos);
+		if (sne.getType() == SyncNodeType.LEAF)
+			return sne;
+		snc = cache.getNode(sne.getData());
+		if (null == snc)
+			return null;
+		return getFirstOrLast(snc, cache, first);
+	}
 }

@@ -76,6 +76,7 @@ public class SyncTestCommon {
 			return null;
 		SyncNodeComposite snc = new SyncNodeComposite();
 		snc.decode(obj.content());
+		SyncNodeComposite.decodeLogging(snc);
 		return snc;
 	}
 }

@@ -25,7 +25,7 @@ The values may be set in '$HOME/.ccnx/ccndrc', which is sourced at startup.
 OPTIONS
 -------
 
-This utility does have have flags or arguments.
+This utility does not have have flags or arguments.
 
 These environment variables are handled by *ccndstart*:
 
@@ -33,13 +33,19 @@ These environment variables are handled by *ccndstart*:
      CCND_PRELOAD
 
 'CCND_LOG' is the name of the log file.  If none is specified, the
-log outputput appears on *stderr*.
+log output appears on *stderr*.
 
 'CCND_PRELOAD' is a list of file names for files containing ccnb-encoded
 content objects.  These will be preloaded into the ccnd's cache at startup.
 See *ccnrm(1)* for one way to make such a file.
 
-Please see *ccnd(1)* for additional environment variables.
+If the environment variable 'CCNR_GLOBAL_PREFIX' is set, *ccndstart* will
+also start an instance of the *ccnr* repository, using the directory
+'$HOME/.ccnx/repository' to contain the backing files.
+Additional configuration for this instance may be placed in the file
+'$HOME/.ccnx/repository/config'.
+
+Please see *ccnd(1)* and *ccnr(1)* for additional environment variables.
 
 EXIT STATUS
 -----------

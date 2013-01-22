@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
- *
- * Copyright (C) 2012 Palo Alto Research Center, Inc.
+ * 
+ * Copyright (C) 2012, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -14,6 +14,7 @@
  * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
+
 package org.ccnx.ccn.impl.sync;
 
 import java.io.BufferedReader;
@@ -44,6 +45,7 @@ public class FileBasedSyncMonitor extends SyncMonitor implements Runnable{
 	
 	
 	int runInterval = 2000;
+	private static Object runningLock = new Object();
 	private static Boolean isRunning = false;
 	private static boolean shutDown = false;
 		
@@ -53,7 +55,7 @@ public class FileBasedSyncMonitor extends SyncMonitor implements Runnable{
 
 	public FileBasedSyncMonitor() throws ConfigurationException{
 
-		synchronized (isRunning) {
+		synchronized (runningLock) {
 
 			if (!isRunning) {
 				//based on the env variable for running ccnr
@@ -97,7 +99,7 @@ public class FileBasedSyncMonitor extends SyncMonitor implements Runnable{
 	 */
 	public void run() {
 		boolean keepRunning = true;
-		synchronized(isRunning) {
+		synchronized(runningLock) {
 			isRunning = true;
 		}
 		
@@ -226,7 +228,7 @@ public class FileBasedSyncMonitor extends SyncMonitor implements Runnable{
 				Log.warning("FileBasedSyncMonitor:  error while sleeping... {0}", e.getMessage());
 			}
 			
-			synchronized(isRunning) {
+			synchronized(runningLock) {
 				if (checkShutdown()) {
 					keepRunning = false;
 					Log.fine(Log.FAC_SYNC, "isRunning was false, time to shut down");
@@ -259,7 +261,7 @@ public class FileBasedSyncMonitor extends SyncMonitor implements Runnable{
 	}
 	
 	private boolean checkShutdown() {
-		synchronized(isRunning) {
+		synchronized(runningLock) {
 			return shutDown;
 		}
 	}
@@ -267,7 +269,7 @@ public class FileBasedSyncMonitor extends SyncMonitor implements Runnable{
 	private void processCallback(CCNSyncHandler syncHandler, ConfigSlice slice) {
 		synchronized(callbacks) {
 			Log.fine(Log.FAC_SYNC, "isRunning: {0}", isRunning);
-			synchronized (isRunning) {
+			synchronized (runningLock) {
 				if (!isRunning && !checkShutdown()) {
 					//this means we do not have a thread...  and therefore are not watching the names now.
 					Log.fine(Log.FAC_SYNC, "sync was not running, clearing callbacks and starting up sync thread");
@@ -298,7 +300,7 @@ public class FileBasedSyncMonitor extends SyncMonitor implements Runnable{
 			if (callbacks.isEmpty()) {
 				Log.fine(Log.FAC_SYNC, "all callbacks are removed, shutting down sync");
 				//we don't have any registered callbacks, we can go ahead and stop running.
-				synchronized (isRunning) {
+				synchronized (runningLock) {
 					shutDown = true;
 				}
 			}
@@ -322,5 +324,9 @@ public class FileBasedSyncMonitor extends SyncMonitor implements Runnable{
 		// Will automatically shutdown when all are removed
 		for (CCNSyncHandler syncHandler : cb)
 			removeCallback(syncHandler, slice);		
+	}
+
+	public SyncNodeCache getNodeCache(ConfigSlice slice) {
+		return null;
 	}
 }

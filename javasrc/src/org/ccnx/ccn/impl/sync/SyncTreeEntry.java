@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2012, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -28,7 +28,9 @@ import org.ccnx.ccn.io.content.SyncNodeComposite;
 import org.ccnx.ccn.protocol.Component;
 
 /**
- * Entry used for navigating trees of hashes
+ * Entry used for navigating trees of hashes. It also does the work of saving and retrieving node data from the common node 
+ * cache. But these objects can not be shared across comparators because they contain data about where the comparator is in 
+ * a treewalk.
  * 
  * The policy about how to save nodes is: If the node came from the network, it can be retrieved via a request so
  * we use a SoftReference to allow these to be garbage collected when necessary. If the node is local, we built it so
@@ -119,9 +121,10 @@ public class SyncTreeEntry {
 			}
 			_rawContent = null;
 			_softNodeRef = new SoftReference<SyncNodeComposite>(node);
-			_snc.clearPending(_hash);
-			if (null != _snc)
+			if (null != _snc) {
+				_snc.clearPending(_hash);
 				_snc.putNode(node);
+			}
 		}
 		if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
 			SyncNodeComposite.decodeLogging(node);
@@ -188,8 +191,15 @@ public class SyncTreeEntry {
 		return (_flags & LOCAL) != 0;
 	}
 	
-	public synchronized boolean equals(SyncTreeEntry ste) {
+	public boolean equals(Object other) {
+		if (null == other)
+			return false;
+		SyncTreeEntry ste = (SyncTreeEntry)other;
 		return Arrays.equals(_hash, ste.getHash());
+	}
+	
+	public int hashCode() {
+		return Arrays.hashCode(_hash);
 	}
 	
 	private SyncNodeComposite retrieveFromCache() {

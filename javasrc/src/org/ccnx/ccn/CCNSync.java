@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2012, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -25,6 +25,7 @@ import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.sync.ProtocolBasedSyncMonitor;
 import org.ccnx.ccn.impl.sync.SyncMonitor;
+import org.ccnx.ccn.impl.sync.SyncNodeCache;
 import org.ccnx.ccn.io.content.ConfigSlice;
 import org.ccnx.ccn.io.content.ConfigSlice.Filter;
 import org.ccnx.ccn.protocol.Component;
@@ -86,5 +87,9 @@ public class CCNSync {
 	
 	public void shutdown(ConfigSlice slice) {
 		syncMon.shutdown(slice);
+	}
+	
+	public SyncNodeCache getNodeCache(ConfigSlice slice) {
+		return syncMon.getNodeCache(slice);
 	}
 }

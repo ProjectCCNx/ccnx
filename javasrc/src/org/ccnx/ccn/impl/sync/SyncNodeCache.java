@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2012, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -29,6 +29,11 @@ import org.ccnx.ccn.io.content.SyncNodeComposite;
  */
 public class SyncNodeCache {
 	
+	/**
+	 * This mechanism is used to avoid requesting the same node more than once (see below). One of
+	 * these objects is created for each node request and used as a java synchronization object to
+	 * insure that we don't return without having retrieved the node when that is required.
+	 */
 	public class Pending {
 		boolean _pending = false;
 		
@@ -54,6 +59,7 @@ public class SyncNodeCache {
 		synchronized (this) {
 			WeakReference<SyncNodeComposite> wr = new WeakReference<SyncNodeComposite>(node);
 			_nodes.put((new SyncHashEntry(node.getHash())), wr);
+			clearPending(node.getHash());
 		}
 	}
 	
@@ -111,6 +117,23 @@ public class SyncNodeCache {
 		if (null != lock) {
 			synchronized (lock) {
 				lock.setPending(false);
+				lock.notifyAll();
+			}
+		}
+	}
+	
+	/**
+	 * Wakeup waiters but leave lock pending
+	 * @param hash
+	 */
+	public void wakeupPending(byte[] hash) {
+		Pending lock;
+		synchronized (this) {
+			SyncHashEntry she = new SyncHashEntry(hash);
+			lock = _hashesPending.get(she);
+		}
+		if (null != lock) {
+			synchronized (lock) {
 				lock.notifyAll();
 			}
 		}

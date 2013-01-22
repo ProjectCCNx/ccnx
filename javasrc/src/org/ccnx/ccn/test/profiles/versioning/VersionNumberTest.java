@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011, 2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -123,7 +123,7 @@ public class VersionNumberTest {
 		for( int i = 0; i < 10000; i++ ) {
 			CCNTime t = CCNTime.now();
 
-			ContentName versionedName = VersioningProfile.addVersion(name, t);
+			ContentName versionedName = new ContentName(name, t);
 
 			VersionNumber vn = new VersionNumber(versionedName);
 

@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -15,16 +15,8 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package org.ccnx.ccn.io.content;
-
-import static org.ccnx.ccn.impl.encoding.CCNProtocolDTags.ConfigSlice;
-import static org.ccnx.ccn.impl.encoding.CCNProtocolDTags.ConfigSliceList;
-import static org.ccnx.ccn.impl.encoding.CCNProtocolDTags.ConfigSliceOp;
-import static org.ccnx.ccn.impl.encoding.CCNProtocolDTags.SyncVersion;
-
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.LinkedList;
 
 import org.ccnx.ccn.CCNHandle;
@@ -38,6 +30,13 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.sync.Sync;
 import org.ccnx.ccn.protocol.ContentName;
 
+/**
+ * A ConfigSlice describes what names under a particular
+ * name space will be synchronized. It is always saved
+ * to the local repository under the localhost namespace.
+ * They are named by the hash of the contents. This leads
+ * to slightly different NetworkObject semantics than usual.
+ */
 public class ConfigSlice extends GenericXMLEncodable {
 	
 	public int version = Sync.SLICE_VERSION;

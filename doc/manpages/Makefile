@@ -45,6 +45,7 @@ PAGE_NAMES =        		\
 	ccnpeek			\
 	ccnpoke			\
 	ccnr			\
+	ccnrpolicyedit		\
 	ccnsyncslice		\
 	ccnsyncwatch		\
 	ccnlink			\
