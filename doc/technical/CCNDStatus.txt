@@ -35,8 +35,8 @@ some basic information about the instance.  The *'<identity>'* element contains 
 
 * *'<ccndid>'* Unique ID of this CCND instance, based on a SHA256 digest of its public key
 * *'<apiversion>'* CCN API Version run on this CCND instance
-* *'<starttime>'* Start time of CCND instance, with units conforming to the CCNx Timestamp Format
-* *'<now>'* CCND instance system time now, with units conforming to the CCNx Timestamp Format
+* *'<starttime>'* Start time of CCND instance in seconds-since-epoch, with microsecond precision
+* *'<now>'* CCND instance system time now in seconds-since-epoch, with microsecond precision
 
 === *'<cobs>'*
 
@@ -72,7 +72,7 @@ The *'<faces>'* element contains the configured faces for this CCND node.  It is
 The *'<face>'* element describes a face and consists of the following elements:
 
 * *'<faceid>'* The faceid
-* *'<faceflags>'* The integer containing the inclusive OR of the Forwarding Flags (see link:Registration.html[CCNx Face Management and Registration Protocol])
+* *'<faceflags>'* Hexidecimal value representing ccnd-private flags defined in ccnd_private.h using names prefixed with CCN_FACE_
 * *'<pending>'* The number of pending Interests on the face
 * *'<recvcount>'* The number of Interests received on the face
 * *'<ip>'* The IP (v4 | v6) address and port of the remote CCND instance
