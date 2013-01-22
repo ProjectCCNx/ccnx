@@ -331,7 +331,7 @@ specifies whether storing of Sync state to the Repository is disabled (0) or ena
 .RS 4
 where
 \fI<freshness>\fR
-is the amount of time a response to a Sync RoodAdvise will stay "fresh" (valid) in a ccnd cache in seconds, and must be an integer in the range 1\-30\&. If not specified, the default is 4\&.
+is the amount of time a response to a Sync RootAdvise will stay "fresh" (valid) in a ccnd cache in seconds, and must be an integer in the range 1\-30\&. If not specified, the default is 4\&.
 .RE
 .PP
 \fBCCNS_ROOT_ADVISE_LIFETIME=\fR\fB\fI<ra lifetime>\fR\fR
@@ -352,7 +352,7 @@ specifies whether storing of Sync stable points to the Repository is disabled (0
 .RS 4
 where
 \fI<sync scope>\fR
-is 2 to restrict sync traffic to directly connected peers, or 3 to allow forwarding of sync traffic\&. If not specified, the default is 2\&.
+is the scope applied to sync generated interests (RootAdvise and remote fetch)\&. The value must be 0 (unscoped), 1 (local host), or 2 (next host)\&. If not specified the default is 2\&.
 .RE
 .SH "OPTIONS"
 .PP
