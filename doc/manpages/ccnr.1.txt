@@ -119,6 +119,10 @@ Any or all variables in the file may also be expressed as environment variables 
 *CCNS_STABLE_ENABLED=_<store stable flag>_*::
      where _<store stable flag>_ specifies whether storing of Sync stable points to the Repository is disabled (0) or enabled (1). If not specified, the default is 1 (enabled).
 
+*CCNS_SYNC_SCOPE=_<sync scope>_*::
+     where _<sync scope>_ is 2 to restrict sync traffic to directly connected peers,
+     or 3 to allow forwarding of sync traffic.  If not specified, the default is 2.
+
 OPTIONS
 -------
 *-h*::

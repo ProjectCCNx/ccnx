@@ -1,0 +1,55 @@
+CCNRPOLICYEDIT(1)
+================
+
+NAME
+----
+ccnrpolicyedit - edit policy.xml
+
+SYNOPSIS
+--------
+*ccnrpolicyedit*
+
+DESCRIPTION
+-----------
+The *ccnrpolicyedit* command provides a convenient way to edit the policy associated
+with a repository instance.
+
+The true repository policy is stored in a content object in the repo itself.
+It is encoded in ccnb format,
+which is not directly editable with the usual tools, such as a text editor.
+To cope with this,
+*ccnrpolicyedit* works by translating the ccnb form to a normal text-based
+xml encoding in a temporary copy, calling a text editor on this copy, and 
+then translating back to ccnb before storing the updated policy in the repo.
+
+OPTIONS
+-------
+None.
+
+ARGUMENTS
+---------
+None.
+
+ENVIRONMENT
+-----------
+The value of *CCNR_GLOBAL_PREFIX* controls the repository instance that is
+to be configured.
+The usual way to set this is by editing ~/.ccnx/ccndrc
+The value of *EDITOR* may be used to specify what text editor should be
+called to do the actual editing.  The default is *vi*.
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*nonzero*::
+     Failure (syntax or usage error, file not found)
+
+FILES
+-----
+*~/.ccnx/ccnd.conf*, *~/.ccnx/ccndrc*, *~/.ccnx/repository/config*
+
+AUTHOR
+------
+Michael Plass

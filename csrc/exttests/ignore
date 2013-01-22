@@ -13,6 +13,8 @@ FAILING
 SKIPPED
 STATUS
 STATUS/
+after.txt
+before.txt
 ccnr.?.log
 depend
 deps

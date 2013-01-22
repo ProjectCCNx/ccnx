@@ -6,7 +6,7 @@
  */
 
 /*
- * Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -117,6 +117,10 @@ static const char *ccnr_usage_message =
 "      1..100 (default 4) maximum simultaneous Sync roots in compare state.\n"
 "    CCNS_NOTE_ERR=0\n"
 "      Disable (0, default) or enable (1) exceptional Sync error reporting.\n"
+"    CCNS_SYNC_SCOPE=2\n"
+"      The default (2) restricts sync traffic to directly connected peers,\n"
+"      which requires sync to be running on all nodes.  Set to 3 to permit\n"
+"      forwarding of sync traffic.\n"
 ;
 
 int

@@ -1,4 +1,6 @@
 Makefile
+ccnd-autoconfig
+ccnd-publish-local-info
 ccndlogging
 ccndstart
 ccndstatus
@@ -6,4 +8,5 @@ ccndstop
 ccntestloop
 ccnget
 ccnput
+ccnrpolicyedit
 depend

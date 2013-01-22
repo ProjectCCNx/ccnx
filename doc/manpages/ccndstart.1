@@ -1,13 +1,13 @@
 '\" t
 .\"     Title: ccndstart
 .\"    Author: [see the "AUTHOR" section]
-.\" Generator: DocBook XSL Stylesheets v1.76.0 <http://docbook.sf.net/>
-.\"      Date: 12/08/2012
+.\" Generator: DocBook XSL Stylesheets v1.78.0 <http://docbook.sf.net/>
+.\"      Date: 01/15/2013
 .\"    Manual: \ \&
 .\"    Source: \ \& 0.7.0
 .\"  Language: English
 .\"
-.TH "CCNDSTART" "1" "12/08/2012" "\ \& 0\&.7\&.0" "\ \&"
+.TH "CCNDSTART" "1" "01/15/2013" "\ \& 0\&.7\&.0" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -39,7 +39,7 @@ The \fBccndstart\fR utility starts ccnd in the background\&. \fBccndstart\fR loo
 \fBccndstart\fR will start using default values for \fICCND_CAP\fR, \fICCND_DEBUG\fR and the default port 9695 for \fICCN_LOCAL_PORT\fR\&. These environment values may be set to change the cache size, \fBccnd\fR debug logging, and port number, respectively\&. The values may be set in \fI$HOME/\&.ccnx/ccndrc\fR, which is sourced at startup\&.
 .SH "OPTIONS"
 .sp
-This utility does have have flags or arguments\&.
+This utility does not have have flags or arguments\&.
 .sp
 These environment variables are handled by \fBccndstart\fR:
 .sp
@@ -54,11 +54,13 @@ CCND_PRELOAD
 .RE
 .\}
 .sp
-\fICCND_LOG\fR is the name of the log file\&. If none is specified, the log outputput appears on \fBstderr\fR\&.
+\fICCND_LOG\fR is the name of the log file\&. If none is specified, the log output appears on \fBstderr\fR\&.
 .sp
 \fICCND_PRELOAD\fR is a list of file names for files containing ccnb\-encoded content objects\&. These will be preloaded into the ccnd\(cqs cache at startup\&. See \fBccnrm(1)\fR for one way to make such a file\&.
 .sp
-Please see \fBccnd(1)\fR for additional environment variables\&.
+If the environment variable \fICCNR_GLOBAL_PREFIX\fR is set, \fBccndstart\fR will also start an instance of the \fBccnr\fR repository, using the directory \fI$HOME/\&.ccnx/repository\fR to contain the backing files\&. Additional configuration for this instance may be placed in the file \fI$HOME/\&.ccnx/repository/config\fR\&.
+.sp
+Please see \fBccnd(1)\fR and \fBccnr(1)\fR for additional environment variables\&.
 .SH "EXIT STATUS"
 .PP
 \fB0\fR
