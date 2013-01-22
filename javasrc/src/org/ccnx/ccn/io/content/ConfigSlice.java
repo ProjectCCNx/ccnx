@@ -14,9 +14,9 @@
  * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
+
 package org.ccnx.ccn.io.content;
 
-import static org.ccnx.ccn.impl.CCNFlowControl.SaveType.LOCALREPOSITORY;
 import static org.ccnx.ccn.impl.encoding.CCNProtocolDTags.ConfigSlice;
 import static org.ccnx.ccn.impl.encoding.CCNProtocolDTags.ConfigSliceList;
 import static org.ccnx.ccn.impl.encoding.CCNProtocolDTags.ConfigSliceOp;
@@ -38,15 +38,14 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.sync.Sync;
 import org.ccnx.ccn.protocol.ContentName;
 
-/**
- * A ConfigSlice describes what names under a particular
- * name space will be synchronized. It is always saved
- * to the local repository under the localhost namespace.
- * They are named by the hash of the contents. This leads
- * to slightly different NetworkObject semantics than usual.
- */
 public class ConfigSlice extends GenericXMLEncodable {
+	
+	public int version = Sync.SLICE_VERSION;
+	public ContentName topo;
+	public ContentName prefix;
 
+	protected LinkedList<Filter> filters = new LinkedList<Filter>();
+	
 	/**
 	 * Config slice lists require a ConfigSliceOp written before the
 	 * ContentName, although it does nothing. This class
@@ -79,73 +78,78 @@ public class ConfigSlice extends GenericXMLEncodable {
 			super.encode(encoder);
 		}
 	}
-
-	/**
-	 * A ConfigSlice is always saved in the local repository under
-	 * /localhost/CS.s.cs, so the full name does not need to be passed
-	 * to the constructors here. In addition the object is named after
-	 * a hash of the contents, so this must be available when creating
-	 * a NetworkObject.
-	 */
-	public static class NetworkObject extends CCNEncodableObject<ConfigSlice> {
-
-		/**
-		 * Read constructor. Use when you have a slice hash (perhaps from enumeration),
-		 * and want to know if it's present or not.
-		 * @param hash of slice data.
-		 * @param handle
-		 * @throws ContentDecodingException
-		 * @throws IOException
-		 */
-		public NetworkObject(byte[] hash, CCNHandle handle) throws ContentDecodingException, IOException {
-			super(ConfigSlice.class, true, nameFromHash(hash), handle);
-			setSaveType(LOCALREPOSITORY);
-		}
-
-		/**
-		 * Write constructor.
-		 * @param data Used to generate the full object name (which is a hash
-		 * of the data).
-		 * @param handle
-		 * @throws ContentDecodingException
-		 * @throws IOException
-		 */
-		public NetworkObject(ConfigSlice data, CCNHandle handle) throws IOException {
-			super(ConfigSlice.class, false, nameFromHash(data.getHash()), data, LOCALREPOSITORY, handle);
-		}
-
-		/**
-		 * Convenience write constructor.
-		 * Creates an ConfigSlice, calculates the hash and creates a NetworkObject together.
-		 */
-		public NetworkObject(ContentName topo, ContentName prefix, Collection<Filter> filters, CCNHandle handle) throws IOException {
-			this(new ConfigSlice(topo, prefix, filters), handle);
-		}
-
-		public static ContentName nameFromHash(byte[] hash) {
-			return new ContentName(Sync.SYNC_SLICE_PREFIX, hash);
-		}
-
-		public ConfigSlice getData() { return _data; }
-	}
-
-	public int version = Sync.SLICE_VERSION;
-	public ContentName topo;
-	public ContentName prefix;
-
-	protected LinkedList<Filter> filters = new LinkedList<Filter>();
-
-	public boolean equals(Object obj) {
-		if (null == obj)
-			return false;
-		if (! (obj instanceof ConfigSlice))
-			return false;
-		ConfigSlice otherSlice = (ConfigSlice)obj;
-		return Arrays.equals(this.getHash(), otherSlice.getHash());
+	
+	public ConfigSlice() {}
+	
+	public ConfigSlice(ContentName topo, ContentName prefix, Collection<Filter> new_filters) {
+		this.topo = topo;
+		this.prefix = prefix;
+		if (new_filters != null)
+			filters.addAll(new_filters);
 	}
 	
-	public int hashCode() {
-		return Arrays.hashCode(this.getHash());
+	/**
+	 * Check that a sync ConfigSlice exists in the local repository, and if not create one.
+	 * @param handle
+	 * @param topo from ConfigSlice
+	 * @param prefix from ConfigSlice
+	 * @param filters from ConfigSlice
+	 * @throws IOException
+	 */
+	public static ConfigSlice checkAndCreate(ContentName topo, ContentName prefix, Collection<Filter> filters, CCNHandle handle) throws ContentDecodingException, IOException {
+		ConfigSlice slice = new ConfigSlice(topo, prefix, filters);
+		//ConfigSlice.NetworkObject csno = new ConfigSlice.NetworkObject(slice.getHash(), handle);
+		ConfigSliceObject csno = new ConfigSliceObject(slice, handle);
+		boolean updated = csno.update(SystemConfiguration.SHORT_TIMEOUT);
+		if (updated)
+			Log.fine(Log.FAC_SYNC, "found this slice in my repo! {0}", csno.getVersionedName());
+		else
+			Log.fine(Log.FAC_SYNC, "didn't find a slice in my repo.");
+		if (!updated || (updated && (!csno.available() || csno.isGone()))) {
+			Log.fine(Log.FAC_SYNC, "need to save my data to create the slice for the repo!");
+			csno.setData(slice);
+			csno.save();
+		} else {
+			Log.fine(Log.FAC_SYNC, "don't need to do anything...  returning the existing slice");
+		}
+		csno.close();
+		return slice;
+	}
+	
+	public void checkAndCreate(CCNHandle handle) throws ContentDecodingException, ContentEncodingException, IOException{
+		ConfigSliceObject existingSlice;
+		try {
+			//existingSlice = new ConfigSlice.NetworkObject(this.getHash(), handle);
+			existingSlice = new ConfigSliceObject(this, handle);
+			boolean updated = existingSlice.update(SystemConfiguration.SHORT_TIMEOUT);
+			if (!updated || (updated && (!existingSlice.available() || existingSlice.isGone()))) {
+				existingSlice.setData(this);
+				existingSlice.save();
+			}
+		} catch (ContentDecodingException e) {
+			Log.warning(Log.FAC_REPO, "ContentDecodingException: Unable to read in existing slice data from repository.");
+			throw e;
+		} catch (IOException e) {
+			Log.warning(Log.FAC_REPO, "IOException: error when attempting to retrieve existing slice");
+			throw e;
+		}
+		existingSlice.close();
+	}
+	
+	public boolean deleteSlice(CCNHandle handle) throws IOException{
+		
+		ConfigSliceObject existingSlice;
+		
+		try {
+			existingSlice = new ConfigSliceObject(this.getHash(), handle);
+			return existingSlice.saveAsGone();
+		} catch (ContentDecodingException e) {
+			Log.warning(Log.FAC_REPO, "ContentDecodingException: Unable to read in existing slice data from repository.");
+			throw new IOException("Unable to delete slice from repository: " + e.getMessage());
+		} catch (IOException e) {
+			Log.warning(Log.FAC_REPO, "IOException: error when attempting to retrieve existing slice before deletion");
+			throw new IOException("Unable to delete slice from repository: " + e.getMessage());
+		}	
 	}
 	
 	public byte[] getHash() {
@@ -155,19 +159,6 @@ public class ConfigSlice extends GenericXMLEncodable {
 			// should never happen since we're encoding our own data
 			throw new RuntimeException(e);
 		}
-	}
-
-	/**
-	 * Used by NetworkObject read constructor
-	 */
-	public ConfigSlice() {
-	}
-
-	public ConfigSlice(ContentName topo, ContentName prefix, Collection<Filter> new_filters) {
-		this.topo = topo;
-		this.prefix = prefix;
-		if (new_filters != null)
-			filters.addAll(new_filters);
 	}
 
 	@Override
@@ -210,71 +201,17 @@ public class ConfigSlice extends GenericXMLEncodable {
 	public boolean validate() {
 		return true;
 	}
-
-	/**
-	 * Check that a sync ConfigSlice exists in the local repository, and if not create one.
-	 * @param handle
-	 * @param topo from ConfigSlice
-	 * @param prefix from ConfigSlice
-	 * @param filters from ConfigSlice
-	 * @throws IOException
-	 */
-	public static ConfigSlice checkAndCreate(ContentName topo, ContentName prefix, Collection<Filter> filters, CCNHandle handle) throws ContentDecodingException, IOException {
-		ConfigSlice slice = new ConfigSlice(topo, prefix, filters);
-		//ConfigSlice.NetworkObject csno = new ConfigSlice.NetworkObject(slice.getHash(), handle);
-		ConfigSlice.NetworkObject csno = new ConfigSlice.NetworkObject(slice, handle);
-		boolean updated = csno.update(SystemConfiguration.SHORT_TIMEOUT);
-		if (updated)
-			Log.fine(Log.FAC_SYNC, "found this slice in my repo! {0}", csno.getVersionedName());
-		else
-			Log.fine(Log.FAC_SYNC, "didn't find a slice in my repo.");
-		if (!updated || (updated && (!csno.available() || csno.isGone()))) {
-			Log.fine(Log.FAC_SYNC, "need to save my data to create the slice for the repo!");
-			csno.setData(slice);
-			csno.save();
-		} else {
-			Log.fine(Log.FAC_SYNC, "don't need to do anything...  returning the existing slice");
-		}
-		csno.close();
-		return slice;
+	
+	public int hashCode() {
+		return Arrays.hashCode(getHash());
 	}
 	
-	public void checkAndCreate(CCNHandle handle) throws ContentDecodingException, ContentEncodingException, IOException{
-		ConfigSlice.NetworkObject existingSlice;
-		try {
-			//existingSlice = new ConfigSlice.NetworkObject(this.getHash(), handle);
-			existingSlice = new ConfigSlice.NetworkObject(this, handle);
-			boolean updated = existingSlice.update(SystemConfiguration.SHORT_TIMEOUT);
-			if (!updated || (updated && (!existingSlice.available() || existingSlice.isGone()))) {
-				existingSlice.setData(this);
-				existingSlice.save();
-			}
-		} catch (ContentDecodingException e) {
-			Log.warning(Log.FAC_REPO, "ContentDecodingException: Unable to read in existing slice data from repository.");
-			throw e;
-		} catch (IOException e) {
-			Log.warning(Log.FAC_REPO, "IOException: error when attempting to retrieve existing slice");
-			throw e;
-		}
-		existingSlice.close();
-	}
-	
-	
-	public boolean deleteSlice(CCNHandle handle) throws IOException{
-		
-		ConfigSlice.NetworkObject existingSlice;
-		
-		try {
-			existingSlice = new ConfigSlice.NetworkObject(this.getHash(), handle);
-			return existingSlice.saveAsGone();
-		} catch (ContentDecodingException e) {
-			Log.warning(Log.FAC_REPO, "ContentDecodingException: Unable to read in existing slice data from repository.");
-			throw new IOException("Unable to delete slice from repository: " + e.getMessage());
-		} catch (IOException e) {
-			Log.warning(Log.FAC_REPO, "IOException: error when attempting to retrieve existing slice before deletion");
-			throw new IOException("Unable to delete slice from repository: " + e.getMessage());
-		}
-		
-		
+	public boolean equals(Object obj) {
+		if (null == obj)
+			return false;
+		if (! (obj instanceof ConfigSlice))
+			return false;
+		ConfigSlice otherSlice = (ConfigSlice)obj;
+		return Arrays.equals(this.getHash(), otherSlice.getHash());
 	}
 }

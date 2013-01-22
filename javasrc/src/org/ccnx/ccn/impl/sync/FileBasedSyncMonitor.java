@@ -1,6 +1,6 @@
 /*
  * Part of the CCNx Java Library.
- *
+ * 
  * Copyright (C) 2012, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it

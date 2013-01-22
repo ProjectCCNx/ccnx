@@ -1706,6 +1706,3 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		}
 	}
 }
-
-
-
