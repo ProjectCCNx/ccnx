@@ -3,7 +3,7 @@
  *
  * Main program of ccnd - the CCNx Daemon
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -1108,6 +1108,16 @@ finalize_interest(struct hashtb_enumerator *e)
     }
     ie->pfl = NULL;
     ie->interest_msg = NULL; /* part of hashtb, don't free this */
+}
+
+/**
+ * Clean up a guest_entry when it is removed from its hash table.
+ */
+static void
+finalize_guest(struct hashtb_enumerator *e)
+{
+    struct guest_entry *g = e->data;
+    ccn_charbuf_destroy(&g->cob);
 }
 
 /**
@@ -5684,6 +5694,8 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->nameprefix_tab = hashtb_create(sizeof(struct nameprefix_entry), &param);
     param.finalize = &finalize_interest;
     h->interest_tab = hashtb_create(sizeof(struct interest_entry), &param);
+    param.finalize = &finalize_guest;
+    h->guest_tab = hashtb_create(sizeof(struct guest_entry), &param);
     param.finalize = 0;
     h->sparse_straggler_tab = hashtb_create(sizeof(struct sparse_straggler_entry), NULL);
     h->min_stale = ~0;
@@ -5835,6 +5847,7 @@ ccnd_destroy(struct ccnd_handle **pccnd)
     hashtb_destroy(&h->interest_tab);
     hashtb_destroy(&h->nameprefix_tab);
     hashtb_destroy(&h->sparse_straggler_tab);
+    hashtb_destroy(&h->guest_tab);
     if (h->fds != NULL) {
         free(h->fds);
         h->fds = NULL;

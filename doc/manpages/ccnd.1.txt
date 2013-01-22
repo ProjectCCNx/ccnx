@@ -92,6 +92,8 @@ Options for *ccnd* are set via environment variables.
       If this is specified, the ccnd can be used as a "hub" to forward
       interests matching these prefixes to any peer that talks to it.
       example: CCND_AUTOREG=ccnx:/ccnx.org/Users,ccnx:/ccnx.org/Chat
+    CCND_PREFIX=
+      A prefix stem to use for generating guest prefixes.
 
 NAME SPACES
 -----------

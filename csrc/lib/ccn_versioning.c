@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -77,7 +77,8 @@ append_future_vcomp(struct ccn_charbuf *templ)
 }
 
 static struct ccn_charbuf *
-resolve_templ(struct ccn_charbuf *templ, unsigned const char *vcomp, int size, int lifetime)
+resolve_templ(struct ccn_charbuf *templ, unsigned const char *vcomp,
+              int size, int lifetime, int versioning_flags)
 {
     if (templ == NULL)
         templ = ccn_charbuf_create();
@@ -100,6 +101,12 @@ resolve_templ(struct ccn_charbuf *templ, unsigned const char *vcomp, int size, i
     ccn_charbuf_append_closer(templ); /* </Exclude> */
     answer_highest(templ);
     answer_passive(templ);
+    if ((versioning_flags & CCN_V_SCOPE2) != 0)
+        ccnb_tagged_putf(templ, CCN_DTAG_Scope, "%d", 2);
+    else if ((versioning_flags & CCN_V_SCOPE1) != 0)
+        ccnb_tagged_putf(templ, CCN_DTAG_Scope, "%d", 1);
+    else if ((versioning_flags & CCN_V_SCOPE0) != 0)
+        ccnb_tagged_putf(templ, CCN_DTAG_Scope, "%d", 0);
     if (lifetime > 0)
         ccnb_append_tagged_binary_number(templ, CCN_DTAG_InterestLifetime, lifetime);
     ccn_charbuf_append_closer(templ); /* </Interest> */
@@ -166,7 +173,7 @@ ccn_resolve_version(struct ccn *h, struct ccn_charbuf *name,
         }    
     }
     templ = resolve_templ(templ, lowtime, sizeof(lowtime),
-                          ms_to_tu(timeout_ms) * 7 / 8);
+                          ms_to_tu(timeout_ms) * 7 / 8, versioning_flags);
     ccn_charbuf_append(prefix, name->buf, name->length); /* our copy */
     cobj->length = 0;
     gettimeofday(&start, NULL);
@@ -202,7 +209,7 @@ ccn_resolve_version(struct ccn *h, struct ccn_charbuf *name,
             if (timeout_ms <= 0)
                 break;
             ttimeout = timeout_ms < (rtt_max/250) ? timeout_ms : (rtt_max/250);
-            templ = resolve_templ(templ, vers, vers_size, ms_to_tu(ttimeout) * 7 / 8);
+            templ = resolve_templ(templ, vers, vers_size, ms_to_tu(ttimeout) * 7 / 8, versioning_flags);
             if (templ == NULL) break;
             cobj->length = 0;
             res = ccn_get(h, prefix, templ, ttimeout, cobj, pco, ndx,

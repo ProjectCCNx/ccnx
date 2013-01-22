@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -2973,3 +2973,69 @@ ccn_is_final_pco(const unsigned char *ccnb,
     return(0);
 }
 
+/**
+ * Ask upstream for a guest prefix that will be routed to us.
+ *
+ * On success, the prefix is placed into result, in the form of a uri.
+ * ms is the maximum time to wait for an answer.
+ *
+ * @result is 0 for success, or -1 for failure.
+ */
+int
+ccn_guest_prefix(struct ccn *h, struct ccn_charbuf *result, int ms)
+{
+    struct ccn_parsed_ContentObject pco = {0};
+    struct ccn_charbuf *name = NULL;
+    struct ccn_charbuf *templ = NULL;
+    struct ccn_charbuf *cob = NULL;
+    const unsigned char *p = NULL;
+    unsigned char me[] = "\xC1.M.K~XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+    size_t p_size;
+    int res;
+    
+    if (h->ccndid == NULL) {
+        ccn_initiate_ccndid_fetch(h);
+        ccn_run(h, (ms < 400) ? ms / 2 : 200);
+    }
+    if (h->ccndid == NULL)
+        return(-1);
+    name = ccn_charbuf_create();
+    if (name == NULL)
+        return(-1);
+    cob = ccn_charbuf_create();
+    if (cob == NULL)
+        goto Bail;
+    res = ccn_name_from_uri(name, "ccnx:/%C1.M.S.neighborhood/guest");
+    if (res < 0)
+        goto Bail;
+    memcpy(me + 6, h->ccndid->buf, 32);
+    res = ccn_name_append(name, me, 6 + 32);
+    if (res < 0)
+        goto Bail;
+    templ = ccn_charbuf_create();
+    if (templ == NULL)
+        goto Bail;
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
+    ccn_charbuf_append_closer(templ); /* </Name> */
+    ccnb_tagged_putf(templ, CCN_DTAG_Scope, "%d", 2);
+    ccn_charbuf_append_closer(templ); /* </Interest> */
+    res = ccn_resolve_version(h, name, CCN_V_HIGHEST, ms);
+    if (res < 0)
+        goto Bail;
+    res = ccn_get(h, name, templ, ms, cob, &pco, NULL, 0);
+    if (res < 0)
+        goto Bail;
+    if (result != NULL) {
+        ccn_charbuf_reset(result);
+        res = ccn_content_get_value(cob->buf, cob->length, &pco, &p, &p_size);
+        if (res < 0)
+            goto Bail;
+        res = ccn_charbuf_append(result, p, p_size);
+    }
+Bail:
+    ccn_charbuf_destroy(&name);
+    ccn_charbuf_destroy(&cob);
+    ccn_charbuf_destroy(&templ);
+    return((res < 0) ? -1 : 0);
+}
