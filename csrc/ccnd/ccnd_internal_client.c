@@ -880,17 +880,21 @@ ccnd_req_guest(struct ccn_closure *selfp,
     }
     g = e->data;
     hashtb_end(e);
-    if (g->cob != NULL &&
-        ccn_content_matches_interest(g->cob->buf,
-                                     g->cob->length,
-                                     1,
-                                     NULL,
-                                     info->interest_ccnb,
-                                     info->pi->offset[CCN_PI_E],
-                                     info->pi)) {
-        ccn_put(info->h, g->cob->buf, g->cob->length);
+    if (g->cob != NULL) {
+        if (ccn_content_matches_interest(g->cob->buf,
+                                         g->cob->length,
+                                         1,
+                                         NULL,
+                                         info->interest_ccnb,
+                                         info->pi->offset[CCN_PI_E],
+                                         info->pi)) {
+            ccn_put(info->h, g->cob->buf, g->cob->length);
+            ccn_charbuf_destroy(&name);
+            return(CCN_UPCALL_RESULT_INTEREST_CONSUMED);
+        }
+        /* We have a cob cached; no new one until the old one expires */
         ccn_charbuf_destroy(&name);
-        return(CCN_UPCALL_RESULT_INTEREST_CONSUMED);
+        return(CCN_UPCALL_RESULT_ERR);
     }
     if (info->interest_comps->n != 4) {
         ccn_charbuf_destroy(&name);
