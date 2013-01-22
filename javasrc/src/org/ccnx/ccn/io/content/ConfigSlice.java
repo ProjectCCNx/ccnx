@@ -15,8 +15,16 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+package org.ccnx.ccn.io.content;
+
+import static org.ccnx.ccn.impl.encoding.CCNProtocolDTags.ConfigSlice;
+import static org.ccnx.ccn.impl.encoding.CCNProtocolDTags.ConfigSliceList;
+import static org.ccnx.ccn.impl.encoding.CCNProtocolDTags.ConfigSliceOp;
+import static org.ccnx.ccn.impl.encoding.CCNProtocolDTags.SyncVersion;
+
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.LinkedList;
 
 import org.ccnx.ccn.CCNHandle;
@@ -30,13 +38,6 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.sync.Sync;
 import org.ccnx.ccn.protocol.ContentName;
 
-/**
- * A ConfigSlice describes what names under a particular
- * name space will be synchronized. It is always saved
- * to the local repository under the localhost namespace.
- * They are named by the hash of the contents. This leads
- * to slightly different NetworkObject semantics than usual.
- */
 public class ConfigSlice extends GenericXMLEncodable {
 	
 	public int version = Sync.SLICE_VERSION;
@@ -201,7 +202,16 @@ public class ConfigSlice extends GenericXMLEncodable {
 		return true;
 	}
 	
-	public boolean equals(ConfigSlice otherSlice) {
+	public int hashCode() {
+		return Arrays.hashCode(getHash());
+	}
+	
+	public boolean equals(Object obj) {
+		if (null == obj)
+			return false;
+		if (! (obj instanceof ConfigSlice))
+			return false;
+		ConfigSlice otherSlice = (ConfigSlice)obj;
 		return Arrays.equals(this.getHash(), otherSlice.getHash());
 	}
 }
