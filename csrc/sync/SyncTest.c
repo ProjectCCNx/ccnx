@@ -1115,7 +1115,11 @@ getFile(struct SyncTestParms *parms, char *src, char *dst) {
         for (;;) {
             intmax_t av = ccn_fetch_avail(fs);
             if (av == CCN_FETCH_READ_NONE) {
-                ccn_run(ccn, 1);
+                res = ccn_run(ccn, 1);
+                if (res < 0) {
+                    perror("ccn_run failed");
+                    return -1;
+                }
                 continue;
             }
             int nb = ccn_fetch_read(fs, cp, bs);
@@ -1130,7 +1134,11 @@ getFile(struct SyncTestParms *parms, char *src, char *dst) {
                 parms->fSize = parms->fSize + nb;
             } else if (nb == CCN_FETCH_READ_NONE) {
                 // try again
-                ccn_run(ccn, 1);
+                res = ccn_run(ccn, 1);
+                if (res < 0) {
+                    perror("ccn_run failed");
+                    return -1;
+                }                
             } else {
                 if (nb == CCN_FETCH_READ_END) break;
                 if (nb == CCN_FETCH_READ_TIMEOUT) {
@@ -1240,7 +1248,10 @@ putFile(struct SyncTestParms *parms, char *src, char *dst) {
     if (res < 0) {
         return noteErr("putFile, ccn_set_interest_filter failed");
     }
-    ccn_run(ccn, 40);
+    res = ccn_run(ccn, 40);
+    if (res < 0) {
+        return noteErr("putFile, ccn_run failed");
+    }
     // initiate the write
     // construct the store request and "send" it as an interest
     ccn_charbuf_append_charbuf(cmd, nm);
@@ -1262,8 +1273,12 @@ putFile(struct SyncTestParms *parms, char *src, char *dst) {
     }
     
     // wait for completion
-    while (sfData->stored < sfData->nSegs) {
-        ccn_run(ccn, 2);
+    res = 0;
+    while (res == 0 && sfData->stored < sfData->nSegs) {
+        res = ccn_run(ccn, 2);
+    }
+    if (res < 0) {
+        return noteErr("putFile, ccn_run failed while storing");
     }
     
     gettimeofday(&parms->stopTime, 0);
@@ -1272,7 +1287,10 @@ putFile(struct SyncTestParms *parms, char *src, char *dst) {
     if (res < 0) {
         return noteErr("putFile, ccn_set_interest_filter failed (removal)");
     }
-    ccn_run(ccn, 40);
+    res = ccn_run(ccn, 40);
+    if (res < 0) {
+        return noteErr("putFile, ccn_run failed");
+    }
     
     ccn_charbuf_destroy(&sfData->template);
     free(sfData->segData);
@@ -1384,7 +1402,11 @@ putFileList(struct SyncTestParms *parms, char *listName) {
             break;
         }
         ccn_get(ccn, tmp, template, DEFAULT_CMD_TIMEOUT, NULL, NULL, NULL, 0);
-        ccn_run(ccn, 10);
+        ret = ccn_run(ccn, 10);
+        if (ret < 0) {
+            ret = noteErr("putFileList, ccn_run failed");
+            break;
+        }
         i++;
     }
     ccn_charbuf_destroy(&template);
