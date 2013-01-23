@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -23,7 +23,9 @@ INSTALLED_PROGRAMS = \
     ccnsendchunks ccncatchunks ccncatchunks2 \
     ccnpoke ccnpeek ccnhexdumpdata \
     ccnseqwriter ccnsimplecat \
-    ccnfilewatch ccninitkeystore \
+    ccnfilewatch \
+    ccnguestprefix \
+    ccninitkeystore \
     ccnlibtest \
     ccnsyncwatch ccnsyncslice \
     $(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
@@ -33,7 +35,7 @@ PROGRAMS = $(INSTALLED_PROGRAMS) \
     dataresponsetest \
     ccn_fetch_test \
     ccnsnew \
-    $(PCAP_PROGRAMS)
+   $(PCAP_PROGRAMS)
 
 EXPAT_PROGRAMS = ccn_xmltoccnb
 #PCAP_PROGRAMS = ccndumppcap
@@ -44,7 +46,8 @@ CSRC =  ccn_ccnbtoxml.c ccn_splitccnb.c ccn_xmltoccnb.c ccnbasicconfig.c \
        ccnbuzz.c ccnbx.c \
        ccnc.c \
        ccncat.c ccnsimplecat.c ccncatchunks.c ccncatchunks2.c \
-       ccndumpnames.c ccndumppcap.c ccnfilewatch.c ccnpeek.c ccnhexdumpdata.c \
+       ccndumpnames.c ccndumppcap.c ccnfilewatch.c \
+       ccnguestprefix.c ccnpeek.c ccnhexdumpdata.c \
        ccninitkeystore.c ccnls.c ccnnamelist.c ccnpoke.c ccnrm.c ccnsendchunks.c \
        ccnseqwriter.c \
        ccnsnew.c \
@@ -87,6 +90,9 @@ encodedecodetest: encodedecodetest.o
 
 ccnc: ccnc.o
 	$(CC) $(CFLAGS) -o $@ ccnc.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+
+ccnguestprefix: ccnguestprefix.o
+	$(CC) $(CFLAGS) -o $@ ccnguestprefix.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccndumpnames: ccndumpnames.o
 	$(CC) $(CFLAGS) -o $@ ccndumpnames.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
@@ -231,6 +237,9 @@ ccndumppcap.o: ccndumppcap.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
   ../include/ccn/ccnd.h
 ccnfilewatch.o: ccnfilewatch.c
+ccnguestprefix.o: ccnguestprefix.c ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccnpeek.o: ccnpeek.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h

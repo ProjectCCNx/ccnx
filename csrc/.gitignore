@@ -28,6 +28,7 @@ cmd/ccndump
 cmd/ccndumpnames
 cmd/ccndumppcap
 cmd/ccnfilewatch
+cmd/ccnguestprefix
 cmd/ccnpeek
 cmd/ccnhexdumpdata
 cmd/ccninitkeystore

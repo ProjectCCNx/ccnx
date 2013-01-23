@@ -5,7 +5,7 @@
  *
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -37,7 +37,7 @@
  * Thus CCN_API_VERSION=1000 would have corresponded to the first public
  * release (0.1.0), but that version did not have this macro defined.
  */
-#define CCN_API_VERSION 7000
+#define CCN_API_VERSION 7001
 
 /**
  * Interest lifetime default.
@@ -1012,7 +1012,10 @@ int ccnb_tagged_putf(struct ccn_charbuf *c, enum ccn_dtag dtag,
 #define CCN_V_NEXT     (4|1)
 #define CCN_V_PREV     (2|1)
 #define CCN_V_NOW      16 /**< use current time */
-#define CCN_V_NESTOK   32 /**< version within version is ok */ 
+#define CCN_V_NESTOK   32 /**< version within version is ok */
+#define CCN_V_SCOPE0   64 /**< use scope 0 */
+#define CCN_V_SCOPE1   128 /**< use scope 1 */
+#define CCN_V_SCOPE2   256 /**< use scope 2 */
 
 int ccn_resolve_version(struct ccn *h,
                         struct ccn_charbuf *name, /* ccnb encoded */
@@ -1023,5 +1026,7 @@ int ccn_create_version(struct ccn *h,
                        struct ccn_charbuf *name,
                        int versioning_flags,
                        intmax_t secs, int nsecs);
+
+int ccn_guest_prefix(struct ccn *h, struct ccn_charbuf *result, int ms);
 
 #endif

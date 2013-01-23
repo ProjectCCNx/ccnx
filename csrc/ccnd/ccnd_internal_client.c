@@ -7,7 +7,7 @@
  *
  * Part of ccnd - the CCNx Daemon.
  *
- * Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -33,6 +33,7 @@
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/ccn_private.h>
+#include <ccn/hashtb.h>
 #include <ccn/keystore.h>
 #include <ccn/schedule.h>
 #include <ccn/sockaddrutil.h>
@@ -811,6 +812,141 @@ adjacency_timed_reset(struct ccnd_handle *ccnd, unsigned faceid)
                        adjacency_do_reset, NULL, faceid);
 }
 
+static int
+clean_guest(struct ccn_schedule *sched,
+            void *clienth,
+            struct ccn_scheduled_event *ev,
+            int flags)
+{
+    struct ccnd_handle *ccnd = clienth;
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    unsigned faceid;
+    int res;
+    
+    if ((flags & CCN_SCHEDULE_CANCEL) != 0)
+        return(0);
+    faceid = ev->evint;
+    hashtb_start(ccnd->guest_tab, e);
+    res = hashtb_seek(e, &faceid, sizeof(unsigned), 0);
+    if (res < 0)
+        return(-1);
+    hashtb_delete(e);
+    hashtb_end(e);
+    return(0);
+}
+
+static enum ccn_upcall_res
+ccnd_req_guest(struct ccn_closure *selfp,
+               enum ccn_upcall_kind kind,
+               struct ccn_upcall_info *info)
+{
+    struct ccnd_handle *ccnd = selfp->data;
+    struct hashtb_enumerator ee;
+    struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
+    struct hashtb_enumerator *e = &ee;
+    const char *guest_uri = NULL;
+    struct ccn_charbuf *name = NULL;
+    struct ccn_charbuf *uri = NULL;
+    struct face *reqface = NULL;
+    struct guest_entry *g = NULL;
+    const unsigned char *p = NULL;
+    size_t size = 0;
+    size_t start = 0;
+    size_t end = 0;
+    int res;
+    
+    guest_uri = getenv("CCND_PREFIX");
+    if (guest_uri == NULL || guest_uri[0] == 0)
+        return(CCN_UPCALL_RESULT_ERR);
+    reqface = ccnd_face_from_faceid(ccnd, ccnd->interest_faceid);
+    if (reqface == NULL)
+        return(CCN_UPCALL_RESULT_ERR);
+    if ((reqface->flags & CCN_FACE_GG) != 0)
+        return(CCN_UPCALL_RESULT_ERR);
+    name = ccn_charbuf_create();
+    if (name == NULL)
+        return(CCN_UPCALL_RESULT_ERR);
+    res = ccn_name_from_uri(name, guest_uri);
+    if (res < 0) {
+        ccn_charbuf_destroy(&name);
+        return(CCN_UPCALL_RESULT_ERR);
+    }
+    hashtb_start(ccnd->guest_tab, e);
+    res = hashtb_seek(e, &reqface->faceid, sizeof(unsigned), 0);
+    if (res < 0) {
+        ccn_charbuf_destroy(&name);
+        return(CCN_UPCALL_RESULT_ERR);
+    }
+    g = e->data;
+    hashtb_end(e);
+    if (g->cob != NULL) {
+        if (ccn_content_matches_interest(g->cob->buf,
+                                         g->cob->length,
+                                         1,
+                                         NULL,
+                                         info->interest_ccnb,
+                                         info->pi->offset[CCN_PI_E],
+                                         info->pi)) {
+            ccn_put(info->h, g->cob->buf, g->cob->length);
+            ccn_charbuf_destroy(&name);
+            return(CCN_UPCALL_RESULT_INTEREST_CONSUMED);
+        }
+        /* We have a cob cached; no new one until the old one expires */
+        ccn_charbuf_destroy(&name);
+        return(CCN_UPCALL_RESULT_ERR);
+    }
+    if (info->interest_comps->n != 4) {
+        ccn_charbuf_destroy(&name);
+        return(CCN_UPCALL_RESULT_ERR);
+    }
+    res = ccn_name_comp_get(info->interest_ccnb, info->interest_comps, 2,
+                            &p, &size);
+    if (res < 0) {
+        ccn_charbuf_destroy(&name);
+        return(CCN_UPCALL_RESULT_ERR);
+    }
+    ccn_name_append(name, p, size);
+    uri = ccn_charbuf_create();
+    ccn_uri_append(uri, name->buf, name->length, 1);
+    ccnd_reg_uri(ccnd, ccn_charbuf_as_string(uri), reqface->faceid,
+                 CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
+                 0x7FFFFFFF);
+    g->cob = ccn_charbuf_create();
+    ccn_charbuf_reset(name);
+    start = info->pi->offset[CCN_PI_B_Name];
+    end = info->interest_comps->buf[info->pi->prefix_comps];
+    ccn_charbuf_append(name, info->interest_ccnb + start, end - start);
+    ccn_charbuf_append_closer(name);
+    ccn_create_version(info->h, name, CCN_V_NOW, 0, 0);
+    ccn_name_from_uri(name, "%00");
+    sp.sp_flags = CCN_SP_FINAL_BLOCK;
+    sp.freshness = 5;
+    res = ccn_sign_content(info->h, g->cob, name, &sp, uri->buf, uri->length);
+    if (res < 0) {
+        ccn_charbuf_destroy(&name);
+        ccn_charbuf_destroy(&g->cob);
+        ccn_charbuf_destroy(&uri);
+        return(CCN_UPCALL_RESULT_ERR);
+    }
+    ccn_schedule_event(ccnd->sched, sp.freshness * 1000000,
+                       clean_guest, NULL, reqface->faceid);
+    if (g->cob != NULL &&
+        ccn_content_matches_interest(g->cob->buf,
+                                     g->cob->length,
+                                     1,
+                                     NULL,
+                                     info->interest_ccnb,
+                                     info->pi->offset[CCN_PI_E],
+                                     info->pi)) {
+        ccn_put(info->h, g->cob->buf, g->cob->length);
+        ccn_charbuf_destroy(&name);
+        ccn_charbuf_destroy(&uri);
+        return(CCN_UPCALL_RESULT_INTEREST_CONSUMED);
+    }
+    return(CCN_UPCALL_RESULT_OK);
+}
+
 /**
  * Local interpretation of selfp->intdata
  */
@@ -827,6 +963,7 @@ adjacency_timed_reset(struct ccnd_handle *ccnd, unsigned faceid)
 #define OP_NOTICE      0x0700
 #define OP_SERVICE     0x0800
 #define OP_ADJACENCY   0x0900
+#define OP_GUEST       0x0A00
 
 /**
  * Common interest handler for ccnd_internal_client
@@ -870,7 +1007,8 @@ ccnd_answer_req(struct ccn_closure *selfp,
     if ((info->pi->answerfrom & CCN_AOK_NEW) == 0 &&
         selfp->intdata != OP_SERVICE &&
         selfp->intdata != OP_NOTICE &&
-        selfp->intdata != OP_ADJACENCY)
+        selfp->intdata != OP_ADJACENCY &&
+        selfp->intdata != OP_GUEST)
         return(CCN_UPCALL_RESULT_OK);
     if (info->matched_comps >= info->interest_comps->n)
         goto Bail;
@@ -878,6 +1016,7 @@ ccnd_answer_req(struct ccn_closure *selfp,
         selfp->intdata != OP_NOTICE &&
         selfp->intdata != OP_SERVICE &&
         selfp->intdata != OP_ADJACENCY &&
+        selfp->intdata != OP_GUEST &&
         info->pi->prefix_comps != info->matched_comps + morecomps)
         goto Bail;
     if (morecomps == 1) {
@@ -1037,6 +1176,9 @@ ccnd_answer_req(struct ccn_closure *selfp,
                 goto Finish;
             }
             goto Bail;
+        case OP_GUEST:
+            res = ccnd_req_guest(selfp, kind, info);
+            goto Finish;
         default:
             goto Bail;
     }
@@ -1405,6 +1547,8 @@ ccnd_internal_client_start(struct ccnd_handle *ccnd)
                     &ccnd_answer_req, OP_SERVICE);
     ccnd_uri_listen(ccnd, "ccnx:/%C1.M.S.neighborhood",
                     &ccnd_answer_req, OP_SERVICE);
+    ccnd_uri_listen(ccnd, "ccnx:/%C1.M.S.neighborhood/guest",
+                    &ccnd_answer_req, OP_GUEST);
     ccnd_uri_listen(ccnd, "ccnx:/%C1.M.FACE",
                     &ccnd_answer_req, OP_ADJACENCY);
     ccnd_reg_ccnx_ccndid(ccnd);

@@ -5,7 +5,7 @@
  *
  * Part of ccnd - the CCNx Daemon.
  *
- * Copyright (C) 2008, 2009, 2011, 2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -216,4 +216,6 @@ const char *ccnd_usage_message =
     "    CCND_AUTOREG=\n"
     "      List of prefixes to auto-register on new faces initiated by peers\n"
     "      example: CCND_AUTOREG=ccnx:/like/this,ccnx:/and/this\n"
+    "    CCND_PREFIX=\n"
+    "      A prefix stem to use for generating guest prefixes\n"
     ;

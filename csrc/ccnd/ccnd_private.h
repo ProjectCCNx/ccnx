@@ -7,7 +7,7 @@
  *
  * Part of ccnd - the CCNx Daemon.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -54,6 +54,7 @@ struct face;
 struct content_entry;
 struct nameprefix_entry;
 struct interest_entry;
+struct guest_entry;
 struct pit_face_item;
 struct content_tree_node;
 struct ccn_forwarding;
@@ -82,6 +83,7 @@ struct ccnd_handle {
     struct hashtb *content_tab;     /**< keyed by portion of ContentObject */
     struct hashtb *nameprefix_tab;  /**< keyed by name prefix components */
     struct hashtb *interest_tab;    /**< keyed by interest msg sans Nonce */
+    struct hashtb *guest_tab;       /**< keyed by faceid */
     struct ccn_indexbuf *skiplinks; /**< skiplist for content-ordered ops */
     unsigned forward_to_gen;        /**< for forward_to updates */
     unsigned face_gen;              /**< faceid generation number */
@@ -326,6 +328,16 @@ struct interest_entry {
     const unsigned char *interest_msg; /**< pending interest message */
     unsigned size;                  /**< size of interest message */
     unsigned serial;                /**< used for logging */
+};
+
+/**
+ * The guest hash table is keyed by the faceid of the requestor
+ *
+ * The cob is an answer for the request.
+ *
+ */
+struct guest_entry {
+    struct ccn_charbuf *cob;
 };
 
 #define TYPICAL_NONCE_SIZE 12       /**< actual allocated size may differ */
