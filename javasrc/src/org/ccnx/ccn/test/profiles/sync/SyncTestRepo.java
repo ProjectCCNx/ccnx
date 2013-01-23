@@ -362,12 +362,27 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		 */
 		Thread.sleep(100);
 		boolean couldSeeRound4 = true;
+		boolean couldSeeRound3 = true;
+		boolean couldSeeRound2 = true;
+		boolean doUnexpectedDataTest = true;
 		snc = SyncTestCommon.getRootAdviseNode(slice7, getHandle);
+		Assert.assertNotNull("No answer from root advise request", snc);
 		SyncNodeElement sne = NodeBuilder.getFirstOrLast(snc, sync1.getNodeCache(slice7), false);
 		if (null != sne) {
 			ContentName lastName = sne.getName();
 			if (lastName.contains("round4".getBytes()) && lastName.contains(".header".getBytes())) {
 				couldSeeRound4 = false;
+				couldSeeRound3 = false;
+				couldSeeRound2 = false;
+			} else {
+				if (lastName.contains("round3".getBytes()) && lastName.contains(".header".getBytes())) {
+					couldSeeRound3 = false;
+					couldSeeRound2 = false;
+				} else {
+					if (lastName.contains("round2".getBytes()) && lastName.contains(".header".getBytes())) {
+						couldSeeRound2 = false;
+					} else doUnexpectedDataTest = false;
+				}
 			}
 		}
 		if (couldSeeRound4) {
@@ -377,15 +392,21 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		}
 		
 		slice7 = sync1.startSync(getHandle, topo, prefix1, null, new byte[]{}, null, this);
+		snc = SyncTestCommon.getRootAdviseNode(slice7, getHandle);		// Make sure root advise went through
+		Assert.assertNotNull("No answer from root advise request", snc);
 		ContentName prefix1e = prefix1.append("round5");
 		int segments5 = SyncTestCommon.writeFile(prefix1e, true, 0, putHandle);
 		segmentCheck = checkCallbacks(callbackNames, prefix1e, segments5, 0);
 		if (segmentCheck!=0)
 			Assert.fail("Did not receive all of the callbacks");
 		sync1.shutdown(slice7);
-		for (ContentName n: callbackNames) {
-			Assert.assertTrue("Saw unexpected data in arbitrary root test: " + n, prefix1e.isPrefixOf(n)
-					|| (couldSeeRound4 ? prefix1d.isPrefixOf(n) : false));
+		if (doUnexpectedDataTest) {
+			for (ContentName n: callbackNames) {
+				Assert.assertTrue("Saw unexpected data in cold start zero length hash test: " + n, prefix1e.isPrefixOf(n)
+						|| (couldSeeRound4 ? prefix1d.isPrefixOf(n) : false)
+						|| (couldSeeRound3 ? prefix1c.isPrefixOf(n) : false)
+						|| (couldSeeRound2 ? prefix1b.isPrefixOf(n) : false));
+			}
 		}
 
 		Log.info(Log.FAC_TEST,"Finished running testSyncRoot");
