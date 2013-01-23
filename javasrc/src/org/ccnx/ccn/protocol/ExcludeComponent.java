@@ -17,6 +17,8 @@
 
 package org.ccnx.ccn.protocol;
 
+import java.util.Arrays;
+
 import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
@@ -73,6 +75,10 @@ public class ExcludeComponent extends Exclude.Element implements Comparable<Excl
 			return false;
 		ExcludeComponent ec = (ExcludeComponent) obj;
 		return DataUtils.arrayEquals(body, ec.body);
+	}
+	
+	public int hashCode() {
+		return (body == null) ? 0 : Arrays.hashCode(body);
 	}
 
 	public byte [] getBytes() {

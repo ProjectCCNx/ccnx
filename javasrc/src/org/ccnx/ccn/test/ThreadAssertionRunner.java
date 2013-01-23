@@ -83,6 +83,12 @@ public class ThreadAssertionRunner {
 		return _thd.isAlive();
 	}
 	
+	public void doNotify() {
+		synchronized (_thd) {
+			_thd.notify();
+		}
+	}
+	
 	// =============
 	private Thread _thd = null;
 	private volatile Error _error = null;

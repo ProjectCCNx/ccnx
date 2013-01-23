@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -129,9 +129,16 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable, Ser
      * Implement Cloneable
      */
     public KeyLocator clone() {
-    	return new KeyLocator(name(),
-    						  key(),
-    						  certificate());
+    	KeyLocator kl;
+		try {
+			kl = (KeyLocator)super.clone();
+			kl._keyName = _keyName;
+	    	kl._key = _key;
+	    	kl._certificate = _certificate;
+	    	return kl;
+		} catch (CloneNotSupportedException e) {
+			throw new AssertionError(e);
+		}
     }
     
     /**

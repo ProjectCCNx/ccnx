@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009, 2010, 2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -29,13 +29,18 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.test.ThreadAssertionRunner;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class CCNFlowServerTest extends CCNFlowControlTestBase {
 	
+	@BeforeClass
+	public static void setUpBeforeClass() {
+		_capacity = SEGMENT_COUNT*2;
+	}
+	
 	@Before
 	public void setUp() throws Exception {
-		_capacity = SEGMENT_COUNT*2;
 		fc = new CCNFlowServer(_capacity, true, _handle);
 	}
 	
@@ -124,6 +129,8 @@ public class CCNFlowServerTest extends CCNFlowControlTestBase {
 		try {
 			fc.put(segments[3]);
 			fc.put(segments[4]);
+			Thread.sleep(200);
+			tar.doNotify();
 			Assert.fail("Attempt to put over capacity in non-draining FC succeeded.");
 		} catch (IOException ioe) {}
 		tar.join();

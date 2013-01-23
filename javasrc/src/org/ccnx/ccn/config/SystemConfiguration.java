@@ -319,19 +319,18 @@ public class SystemConfiguration {
 	 * should be no static dependency on any particular bean class.
 	 * @return the bean or null if none available
 	 */
-	public static Object getManagementBean() {
+	public synchronized static Object getManagementBean() {
 		// Check if we already have a management bean; retrieve only
 		// once per VM
-		if (null != runtimeMXBean) {
-			return runtimeMXBean;
-		}
-		ClassLoader cl = SystemConfiguration.class.getClassLoader();
-		try {
-			Class<?> mgmtclass = cl.loadClass("java.lang.management.ManagementFactory");
-			Method getRuntimeMXBean = mgmtclass.getDeclaredMethod("getRuntimeMXBean", (Class[])null);
-			runtimeMXBean = getRuntimeMXBean.invoke(mgmtclass, (Object[])null);
-		} catch (Exception ex) {
-			Log.log(Level.WARNING, "Management bean unavailable: {0}", ex.getMessage());
+		if (null == runtimeMXBean) {
+			ClassLoader cl = SystemConfiguration.class.getClassLoader();
+			try {
+				Class<?> mgmtclass = cl.loadClass("java.lang.management.ManagementFactory");
+				Method getRuntimeMXBean = mgmtclass.getDeclaredMethod("getRuntimeMXBean", (Class[])null);
+				runtimeMXBean = getRuntimeMXBean.invoke(mgmtclass, (Object[])null);
+			} catch (Exception ex) {
+				Log.log(Level.WARNING, "Management bean unavailable: {0}", ex.getMessage());
+			}
 		}
 		return runtimeMXBean;
 	}
@@ -569,7 +568,7 @@ public class SystemConfiguration {
 		for (int i=0; i < availableFlags.length; ++i) {
 			if (i > 0)
 				flags.append(":");
-			flags.append(availableFlags);
+			flags.append(availableFlags[i]);
 		}
 		return flags.toString();
 	}
@@ -793,10 +792,9 @@ public class SystemConfiguration {
 	/**
 	 * Allow control of access control at the command line.
 	 */
-	public static boolean disableAccessControl() {
+	public synchronized static boolean disableAccessControl() {
 		if (null == _accessControlDisabled) {
 			_accessControlDisabled = (null != System.getProperty(ACCESS_CONTROL_DISABLED_PROPERTY));
-
 		}
 		return _accessControlDisabled;
 	}

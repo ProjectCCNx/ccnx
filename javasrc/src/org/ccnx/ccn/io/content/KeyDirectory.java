@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -608,7 +608,8 @@ public class KeyDirectory extends EnumeratedNameList {
 				// This wraps the key we actually want.
 				unwrappedSupersedingKey = supersedingKeyDirectory.getUnwrappedKey(supersededKeyBlock.wrappedKey().wrappingKeyIdentifier());
 			} finally {
-				supersedingKeyDirectory.stopEnumerating();
+				if (null != supersedingKeyDirectory)
+					supersedingKeyDirectory.stopEnumerating();
 			}
 			if (null != unwrappedSupersedingKey) {
 				_handle.keyManager().getSecureKeyCache().addKey(supersedingKeyDirectory.getName(), unwrappedSupersedingKey);

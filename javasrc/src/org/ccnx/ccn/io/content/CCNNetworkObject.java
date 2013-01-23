@@ -1489,11 +1489,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		 */
 		protected void add(ContentObject co) {
 			_queue.add(co);
-			synchronized (_queue) {
-				if (!_isRunning) {
-					_isRunning = true;
-					SystemConfiguration._systemThreadpool.execute(new BackgroundUpdater());
-				}
+			if (!_isRunning) {
+				_isRunning = true;
+				SystemConfiguration._systemThreadpool.execute(new BackgroundUpdater());
 			}
 		}
 
@@ -1505,12 +1503,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 						byte [][] excludes = null;
 
 						ContentObject co = null;
-						synchronized (_queue) {
-							co = _queue.poll();
-							if (null == co) {
-								_isRunning = false;
-								return;
-							}
+						co = _queue.poll();
+						if (null == co) {
+							_isRunning = false;
+							return;
 						}
 
 						try {

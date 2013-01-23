@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -29,6 +29,7 @@ import java.util.Random;
 
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.InterestTable;
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
@@ -171,7 +172,7 @@ public class InterestTableTest extends CCNTestBase {
 		bb.putLong(now.getTime());
 		byte[] contents = bb.array();
 		// security bits
-		KeyLocator locator = new KeyLocator(ContentName.fromNative("/key/" + pub.digest().toString()));
+		KeyLocator locator = new KeyLocator(ContentName.fromNative("/key/" + DataUtils.printBytes(pub.digest())));
 		SignedInfo si = new SignedInfo(pub, now, SignedInfo.ContentType.DATA, locator);
 		// unique name		
 		return new ContentObject(
