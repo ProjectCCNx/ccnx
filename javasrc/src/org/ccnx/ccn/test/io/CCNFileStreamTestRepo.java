@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009, 2011, 2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -93,7 +93,7 @@ public class CCNFileStreamTestRepo extends CCNTestBase {
 		Log.info(Log.FAC_TEST, "Read file size: " + readDigest.count() + " written size: " + fileSize + " header file size " + fis.header().length());
 		Assert.assertEquals(readDigest.count(), fileSize);
 		Assert.assertEquals(fileSize, fis.header().length());
-		Log.info(Log.FAC_TEST, "Read digest: " + DataUtils.printBytes(readDigest.digest()) + " wrote digest: " + digest);
+		Log.info(Log.FAC_TEST, "Read digest: " + DataUtils.printBytes(readDigest.digest()) + " wrote digest: " + DataUtils.printBytes(digest));
 		Assert.assertArrayEquals(digest, readDigest.digest());
 
 		CCNFileInputStream fis2 = new CCNFileInputStream(rfos.getBaseName(), getHandle);
@@ -109,7 +109,7 @@ public class CCNFileStreamTestRepo extends CCNTestBase {
 		Log.info(Log.FAC_TEST, "Read file size: " + readDigest2.count() + " written size: " + fileSize + " header file size " + fis.header().length());
 		Assert.assertEquals(readDigest2.count(), fileSize);
 		Assert.assertEquals(fileSize, fis2.header().length());
-		Log.info(Log.FAC_TEST, "Read digest: " + DataUtils.printBytes(readDigest2.digest()) + " wrote digest: " + digest);
+		Log.info(Log.FAC_TEST, "Read digest: " + DataUtils.printBytes(readDigest2.digest()) + " wrote digest: " + DataUtils.printBytes(digest));
 		Assert.assertArrayEquals(digest, readDigest2.digest());
 
 		Log.info(Log.FAC_TEST, "Completed testRepoFileOutputStream");

@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -220,9 +220,8 @@ public class NameEnumeratorTest extends CCNTestBase implements BasicNameEnumerat
 			while(attempts < 1000){
 				synchronized (namesLock) {
 					if (names != null)
-						break;
+						namesLock.wait(50);
 				}
-				Thread.sleep(50);
 				attempts++;
 			}
 
@@ -298,7 +297,7 @@ public class NameEnumeratorTest extends CCNTestBase implements BasicNameEnumerat
 		try{
 			synchronized (namesLock) {
 				while(names==null && attempts < 100){
-					Thread.sleep(50);
+					namesLock.wait(50);
 					attempts++;
 				}
 				//we either broke out of loop or the names are here
@@ -340,6 +339,7 @@ public class NameEnumeratorTest extends CCNTestBase implements BasicNameEnumerat
 
 		synchronized (namesLock) {
 			names = n;
+			namesLock.notify();
 			Log.info(Log.FAC_TEST, "here are the returned names: ");
 
 			for (ContentName cn: names)

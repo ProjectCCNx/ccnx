@@ -436,6 +436,9 @@ public class CreateUserData {
 				argsUsed += 2;
 			}
 		}
+		
+		if (null == keystoreFileOrDirectoryPath)
+			return null;	// no as
 
 		File keystoreFileOrDirectory = new File(keystoreFileOrDirectoryPath);
 		if ((null == friendlyName) && 

@@ -211,6 +211,7 @@ public abstract class CCNFlowControlTestBase extends CCNTestBase {
 					wait();
 					_handle.get(segments[0].name(), 0);
 				} catch (Exception e) {
+					// Note this assertion is OK due to use of ThreadAssertionRunner
 					Assert.fail("Caught exception: " + e.getMessage());
 				}
 			}

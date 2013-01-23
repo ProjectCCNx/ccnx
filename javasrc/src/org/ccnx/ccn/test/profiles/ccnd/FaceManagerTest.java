@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2009, 2010, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2011, 2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -47,7 +47,6 @@ import org.junit.Test;
  */
 public class FaceManagerTest extends LibraryTestBase {
 	
-	PublisherPublicKeyDigest keyDigest;
 	FaceManager fm;
 
 
@@ -72,7 +71,6 @@ public class FaceManagerTest extends LibraryTestBase {
 	 */
 	@Before
 	public void setUp() throws Exception {
-		keyDigest = null; /* new PublisherPublicKeyDigest(); */
 		fm = new FaceManager();
 	}
 
@@ -90,7 +88,7 @@ public class FaceManagerTest extends LibraryTestBase {
 	public void testEncodeOutputStream() {
 		Log.info(Log.FAC_TEST, "Starting testEncodeOutputStream");
 
-		FaceInstance face = new FaceInstance(ActionType.NewFace, keyDigest, NetworkProtocol.TCP, "TheNameDoesntMatter", 
+		FaceInstance face = new FaceInstance(ActionType.NewFace, null, NetworkProtocol.TCP, "TheNameDoesntMatter", 
 				new Integer(5),	"WhoCares", new Integer(42), new Integer(100));
 		// ActionType.NewFace, _ccndId, ipProto, host, port,  multicastInterface, multicastTTL, freshnessSeconds
 		System.out.println("Encoding: " + face);
@@ -113,7 +111,7 @@ public class FaceManagerTest extends LibraryTestBase {
 	public void testDecodeInputStream() {
 		Log.info(Log.FAC_TEST, "Starting testDecodeInputStream");
 
-		FaceInstance faceToEncode = new FaceInstance(ActionType.NewFace, keyDigest, NetworkProtocol.TCP, "TheNameDoesntMatter", 
+		FaceInstance faceToEncode = new FaceInstance(ActionType.NewFace, null, NetworkProtocol.TCP, "TheNameDoesntMatter", 
 				new Integer(5),	"WhoCares", new Integer(42), new Integer(100));
 		System.out.println("Encoding: " + faceToEncode);
 		assertNotNull(faceToEncode);
@@ -147,7 +145,7 @@ public class FaceManagerTest extends LibraryTestBase {
 	public void testEncodingDecoding() {
 		Log.info(Log.FAC_TEST, "Starting testEncodingDecoding");
 
-		FaceInstance faceToEncode = new FaceInstance(ActionType.NewFace, keyDigest, NetworkProtocol.TCP, "TheNameDoesntMatter", 
+		FaceInstance faceToEncode = new FaceInstance(ActionType.NewFace, null, NetworkProtocol.TCP, "TheNameDoesntMatter", 
 				new Integer(5),	"WhoCares", new Integer(42), new Integer(100));
 		System.out.println("Encoding: " + faceToEncode);
 

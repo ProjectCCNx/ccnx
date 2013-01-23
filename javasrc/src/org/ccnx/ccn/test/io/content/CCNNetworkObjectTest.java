@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -635,7 +635,7 @@ public class CCNNetworkObjectTest extends CCNNetworkObjectTestBase {
 		public int getCounter() { return _callbackCounter; }
 
 		public void newVersionAvailable(CCNNetworkObject<?> newVersion, boolean wasSave) {
-			synchronized (_callbackCounter) {
+			synchronized (this) {
 				_callbackCounter++;
 				if (Log.isLoggable(Log.FAC_TEST, Level.INFO)) {
 					Log.info(Log.FAC_TEST, "UPDATE CALLBACK: counter is " + _callbackCounter + " was save? " + wasSave);
