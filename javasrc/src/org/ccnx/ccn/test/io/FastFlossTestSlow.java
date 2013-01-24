@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -71,7 +71,8 @@ public class FastFlossTestSlow {
 			Log.warningStackTrace(Log.FAC_TEST, e);
 			Assert.fail();
 		} finally {
-			flosser.stop();
+			if (null != flosser)
+				flosser.stop();
 		}
 		
 		Log.info(Log.FAC_TEST, "Completed fastFlossTest");

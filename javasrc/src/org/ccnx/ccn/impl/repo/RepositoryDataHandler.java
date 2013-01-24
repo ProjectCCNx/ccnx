@@ -53,15 +53,13 @@ public class RepositoryDataHandler implements Runnable {
 	}
 
 	public void add(ContentObject co) {
-		synchronized(_queue) {
-			_currentQueueSize++;
-			if (!_throttled && _currentQueueSize > THROTTLE_TOP) {
-				_throttled = true;
-				_server.setThrottle(true);
-			}
-			_queue.add(co);
-			_queue.notify();
+		_currentQueueSize++;
+		if (!_throttled && _currentQueueSize > THROTTLE_TOP) {
+			_throttled = true;
+			_server.setThrottle(true);
 		}
+		_queue.add(co);
+		_queue.notify();
 	}
 
 	public void addKeyCheck(ContentName target) {
@@ -79,27 +77,25 @@ public class RepositoryDataHandler implements Runnable {
 	public void run() {
 		while (!_shutdownComplete) {
 			ContentObject co = null;
-			synchronized (_queue) {
-				do {
-					co = _queue.poll();
-					if (null == co) {
-						if (_shutdown) {
-							synchronized (this) {
-								_shutdownComplete = true;
-								notifyAll();
-							}
-							return;
+			do {
+				co = _queue.poll();
+				if (null == co) {
+					if (_shutdown) {
+						synchronized (this) {
+							_shutdownComplete = true;
+							notifyAll();
 						}
-						try {
-							_queue.wait(SystemConfiguration.MEDIUM_TIMEOUT);
-						} catch (InterruptedException e) {}
+						return;
 					}
-				} while (null == co);
-				_currentQueueSize--;
-				if (_throttled && _currentQueueSize < THROTTLE_BOTTOM) {
-					_throttled = false;
-					_server.setThrottle(false);
+					try {
+						_queue.wait(SystemConfiguration.MEDIUM_TIMEOUT);
+					} catch (InterruptedException e) {}
 				}
+			} while (null == co);
+			_currentQueueSize--;
+			if (_throttled && _currentQueueSize < THROTTLE_BOTTOM) {
+				_throttled = false;
+				_server.setThrottle(false);
 			}
 			try {
 				if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {

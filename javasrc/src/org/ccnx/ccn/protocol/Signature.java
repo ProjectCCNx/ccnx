@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -52,7 +52,7 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
  * ccnx.xsd.
  */
 public class Signature extends GenericXMLEncodable implements XMLEncodable,
-		Comparable<Signature> {
+		Comparable<Signature>, Cloneable {
 	
     byte [] _witness;
 	byte [] _signature;
@@ -167,7 +167,15 @@ public class Signature extends GenericXMLEncodable implements XMLEncodable,
 	 * Implement Cloneable
 	 */
 	public Signature clone() {
-		return new Signature(digestAlgorithm(), (null != _witness) ? _witness.clone() : null, _signature.clone());
+		Signature s;
+		try {
+			s = (Signature)super.clone();
+			s._witness = (null == _witness) ? null : _witness.clone();
+			s._signature = _signature.clone();
+			return s;
+		} catch (CloneNotSupportedException e) {
+			throw new AssertionError(e);
+		}
 	}
 
 	/**

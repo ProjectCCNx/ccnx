@@ -114,7 +114,7 @@ public class CCNNetworkManager implements Runnable {
 	 *  'device name' that all of our control communications will use to
 	 *  ensure that we are talking to our local 'ccnd'.
 	 */
-	protected static Integer _idSyncer = new Integer(0);
+	protected static Object _idSyncer = new Object();
 	protected static PublisherPublicKeyDigest _ccndId = null;
 	protected Integer _faceID = null;
 	protected CCNDIdGetter _getter = null;

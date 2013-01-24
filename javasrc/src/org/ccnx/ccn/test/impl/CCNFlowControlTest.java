@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011, 2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -21,6 +21,7 @@ import java.io.IOException;
 
 import junit.framework.Assert;
 
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
@@ -124,9 +125,17 @@ public class CCNFlowControlTest extends CCNFlowControlTestBase {
 		fc.put(segments[1]);
 		fc.put(segments[2]);
 
-		ThreadAssertionRunner tar = new ThreadAssertionRunner(new HighWaterHelper());
+		HighWaterHelper hwh = new HighWaterHelper();
+		ThreadAssertionRunner tar = new ThreadAssertionRunner(hwh);
 		tar.start();
 		fc.put(segments[3]);
+		synchronized (hwh) {
+			hwh.notify();
+		}
+		hwh.readyForOurWait();
+		synchronized (hwh) {
+			hwh.wait(SystemConfiguration.MAX_TIMEOUT);
+		}
 		fc.put(segments[4]);
 		tar.join();
 		Log.info(Log.FAC_TEST, "Completed testMixedOrderInterestPut");

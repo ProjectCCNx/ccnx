@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011, 2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -40,6 +40,7 @@ import org.ccnx.ccn.protocol.Interest;
  */
 public class AssertionCCNHandle extends CCNHandle {
 	protected Error _error = null;
+	protected boolean _callbackSeen = false;
 	protected ArrayList<RelatedInterestHandler> _contentHandlers = new ArrayList<RelatedInterestHandler>();
 	protected ArrayList<RelatedFilterListener> _interestHandlers = new ArrayList<RelatedFilterListener>();
 	
@@ -119,7 +120,7 @@ public class AssertionCCNHandle extends CCNHandle {
 
 		synchronized (_contentHandlers) {
 			if (--toCancel._references <= 0)
-				_contentHandlers.remove(toCancel);
+				_contentHandlers.remove(new RelatedInterestHandler(toCancel, handler));
 		}
 	}
 	
@@ -150,7 +151,7 @@ public class AssertionCCNHandle extends CCNHandle {
 		super.unregisterFilter(filter, toUnregister);
 		synchronized (_interestHandlers) {
 			if (--toUnregister._references <= 0)
-				_interestHandlers.remove(toUnregister);
+				_interestHandlers.remove(new RelatedFilterListener(toUnregister, handler));
 		}
 	}
 	
@@ -162,12 +163,19 @@ public class AssertionCCNHandle extends CCNHandle {
 	 * @throws InterruptedException
 	 */
 	public void checkError(long timeout) throws Error, InterruptedException {
-		if (timeout > 0 && timeout != SystemConfiguration.NO_TIMEOUT) {
+		if (timeout > 0 || timeout == SystemConfiguration.NO_TIMEOUT) {
 			synchronized (this) {
-				if (timeout == SystemConfiguration.NO_TIMEOUT)
-					wait();
-				else
-					wait(timeout);
+				long startTime = System.currentTimeMillis();
+				while (!_callbackSeen) {
+					if (timeout == SystemConfiguration.NO_TIMEOUT)
+						wait();
+					else {
+						wait(timeout);
+						if ((System.currentTimeMillis() - startTime) > timeout)
+							break;
+					}
+				}
+				_callbackSeen = false;
 			}
 		}
 		if (null != _error)
@@ -203,6 +211,7 @@ public class AssertionCCNHandle extends CCNHandle {
 
 		public boolean handleInterest(Interest interest) {
 			boolean result = false;
+			_callbackSeen = true;
 			try {
 				result = _handler.handleInterest(interest);
 			} catch (Error e) {
@@ -228,6 +237,7 @@ public class AssertionCCNHandle extends CCNHandle {
 
 		public Interest handleContent(ContentObject data, Interest interest) {
 			Interest result = null;
+			_callbackSeen = true;
 			try {
 				result = _handler.handleContent(data, interest);
 			} catch (Error e) {

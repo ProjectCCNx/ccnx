@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010, 2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010, 2012, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -324,12 +324,10 @@ public class SegmentationProfile implements CCNProfile {
 	}
 
 	public static Interest nextSegmentInterest(ContentName name, PublisherPublicKeyDigest publisher) {
-		Interest interest = null;
-		ContentName interestName = null;
 		if (Log.isLoggable(Log.FAC_IO, Level.FINER))
-			Log.finer(Log.FAC_IO, "nextSegmentInterest: creating interest for {0} from ContentName {1}", interestName, name);
+			Log.finer(Log.FAC_IO, "nextSegmentInterest: creating interest for next segment from ContentName {0}", name);
 		//TODO need to make sure we only get segments back and not other things like versions
-		interest = Interest.next(interestName, null, null, 2, 2, publisher);
+		Interest interest = Interest.next(name, null, null, 2, 2, publisher);
 		return interest;
 	}
 

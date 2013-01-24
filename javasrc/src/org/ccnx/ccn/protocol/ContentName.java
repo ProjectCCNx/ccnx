@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -641,7 +641,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 
 	@Override
 	public String toString() {
-		if (null == _components) return null;
+		if (null == _components) return "(null)";
 		// toString of root name is "/"
 		if (_components.length == 0) return SEPARATOR;
 

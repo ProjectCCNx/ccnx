@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010, 2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010, 2012, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -714,7 +714,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener, ContentN
 		Long id = Thread.currentThread().getId();
 		NewChildrenByThread ncbt = _newChildrenByThread.get(id);
 		if (null == ncbt)
-			ncbt = _newChildrenByThread.get(0);	// Thread pool
+			ncbt = _newChildrenByThread.get(0L);	// Thread pool
 		return ncbt;
 	}
 

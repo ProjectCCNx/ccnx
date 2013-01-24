@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -35,15 +35,10 @@ public abstract class TrustManager {
 	 * Returns the default singleton instance of a TrustManager.
 	 * @return the default singleton TrustManager instance
 	 */
-	public static TrustManager getDefaultTrustManager() {
-		if (null != _defaultTrustManager) 
-			return _defaultTrustManager;
-		synchronized (TrustManager.class) { 
-			if (null != _defaultTrustManager)
-				return _defaultTrustManager;
+	public synchronized static TrustManager getDefaultTrustManager() {
+		if (null == _defaultTrustManager)
 			_defaultTrustManager = new BasicTrustManager();
-			return _defaultTrustManager;
-		}
+		return _defaultTrustManager;
 	}
 	
 	/**

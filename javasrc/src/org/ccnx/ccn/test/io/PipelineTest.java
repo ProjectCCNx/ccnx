@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2010-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -305,7 +305,7 @@ public class PipelineTest {
 			Log.warning(Log.FAC_TEST, "failed to close stream for pipeline test: "+e2.getMessage());
 			Assert.fail();
 		}		
-		Log.info(Log.FAC_TEST, "start first segment digest "+firstDigest);
+		Log.info(Log.FAC_TEST, "start first segment digest "+ DataUtils.printBytes(firstDigest));
 		
 		try {
 			istream = new CCNInputStream(testName, readHandle);
@@ -329,7 +329,7 @@ public class PipelineTest {
 			Log.warning(Log.FAC_TEST, "failed to get first digest after reading in pipeline test:");
 			Assert.fail();
 		}
-		Log.info(Log.FAC_TEST, "end first segment digest "+firstDigest);
+		Log.info(Log.FAC_TEST, "end first segment digest "+ DataUtils.printBytes(firstDigest));
 		
 		Log.info(Log.FAC_TEST, "Completed testGetFirstDigest");
 	}

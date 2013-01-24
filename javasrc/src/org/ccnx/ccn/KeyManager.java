@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -189,13 +189,9 @@ public abstract class KeyManager {
 	/**
 	 * Subclasses can override with fancier verification behavior; again move to TrustManager eventually
 	 */
-	public ContentVerifier getDefaultVerifier() {
+	public synchronized ContentVerifier getDefaultVerifier() {
 		if (null == _verifier) {
-			synchronized(this) {
-				if (null == _verifier) {
-					_verifier = new SimpleVerifier(null, this);
-				}
-			}
+			_verifier = new SimpleVerifier(null, this);
 		}
 		return _verifier;
 	}

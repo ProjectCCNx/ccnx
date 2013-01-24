@@ -254,7 +254,7 @@ public class CCNSegmenter {
 	 * Sets the segmentation block size to use
 	 * @param blockSize block size in bytes
 	 */
-	public void setBlockSize(int blockSize) {
+	public synchronized void setBlockSize(int blockSize) {
 		_blockSize = blockSize;
 	}
 
@@ -262,7 +262,7 @@ public class CCNSegmenter {
 	 * Gets the current block size
 	 * @return block size in bytes
 	 */
-	public int getBlockSize() {
+	public synchronized int getBlockSize() {
 		return _blockSize;
 	}
 

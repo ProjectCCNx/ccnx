@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -296,7 +296,7 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 	 */
 	public boolean empty() {
 		synchronized (_values) {
-			return ((null == _values) || (_values.isEmpty()));
+			return _values.isEmpty();
 		}
 	}
 
@@ -374,6 +374,10 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 		synchronized (_values) {
 			return _values.equals(other._values);
 		}
+	}
+	
+	public int hashCode() {
+		return _values.hashCode();
 	}
 
 	/**

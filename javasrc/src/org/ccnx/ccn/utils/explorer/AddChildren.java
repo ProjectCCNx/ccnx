@@ -64,14 +64,14 @@ public class AddChildren implements Runnable {
 		
 		DefaultMutableTreeNode parentNode = app.getTreeNode(prefix);
 
+		if (parentNode == null) {
+			Log.finer("PARENT NODE IS NULL!!!" + prefix.toString());
+			Log.finer("can't add anything to a null parent...  cancel prefix and return");
+			ne.cancelPrefix(prefix);
+			return;
+		}
+		
 		synchronized (parentNode) {
-
-			if (parentNode == null) {
-				Log.finer("PARENT NODE IS NULL!!!" + prefix.toString());
-				Log.finer("can't add anything to a null parent...  cancel prefix and return");
-				ne.cancelPrefix(prefix);
-				return;
-			}
 
 			int numChildren = parentNode.getChildCount();
 			Log.finer("the parent has " + numChildren + " children: ");

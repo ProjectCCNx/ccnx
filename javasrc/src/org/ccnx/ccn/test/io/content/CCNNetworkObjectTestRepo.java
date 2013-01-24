@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -563,7 +563,7 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 
 			writeObject.save("New stuff! New stuff!");
 			synchronized(readObject) {
-				if (ourListener.getCounter() == 1)
+				while (ourListener.getCounter() == 1)
 					readObject.wait();
 			}
 			// For some reason, we're getting two updates on our updateInBackground...

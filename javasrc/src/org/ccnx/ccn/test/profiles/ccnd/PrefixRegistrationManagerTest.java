@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -34,7 +34,6 @@ import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager.ForwardingEntry;
 import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
-import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.test.LibraryTestBase;
 import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
 import org.junit.After;
@@ -48,7 +47,6 @@ import org.junit.Test;
  */
 public class PrefixRegistrationManagerTest extends LibraryTestBase {
 	
-	PublisherPublicKeyDigest keyDigest;
 	PrefixRegistrationManager prm;
 	ContentName contentNameToUse;
 	NotReallyAContentName notReallyAContentNameToUse;
@@ -94,7 +92,6 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 	 */
 	@Before
 	public void setUp() throws Exception {
-		keyDigest = null; /* new PublisherPublicKeyDigest(); */
 		prm = new PrefixRegistrationManager();
 		contentNameToUse = ContentName.fromURI(prefixToUse);
 		notReallyAContentNameToUse = new NotReallyAContentName(contentNameToUse);
@@ -116,7 +113,7 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 
 		System.out.println();
 		System.out.println("PrefixRegistrationManagerTest.testEncodeOutputStream:");
-		ForwardingEntry entryToEncode = new ForwardingEntry(ActionType.Register, contentNameToUse, keyDigest, new Integer(42), new Integer(3), new Integer(149));
+		ForwardingEntry entryToEncode = new ForwardingEntry(ActionType.Register, contentNameToUse, null, new Integer(42), new Integer(3), new Integer(149));
 		System.out.println("Encoding: " + entryToEncode);
 		assertNotNull("EncodeOutputStream", entryToEncode);
 		
@@ -140,7 +137,7 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 
 		System.out.println();
 		System.out.println("PrefixRegistrationManagerTest.testDecodeInputStream:");
-		ForwardingEntry entryToEncode = new ForwardingEntry(ActionType.Register, contentNameToUse, keyDigest, new Integer(42), new Integer(3), new Integer(149));
+		ForwardingEntry entryToEncode = new ForwardingEntry(ActionType.Register, contentNameToUse, null, new Integer(42), new Integer(3), new Integer(149));
 		System.out.println("Encoding: " + entryToEncode);
 		assertNotNull("DecodeOutputStream", entryToEncode);
 		
@@ -176,7 +173,7 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 
 		System.out.println();
 		System.out.println("PrefixRegistrationManagerTest.testEncodingDecoding:");
-		ForwardingEntry entryToEncode = new ForwardingEntry(ActionType.Register, contentNameToUse, keyDigest, new Integer(42), new Integer(3), new Integer(149));
+		ForwardingEntry entryToEncode = new ForwardingEntry(ActionType.Register, contentNameToUse, null, new Integer(42), new Integer(3), new Integer(149));
 		System.out.println("Encoding: " + entryToEncode);
 
 		ForwardingEntry  textEntryToDecodeInto = new ForwardingEntry();
@@ -196,7 +193,7 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 
 		System.out.println();
 		System.out.println("PrefixRegistrationManagerTest.testEncodingDecodingSubclass:");
-		ForwardingEntry entryToEncode = new ForwardingEntry(ActionType.Register, notReallyAContentNameToUse, keyDigest, new Integer(42), new Integer(3), new Integer(149));
+		ForwardingEntry entryToEncode = new ForwardingEntry(ActionType.Register, notReallyAContentNameToUse, null, new Integer(42), new Integer(3), new Integer(149));
 		System.out.println("Encoding: " + entryToEncode);
 
 		ForwardingEntry  textEntryToDecodeInto = new ForwardingEntry();

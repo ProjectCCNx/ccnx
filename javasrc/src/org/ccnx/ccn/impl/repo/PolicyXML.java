@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -215,9 +215,10 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 		if (!_globalPrefix.equals(other._globalPrefix))
 			return false;
 		if (_namespace == null) {
-			if (other._namespace != null)
-				return false;
+			return (other._namespace == null);
 		}
+		if (other._namespace == null)
+			return false;
 		if (_namespace.size() != other._namespace.size())
 			return false;
 		ContentName[] ourNamespace = new ContentName[_namespace.size()];

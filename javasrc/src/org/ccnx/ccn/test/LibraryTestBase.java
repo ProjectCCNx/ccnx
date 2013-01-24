@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -169,7 +169,7 @@ public class LibraryTestBase extends CCNTestBase {
 				_resultSet.add(val);
 
 			} catch (NumberFormatException nfe) {
-				Log.info(Log.FAC_TEST, "BaseLibraryTest: unexpected content - not integer. Name: " + contents.content());
+				Log.info(Log.FAC_TEST, "BaseLibraryTest: unexpected content - not integer. Name: " + contents.toString());
 			}
 			//assertEquals(i, Integer.parseInt(new String(contents.get(0).content())));
 			checkGetResults(contents);

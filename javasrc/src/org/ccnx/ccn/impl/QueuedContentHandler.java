@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2012, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -38,12 +38,10 @@ public abstract class QueuedContentHandler<E> implements Runnable {
 	 * @param ci encapsulated data from a content handler
 	 */
 	public void add(E e) {
-		synchronized (_queue) {
-			_queue.add(e);
-			if (!_isRunning) {
-				_isRunning = true;
-				SystemConfiguration._systemThreadpool.execute(this);
-			}
+		_queue.add(e);
+		if (!_isRunning) {
+			_isRunning = true;
+			SystemConfiguration._systemThreadpool.execute(this);
 		}
 	}
 
@@ -53,12 +51,10 @@ public abstract class QueuedContentHandler<E> implements Runnable {
 	public void run() {
 		while (!checkShutdown()) {
 			E e = null;
-			synchronized (_queue) {
-				e = _queue.poll();
-				if (null == e) {
-					_isRunning = false;
-					return;
-				}
+			e = _queue.poll();
+			if (null == e) {
+				_isRunning = false;
+				return;
 			}
 			process(e);
 		}

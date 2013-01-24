@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -112,7 +112,7 @@ public class NetworkTest extends CCNTestBase {
 		Assert.assertFalse(gotInterest);
 		getHandle.cancelInterest(interest1, tl);
 		getHandle.expressInterest(interest2, tl);
-		filterSema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
+		Assert.assertTrue("Couldn't get semaphore", filterSema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS));
 		getHandle.checkError(TEST_TIMEOUT);
 		Assert.assertTrue(gotInterest);
 		getHandle.cancelInterest(interest2, tl);
@@ -128,7 +128,7 @@ public class NetworkTest extends CCNTestBase {
 		gotInterest = false;
 		filterSema.drainPermits();
 		getHandle.expressInterest(interest6, tl);
-		filterSema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
+		Assert.assertTrue("Couldn't acquire semaphore", filterSema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS));
 		getHandle.checkError(TEST_TIMEOUT);
 		Assert.assertTrue(gotInterest);
 		getHandle.cancelInterest(interest6, tl);
@@ -141,14 +141,14 @@ public class NetworkTest extends CCNTestBase {
 		ArrayList<ContentName> prefixes = putHandle.getNetworkManager().getRegisteredPrefixes();
 		Assert.assertFalse(prefixes.contains(testName7));
 		getHandle.expressInterest(interest4, tl);
-		filterSema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
+		Assert.assertTrue("Couldn't acquire semaphore", filterSema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS));
 		getHandle.checkError(TEST_TIMEOUT);
 		Assert.assertTrue(gotInterest);
 		getHandle.cancelInterest(interest4, tl);
 		gotInterest = false;
 		filterSema.drainPermits();
 		getHandle.expressInterest(interest6, tl);
-		filterSema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
+		Assert.assertTrue("Couldn't acquire semaphore", filterSema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS));
 		getHandle.checkError(TEST_TIMEOUT);
 		Assert.assertTrue(gotInterest);
 		getHandle.cancelInterest(interest6, tl);
@@ -187,7 +187,7 @@ public class NetworkTest extends CCNTestBase {
 		TestContentHandler tl = new TestContentHandler();
 		getHandle.expressInterest(testInterest, tl);
 		writer.put(testName, "aaa");
-		sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
+		Assert.assertTrue("Couldn't acquire semaphore", sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS));
 		getHandle.checkError(0);
 		Assert.assertTrue(gotData);
 		writer.close();
@@ -205,7 +205,7 @@ public class NetworkTest extends CCNTestBase {
 		TestContentHandler tl = new TestContentHandler();
 		getHandle.expressInterest(testInterest, tl);
 		writer.put(testName, "ddd");
-		sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
+		Assert.assertTrue("Couldn't acquire semaphore", sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS));
 		Assert.assertTrue(gotData);
 		writer.close();
 
@@ -227,7 +227,7 @@ public class NetworkTest extends CCNTestBase {
 		TestContentHandler tl = new TestContentHandler();
 		writer.put(testName, "bbb");
 		getHandle.expressInterest(testInterest, tl);
-		sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
+		Assert.assertTrue("Couldn't acquire semaphore", sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS));
 		getHandle.checkError(0);
 		Assert.assertTrue(gotData);
 		writer.close();
@@ -270,7 +270,7 @@ public class NetworkTest extends CCNTestBase {
 		// Sleep long enough that the interest must be re-expressed
 		Thread.sleep(WAIT_MILLIS);
 		writer.put(testName, "ccc");
-		sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
+		Assert.assertTrue("Couldn't acquire semaphore", sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS));
 		getHandle.checkError(0);
 		Assert.assertTrue(gotData);
 		writer.close();

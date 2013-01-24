@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2011-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -26,6 +26,7 @@ import java.util.Random;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNReader;
@@ -204,16 +205,39 @@ public abstract class CCNFlowControlTestBase extends CCNTestBase {
 	}
 	
 	public class HighWaterHelper extends Thread {
+		
+		boolean _waitStarted = false;
+		boolean _readyForOurWait = false;
 
 		public void run() {
 			synchronized (this) {
+				_waitStarted = true;
 				try {
-					Thread.sleep(500);
-					_handle.get(segments[0].name(), 0);
-				} catch (Exception e) {
-					Assert.fail("Caught exception: " + e.getMessage());
-				}
+					wait(SystemConfiguration.MAX_TIMEOUT);
+				} catch (InterruptedException e) {}
 			}
+			try {
+				while (!_readyForOurWait)
+					Thread.sleep(10);
+				_handle.get(segments[0].name(), 0);
+			} catch (Exception e) {
+				// Note this assertion is OK due to use of ThreadAssertionRunner
+				synchronized (this) {
+					notifyAll();
+				}
+				Assert.fail("Caught exception: " + e.getMessage());
+			}
+			synchronized (this) {
+				notifyAll();
+			}
+		}
+		
+		public synchronized boolean getWaiting() {
+			return _waitStarted;	
+		}
+		
+		public synchronized void readyForOurWait() {
+			_readyForOurWait = true;	
 		}
 	}
 	

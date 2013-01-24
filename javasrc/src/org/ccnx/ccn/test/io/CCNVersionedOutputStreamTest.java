@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2011, 2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -64,7 +64,7 @@ public class CCNVersionedOutputStreamTest implements CCNInterestHandler {
 			_fileLength = fileLength;
 		}
 
-		public boolean isDone() { return _done; }
+		public synchronized boolean isDone() { return _done; }
 
 		/**
 		 * @return The digest of the first segment of this stream
@@ -126,10 +126,13 @@ public class CCNVersionedOutputStreamTest implements CCNInterestHandler {
 		CCNVersionedInputStream vis = new CCNVersionedInputStream(streamName, readHandle);
 		byte [] resultDigest = readFile(vis);
 		Log.info("Finished reading, read result {0}", DataUtils.printHexBytes(resultDigest));
-		if (!writer.isDone()) {
-			synchronized(writer) {
-				while (!writer.isDone()) {
-					writer.wait(500);
+		synchronized (this) {
+			Assert.assertNotNull(writer);
+			if (!writer.isDone()) {
+				synchronized(writer) {
+					while (!writer.isDone()) {
+						writer.wait(500);
+					}
 				}
 			}
 		}
@@ -207,9 +210,11 @@ public class CCNVersionedOutputStreamTest implements CCNInterestHandler {
 		}
 
 		// we only deal with the first interest, at least for now
-		if (null != writer) {
-			Log.info("handleInterests: already writing stream, ignoring interest {0}", interest);
-			return false;
+		synchronized (this) {
+			if (null != writer) {
+				Log.info("handleInterests: already writing stream, ignoring interest {0}", interest);
+				return false;
+			}
 		}
 		Log.info("handleInterests got interest {0}", interest);
 		CCNVersionedOutputStream vos = null;
@@ -221,8 +226,10 @@ public class CCNVersionedOutputStreamTest implements CCNInterestHandler {
 			Assert.fail("Exception creating output stream " + e);
 		}
 		vos.addOutstandingInterest(interest);
-		writer = new Writer(vos, FILE_SIZE);
-		writer.start();
+		synchronized (this) {
+			writer = new Writer(vos, FILE_SIZE);
+			writer.start();
+		}
 		return true;
 	}
 

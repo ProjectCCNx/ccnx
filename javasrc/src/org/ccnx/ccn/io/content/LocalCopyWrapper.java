@@ -135,9 +135,6 @@ public class LocalCopyWrapper implements UpdateListener {
 		if( null == obj )
 			return false;
 		
-		if (obj.getClass() == _netobj.getClass()) {
-			return _netobj.equals(obj);
-		}
 		if (getClass() != obj.getClass()) {
 			return false;
 		}

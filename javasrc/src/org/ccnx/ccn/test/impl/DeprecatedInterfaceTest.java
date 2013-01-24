@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2011, 2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -64,14 +64,15 @@ public class DeprecatedInterfaceTest extends CCNTestBase implements CCNFilterLis
 		// Check that we can register a filter and see an interest using the old interface
 		putHandle.registerFilter(prefix, this);
 		getHandle.expressInterest(interest, this);
-		interestSema.tryAcquire(QUICK_TIMEOUT, TimeUnit.MILLISECONDS);
+		Assert.assertTrue("Couldnt get semaphore", interestSema.tryAcquire(QUICK_TIMEOUT, TimeUnit.MILLISECONDS));
 		Assert.assertTrue("Interest never seen", sawInterest);
 
 		// Check that we can see content using the old interface - we wait for interest reexpression
 		// to get it
 		sawInterest = false;
 		putNow = true;
-		contentSema.tryAcquire(MORE_THAN_RETRY_TIMEOUT, TimeUnit.MILLISECONDS);
+		contentSema.drainPermits();
+		Assert.assertTrue("Couldn't get semaphore", contentSema.tryAcquire(MORE_THAN_RETRY_TIMEOUT, TimeUnit.MILLISECONDS));
 		getHandle.checkError(0);
 		Assert.assertTrue("Content never seen", sawContent);
 
@@ -82,16 +83,17 @@ public class DeprecatedInterfaceTest extends CCNTestBase implements CCNFilterLis
 		sawContent = false;
 		putNow = true;
 		getHandle.cancelInterest(nextInterest, this);
-		contentSema.tryAcquire(MORE_THAN_RETRY_TIMEOUT, TimeUnit.MILLISECONDS);
+		Assert.assertFalse("Should not have got the semaphore", contentSema.tryAcquire(MORE_THAN_RETRY_TIMEOUT, TimeUnit.MILLISECONDS));
 		getHandle.checkError(0);
 		Assert.assertFalse("Content seen when it should not have been", sawContent);
 
 		// Now check that we don't see an interest after we unregister its filter
+		interestSema.drainPermits();
 		sawInterest = false;
 		nextInterest = new Interest(new ContentName(prefix, Integer.toString(counter)));
 		putHandle.unregisterFilter(prefix, this);
 		getHandle.expressInterest(nextInterest, this);
-		interestSema.tryAcquire(QUICK_TIMEOUT, TimeUnit.MILLISECONDS);
+		Assert.assertFalse("Should not have got the semaphore", interestSema.tryAcquire(MORE_THAN_RETRY_TIMEOUT, TimeUnit.MILLISECONDS));
 		getHandle.checkError(0);
 		Assert.assertFalse("Interest seen after cancel", sawInterest);
 		getHandle.cancelInterest(nextInterest, this);

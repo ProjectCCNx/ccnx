@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010, 2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010, 2012, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -94,13 +94,9 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		PublisherPublicKeyDigest _requiredPublisher; 
 		KeyManager _keyManager;
 		
-		public static ContentVerifier getDefaultVerifier() { 
+		public synchronized static ContentVerifier getDefaultVerifier() { 
 			if (null == _defaultVerifier) {
-				synchronized(SimpleVerifier.class) {
-					if (null == _defaultVerifier) {
-						_defaultVerifier = new SimpleVerifier(null);
-					}
-				}
+				_defaultVerifier = new SimpleVerifier(null);
 			}
 			return _defaultVerifier; 
 		}

@@ -1,7 +1,7 @@
 /*
  * A CCNx command line utility.
  *
- * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011, 2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -47,7 +47,6 @@ public class watch extends Thread implements CCNContentHandler {
 	public void work() {}
 	
 	public void run() {
-		_stop = false;
 		initialize();
 		
 		System.out.println("Watching: " + new Date().toString() +".");
@@ -66,7 +65,7 @@ public class watch extends Thread implements CCNContentHandler {
 				Thread.sleep(10000);
 			} catch (InterruptedException e) {
 			}
-		} while (!_stop);
+		} while (true);
 
 	}
 	
@@ -102,7 +101,7 @@ public class watch extends Thread implements CCNContentHandler {
 				library.expressInterest(interest, listener);
 			} 
 			
-			listener.run();
+			listener.start();
 			try {
 				listener.join();
 			} catch (InterruptedException e) {

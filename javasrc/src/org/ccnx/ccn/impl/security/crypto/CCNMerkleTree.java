@@ -117,9 +117,8 @@ public class CCNMerkleTree extends MerkleTree {
 	 */
 	public ContentName segmentName(int leafIndex) {
 		if ((leafIndex < 0) || (leafIndex > _segmentObjects.length))
-			throw new IllegalArgumentException("Index out of range!");
-				
-		if ((null != _segmentObjects) && (leafIndex < _segmentObjects.length) && (null != _segmentObjects[leafIndex])) 
+			throw new IllegalArgumentException("Index out of range!");			
+		if ((leafIndex < _segmentObjects.length) && (null != _segmentObjects[leafIndex])) 
 			return _segmentObjects[leafIndex].name();
 		return null;
 	}
@@ -131,9 +130,8 @@ public class CCNMerkleTree extends MerkleTree {
 	 */
 	public SignedInfo segmentSignedInfo(int leafIndex) {
 		if ((leafIndex < 0) || (leafIndex > _segmentObjects.length))
-			throw new IllegalArgumentException("Index out of range!");
-		
-		if ((null != _segmentObjects) && (null != _segmentObjects[leafIndex])) {
+			throw new IllegalArgumentException("Index out of range!");	
+		if (null != _segmentObjects[leafIndex]) {
 			return _segmentObjects[leafIndex].signedInfo();
 		}
 		return null;
@@ -148,7 +146,7 @@ public class CCNMerkleTree extends MerkleTree {
 		if ((leafIndex < 0) || (leafIndex > _segmentObjects.length))
 			throw new IllegalArgumentException("Index out of range!");
 		
-		if ((null != _segmentObjects) && (null != _segmentObjects[leafIndex])) {
+		if (null != _segmentObjects[leafIndex]) {
 			if (null == _segmentObjects[leafIndex].signature()) {
 				_segmentObjects[leafIndex].setSignature(computeSignature(leafIndex));
 			}

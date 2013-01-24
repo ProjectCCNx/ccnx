@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -53,7 +53,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * useful in particular applications. See ACL and the Name Enumeration protocol
  * for examples of this.
  */
-public class Collection extends GenericXMLEncodable implements XMLEncodable, Iterable<Link> {
+public class Collection extends GenericXMLEncodable implements XMLEncodable, Iterable<Link>, Cloneable {
 	
 	/**
 	 * A CCNNetworkObject wrapper around Collection, used for easily saving and retrieving
@@ -149,8 +149,15 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 	public Collection() {
 	}
 	
+	@SuppressWarnings("unchecked")
 	public Collection clone() {
-		return new Collection(_contents);
+		try {
+			Collection c = (Collection)super.clone();
+			c._contents = (LinkedList<Link>)_contents.clone();
+			return c;
+		} catch (CloneNotSupportedException e) {
+			throw new AssertionError(e);
+		}
 	}
 	
 	public Collection(java.util.Collection<Link> contents) {

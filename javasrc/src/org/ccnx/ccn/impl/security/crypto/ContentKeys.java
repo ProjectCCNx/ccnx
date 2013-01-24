@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -200,9 +200,6 @@ public abstract class ContentKeys implements Cloneable {
 	}
 
 	public ContentKeys(ContentKeys other) {
-		// probably should clone
-		this._encryptionAlgorithm = other._encryptionAlgorithm;
-		this._masterKeyAndIVCtr = other._masterKeyAndIVCtr;
 	}
 	
 	/**
@@ -364,7 +361,17 @@ public abstract class ContentKeys implements Cloneable {
 		return ba;
 	}
 	
-	public abstract ContentKeys clone();
+	public ContentKeys clone() {
+		try {
+			ContentKeys ck = (ContentKeys)super.clone();
+			// probably should clone
+			ck._encryptionAlgorithm = this._encryptionAlgorithm;
+			ck._masterKeyAndIVCtr = this._masterKeyAndIVCtr;
+			return ck;
+		} catch (CloneNotSupportedException e) {
+			throw new AssertionError(e);
+		}
+	}
 	
 	public Key getMasterKey() {
 		return _masterKeyAndIVCtr.getKey();
