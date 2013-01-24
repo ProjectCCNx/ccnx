@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011, 2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -38,11 +38,11 @@ import org.ccnx.ccn.protocol.Interest;
 import org.junit.Assert;
 import org.junit.Test;
 
-
 /**
  * 
  * A test of basic Interest mechanisms, using older test infrastructure.
  */
+@SuppressWarnings("deprecation")
 public class ReadTest extends LibraryTestBase implements CCNContentHandler {
 	
 	private static ArrayList<Integer> currentSet;
