@@ -163,13 +163,17 @@ public class AssertionCCNHandle extends CCNHandle {
 	 * @throws InterruptedException
 	 */
 	public void checkError(long timeout) throws Error, InterruptedException {
-		if (timeout > 0 && timeout != SystemConfiguration.NO_TIMEOUT) {
+		if (timeout > 0 || timeout == SystemConfiguration.NO_TIMEOUT) {
 			synchronized (this) {
+				long startTime = System.currentTimeMillis();
 				while (!_callbackSeen) {
 					if (timeout == SystemConfiguration.NO_TIMEOUT)
 						wait();
-					else
+					else {
 						wait(timeout);
+						if ((System.currentTimeMillis() - startTime) > timeout)
+							break;
+					}
 				}
 				_callbackSeen = false;
 			}

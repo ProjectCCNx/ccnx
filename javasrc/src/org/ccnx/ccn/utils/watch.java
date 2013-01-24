@@ -101,7 +101,7 @@ public class watch extends Thread implements CCNContentHandler {
 				library.expressInterest(interest, listener);
 			} 
 			
-			listener.run();
+			listener.start();
 			try {
 				listener.join();
 			} catch (InterruptedException e) {

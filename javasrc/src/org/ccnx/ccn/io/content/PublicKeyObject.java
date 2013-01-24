@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -53,6 +53,8 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * subclass that needs to implement its own serialization.
  */
 public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
+
+	private static final long serialVersionUID = 5189436611015921245L;
 
 	/**
 	 * Write constructor.

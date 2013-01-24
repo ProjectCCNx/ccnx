@@ -44,8 +44,6 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  */
 public class CCNSerializableStringObject extends CCNSerializableObject<String> {
 	
-	private static final long serialVersionUID = -8846214883689457926L;
-
 	public CCNSerializableStringObject(ContentName name, String data, SaveType saveType, CCNHandle handle) 
 	throws IOException {
 		super(String.class, false, name, data, saveType, handle);

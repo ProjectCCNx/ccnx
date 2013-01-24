@@ -33,7 +33,6 @@ import org.ccnx.ccn.profiles.ccnd.CCNDaemonException;
 import org.ccnx.ccn.profiles.ccnd.FaceManager;
 import org.ccnx.ccn.profiles.ccnd.FaceManager.ActionType;
 import org.ccnx.ccn.profiles.ccnd.FaceManager.FaceInstance;
-import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.test.LibraryTestBase;
 import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
 import org.junit.After;

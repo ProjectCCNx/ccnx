@@ -45,7 +45,7 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
  * necessary to verify a piece of content. It might include the key itself, a certificate
  * containing the key, or a CCN name pointing to a location where the key can be found.
  */
-public class KeyLocator extends GenericXMLEncodable implements XMLEncodable, Serializable, ContentNameProvider {
+public class KeyLocator extends GenericXMLEncodable implements XMLEncodable, Serializable, ContentNameProvider, Cloneable {
 
 	private static final long serialVersionUID = 7608180398885293453L;
 

@@ -21,6 +21,7 @@ import java.io.IOException;
 
 import junit.framework.Assert;
 
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
@@ -124,12 +125,18 @@ public class CCNFlowControlTest extends CCNFlowControlTestBase {
 		fc.put(segments[1]);
 		fc.put(segments[2]);
 
-		ThreadAssertionRunner tar = new ThreadAssertionRunner(new HighWaterHelper());
+		HighWaterHelper hwh = new HighWaterHelper();
+		ThreadAssertionRunner tar = new ThreadAssertionRunner(hwh);
 		tar.start();
 		fc.put(segments[3]);
+		synchronized (hwh) {
+			hwh.notify();
+		}
+		hwh.readyForOurWait();
+		synchronized (hwh) {
+			hwh.wait(SystemConfiguration.MAX_TIMEOUT);
+		}
 		fc.put(segments[4]);
-		Thread.sleep(200);
-		tar.doNotify();
 		tar.join();
 		Log.info(Log.FAC_TEST, "Completed testMixedOrderInterestPut");
 	}

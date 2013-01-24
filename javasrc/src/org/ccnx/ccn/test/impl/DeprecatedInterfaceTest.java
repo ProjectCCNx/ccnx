@@ -71,6 +71,7 @@ public class DeprecatedInterfaceTest extends CCNTestBase implements CCNFilterLis
 		// to get it
 		sawInterest = false;
 		putNow = true;
+		contentSema.drainPermits();
 		Assert.assertTrue("Couldn't get semaphore", contentSema.tryAcquire(MORE_THAN_RETRY_TIMEOUT, TimeUnit.MILLISECONDS));
 		getHandle.checkError(0);
 		Assert.assertTrue("Content never seen", sawContent);
@@ -82,16 +83,17 @@ public class DeprecatedInterfaceTest extends CCNTestBase implements CCNFilterLis
 		sawContent = false;
 		putNow = true;
 		getHandle.cancelInterest(nextInterest, this);
-		Assert.assertTrue("Couldn't get semaphore", contentSema.tryAcquire(MORE_THAN_RETRY_TIMEOUT, TimeUnit.MILLISECONDS));
+		Assert.assertFalse("Should not have got the semaphore", contentSema.tryAcquire(MORE_THAN_RETRY_TIMEOUT, TimeUnit.MILLISECONDS));
 		getHandle.checkError(0);
 		Assert.assertFalse("Content seen when it should not have been", sawContent);
 
 		// Now check that we don't see an interest after we unregister its filter
+		interestSema.drainPermits();
 		sawInterest = false;
 		nextInterest = new Interest(new ContentName(prefix, Integer.toString(counter)));
 		putHandle.unregisterFilter(prefix, this);
 		getHandle.expressInterest(nextInterest, this);
-		Assert.assertTrue("Couldn't get semaphore", interestSema.tryAcquire(QUICK_TIMEOUT, TimeUnit.MILLISECONDS));
+		Assert.assertFalse("Should not have got the semaphore", interestSema.tryAcquire(MORE_THAN_RETRY_TIMEOUT, TimeUnit.MILLISECONDS));
 		getHandle.checkError(0);
 		Assert.assertFalse("Interest seen after cancel", sawInterest);
 		getHandle.cancelInterest(nextInterest, this);

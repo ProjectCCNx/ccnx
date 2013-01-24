@@ -157,15 +157,13 @@ public class NameEnumeratorTest extends CCNTestBase implements BasicNameEnumerat
 	public void testGetCallback(){
 		Log.info(Log.FAC_TEST, "Starting testGetCallback");
 
-		int attempts = 0;
+		int attempts = 1;
 		try{
-			while (attempts < 500){
-				synchronized (namesLock) {
-					if (names != null)
-						break;
+			synchronized (namesLock) {
+				while (null == names && attempts < 500){
+					namesLock.wait(50);
+					attempts++;
 				}
-				Thread.sleep(50);
-				attempts++;
 			}
 
 			//we either broke out of loop or the names are here
@@ -215,14 +213,13 @@ public class NameEnumeratorTest extends CCNTestBase implements BasicNameEnumerat
 	public void testGetCallbackDirty(){
 		Log.info(Log.FAC_TEST, "Starting testGetCallbackDirty");
 
-		int attempts = 0;
+		int attempts = 1;
 		try{
-			while(attempts < 1000){
-				synchronized (namesLock) {
-					if (names != null)
-						namesLock.wait(50);
+			synchronized (namesLock) {
+				while(names == null && attempts < 1000) {
+					namesLock.wait(50);
+					attempts++;
 				}
-				attempts++;
 			}
 
 			//we either broke out of loop or the names are here
@@ -338,7 +335,9 @@ public class NameEnumeratorTest extends CCNTestBase implements BasicNameEnumerat
 		Log.info(Log.FAC_TEST, "got a callback!");
 
 		synchronized (namesLock) {
-			names = n;
+			names = new ArrayList<ContentName>();
+			for (ContentName name : n)
+				names.add(name);
 			namesLock.notify();
 			Log.info(Log.FAC_TEST, "here are the returned names: ");
 

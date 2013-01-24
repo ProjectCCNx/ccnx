@@ -126,10 +126,13 @@ public class CCNVersionedOutputStreamTest implements CCNInterestHandler {
 		CCNVersionedInputStream vis = new CCNVersionedInputStream(streamName, readHandle);
 		byte [] resultDigest = readFile(vis);
 		Log.info("Finished reading, read result {0}", DataUtils.printHexBytes(resultDigest));
-		if (!writer.isDone()) {
-			synchronized(writer) {
-				while (!writer.isDone()) {
-					writer.wait(500);
+		synchronized (this) {
+			Assert.assertNotNull(writer);
+			if (!writer.isDone()) {
+				synchronized(writer) {
+					while (!writer.isDone()) {
+						writer.wait(500);
+					}
 				}
 			}
 		}
