@@ -673,7 +673,7 @@ public class CCNNetworkObjectTest extends CCNNetworkObjectTestBase {
 		
 		writeObject.save("New stuff! New stuff!");
 		synchronized(readObject) {
-			if (ourListener.getCounter() == 1)
+			while (ourListener.getCounter() == 1)
 				readObject.wait();
 		}
 		// For some reason, we're getting two updates on our updateInBackground...

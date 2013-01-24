@@ -823,6 +823,9 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 							JOptionPane.ERROR_MESSAGE);
 				return;
 			}
+			
+			if (node.name == null)
+				return;		// XXX shouldn't happen?
 
 			ContentName cn = new ContentName(node.name);
 

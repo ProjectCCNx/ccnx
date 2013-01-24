@@ -54,8 +54,6 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  */
 public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 
-	private static final long serialVersionUID = 5189436611015921245L;
-
 	/**
 	 * Write constructor.
 	 * @param name

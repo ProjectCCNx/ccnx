@@ -87,6 +87,8 @@ public abstract class NetworkObject<E> {
 	 * Track error state in a subclass-compatible way by storing the last exception we threw.
 	 */
 	protected IOException _errorState = null;
+	
+	public NetworkObject() {} // Needed to support serialization of subclasses
 
 	/**
 	 * Subclasses need to specify the type as an argument as well as a template

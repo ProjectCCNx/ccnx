@@ -34,7 +34,6 @@ import org.ccnx.ccn.io.GenericObjectInputStream;
  * an OutputStream. Not CCN-specific, the CCN variant of this is CCNSerializableObject.
  */
 public class SerializableObject<E extends Serializable> extends NetworkObject<E> {
-	
 
 	public SerializableObject(Class<E> type, boolean contentIsMutable) {
 		super(type, contentIsMutable);
