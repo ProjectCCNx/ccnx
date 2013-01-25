@@ -7,7 +7,7 @@ ccndsmoketest - Simple program for smoke-test of ccnd.
 
 SYNOPSIS
 --------
-*ccndsmoketest* [-b] [-t 'msec'] [ (-T | -u) 'hostname' ] ( send 'filename' | 'sendfilename'.ccnb | recv | kill | status | timeo 'msec' ) '...'
+*ccndsmoketest* [-b] [-t 'msec'] [ (-T | -u) 'hostname' ] ( send 'filename' | 'sendfilename'.ccnb | recv | kill | status [-x] | timeo 'msec' ) '...'
 
 DESCRIPTION
 -----------
@@ -31,6 +31,9 @@ OPTIONS
 *-u* 'hostname'::
 	Contact the ccnd on the named host via UDP instead of the default unix-domain socket.
 
+*-x*::
+	Use in conjunction with status command, returns XML output on stdout
+
 ARGUMENTS
 ---------
 The remaining arguments are processed in order.
@@ -50,7 +53,8 @@ The remaining arguments are processed in order.
 	Shuts down ccnd cleanly.
 
 *status*::
-	Used to implement *ccndstatus*(1).
+	Used to implement *ccndstatus*(1).  Pass optional [-x] argument to request XML output.
+    See link:../technical/CCNDStatus.html[CCND Status XML documentation] for more details.
 
 *timeo* 'milliseconds'::
 	Set the timeout for subsequent recv commands.

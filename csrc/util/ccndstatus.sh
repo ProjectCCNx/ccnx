@@ -21,9 +21,11 @@ Usage () {
 D=`dirname "$0"`
 export PATH="$D:$PATH"
 host=
-while getopts T: name; do
+xmlout=
+while getopts T:x name; do
 	case $name in
 	T) host="$OPTARG";;
+  x) xmlout="-x";;
 	?) Usage;;
 	esac
 done
@@ -34,4 +36,4 @@ else
 	shift $#
 fi
 
-ccndsmoketest "$@" status
+ccndsmoketest "$@" status "$xmlout"

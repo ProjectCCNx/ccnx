@@ -144,7 +144,7 @@ FaceID is required in `prefixreg` and `unreg` requests.
 FaceID is always present in a response.
 
 === Name
-This is the name prefix that is to acted on.
+This is the name prefix to be acted on.
 
 === ForwardingFlags
 This integer holds the inclusive OR of the following bit fields:

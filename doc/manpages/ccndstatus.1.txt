@@ -18,6 +18,12 @@ http://localhost:9695
 
 It fact, the implementation simply does the http fetch and strips out the html markup.
 
+To access an XML representation of ccndstatus from the browser, request the URL with query string
+params f=xml , (for example) http://localhost:9695?f=xml .  The complete description of
+the ccndstatus XML representation is available in the technical documentation.  
+See link:../technical/CCNDStatus.html[CCND Status Documentation]
+
+
 OPTIONS
 -------
 *-T host*::

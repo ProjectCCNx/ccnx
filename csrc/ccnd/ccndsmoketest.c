@@ -42,6 +42,7 @@
 #include <ccn/ccn_private.h>
 
 #define CRLF "\r\n"
+#define HTTPVERSION "1.1"
 
 char rawbuf[1024*1024];
 
@@ -231,7 +232,7 @@ main(int argc, char **argv)
     int do_pclose = 0;
     const char *host = "localhost";
     const char *cmd = NULL;
-    
+
     while ((opt = getopt(argc, argv, "bht:T:u:")) != -1) {
         switch (opt) {
             case 'b':
@@ -260,7 +261,7 @@ main(int argc, char **argv)
                         " | <sendfilename>.ccnb"
                         " | recv"
                         " | kill"
-                        " | status"
+                        " | status [-x]"
                         " | timeo <millisconds>"
                         " ) ...");
                 exit(1);
@@ -344,10 +345,18 @@ main(int argc, char **argv)
         }
         else if (udp == 0 && 0 == strcmp(argv[argp], "status")) {
             msgs = stderr;
-            cmd = ("sed -e 's=[<]style .*/style[>]==g' -e 's=[<][^>]*[>]==g'|"
+            if ((argv[argp + 1] != NULL) && (0 == strcmp(argv[argp + 1], "-x"))) {
+                argp++;
+                cmd = ("tail -n +6");
+                outstream = popen(cmd, "w");
+                wlen = send(sock, "GET /?f=xml " HTTPVERSION CRLF , 14, 0);
+            } else {
+                cmd = ("sed -e 's=[<]style .*/style[>]==g' -e 's=[<][^>]*[>]==g'|"
                    "tail -n +7");
-            outstream = popen(cmd, "w");
-            wlen = send(sock, "GET / " CRLF , 8, 0);
+                outstream = popen(cmd, "w");
+                wlen = send(sock, "GET / " HTTPVERSION CRLF , 8, 0);
+            }
+
             recvloop = 1;
             do_pclose = 1;
             argp--;

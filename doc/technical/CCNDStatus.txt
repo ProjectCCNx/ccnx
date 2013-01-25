@@ -1,0 +1,245 @@
+CCND Status Description
+=======================
+
+== Overview
+Status of a running CCND can be obtained in a number of ways.  The representation of the internal
+
+state will be described here.  A number of the concepts used to describe terminology around the CCND Status
+
+can be found in link:CCNxProtocol.html[CCNx Protocol Technical Documentation].
+
+The information provided in the CCND status can be used to better understand the behavior characteristics of a running CCND.
+
+Because there are a number of ways to obtain CCND status, either by command line or by HTTP request, there are also different
+
+data representations, currently HTML, plain text, and XML.  For purposes of documentation, the XML will be used to
+
+describe CCND Status.
+
+
+== Schema
+There is currently no schema definition for CCND Status.
+
+
+== Top Level Elements
+
+The root XML element in the CCND Status is the *'<ccnd>'* element.  The top-level XML elements of the *'<ccnd>'*
+
+are described in the sections below.
+
+
+=== *'<identity>'*
+
+The *'<identity>'* element contains the information needed to uniquely identify the CCND instance, and describes
+some basic information about the instance.  The *'<identity>'* element contains the following elements:
+
+* *'<ccndid>'* Unique ID of this CCND instance, based on a SHA256 digest of its public key
+* *'<apiversion>'* CCN API Version run on this CCND instance
+* *'<starttime>'* Start time of CCND instance in seconds-since-epoch, with microsecond precision
+* *'<now>'* CCND instance system time now in seconds-since-epoch, with microsecond precision
+
+=== *'<cobs>'*
+
+The *'<cobs>'* element represents statistics related to CCNx Content Object flow, and contains:
+
+* *'<accessioned>'* Number of Content Objects accessioned
+* *'<stored>'* Number of Content Objects stored
+* *'<stale>'* Number of Content Objects marked as stale
+* *'<sparse>'* Number of Content Objects marked as sparse
+* *'<duplicate>'* Number of duplicate Content Objects
+* *'<sent>'* Number of Content Objects sent
+
+=== *'<interests>'*
+
+The *'<interests>'* element provides statistics related to Interest messages, and contains:
+
+* *'<names>'* Number of Interest names
+* *'<pending>'* Number of pending Interests
+* *'<propogating>'* Number of propogating Interests
+* *'<noted>'* Number of noted Interests
+* *'<accepted>'* Number of accepted Interests
+* *'<dropped>'* Number of dropped Interests
+* *'<sent>'* Number of sent Interests
+* *'<stuffed>'* Number of stuffed Interests
+
+=== *'<faces>'*
+
+The *'<faces>'* element contains the configured faces for this CCND node.  It is made up of
+*'<face>'* elements.
+
+==== *'<face>'*
+
+The *'<face>'* element describes a face and consists of the following elements:
+
+* *'<faceid>'* The faceid
+* *'<faceflags>'* Hexidecimal value representing ccnd-private flags defined in ccnd_private.h using names prefixed with CCN_FACE_
+* *'<pending>'* The number of pending Interests on the face
+* *'<recvcount>'* The number of Interests received on the face
+* *'<ip>'* The IP (v4 | v6) address and port of the remote CCND instance
+* *'<meters>'*  Contains a more comprehensive set of metrics about data flow on the face in terms of *'<total>'* number of as well as number *'<persec>'*.  It is made up of the elements described below:
+** *'<bytein>'* Number of bytes in 
+** *'<byteout>'* Number of bytes out
+** *'<datain>'* Number of Content Objects in
+** *'<dataout>'* Number of Content Objects out
+** *'<intrin>'* Number of Interests in
+
+=== *'<forwarding>'*
+
+The *'<forwarding>'* element is made up of *'<fentry>'* elements, with each *'<fentry>'* containing:
+
+* *'<prefix>'* The prefix name to act on
+* *'<dest>'* Contains details about the forwarding destination Face
+** *'<faceid>'* The faceid of the destination Face
+** *'<flags>'* The integer containing the inclusive OR of the Forwarding Flags (see link:Registration.html[CCNx Face Management and Registration Protocol])
+** *'<expires>'* Also known as Freshness Seconds, the remaining lifetime on the face
+
+
+
+== Example CCND status Output
+The content of the CCND status be similar to the following:
+.......................................................
+<ccnd>
+    <identity>
+        <ccndid>380294A1F3F6A39FED93821AB00BC2F097AFD58EDCD6DCFFDD8CE3A76EF74A39</ccndid>
+        <apiversion>7000</apiversion>
+        <starttime>1357318432.770406</starttime>
+        <now>1357318449.648793</now>
+    </identity>
+    <cobs>
+        <accessioned>0</accessioned>
+        <stored>0</stored>
+        <stale>0</stale>
+        <sparse>0</sparse>
+        <duplicate>0</duplicate>
+        <sent>0</sent>
+    </cobs>
+    <interests>
+        <names>9</names>
+        <pending>0</pending>
+        <propagating>0</propagating>
+        <noted>0</noted>
+        <accepted>0</accepted>
+        <dropped>0</dropped>
+        <sent>0</sent>
+        <stuffed>0</stuffed>
+    </interests>
+    <faces>
+        <face>
+            <faceid>0</faceid>
+            <faceflags>000c</faceflags>
+            <pending>0</pending>
+            <recvcount>0</recvcount>
+            <meters>
+                <bytein>
+                    <total>0</total>
+                    <persec>0</persec>
+                </bytein>
+                <byteout>
+                    <total>0</total>
+                    <persec>0</persec>
+                </byteout>
+                <datain>
+                    <total>0</total>
+                    <persec>0</persec>
+                </datain>
+                <introut>
+                    <total>0</total>
+                    <persec>0</persec>
+                </introut>
+                <dataout>
+                    <total>0</total>
+                    <persec>0</persec>
+                </dataout>
+                <intrin>
+                    <total>0</total>
+                    <persec>0</persec>
+                </intrin
+            </meters>
+        </face>
+        <face>
+            <faceid>1</faceid>
+            <faceflags>400c</faceflags>
+            <pending>0</pending>
+            <recvcount>0</recvcount>
+        </face>
+        <face>
+            <faceid>2</faceid>
+            <faceflags>5012</faceflags>
+            <pending>0</pending>
+            <recvcount>0</recvcount>
+            <ip>0.0.0.0:9695</ip>
+        </face>
+        <face>
+            <faceid>3</faceid>
+            <faceflags>5010</faceflags>
+            <pending>0</pending>
+            <recvcount>0</recvcount>
+            <ip>0.0.0.0:9695</ip>
+        </face>
+        <face>
+            <faceid>4</faceid>
+            <faceflags>4042</faceflags>
+            <pending>0</pending>
+            <recvcount>0</recvcount>
+            <ip>[::]:9695</ip>
+        </face>
+        <face>
+            <faceid>5</faceid>
+            <faceflags>4040</faceflags>
+            <pending>0</pending>
+            <recvcount>0</recvcount>
+            <ip>[::]:9695</ip>
+        </face>
+    </faces>
+    <forwarding>
+        <fentry>
+            <prefix>ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnd</prefix>
+            <dest>
+                <faceid>0</faceid>
+                <flags>3</flags>
+                <expires>2147483632</expires>
+            </dest>
+        </fentry>
+        <fentry>
+            <prefix>ccnx:/ccnx/ping</prefix>
+            <dest>
+                <faceid>0</faceid>
+                <flags>3</flags>
+                <expires>2147483632</expires>
+            </dest>
+        </fentry>
+        <fentry>
+            <prefix>ccnx:/ccnx/8%02%94%A1%F3%F6%A3%9F%ED%93%82%1A%B0%0B%C2%F0%97%AF%D5%8E%DC%D6%DC%FF%DD%8C%E3%A7n%F7J9</prefix>
+            <dest>
+                <faceid>0</faceid>
+                <flags>17</flags>
+                <expires>2147483632</expires>
+            </dest>
+        </fentry>
+        <fentry>
+            <prefix>ccnx:/%C1.M.S.localhost</prefix>
+            <dest>
+                <faceid>0</faceid>
+                <flags>23</flags>
+                <expires>2147483632</expires>
+            </dest>
+       </fentry>
+       <fentry>
+            <prefix>ccnx:/%C1.M.FACE</prefix>
+            <dest>
+                <faceid>0</faceid>
+                <flags>3</flags>
+                <expires>2147483632</expires>
+            </dest>
+       </fentry>
+       <fentry>
+            <prefix>ccnx:/%C1.M.S.neighborhood</prefix>
+                <dest>
+                    <faceid>0</faceid>
+                    <flags>3</flags>
+                    <expires>2147483632</expires>
+                </dest>
+        </fentry>
+    </forwarding>
+</ccnd>
+.......................................................
