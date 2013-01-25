@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -163,7 +163,7 @@ public class SignatureHelper {
 	 * 	signing. Any null arrays are skipped.
 	 * @param signature the signature.
 	 * @param digestAlgorithm the digest algorithm. if null uses DEFAULT_DIGEST_ALGORITHM
-	 * @param verificationKey the public verification key.
+	 * @param verificationKey the public or symmetric (secret) verification key.
 	 * @return the correctness of the signature as a boolean.
 	 * @throws SignatureException
 	 * @throws NoSuchAlgorithmException

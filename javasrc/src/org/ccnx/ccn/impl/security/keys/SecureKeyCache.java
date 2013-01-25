@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -286,21 +286,22 @@ public class SecureKeyCache implements Serializable {
 	}
 	
 	/**
-	 * Records a secret (symmetric) key and the name and digest of the corresponding public key.
+	 * Records a secret (symmetric) key and the name and digest of the corresponding identifier
+	 * (which should be a "PublisherPublicKeyDigest".
 	 * @param keyName a name under which to look up the private key
-	 * @param publicKeyIdentifier the digest of the public key
+	 * @param identifier the digest of the public key
 	 * @param sk the secret key
 	 */
-	public synchronized void addSecretKey(ContentName keyName, byte [] publicKeyIdentifier, SecretKey sk) {
-		_secretKeyMap.put(publicKeyIdentifier, sk);
-		_privateKeyIdentifierMap.put(getKeyIdentifier(sk), publicKeyIdentifier);
+	public synchronized void addSecretKey(ContentName keyName, byte [] identifier, SecretKey sk) {
+		_secretKeyMap.put(identifier, sk);
+		_privateKeyIdentifierMap.put(getKeyIdentifier(sk), identifier);
 		if (null != keyName) {
-			_nameKeyMap.put(keyName, publicKeyIdentifier);
+			_nameKeyMap.put(keyName, identifier);
 			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding secret key {0} with name {1}",
-					DataUtils.printHexBytes(publicKeyIdentifier), keyName);
+					DataUtils.printHexBytes(identifier), keyName);
 		} else {
 			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding secret key {0}",
-					DataUtils.printHexBytes(publicKeyIdentifier));			
+					DataUtils.printHexBytes(identifier));			
 		}
 	}
 
