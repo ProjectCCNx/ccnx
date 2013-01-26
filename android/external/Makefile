@@ -1,4 +1,4 @@
-# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -19,7 +19,7 @@ SUBDIRS =
 
 # This is just a reference, the makefile does
 # not do anything with them
-ANDROID_SUBDIRS = openssl-1.0.0d expat
+ANDROID_SUBDIRS = openssl-1.0.1c expat
 
 default all: mkdirs
 	touch all_made

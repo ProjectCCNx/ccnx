@@ -21,14 +21,10 @@ GEN = gen
 ############
 # Nothing tweekable down here
 
-NDK_PATH = $(ANDROID_NDK)/ndk-build
-
 .PHONY: all ccnd environment prereq clean simpleclean distclean checkccnxdeps
-
 .SUFFIXES: .jar .properties .xml
 
 ##########
-
 # This is a lit of the targets in our libs directory
 JARS = libs/ccn.jar
 
@@ -64,8 +60,12 @@ checkccnxdeps:
 
 ccnd: environment checkccnxdeps
 	@echo "Building CCND"
-	mkdir -p libs/armeabi
-	$(NDK_PATH)
+	mkdir -p libs
+	if test -n "$$APP_ABI"; then \
+			$(ANDROID_NDK)/ndk-build APP_ABI="$$APP_ABI" ; \
+	else \
+				$(ANDROID_NDK)/ndk-build ; \
+	fi
 
 checkccnjar:
 	@test -f ../../javasrc/ccn.jar || (echo Missing ccn.jar.  Please make CCNx javasrc before the Android port; \
