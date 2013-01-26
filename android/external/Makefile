@@ -19,7 +19,7 @@ SUBDIRS =
 
 # This is just a reference, the makefile does
 # not do anything with them
-ANDROID_SUBDIRS = openssl-1.0.1c expat
+ANDROID_SUBDIRS = openssl-1.0.0d expat
 
 default all: mkdirs
 	touch all_made

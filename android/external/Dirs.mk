@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Palo Alto Research Center, Inc.
+# Copyright (C) 2010-2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -17,7 +17,7 @@
 
 # This is the source file to download
 OPENSSL_HOST = http://www.openssl.org/source
-OPENSSL_SRC = openssl-1.0.1c.tar.gz
+OPENSSL_SRC = openssl-1.0.0d.tar.gz
 
 # This is the output directory for the armv5 version of openssl
 # This must match the link in CCNx-Android-Serices/jni/openssl
