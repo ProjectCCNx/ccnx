@@ -32,11 +32,14 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
 
 
 /**
+ * Deprecated - use named exclude elements instead.
+ * 
  * Implement bloom filter operations
  * 
  * Bloom filters are used to exclude keys that are inserted into the filter
  */
-public class BloomFilter extends Exclude.Filler implements Comparable<BloomFilter>, Cloneable {
+@Deprecated
+public class BloomFilter extends Exclude.Filler implements Comparable<BloomFilter> {
 
 	private int _lgBits;
 	private int _nHash;

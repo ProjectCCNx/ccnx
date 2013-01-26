@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011, 2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -37,6 +37,7 @@ import org.junit.Test;
  * Test the Exclude structures used in Interests.
  *
  */
+@SuppressWarnings("deprecation")
 public class ExcludeTest {
 
 	static ArrayList<Exclude.Element> al;

@@ -309,6 +309,7 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 			while ((component = decoder.peekStartElement(CCNProtocolDTags.Component)) || 
 					(any = decoder.peekStartElement(CCNProtocolDTags.Any)) ||
 						decoder.peekStartElement(CCNProtocolDTags.Bloom)) {
+				@SuppressWarnings("deprecation")
 				Element ee = component?new ExcludeComponent(): any ? new ExcludeAny() : new BloomFilter();
 				ee.decode(decoder);
 				_values.add(ee);
