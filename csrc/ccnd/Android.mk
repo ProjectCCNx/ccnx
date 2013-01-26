@@ -19,7 +19,6 @@ LOCAL_MODULE		:= libccnd
 LOCAL_C_INCLUDES	:= $(LOCAL_PATH)
 LOCAL_C_INCLUDES	+= $(LOCAL_PATH)/../include 
 
-# LOCAL_PATH = project_root/csrc/ccnd
 LOCAL_C_INCLUDES	+= $(LOCAL_PATH)/../../android/external/openssl-armv5/include
 
 CCNDOBJ := ccnd.o ccnd_msg.o ccnd_internal_client.o ccnd_stats.o \
@@ -27,7 +26,11 @@ CCNDOBJ := ccnd.o ccnd_msg.o ccnd_internal_client.o ccnd_stats.o \
 CCNDSRC := $(CCNDOBJ:.o=.c)
 
 LOCAL_SRC_FILES := $(CCNDSRC)
-LOCAL_CFLAGS := -g
+
+# To compile Android CCND Service with UNIX-Domain Sockets, uncomment
+# line below and compile without -DCCN_LOCAL_TCP
+# LOCAL_CFLAGS := -g
+LOCAL_CFLAGS := -g -DCCN_LOCAL_TCP
 LOCAL_STATIC_LIBRARIES := libcrypto libccnx
 LOCAL_SHARED_LIBRARIES :=
 
