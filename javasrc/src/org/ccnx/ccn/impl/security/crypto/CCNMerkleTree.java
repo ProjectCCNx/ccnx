@@ -18,8 +18,8 @@
 package org.ccnx.ccn.impl.security.crypto;
 
 import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
 import java.security.SignatureException;
 import java.util.logging.Level;
 
@@ -85,7 +85,7 @@ public class CCNMerkleTree extends MerkleTree {
 	 * @throws SignatureException if we cannot sign
 	 */
 	public CCNMerkleTree(ContentObject [] contentObjects, 
-						 PrivateKey signingKey) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+						 Key signingKey) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
 
 		super(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, ((null != contentObjects) ? contentObjects.length : 0));
 		_segmentObjects = contentObjects;
@@ -212,7 +212,7 @@ public class CCNMerkleTree extends MerkleTree {
 	 * @throws SignatureException
 	 * @throws NoSuchAlgorithmException
 	 */
-	protected static byte [] computeRootSignature(byte [] root, PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
+	protected static byte [] computeRootSignature(byte [] root, Key signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
 		// Given the root of the authentication tree, compute a signature over it
 		// Right now, this will digest again. It's actually quite hard to get at the raw
 		// signature guts for various platforms to avoid re-digesting; too dependent on

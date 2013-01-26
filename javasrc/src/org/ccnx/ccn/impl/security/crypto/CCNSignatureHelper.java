@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -18,9 +18,9 @@
 package org.ccnx.ccn.impl.security.crypto;
 
 import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
-import java.security.PublicKey;
 import java.security.SignatureException;
 
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -113,7 +113,7 @@ public class CCNSignatureHelper extends SignatureHelper {
 			XMLEncodable xmlData,
 			byte [] signature,
 			String digestAlgorithm,
-			PublicKey verificationKey) 
+			Key verificationKey) 
 			throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, ContentEncodingException {
 
 		if ((null == xmlData) || (null == signature)) {
@@ -145,7 +145,7 @@ public class CCNSignatureHelper extends SignatureHelper {
 								 byte auxiliaryData[][],
 								 byte [] signature,
 								 String digestAlgorithm,
-								 PublicKey verificationKey) 
+								 Key verificationKey) 
 			throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, ContentEncodingException {
 
 		if ((null == xmlData) || (null == signature)) {
@@ -181,7 +181,7 @@ public class CCNSignatureHelper extends SignatureHelper {
 	 */
 	public static byte [] sign(String digestAlgorithm,
 			byte [] toBeSigned,
-			PrivateKey signingKey) throws SignatureException, 
+			Key signingKey) throws SignatureException, 
 			NoSuchAlgorithmException, InvalidKeyException {
 		return SignatureHelper.sign(((null == digestAlgorithm) || (digestAlgorithm.length() == 0)) ?
 				CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : digestAlgorithm, toBeSigned, signingKey);
@@ -224,7 +224,7 @@ public class CCNSignatureHelper extends SignatureHelper {
 			byte data[][],
 			byte [] signature,
 			String digestAlgorithm,
-			PublicKey verificationKey) throws SignatureException, 
+			Key verificationKey) throws SignatureException, 
 						NoSuchAlgorithmException, InvalidKeyException {
 		return SignatureHelper.verify(data, signature,
 				((null == digestAlgorithm) || (digestAlgorithm.length() == 0)) ?
@@ -238,14 +238,14 @@ public class CCNSignatureHelper extends SignatureHelper {
 	 * @param signature the signature itself
 	 * @param digestAlgorithm the digest algorithm used to generate the signature. 
 	 * 		if null uses DEFAULT_DIGEST_ALGORITHM
-	 * @param verificationKey the public key to verify the signature with
+	 * @param verificationKey the key to verify the signature with
 	 * @return true if signature valid, false otherwise
 	 * @throws InvalidKeyException
 	 * @throws SignatureException
 	 * @throws NoSuchAlgorithmException
 	 */
 	public static boolean verify(byte [] data, byte [] signature, String digestAlgorithm,
-			PublicKey verificationKey) 
+			Key verificationKey) 
 	throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
 		return verify(new byte[][]{data}, signature, digestAlgorithm, verificationKey);
 	}

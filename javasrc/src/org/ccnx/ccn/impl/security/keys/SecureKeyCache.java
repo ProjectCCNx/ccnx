@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -31,6 +31,8 @@ import java.util.Enumeration;
 import java.util.TreeMap;
 import java.util.logging.Level;
 
+import javax.crypto.SecretKey;
+
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
@@ -52,6 +54,8 @@ public class SecureKeyCache implements Serializable {
 	 * 
 	 */
 	private static final long serialVersionUID = 2652940059623137734L;
+	
+	public static String privateKeyFormat = "PKCS#8";
 
 	static Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
 	
@@ -61,7 +65,9 @@ public class SecureKeyCache implements Serializable {
 	private TreeMap<byte [], PrivateKey> _myKeyMap = new TreeMap<byte [], PrivateKey>(byteArrayComparator);
 	/** Map the digest of a public key to the corresponding private key */
 	private TreeMap<byte [], PrivateKey> _privateKeyMap = new TreeMap<byte [], PrivateKey>(byteArrayComparator);
-	/** Map the digest of a private key to the digest of the corresponding public key. */
+	/** Map the digest of a secret key to the corresponding key. 
+	 * TODO - do we need to keep the secretKeyMap & privateKeyMap separate? */
+	private TreeMap<byte[], SecretKey> _secretKeyMap = new TreeMap<byte[], SecretKey>(byteArrayComparator);
 	private TreeMap<byte [], byte []> _privateKeyIdentifierMap = new TreeMap<byte [], byte[]>(byteArrayComparator);
 	/** Map the name of a key to its digest */
 	private TreeMap<ContentName, byte []> _nameKeyMap = new TreeMap<ContentName, byte []>();
@@ -75,11 +81,11 @@ public class SecureKeyCache implements Serializable {
 	 * TODO bug -- should merge key caches, not just load signing keys.
 	 */
 	public SecureKeyCache(KeyManager keyManagerToLoadFrom) {
-		PrivateKey [] pks = keyManagerToLoadFrom.getSigningKeys();
-		for (PrivateKey pk : pks) {
+		Key [] pks = keyManagerToLoadFrom.getSigningKeys();
+		for (Key pk : pks) {
 			PublisherPublicKeyDigest ppkd = keyManagerToLoadFrom.getPublisherKeyID(pk);
 			Log.info("KeyCache: loading signing key {0}", ppkd);
-			addMyPrivateKey(ppkd.digest(), pk);
+			addMySigningKey(ppkd.digest(), pk);
 		}
 	}
 		
@@ -112,7 +118,7 @@ public class SecureKeyCache implements Serializable {
 						if (null != certificate) {
 							PublisherPublicKeyDigest ppkd = new PublisherPublicKeyDigest(certificate.getPublicKey());
 							Log.info("KeyCache: loading signing key {0}, remembering public key in public key cache.", ppkd);
-							addMyPrivateKey(ppkd.digest(), pk);
+							addMySigningKey(ppkd.digest(), pk);
 							publicKeyCache.remember(certificate, keyStoreInfo.getVersion());
 						} else {
 							Log.warning("Private key for alias: " + alias + " has no certificate entry. No way to get public key. Not caching.");
@@ -207,21 +213,24 @@ public class SecureKeyCache implements Serializable {
 	}
 
 	/**
-	 * Returns the private key corresponding to a public key specified by its digest.
+	 * Returns the private key corresponding to a key identified by its digest.
 	 * To restrict access to keys, store key cache in a private variable, and don't
 	 * allow references to it from untrusted code. 
 	 * @param desiredPublicKeyIdentifier the digest of the public key.
 	 * @return the corresponding private key.
 	 */
-	public PrivateKey getPrivateKey(byte [] desiredPublicKeyIdentifier) {
-		PrivateKey key = _myKeyMap.get(desiredPublicKeyIdentifier);
+	public Key getPrivateKey(byte [] desiredPublicKeyIdentifier) {
+		Key key = _myKeyMap.get(desiredPublicKeyIdentifier);
+		if (null == key) {
+			key = _secretKeyMap.get(desiredPublicKeyIdentifier);
+		}
 		if (null == key) {
 			key = _privateKeyMap.get(desiredPublicKeyIdentifier);
 		}
 		return key;
 	}
 	
-	public PrivateKey getPrivateKey(ContentName desiredKeyName) {
+	public Key getPrivateKey(ContentName desiredKeyName) {
 		byte [] keyID = _nameKeyMap.get(desiredKeyName);
 		if (null != keyID) {
 			return getPrivateKey(keyID);
@@ -275,15 +284,39 @@ public class SecureKeyCache implements Serializable {
 					DataUtils.printHexBytes(publicKeyIdentifier));			
 		}
 	}
+	
+	/**
+	 * Records a secret (symmetric) key and the name and digest of the corresponding identifier
+	 * (which should be a "PublisherPublicKeyDigest".
+	 * @param keyName a name under which to look up the private key
+	 * @param identifier the digest of the public key
+	 * @param sk the secret key
+	 */
+	public synchronized void addSecretKey(ContentName keyName, byte [] identifier, SecretKey sk) {
+		_secretKeyMap.put(identifier, sk);
+		_privateKeyIdentifierMap.put(getKeyIdentifier(sk), identifier);
+		if (null != keyName) {
+			_nameKeyMap.put(keyName, identifier);
+			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding secret key {0} with name {1}",
+					DataUtils.printHexBytes(identifier), keyName);
+		} else {
+			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding secret key {0}",
+					DataUtils.printHexBytes(identifier));			
+		}
+	}
 
 	/**
 	 * Records one of my private keys and the digest of the corresponding public key.
 	 * @param publicKeyIdentifier the digest of the public key.
 	 * @param pk the corresponding private key.
 	 */
-	public synchronized void addMyPrivateKey(byte [] publicKeyIdentifier, PrivateKey pk) {
-		_privateKeyIdentifierMap.put(getKeyIdentifier(pk), publicKeyIdentifier);
-		_myKeyMap.put(publicKeyIdentifier, pk);
+	public synchronized void addMySigningKey(byte [] publicKeyIdentifier, Key k) {
+		_privateKeyIdentifierMap.put(getKeyIdentifier(k), publicKeyIdentifier);
+		String alg = k.getFormat();
+		if (alg.equals("RAW"))
+			_secretKeyMap.put(publicKeyIdentifier, (SecretKey)k);
+		else
+			_myKeyMap.put(publicKeyIdentifier, (PrivateKey)k);
 		Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding my private key {0}",
 				DataUtils.printHexBytes(publicKeyIdentifier));			
 	}
@@ -306,7 +339,7 @@ public class SecureKeyCache implements Serializable {
 		}
 	}
 	
-	public PublisherPublicKeyDigest getPublicKeyIdentifier(PrivateKey pk) {
+	public PublisherPublicKeyDigest getPublicKeyIdentifier(Key pk) {
 		return new PublisherPublicKeyDigest(_privateKeyIdentifierMap.get(getKeyIdentifier(pk)));
 	}
 	
@@ -362,7 +395,15 @@ public class SecureKeyCache implements Serializable {
 		for (PrivateKey pkey : cache._myKeyMap.values()) {
 			byte[] identifier = cache.getPublicKeyIdentifier(pkey).digest();
 			if (!this._myKeyMap.containsKey(identifier)) {
-				this.addMyPrivateKey(identifier, pkey);
+				this.addMySigningKey(identifier, pkey);
+			}
+		}
+		
+		// check that all my symmetric keys are already in cache
+		for (SecretKey skey : cache._secretKeyMap.values()) {
+			byte[] identifier = cache.getPublicKeyIdentifier(skey).digest();
+			if (!this._myKeyMap.containsKey(identifier)) {
+				this.addMySigningKey(identifier, skey);
 			}
 		}
 		

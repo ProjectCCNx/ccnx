@@ -21,7 +21,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 import java.security.InvalidKeyException;
-import java.security.PrivateKey;
+import java.security.Key;
 import java.security.Provider;
 import java.security.PublicKey;
 import java.security.Security;
@@ -49,11 +49,11 @@ import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.ContentObject.SimpleVerifier;
 import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.KeyLocator.KeyLocatorType;
 import org.ccnx.ccn.protocol.KeyName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
-import org.ccnx.ccn.protocol.ContentObject.SimpleVerifier;
-import org.ccnx.ccn.protocol.KeyLocator.KeyLocatorType;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
@@ -260,7 +260,7 @@ public abstract class KeyManager {
 	 * Get our default private key.
 	 * @return our default private key
 	 */
-	public abstract PrivateKey getDefaultSigningKey();
+	public abstract Key getDefaultSigningKey();
 
 	/**
 	 * Get our default public key.
@@ -313,7 +313,7 @@ public abstract class KeyManager {
 	 * Get our current preferred key locator for this signing key. Uses
 	 * getKeyLocator(PublisherPublicKeyDigest).
 	 */
-	public abstract KeyLocator getKeyLocator(PrivateKey signingKey);
+	public abstract KeyLocator getKeyLocator(Key signingKey);
 	
 	/**
 	 * Get the key locator for our default key. Same as getKeyLocator(null)
@@ -369,20 +369,20 @@ public abstract class KeyManager {
 	 * @param signingKey key whose publisher data we want
 	 * @return the digest of the corresponding public key
 	 */
-	public abstract PublisherPublicKeyDigest getPublisherKeyID(PrivateKey signingKey);
+	public abstract PublisherPublicKeyDigest getPublisherKeyID(Key signingKey);
 	
 	/**
 	 * Get the private key associated with a given publisher 
 	 * @param publisherKeyID the public key digest of the desired key
 	 * @return the key, or null if no such key known to our cache
 	 */
-	public abstract PrivateKey getSigningKey(PublisherPublicKeyDigest publisherKeyID);
+	public abstract Key getSigningKey(PublisherPublicKeyDigest publisherKeyID);
 	
 	/**
 	 * Get all of our private keys, used for cache loading.
 	 * @return an array of our currently available private keys
 	 */
-	public abstract PrivateKey[] getSigningKeys();
+	public abstract Key[] getSigningKeys();
 	
 	/**
 	 * Get the public key digest of all our signing keys -- essentially our available identities.
@@ -397,28 +397,28 @@ public abstract class KeyManager {
 	public abstract CCNTime getKeyVersion(PublisherPublicKeyDigest keyID);
 
 	/**
-	 * Get the public key for a given publisher, going to the network to retrieve it if necessary.
+	 * Get the verification key for a given publisher, going to the network to retrieve it if necessary.
 	 * @param publisherKeyID the digest of the keys we want
 	 * @param keyLocator the key locator to tell us where to retrieve the key from
 	 * @param timeout how long to try to retrieve the key 
 	 * @return the key
 	 * @throws IOException if we run into an error attempting to read the key
 	 */
-	public abstract PublicKey getPublicKey(
+	public abstract Key getVerificationKey(
 			PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator, 
 			long timeout) throws IOException;
 
 	/**
-	 * Get the public key for a given publisher, going to the network to retrieve it if necessary.
+	 * Get the verification key for a given publisher, going to the network to retrieve it if necessary.
 	 * Uses the SystemConfiguration.EXTRA_LONG_TIMEOUT to be aggressive and reexpress.
 	 * @param publisherKeyID the digest of the keys we want
 	 * @param keyLocator the key locator to tell us where to retrieve the key from
 	 * @return the key
 	 * @throws IOException if we run into an error attempting to read the key
 	 */
-	public PublicKey getPublicKey(
+	public Key getVerificationKey(
 			PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator) throws IOException {
-		return getPublicKey(publisherKeyID, keyLocator, SystemConfiguration.EXTRA_LONG_TIMEOUT);
+		return getVerificationKey(publisherKeyID, keyLocator, SystemConfiguration.EXTRA_LONG_TIMEOUT);
 	}
 	
 	/**

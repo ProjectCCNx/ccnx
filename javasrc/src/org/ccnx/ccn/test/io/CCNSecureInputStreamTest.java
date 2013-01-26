@@ -24,8 +24,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
 import java.util.Random;
 
 import javax.crypto.BadPaddingException;
@@ -382,7 +382,7 @@ public class CCNSecureInputStreamTest {
 		InputStream is = new ByteArrayInputStream(basic.encrData, 0, basic.encrData.length);
 		is = new UnbufferedCipherInputStream(is, c);
 		ContentName rootName = SegmentationProfile.segmentRoot(basic.name);
-		PrivateKey signingKey = outputLibrary.keyManager().getSigningKey(publisher);
+		Key signingKey = outputLibrary.keyManager().getSigningKey(publisher);
 		byte [] finalBlockID = SegmentationProfile.getSegmentNumberNameComponent(1);
 		int coLength = Math.min(4096, basic.encrData.length);
 		ContentObject co = new ContentObject(SegmentationProfile.segmentName(rootName, 0),

@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011, 2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -26,7 +26,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.security.PrivateKey;
+import java.security.Key;
 import java.security.PublicKey;
 
 public class EncryptedObjectFileHelper {
@@ -47,7 +47,7 @@ public class EncryptedObjectFileHelper {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T extends Serializable> T readEncryptedObject(File inputFile, PrivateKey decryptionKey) throws FileNotFoundException, IOException, ClassNotFoundException {
+	public static <T extends Serializable> T readEncryptedObject(File inputFile, Key decryptionKey) throws FileNotFoundException, IOException, ClassNotFoundException {
 		
 		// TODO actually decrypt -- put the data through a CipherInputStream before the OIS
 		// read the key block from the file before attaching the CIS

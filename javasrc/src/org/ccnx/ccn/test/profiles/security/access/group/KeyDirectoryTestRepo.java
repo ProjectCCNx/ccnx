@@ -226,7 +226,7 @@ public class KeyDirectoryTestRepo {
 	public void addWrappingKeyToACM() throws Exception {
 		PrivateKey privKey = wrappingKeyPair.getPrivate();
 		byte[] publicKeyIdentifier = CCNDigestHelper.digest(wrappingKeyPair.getPublic().getEncoded());
-		handle.keyManager().getSecureKeyCache().addMyPrivateKey(publicKeyIdentifier, privKey);
+		handle.keyManager().getSecureKeyCache().addMySigningKey(publicKeyIdentifier, privKey);
 	}
 	
 	
@@ -280,7 +280,7 @@ public class KeyDirectoryTestRepo {
 	 */
 	public void testGetPrivateKey() throws Exception {
 		Assert.assertTrue(kd.hasPrivateKeyBlock());
-		PrivateKey privKey = kd.getPrivateKey();
+		Key privKey = kd.getPrivateKey();
 		Assert.assertEquals(wrappedPrivateKey, privKey);
 	}
 	

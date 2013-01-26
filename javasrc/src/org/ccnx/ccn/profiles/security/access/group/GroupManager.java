@@ -346,7 +346,7 @@ public class GroupManager {
 	 * @throws InvalidKeyException 
 	 * @throws NoSuchAlgorithmException 
 	 */
-	public PrivateKey getGroupPrivateKey(String groupFriendlyName, CCNTime privateKeyVersion) 
+	public Key getGroupPrivateKey(String groupFriendlyName, CCNTime privateKeyVersion) 
 			throws ContentDecodingException, IOException, InvalidKeyException, NoSuchAlgorithmException {
 		// Heuristic check
 		if (!amKnownGroupMember(groupFriendlyName)) {
@@ -379,10 +379,10 @@ public class GroupManager {
 			theGroupPublicKey = thisPublicKey.publicKey();
 		}
 		
-		PrivateKey privateKey = privateKeyDirectory.getPrivateKey();
-		if (null != privateKey) {
+		Key privateKey = privateKeyDirectory.getPrivateKey();
+		if (null != privateKey && (privateKey instanceof PrivateKey)) {
 			_handle.keyManager().getSecureKeyCache().addPrivateKey(privateKeyDirectory.getPrivateKeyBlockName(), 
-					PublisherID.generatePublicKeyDigest(theGroupPublicKey), privateKey);
+					PublisherID.generatePublicKeyDigest(theGroupPublicKey), (PrivateKey)privateKey);
 		}
 		return privateKey;
 	}

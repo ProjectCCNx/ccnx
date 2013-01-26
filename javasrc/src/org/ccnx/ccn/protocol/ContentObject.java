@@ -22,10 +22,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.DigestOutputStream;
 import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.PublicKey;
 import java.security.SignatureException;
 import java.security.cert.CertificateEncodingException;
 import java.util.Arrays;
@@ -240,7 +239,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	public ContentObject(ContentName name, 
 			SignedInfo signedInfo,
 			byte [] content, int offset, int length,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException {
+			Key signingKey) throws InvalidKeyException, SignatureException {
 		
 		this(name, signedInfo, content, offset, length, (Signature)null);
 		setSignature(sign(_name, _signedInfo, _content, 0, _content.length, signingKey));
@@ -248,7 +247,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 
 	public ContentObject(ContentName name, 
 			SignedInfo signedInfo,
-			byte [] content, PrivateKey signingKey) throws InvalidKeyException, SignatureException {
+			byte [] content, Key signingKey) throws InvalidKeyException, SignatureException {
 		this(name, signedInfo, content, 0, ((null == content) ? 0 : content.length), signingKey);
 	}
 	
@@ -263,7 +262,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			if (null == keyManager) {
 				keyManager = KeyManager.getDefaultKeyManager();
 			}
-			PrivateKey signingKey = keyManager.getSigningKey(publisher);
+			Key signingKey = keyManager.getSigningKey(publisher);
 			if ((null == publisher) || (null == signingKey)) {
 				signingKey = keyManager.getDefaultSigningKey();
 				publisher = keyManager.getPublisherKeyID(signingKey);
@@ -465,12 +464,12 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		_signature = signature;
 	}
 
-	public void sign(PrivateKey signingKey) throws InvalidKeyException, SignatureException {
+	public void sign(Key signingKey) throws InvalidKeyException, SignatureException {
 		// Use _content to avoid case where content() might want to clone.
 		setSignature(sign(this.name(), this.signedInfo(), this._content, 0, this._content.length, signingKey));
 	}
 	
-	public void sign(String digestAlgorithm, PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
+	public void sign(String digestAlgorithm, Key signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
 		setSignature(sign(this.name(), this.signedInfo(), this._content, 0, this._content.length, 
 						digestAlgorithm, signingKey));
 	}
@@ -478,11 +477,11 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	public static Signature sign(ContentName name, 
 			SignedInfo signedInfo,
 			byte [] content, int offset, int length,
-			PrivateKey signingKey) 
+			Key signingKey) 
 	throws SignatureException, InvalidKeyException {
 		try {
 			return sign(name, signedInfo, content, offset, length,
-					CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, signingKey);
+							CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, signingKey);
 		} catch (NoSuchAlgorithmException e) {
 			if (Log.isLoggable(Level.WARNING))
 				Log.warning("Cannot find default digest algorithm: " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
@@ -506,7 +505,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			SignedInfo signedInfo,
 			byte [] content, int offset, int length,
 			String digestAlgorithm, 
-			PrivateKey signingKey) 
+			Key signingKey) 
 	throws SignatureException, InvalidKeyException, NoSuchAlgorithmException {
 	
 		// Build XML document
@@ -527,12 +526,12 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	}
 
 	/**
-	 * @see ContentObject#verify(ContentObject, PublicKey)
+	 * @see ContentObject#verify(ContentObject, Key)
 	 */
-	public boolean verify(PublicKey publicKey) 
+	public boolean verify(Key key) 
 		throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, 
 				ContentEncodingException {
-		return verify(this, publicKey);
+		return verify(this, key);
 	}
 	
 	public boolean verify(KeyManager keyManager) throws SignatureException, 
@@ -556,7 +555,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	 *   that the caller has already verified that signature. If you're
 	 *   not sure what all this means, you shouldn't be calling this
 	 *   one; use the simple verify above.
-	 * @param publicKey If the caller already knows a public key
+	 * @param key If the caller already knows a key
 	 *   that should be used to verify the signature, they can
 	 *   pass it in. Otherwise, the key locator in the object
 	 *   will be used to find the key.
@@ -565,11 +564,11 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	 * @throws InvalidKeyException 
 	 */
 	public static boolean verify(ContentObject object,
-								 PublicKey publicKey) throws SignatureException, InvalidKeyException, 
+								 Key key) throws SignatureException, InvalidKeyException, 
 					NoSuchAlgorithmException, ContentEncodingException {
 
-		if (null == publicKey) {
-			throw new SignatureException("Cannot verify object without public key -- public key cannot be null!");
+		if (null == key) {
+			throw new SignatureException("Cannot verify object without a verification key -- key cannot be null!");
 		}
 
 		// Start with the cheap part. Derive the content proxy that was signed. This is
@@ -592,9 +591,9 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		boolean result; 
 		
 		if (null != contentProxy) {
-			result = CCNSignatureHelper.verify(contentProxy, object.signature().signature(), object.signature().digestAlgorithm(), publicKey);
+			result = CCNSignatureHelper.verify(contentProxy, object.signature().signature(), object.signature().digestAlgorithm(), key);
 		} else {
-			result = verify(object.name(), object.signedInfo(), object.content(), object.signature(), publicKey);
+			result = verify(object.name(), object.signedInfo(), object.content(), object.signature(), key);
 		}
 	
 		if ((!result) && Log.isLoggable(Log.FAC_VERIFY, Level.WARNING)) {
@@ -614,20 +613,20 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			if (null == keyManager)
 				keyManager = KeyManager.getDefaultKeyManager();
 			
-			PublicKey publicKey = keyManager.getPublicKey(
+			Key verificationKey = keyManager.getVerificationKey(
 					object.signedInfo().getPublisherKeyID(),
 					object.signedInfo().getKeyLocator());
 			
-			if (null == publicKey) {
-				throw new SignatureException("Cannot obtain public key to verify object. Publisher: " + 
+			if (null == verificationKey) {
+				throw new SignatureException("Cannot obtain key to verify object. Publisher: " + 
 						object.signedInfo().getPublisherKeyID() + " Key locator: " + 
 						object.signedInfo().getKeyLocator());
 			}
 			
-			return verify(object, publicKey);
+			return verify(object, verificationKey);
 			
 		} catch (IOException e) {
-			throw new SignatureException("Cannot obtain public key to verify object. Key locator: " + 
+			throw new SignatureException("Cannot obtain key to verify object. Key locator: " + 
 					object.signedInfo().getKeyLocator() + " exception: " + e.getMessage(), e);				
 		}
 	}
@@ -651,11 +650,11 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			SignedInfo signedInfo,
 			byte [] content,
 			Signature signature,
-			PublicKey publicKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, 
+			Key key) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, 
 								ContentEncodingException {
 
-		if (null == publicKey) {
-			throw new SignatureException("Cannot verify object without public key -- public key cannot be null!");
+		if (null == key) {
+			throw new SignatureException("Cannot verify object without verification key -- key cannot be null!");
 		}
 
 		byte [] preparedContent = prepareContent(name, signedInfo, content); 
@@ -664,15 +663,15 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			CCNSignatureHelper.verify(preparedContent,
 					signature.signature(),
 					(signature.digestAlgorithm() == null) ? CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : signature.digestAlgorithm(),
-							publicKey);
+							key);
 		return result;
 
 	}
 
 	public static boolean verify(byte[] proxy, byte [] signature, SignedInfo signedInfo,
-			String digestAlgorithm, PublicKey publicKey) throws InvalidKeyException, SignatureException, 
+			String digestAlgorithm, Key key) throws InvalidKeyException, SignatureException, 
 									NoSuchAlgorithmException {
-		if (null == publicKey) {
+		if (null == key) {
 			throw new SignatureException("Cannot verify object without public key -- public key cannot be null!");
 		}
 
@@ -681,7 +680,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			CCNSignatureHelper.verify(proxy,
 					signature,
 					(digestAlgorithm == null) ? CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : digestAlgorithm,
-							publicKey);
+							key);
 		return result;
 	}
 
@@ -692,7 +691,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			if (null == keyManager)
 				keyManager = KeyManager.getDefaultKeyManager();
 			
-			PublicKey publicKey = keyManager.getPublicKey(
+			Key publicKey = keyManager.getVerificationKey(
 					signedInfo.getPublisherKeyID(),
 					signedInfo.getKeyLocator());
 			

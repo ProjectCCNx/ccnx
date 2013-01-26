@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -22,13 +22,17 @@ import java.io.IOException;
 import java.security.AlgorithmParameters;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.security.spec.InvalidParameterSpecException;
+import java.util.Arrays;
 import java.util.logging.Level;
+
+import javax.crypto.Mac;
 
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.DEREncodable;
@@ -36,6 +40,7 @@ import org.bouncycastle.asn1.DERObjectIdentifier;
 import org.bouncycastle.asn1.DERTags;
 import org.bouncycastle.asn1.DERUnknownTag;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
+import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.PlatformConfiguration;
 import org.ccnx.ccn.impl.security.crypto.SignatureLocks;
 import org.ccnx.ccn.impl.security.crypto.gingerbreadfix.JDKDigestSignature;
@@ -58,7 +63,7 @@ public class SignatureHelper {
 	 */
 	public static byte [] sign(String digestAlgorithm,
 							   byte [] toBeSigned,
-							   PrivateKey signingKey) throws SignatureException, 
+							   Key signingKey) throws SignatureException, 
 							   			NoSuchAlgorithmException, InvalidKeyException {
 		if (null == toBeSigned) {
 			Log.info("sign: null content to be signed!");
@@ -73,13 +78,22 @@ public class SignatureHelper {
 			getSignatureAlgorithmName(((null == digestAlgorithm) || (digestAlgorithm.length() == 0)) ?
 					DigestHelper.DEFAULT_DIGEST_ALGORITHM : digestAlgorithm,
 					signingKey);
+		if (null != sigAlgName && sigAlgName.toUpperCase().startsWith(CryptoConstants.HMAC)) {
+			Mac mac = Mac.getInstance(sigAlgName, KeyManager.PROVIDER);
+			mac.init(signingKey);
+			return mac.doFinal(toBeSigned);
+		}
+		
+		if (null == sigAlgName)
+			throw new InvalidKeyException("Key algorithm: " + signingKey.getAlgorithm() + "not supported");
+		
 		// DKS TODO if we switch to SHA256, this fails.
 		Signature sig = Signature.getInstance(sigAlgName);
 
 		// Protect against GC on platforms that don't do JNI for crypto properly
 		SignatureLocks.signingLock();
 		try {
-			sig.initSign(signingKey);
+			sig.initSign((PrivateKey)signingKey);
 			sig.update(toBeSigned);
 			return sig.sign();
 		} finally {
@@ -99,7 +113,7 @@ public class SignatureHelper {
 	 */
 	public static byte [] sign(String digestAlgorithm,
 							   byte[][] toBeSigneds,
-							   PrivateKey signingKey) throws SignatureException,
+							   Key signingKey) throws SignatureException,
 							   	NoSuchAlgorithmException, InvalidKeyException {
 		if (null == toBeSigneds) {
 			Log.info("sign: null content to be signed!");
@@ -115,13 +129,24 @@ public class SignatureHelper {
 			getSignatureAlgorithmName(((null == digestAlgorithm) || (digestAlgorithm.length() == 0)) ?
 					DigestHelper.DEFAULT_DIGEST_ALGORITHM : digestAlgorithm,
 					signingKey);
-
+		
+		if (null != sigAlgName && sigAlgName.toUpperCase().startsWith(CryptoConstants.HMAC)) {
+			Mac mac = Mac.getInstance(sigAlgName, KeyManager.PROVIDER);
+			mac.init(signingKey);
+			for (byte[] toBeSigned : toBeSigneds)
+				mac.update(toBeSigned);
+			return mac.doFinal();
+		}
+		
+		if (null == sigAlgName)
+			throw new InvalidKeyException("Key algorithm: " + signingKey.getAlgorithm() + "not supported");
+		
 		Signature sig = Signature.getInstance(sigAlgName);
 
 		// Protect against GC on platforms that don't do JNI for crypto properly
 		SignatureLocks.signingLock();
 		try {
-			sig.initSign(signingKey);
+			sig.initSign((PrivateKey)signingKey);
 			for (int i=0; i < toBeSigneds.length; ++i) {
 				sig.update(toBeSigneds[i]);
 			}
@@ -138,7 +163,7 @@ public class SignatureHelper {
 	 * 	signing. Any null arrays are skipped.
 	 * @param signature the signature.
 	 * @param digestAlgorithm the digest algorithm. if null uses DEFAULT_DIGEST_ALGORITHM
-	 * @param verificationKey the public verification key.
+	 * @param verificationKey the public or symmetric (secret) verification key.
 	 * @return the correctness of the signature as a boolean.
 	 * @throws SignatureException
 	 * @throws NoSuchAlgorithmException
@@ -148,7 +173,7 @@ public class SignatureHelper {
 			final byte[][] data,
 			final byte [] signature,
 			String digestAlgorithm,
-			final PublicKey verificationKey) throws SignatureException, 
+			final Key verificationKey) throws SignatureException, 
 						NoSuchAlgorithmException, InvalidKeyException {
 		if (null == verificationKey) {
 			Log.info("verify: Verifying key cannot be null.");
@@ -160,6 +185,16 @@ public class SignatureHelper {
 					DigestHelper.DEFAULT_DIGEST_ALGORITHM : digestAlgorithm,
 					verificationKey);
 		
+		if (null != sigAlgName && sigAlgName.toUpperCase().startsWith(CryptoConstants.HMAC)) {
+			Mac mac = Mac.getInstance(sigAlgName, KeyManager.PROVIDER);
+			mac.init(verificationKey);
+			for (byte[] b : data) {
+				mac.update(b);
+			}
+			byte[] check = mac.doFinal();
+			return Arrays.equals(check, signature);
+		}
+		
 		if (PlatformConfiguration.workaroundGingerbreadBug) {
 			// this clause is only used when running on Android Gingerbread. It is
 			// necessary to work around a bug in the Gingerbread version of
@@ -168,7 +203,7 @@ public class SignatureHelper {
 				boolean verify() throws InvalidKeyException, SignatureException {
 					SignatureLocks.signingLock();
 					try {
-						engineInitVerify(verificationKey);
+						engineInitVerify((PublicKey)verificationKey);
 						if (null != data) {
 							for (int i=0; i < data.length; ++i) {
 								if (data[i] != null)
@@ -182,12 +217,15 @@ public class SignatureHelper {
 				}
 			}.verify();
 		} else {
+			
+			if (null == sigAlgName)
+				throw new InvalidKeyException("Key algorithm: " + verificationKey.getAlgorithm() + "not supported");
 			Signature sig = Signature.getInstance(sigAlgName);
 
 			// Protect against GC on platforms that don't do JNI for crypto properly
 			SignatureLocks.signingLock();
 			try {
-				sig.initVerify(verificationKey);
+				sig.initVerify((PublicKey)verificationKey);
 				if (null != data) {
 					for (int i=0; i < data.length; ++i) {
 						if (data[i] != null)
@@ -214,7 +252,7 @@ public class SignatureHelper {
 	 * @throws NoSuchAlgorithmException
 	 */
 	public static boolean verify(byte [] data, byte [] signature, String digestAlgorithm,
-										PublicKey verificationKey) 
+										Key verificationKey) 
 					throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
 		return verify(new byte[][]{data}, signature, digestAlgorithm, verificationKey);
 	}
@@ -235,7 +273,7 @@ public class SignatureHelper {
 	 * @throws InvalidAlgorithmParameterException
 	 */
 	public static AlgorithmIdentifier getSignatureAlgorithm(
-			String hashAlgorithm, PrivateKey signingKey)
+			String hashAlgorithm, Key signingKey)
 	throws NoSuchAlgorithmException, InvalidParameterSpecException, 
 	InvalidAlgorithmParameterException
 	{
@@ -286,21 +324,15 @@ public class SignatureHelper {
 	 *
 	 * @param hashAlgorithm the JCA standard name of the digest algorithm
 	 * (e.g. "SHA1").
-	 * @param signingKey the private key that will be used to compute the
+	 * @param signingKey the key that will be used to compute the
 	 * signature.
 	 *
 	 * @returns the JCA string alias for the signature algorithm.
 	 */
 	public static String getSignatureAlgorithmName(
-			String hashAlgorithm, PrivateKey signingKey)
+			String hashAlgorithm, Key signingKey)
 	{
 		return getSignatureAlgorithmName(hashAlgorithm, signingKey.getAlgorithm());
-	}
-
-	public static String getSignatureAlgorithmName(
-			String hashAlgorithm, PublicKey publicKey)
-	{
-		return getSignatureAlgorithmName(hashAlgorithm, publicKey.getAlgorithm());
 	}
 
 	/**
