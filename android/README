@@ -4,7 +4,14 @@ Building
 * First 'make' the top level ccn project
 * cd android
 * make (or make with-bcp)
-* make install
+* make install (to install all apps to a connected device or emulator)
+
+Supported SDK Versions:
+* Android NDK >= r7
+* Android SDK >= r15 (with minimum API level 7 installed)
+
+We have tested with the minimum required SDKs listed above, as well as with
+newer versions up to ANDROID SDK r21 and NDK r8d.
 
 (Please see "Android Build System Notes" below for extended details on building CCN for Android.)
 
@@ -63,16 +70,12 @@ The android code depends on ccn.jar, so you must have run make in
 the top level directory before building here.
 
 Ccnd and the c-client library require OpenSSL library, which we need
-to include build ourselves, as there is no apparent way to use the
-included Android library.  As a result, we can use the latest 1.0.0d
-library!
+to include in the build, as one cannot depend on the version distributed with
+the Android OS.
 
 You must set the environment variables ANDROID_SDK and ANDROID_NDK.
-These must point to the root of the SDK Tools and NDK directories.  
+These must point to the root of the SDK Tools and NDK directories.
 
-Supported Versions:
-* Android NDK >= r7
-* Android SDK >= r16
 
 Supported Target Android Devices:
 Android 2.1
@@ -95,8 +98,8 @@ future.
 
 For example (Use the path to desired tools for your platform):
 
-	export ANDROID_SDK=~/android-sdk-mac_x86
-	export ANDROID_NDK=~/android-ndk-r7
+	export ANDROID_SDK=~/android-sdk-linux_x86
+	export ANDROID_NDK=~/android-ndk-r8
 
 Android is not built as part of the top-level make.  You must run
 make in this directory.
@@ -140,7 +143,7 @@ these steps:
 
 Honeycomb and Ice Cream Sandwich
 ================================
-Android 3.x & 4.x devices (and possibly some 2.x) devices the crypto support includes a subset of the Bouncy Castle library.  See: http://redmine.ccnx.org/issues/100589 for details.  As a result, the 3.x & 4.x devices we tested failed with ClassNotFoundException trying to resolve the BouncyCastleProvider.  To work around this, we include the Bouncy Castle provider jar file if you specify in the top level of the android project directory:
+Android 3.x & 4.x devices (and possibly some 2.x) include a subset of the Bouncy Castle library.  See: http://redmine.ccnx.org/issues/100589 for details.  As a result, the 3.x & 4.x devices we tested failed with ClassNotFoundException trying to resolve the BouncyCastleProvider.  To work around this, we include the Bouncy Castle provider jar file if you specify in the top level of the android project directory:
 
 make with-bcp
 
