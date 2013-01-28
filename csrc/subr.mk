@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -49,12 +49,12 @@ uninstall_programs:
 uninstall: uninstall_libs uninstall_programs
 
 coverage:
-	X () { test -f $$1 || return 0; gcov $$*; }; X *.gc??
+	X () { test -f $$1 || return 0; $(GCOV) $$*; }; X *.gc??
 
 shared:
 
 depend: dir.mk $(CSRC)
-	for i in $(CSRC); do gcc -MM $(CPREFLAGS) $$i; done > depend
+	for i in $(CSRC); do $(GCC) -MM $(CPREFLAGS) $$i; done > depend
 	tail -n `wc -l < depend` dir.mk | diff - depend
 
 install_libs install_programs install uninstall_libs uninstall_programs uninstall coverage shared documentation depend config_subdir: _always
