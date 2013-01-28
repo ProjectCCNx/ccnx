@@ -2,12 +2,12 @@
 .\"     Title: ccndsmoketest
 .\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
 .\" Generator: DocBook XSL Stylesheets v1.76.0 <http://docbook.sf.net/>
-.\"      Date: 12/08/2012
+.\"      Date: 01/28/2013
 .\"    Manual: \ \&
-.\"    Source: \ \& 0.7.0
+.\"    Source: \ \& 0.7.1
 .\"  Language: English
 .\"
-.TH "CCNDSMOKETEST" "1" "12/08/2012" "\ \& 0\&.7\&.0" "\ \&"
+.TH "CCNDSMOKETEST" "1" "01/28/2013" "\ \& 0\&.7\&.1" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -31,7 +31,7 @@
 ccndsmoketest \- Simple program for smoke\-test of ccnd\&.
 .SH "SYNOPSIS"
 .sp
-\fBccndsmoketest\fR [\-b] [\-t \fImsec\fR] [ (\-T | \-u) \fIhostname\fR ] ( send \fIfilename\fR | \fIsendfilename\fR\&.ccnb | recv | kill | status | timeo \fImsec\fR ) \fI\&...\fR
+\fBccndsmoketest\fR [\-b] [\-t \fImsec\fR] [ (\-T | \-u) \fIhostname\fR ] ( send \fIfilename\fR | \fIsendfilename\fR\&.ccnb | recv | kill | status [\-x] | timeo \fImsec\fR ) \fI\&...\fR
 .SH "DESCRIPTION"
 .sp
 The \fBccndsmoketest\fR is a simple program for sending and receiving data on sockets, for the purpose of testing ccnd\&.
@@ -57,6 +57,11 @@ Contact the ccnd on the named host via TCP instead of the default unix\-domain s
 \fB\-u\fR \fIhostname\fR
 .RS 4
 Contact the ccnd on the named host via UDP instead of the default unix\-domain socket\&.
+.RE
+.PP
+\fB\-x\fR
+.RS 4
+Use in conjunction with status command, returns XML output on stdout
 .RE
 .SH "ARGUMENTS"
 .sp
@@ -90,7 +95,9 @@ Shuts down ccnd cleanly\&.
 \fBstatus\fR
 .RS 4
 Used to implement
-\fBccndstatus\fR(1)\&.
+\fBccndstatus\fR(1)\&. Pass optional [\-x] argument to request XML output\&. See
+CCND Status XML documentation
+for more details\&.
 .RE
 .PP
 \fBtimeo\fR \fImilliseconds\fR
