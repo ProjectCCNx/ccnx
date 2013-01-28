@@ -1,3 +1,36 @@
+Changes between 0.7.0 and 0.7.1:
+--------------------------------
+This highlights some important changes since the most recent numbered release.
+Refer to http://redmine.ccnx.org/projects/ccn/versions/14 for more details on
+CCNx 0.7.1.
+
+  * Issues Resolved:
+	* Bug #100164: SegmentationProfile.getSegment doesn't retry if retrieved segment doesn't verify
+	* Bug #100380: CCNNetworkManager resets static value in constructor
+	* Bug #100753: CCNS_SYNC_SCOPE is undocumented
+	* Bug #100754: TeX problem with ifpdf?
+	* Bug #100782: ccn_resolve_version does not return 1 when name is extended
+	* Bug #100799: SyncTest loop
+	* Bug #100807: Document the xml presentation of ccnd status
+	* Bug #100864: CCN plugin for VLC on Android stalls
+	* Bug #100868: Lots of warnings in java source code
+	* Bug #100870: Makefile typo causes apps to be installed improperly in ./bin and ./lib
+	* Bug #100871: Java sync comparator gives up too early in some cases
+	* Bug #100872: Initialize _lifetime in ForwardingEntry
+	* Bug #100875: Clean up various minor issues in java sync code
+	* Bug #100876: Java sync can recreate bad tree in update
+	* Bug #100877: Synchronization problems with java synccomparator handoff
+	* Bug #100880: Findbugs finds issues in java code
+	* Bug #100885: Cleanup CCNx Android build and bring up to date with latest NDK/SDK
+	* Feature #100157: generalize signing/verification code to support MACs
+	* Feature #100756: restructure sync slice code for java library
+	* Feature #100777: Improve and modernize java library timer mechanisms
+	* Feature #100869: Improve in-line documentation of java sync code
+	* Feature #100878: Start a repository in ccndstart
+	* Feature #100879: Add guest prefix support
+	* Feature #100881: Java BloomFilter should be deprecated
+	* Support #100884: Prepare for ccnx-0.7.1 release
+
 Changes between 0.6.2 and 0.7.0:
 --------------------------------
 This highlights some important changes since the most recent numbered release.
