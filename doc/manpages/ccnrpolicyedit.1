@@ -1,5 +1,5 @@
 '\" t
-.\"     Title: ccnlink
+.\"     Title: ccnrpolicyedit
 .\"    Author: [see the "AUTHOR" section]
 .\" Generator: DocBook XSL Stylesheets v1.76.0 <http://docbook.sf.net/>
 .\"      Date: 01/28/2013
@@ -7,7 +7,7 @@
 .\"    Source: \ \& 0.7.1
 .\"  Language: English
 .\"
-.TH "CCNLINK" "1" "01/28/2013" "\ \& 0\&.7\&.1" "\ \&"
+.TH "CCNRPOLICYEDIT" "1" "01/28/2013" "\ \& 0\&.7\&.1" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -28,29 +28,24 @@
 .\" * MAIN CONTENT STARTS HERE *
 .\" -----------------------------------------------------------------
 .SH "NAME"
-ccnlink \- Create new link to target URI\&.
+ccnrpolicyedit \- edit policy\&.xml
 .SH "SYNOPSIS"
 .sp
-\fBccnlink\fR [\-q] [\-r] \fIlinkURI\fR \fIlinkTargetURI\fR [\-as \fIpathToKeystore\fR ]
+\fBccnrpolicyedit\fR
 .SH "DESCRIPTION"
 .sp
-The \fBccnlink\fR utility creates a CCN link object with the name, linkURI, and a target of linkTargetURI\&. By default, the utility attempts to store the link in a Repository\&.
+The \fBccnrpolicyedit\fR command provides a convenient way to edit the policy associated with a repository instance\&.
+.sp
+The true repository policy is stored in a content object in the repo itself\&. It is encoded in ccnb format, which is not directly editable with the usual tools, such as a text editor\&. To cope with this, \fBccnrpolicyedit\fR works by translating the ccnb form to a normal text\-based xml encoding in a temporary copy, calling a text editor on this copy, and then translating back to ccnb before storing the updated policy in the repo\&.
 .SH "OPTIONS"
-.PP
-\fB\-q\fR
-.RS 4
-("quiet") If specified, sets the default Logging level to WARNING\&.
-.RE
-.PP
-\fB\-r\fR
-.RS 4
-("raw") Prepares a new link to be output to CCN\&. An Interest must be expressed for it\&.
-.RE
-.PP
-\fB\-as\fR \fIpathToKeystore\fR
-.RS 4
-Specifies the relative or absolute pathname of a file where CCNx compatible keys have been saved\&. If a relative path is specified, it is relative to the current execution directory\&. If not specified, the default keystore is used\&.
-.RE
+.sp
+None\&.
+.SH "ARGUMENTS"
+.sp
+None\&.
+.SH "ENVIRONMENT"
+.sp
+The value of \fBCCNR_GLOBAL_PREFIX\fR controls the repository instance that is to be configured\&. The usual way to set this is by editing ~/\&.ccnx/ccndrc The value of \fBEDITOR\fR may be used to specify what text editor should be called to do the actual editing\&. The default is \fBvi\fR\&.
 .SH "EXIT STATUS"
 .PP
 \fB0\fR
@@ -58,10 +53,13 @@ Specifies the relative or absolute pathname of a file where CCNx compatible keys
 Success
 .RE
 .PP
-\fB1\fR
+\fBnonzero\fR
 .RS 4
-Failure
+Failure (syntax or usage error, file not found)
 .RE
+.SH "FILES"
+.sp
+\fB~/\&.ccnx/ccnd\&.conf, ~/\&.ccnx/ccndrc, ~/\&.ccnx/repository/config\fR
 .SH "AUTHOR"
 .sp
-Diana Smetters
+Michael Plass
