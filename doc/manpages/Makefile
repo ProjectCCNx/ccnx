@@ -54,7 +54,7 @@ PAGE_NAMES =        		\
 	ccntestloop 		\
 
 
-PROJECT_NUMBER = 0.7.1rc1
+PROJECT_NUMBER = 0.7.1
 SRC_TXT     = $(PAGE_NAMES:=.1.txt)
 DERIVED_HTML= $(PAGE_NAMES:=.1.html)
 DERIVED_PDF = $(PAGE_NAMES:=.1.pdf)
