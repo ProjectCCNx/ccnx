@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2012, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -86,7 +86,7 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 			if (null != sd && null != startHash && startHash.length == 0) {
 				// For 0 length hash (== start with current hash) we can just add the handler to the leadComparator if there is one since it should
 				// already know the latest hash
-				sd._leadComparator.addCallback(syncHandler, startHash);
+				sd._leadComparator.addCallback(syncHandler);
 				sendRootAdviseRequest = false;
 			} else {
 				boolean newData = false;
@@ -229,10 +229,13 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 				Log.info(Log.FAC_SYNC, "Saw data from interest: hash: {0}", Component.printURI(hash));
 			if (null != cg) {
 				for (SliceComparator sc : cg._activeComparators) {
+Log.info("Maybe we'll wakeup {0}", sc);
 					SyncTreeEntry ste = sc.getHashCache().addHash(hash, sc.getNodeCache());
 					if (sc == cg._leadComparator || !sc.shutdownIfUseless()) {
+Log.info("We're trying to wakeup {0}", sc);
 						if (sc.addPending(ste)) {
 							sc.checkNextRound();
+Log.info("We're waking up {0}", sc);
 							sc.kickCompare();
 						}
 					}
