@@ -229,13 +229,10 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 				Log.info(Log.FAC_SYNC, "Saw data from interest: hash: {0}", Component.printURI(hash));
 			if (null != cg) {
 				for (SliceComparator sc : cg._activeComparators) {
-Log.info("Maybe we'll wakeup {0}", sc);
 					SyncTreeEntry ste = sc.getHashCache().addHash(hash, sc.getNodeCache());
 					if (sc == cg._leadComparator || !sc.shutdownIfUseless()) {
-Log.info("We're trying to wakeup {0}", sc);
 						if (sc.addPending(ste)) {
 							sc.checkNextRound();
-Log.info("We're waking up {0}", sc);
 							sc.kickCompare();
 						}
 					}
