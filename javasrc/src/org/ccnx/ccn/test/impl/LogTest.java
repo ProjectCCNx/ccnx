@@ -23,6 +23,7 @@ import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 import java.util.logging.StreamHandler;
 
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -35,6 +36,7 @@ public class LogTest {
 	protected static Level[] prevLevels;
 	protected int _lastStart;
 	protected int _lastFinish;
+	protected static Object _testLock = new Object();
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -64,7 +66,7 @@ public class LogTest {
 	}
 
 	protected void doTest(int facility, Level level) {
-		synchronized (this) {
+		synchronized (_testLock) {
 			// set level off and make sure no logging
 			Log.setLevel(facility, Level.OFF);
 			int result = writeLog(facility, level, "test me off");
@@ -74,7 +76,7 @@ public class LogTest {
 				/* b = Arrays.copyOfRange(contents, _lastStart, _lastFinish); */
 				if (!(contents.length < _lastFinish)) {
 					int j = 0;
-					for (int i = _lastStart; i <= _lastFinish; i++) {
+					for (int i = _lastStart; i < _lastFinish; i++) {
 						b[j] = contents[i];
 						j++;
 					}
@@ -89,9 +91,9 @@ public class LogTest {
 						b[j] = (byte) 0;	
 					}
 				}
-				System.out.println("Logging problem - we saw: \"" + new String(b) + "\" when there should have been no log");
+				System.out.println("Logging problem - we saw: \"" + DataUtils.printBytes(b) + "\" when there should have been no log");
 				Log.setLevel(Level.ALL);
-				Log.severe("Logging problem: we saw: \"{0}\" when there should have been no log", new String(b));
+				Log.severe("Logging problem: we saw: \"{0}\" when there should have been no log", DataUtils.printBytes(b));
 			}
 			Assert.assertEquals(0, result);
 	
@@ -132,7 +134,7 @@ public class LogTest {
 
 	@Test
 	public void testGetLevelInt() {
-		synchronized (this) {
+		synchronized (_testLock) {
 			Log.setLevel(Level.OFF);
 			Assert.assertEquals(Level.OFF.intValue(), Log.getLevel().intValue());
 			Assert.assertEquals(Level.OFF.intValue(), Log.getLevel(Log.FAC_DEFAULT).intValue());
@@ -144,7 +146,7 @@ public class LogTest {
 
 	@Test
 	public void testGetSetLevels() {
-		synchronized (this) {
+		synchronized (_testLock) {
 			Log.setLevel(Log.FAC_ALL, Level.WARNING);
 			Log.setLevel(Log.FAC_NETMANAGER, Level.INFO);
 			Log.setLevel(Log.FAC_IO, Level.FINE);
