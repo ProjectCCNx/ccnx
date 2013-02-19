@@ -54,7 +54,7 @@ coverage:
 shared:
 
 depend: dir.mk $(CSRC)
-	for i in $(CSRC); do $(GCC) -MM $(CPREFLAGS) $$i; done > depend
+	for i in $(CSRC); do $(CC) -MM $(CPREFLAGS) $$i; done > depend
 	tail -n `wc -l < depend` dir.mk | diff - depend
 
 install_libs install_programs install uninstall_libs uninstall_programs uninstall coverage shared documentation depend config_subdir: _always
