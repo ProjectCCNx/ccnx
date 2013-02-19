@@ -26,7 +26,7 @@ CSRC = ccn_bloom.c \
        ccn_buf_decoder.c ccn_buf_encoder.c ccn_bulkdata.c \
        ccn_charbuf.c ccn_client.c ccn_coding.c ccn_digest.c ccn_extend_dict.c \
        ccn_dtag_table.c ccn_indexbuf.c ccn_interest.c ccn_keystore.c \
-       ccn_match.c ccn_reg_mgmt.c ccn_face_mgmt.c \
+       ccn_match.c ccn_nametree.c ccn_reg_mgmt.c ccn_face_mgmt.c \
        ccn_merkle_path_asn1.c ccn_name_util.c ccn_schedule.c \
        ccn_seqwriter.c ccn_signing.c \
        ccn_sockcreate.c ccn_traverse.c ccn_uri.c \
@@ -45,7 +45,7 @@ LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o \
        ccn_name_util.o ccn_face_mgmt.o ccn_reg_mgmt.o ccn_digest.o \
        ccn_interest.o ccn_keystore.o ccn_seqwriter.o ccn_signing.o \
        ccn_sockcreate.o ccn_traverse.o \
-       ccn_match.o hashtb.o ccn_merkle_path_asn1.o \
+       ccn_match.o ccn_nametree.o hashtb.o ccn_merkle_path_asn1.o \
        ccn_sockaddrutil.o ccn_setup_sockaddr_un.o \
        ccn_bulkdata.o ccn_versioning.o ccn_header.o ccn_fetch.o \
        ccn_btree.o ccn_btree_content.o ccn_btree_store.o \
@@ -204,6 +204,7 @@ ccn_keystore.o: ccn_keystore.c ../include/ccn/keystore.h
 ccn_match.o: ccn_match.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/digest.h
+ccn_nametree.o: ccn_nametree.c ../include/ccn/nametree.h
 ccn_reg_mgmt.o: ccn_reg_mgmt.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/reg_mgmt.h
