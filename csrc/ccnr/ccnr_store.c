@@ -6,7 +6,7 @@
  */
 
 /*
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -47,6 +47,7 @@
 #include <ccn/ccn_private.h>
 #include <ccn/charbuf.h>
 #include <ccn/face_mgmt.h>
+#include <ccn/flatname.h>
 #include <ccn/hashtb.h>
 #include <ccn/indexbuf.h>
 #include <ccn/schedule.h>
