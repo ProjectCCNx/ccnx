@@ -16,7 +16,127 @@
  * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
- 
+
+#include <stdlib.h>
+#include <ccn/charbuf.h>
+#include <ccn/flatname.h>
 #include <ccn/nametree.h>
 
-int nonempty;
+#define CCN_SKIPLIST_MAX_DEPTH 30
+
+static struct ccn_nmentry *
+content_from_cookie(struct ccn_nametree *h, ccn_cookie cookie)
+{
+    struct ccn_nmentry *ans;
+    
+    ans = h->nmentry_by_cookie[cookie & h->cookiemask];
+    if (ans == NULL && ans->cookie == cookie)
+        return(ans);
+    return(NULL);
+}
+
+/** @returns 1 if an exact match was found */
+static int
+content_skiplist_findbefore(struct ccn_nametree *h,
+                            struct ccn_charbuf *flatname,
+                            struct ccn_nmentry *wanted_old,
+                            ccn_cookie **ans)
+{
+    int i;
+    ccn_cookie *c;
+    struct ccn_nmentry *content;
+    int order;
+    int found = 0;
+    
+    c = h->skiplinks;
+    for (i = h->skipdim - 1; i >= 0; i--) {
+        for (;;) {
+            if (c[i] == 0)
+                break;
+            content = content_from_cookie(h, c[i]);
+            if (content == NULL)
+                abort();
+            order = ccn_flatname_charbuf_compare(content->flatname, flatname);
+            if (order > 0)
+                break;
+            if (order == 0 && (wanted_old == content || wanted_old == NULL)) {
+                found = 1;
+                break;
+            }
+            if (content->skiplinks == NULL || i >= content->skipdim)
+                abort();
+            c = content->skiplinks;
+        }
+        ans[i] = c;
+    }
+    return(found);
+}
+
+/** @returns -1 and does not insert if an exact key match is found */
+static int
+content_skiplist_insert(struct ccn_nametree *h, struct ccn_nmentry *content)
+{
+    int i;
+    int d;
+    ccn_cookie *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
+    int found = 0;
+    
+    if (content->skiplinks != NULL) abort();
+    for (d = 1; d < CCN_SKIPLIST_MAX_DEPTH - 1; d++)
+        if ((nrand48(h->seed) & 3) != 0) break;
+    while (h->skipdim < d)
+        h->skiplinks[h->skipdim++] = 0;
+    found = content_skiplist_findbefore(h, content->flatname, NULL, pred);
+    if (found)
+        return(-1);
+    content->skiplinks = calloc(d, sizeof(ccn_cookie));
+    for (i = 0; i < d; i++) {
+        content->skiplinks[i] = pred[i][i];
+        pred[i][i] = content->cookie;
+    }
+    return(0);
+}
+
+static void
+content_skiplist_remove(struct ccn_nametree *h, struct ccn_nmentry *content)
+{
+    int i;
+    int d;
+    ccn_cookie *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
+    
+    if (content->skiplinks == NULL)
+        return;
+    content_skiplist_findbefore(h, content->flatname, content, pred);
+    d = content->skipdim;
+    if (h->skipdim < d) abort();
+    for (i = 0; i < d; i++)
+        pred[i][i] = content->skiplinks[i];
+    free(content->skiplinks);
+    content->skiplinks = NULL;
+}
+
+int
+enroll_content(struct ccn_nametree *h, struct ccn_nmentry *content)
+{
+    ccn_cookie cookie;
+    unsigned i;
+    int res;
+    
+    cookie = ++(h->cookie);
+    i = cookie & h->cookiemask;
+    if (h->nmentry_by_cookie[i] == NULL) {
+        content->cookie = cookie;
+        res = content_skiplist_insert(h, content);
+        if (res == -1) {
+            h->cookie--;
+            content->cookie = 0;
+            return(-1);
+        }
+        h->nmentry_by_cookie[i] = content;
+        return(0);
+    }
+    /* Add code to expand nmentry_by_cookie or remove old entry */
+    if (0)
+        content_skiplist_remove(h, content); /* silence warnings for now */
+    return(-1);
+}
