@@ -36,18 +36,18 @@
 typedef unsigned ccn_cookie;
 
 struct ccn_nametree;
-struct ccn_nmentry;
+struct ccny;
 
 struct ccn_nametree {
     ccn_cookie cookie;      /**< newest used cookie number */
     unsigned cookiemask;    /**< one less than a power of two */
-    struct ccn_nmentry **nmentry_by_cookie; /**< for direct lookup by cookie */
+    struct ccny **nmentry_by_cookie; /**< for direct lookup by cookie */
     int skipdim;            /**< dimension of skiplinks array */
     ccn_cookie *skiplinks;  /**< skiplist for name-ordered ops */
     unsigned short seed[3]; /**< for PRNG */
 };
 
-struct ccn_nmentry {
+struct ccny {
     ccn_cookie cookie;      /**< cookie for this entry */
     struct ccn_charbuf *flatname; /**< for skiplist, et. al. */
     int skipdim;            /**< dimension of skiplinks array */

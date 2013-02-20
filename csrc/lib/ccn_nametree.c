@@ -32,10 +32,10 @@
  *
  * @returns 1 if an exact match was found
  */
-static struct ccn_nmentry *
-content_from_cookie(struct ccn_nametree *h, ccn_cookie cookie)
+static struct ccny *
+ccny_from_cookie(struct ccn_nametree *h, ccn_cookie cookie)
 {
-    struct ccn_nmentry *ans;
+    struct ccny *ans;
     
     ans = h->nmentry_by_cookie[cookie & h->cookiemask];
     if (ans == NULL && ans->cookie == cookie)
@@ -54,12 +54,12 @@ content_from_cookie(struct ccn_nametree *h, ccn_cookie cookie)
 static int
 content_skiplist_findbefore(struct ccn_nametree *h,
                             struct ccn_charbuf *flatname,
-                            struct ccn_nmentry *wanted_old,
+                            struct ccny *wanted_old,
                             ccn_cookie **ans)
 {
     int i;
     ccn_cookie *c;
-    struct ccn_nmentry *content;
+    struct ccny *content;
     int order;
     int found = 0;
     
@@ -68,7 +68,7 @@ content_skiplist_findbefore(struct ccn_nametree *h,
         for (;;) {
             if (c[i] == 0)
                 break;
-            content = content_from_cookie(h, c[i]);
+            content = ccny_from_cookie(h, c[i]);
             if (content == NULL)
                 abort();
             order = ccn_flatname_charbuf_compare(content->flatname, flatname);
@@ -93,7 +93,7 @@ content_skiplist_findbefore(struct ccn_nametree *h,
  * @returns -1 and does not insert if an exact key match is found
  */
 static int
-content_skiplist_insert(struct ccn_nametree *h, struct ccn_nmentry *content)
+content_skiplist_insert(struct ccn_nametree *h, struct ccny *content)
 {
     int i;
     int d;
@@ -122,7 +122,7 @@ content_skiplist_insert(struct ccn_nametree *h, struct ccn_nmentry *content)
  * The entry must be present.
  */
 static void
-content_skiplist_remove(struct ccn_nametree *h, struct ccn_nmentry *content)
+content_skiplist_remove(struct ccn_nametree *h, struct ccny *content)
 {
     int i;
     int d;
@@ -147,7 +147,7 @@ content_skiplist_remove(struct ccn_nametree *h, struct ccn_nmentry *content)
  * @returns -1 if an entry with the name is already present.
  */
 int
-enroll_content(struct ccn_nametree *h, struct ccn_nmentry *content)
+enroll_content(struct ccn_nametree *h, struct ccny *content)
 {
     ccn_cookie cookie;
     unsigned i;
