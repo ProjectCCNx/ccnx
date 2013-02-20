@@ -24,6 +24,14 @@
 
 #define CCN_SKIPLIST_MAX_DEPTH 30
 
+/**
+ *  Look up an entry, given a cookie.
+ *
+ * The ans array is populated with pointers to the skiplinks
+ * at each level.
+ *
+ * @returns 1 if an exact match was found
+ */
 static struct ccn_nmentry *
 content_from_cookie(struct ccn_nametree *h, ccn_cookie cookie)
 {
@@ -35,7 +43,14 @@ content_from_cookie(struct ccn_nametree *h, ccn_cookie cookie)
     return(NULL);
 }
 
-/** @returns 1 if an exact match was found */
+/** 
+ *  Find the entry, or the one just before where it would go
+ *
+ * The ans array is populated with pointers to the skiplinks
+ * at each level.
+ *
+ * @returns 1 if an exact match was found
+ */
 static int
 content_skiplist_findbefore(struct ccn_nametree *h,
                             struct ccn_charbuf *flatname,
@@ -72,7 +87,11 @@ content_skiplist_findbefore(struct ccn_nametree *h,
     return(found);
 }
 
-/** @returns -1 and does not insert if an exact key match is found */
+/**
+ *  Insert an entry into the skiplist
+ *
+ * @returns -1 and does not insert if an exact key match is found
+ */
 static int
 content_skiplist_insert(struct ccn_nametree *h, struct ccn_nmentry *content)
 {
@@ -97,6 +116,11 @@ content_skiplist_insert(struct ccn_nametree *h, struct ccn_nmentry *content)
     return(0);
 }
 
+/**
+ *  Remove an entry from the skiplist
+ *
+ * The entry must be present.
+ */
 static void
 content_skiplist_remove(struct ccn_nametree *h, struct ccn_nmentry *content)
 {
@@ -115,6 +139,13 @@ content_skiplist_remove(struct ccn_nametree *h, struct ccn_nmentry *content)
     content->skiplinks = NULL;
 }
 
+/**
+ *  Enroll an entry into the nametree
+ *
+ * Allocation errors are fatal.
+ *
+ * @returns -1 if an entry with the name is already present.
+ */
 int
 enroll_content(struct ccn_nametree *h, struct ccn_nmentry *content)
 {
