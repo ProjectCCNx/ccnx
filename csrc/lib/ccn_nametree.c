@@ -52,14 +52,14 @@ ccny_from_cookie(struct ccn_nametree *h, ccn_cookie cookie)
  * @returns 1 if an exact match was found
  */
 static int
-content_skiplist_findbefore(struct ccn_nametree *h,
-                            struct ccn_charbuf *flatname,
-                            struct ccny *wanted_old,
-                            ccn_cookie **ans)
+ccny_skiplist_findbefore(struct ccn_nametree *h,
+                         struct ccn_charbuf *flatname,
+                         struct ccny *wanted_old,
+                         ccn_cookie **ans)
 {
     int i;
     ccn_cookie *c;
-    struct ccny *content;
+    struct ccny *y;
     int order;
     int found = 0;
     
@@ -68,19 +68,19 @@ content_skiplist_findbefore(struct ccn_nametree *h,
         for (;;) {
             if (c[i] == 0)
                 break;
-            content = ccny_from_cookie(h, c[i]);
-            if (content == NULL)
+            y = ccny_from_cookie(h, c[i]);
+            if (y == NULL)
                 abort();
-            order = ccn_flatname_charbuf_compare(content->flatname, flatname);
+            order = ccn_flatname_charbuf_compare(y->flatname, flatname);
             if (order > 0)
                 break;
-            if (order == 0 && (wanted_old == content || wanted_old == NULL)) {
+            if (order == 0 && (wanted_old == y || wanted_old == NULL)) {
                 found = 1;
                 break;
             }
-            if (content->skiplinks == NULL || i >= content->skipdim)
+            if (y->skiplinks == NULL || i >= y->skipdim)
                 abort();
-            c = content->skiplinks;
+            c = y->skiplinks;
         }
         ans[i] = c;
     }
@@ -93,25 +93,25 @@ content_skiplist_findbefore(struct ccn_nametree *h,
  * @returns -1 and does not insert if an exact key match is found
  */
 static int
-content_skiplist_insert(struct ccn_nametree *h, struct ccny *content)
+ccny_skiplist_insert(struct ccn_nametree *h, struct ccny *y)
 {
     int i;
     int d;
     ccn_cookie *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
     int found = 0;
     
-    if (content->skiplinks != NULL) abort();
+    if (y->skiplinks != NULL) abort();
     for (d = 1; d < CCN_SKIPLIST_MAX_DEPTH - 1; d++)
         if ((nrand48(h->seed) & 3) != 0) break;
     while (h->skipdim < d)
         h->skiplinks[h->skipdim++] = 0;
-    found = content_skiplist_findbefore(h, content->flatname, NULL, pred);
+    found = ccny_skiplist_findbefore(h, y->flatname, NULL, pred);
     if (found)
         return(-1);
-    content->skiplinks = calloc(d, sizeof(ccn_cookie));
+    y->skiplinks = calloc(d, sizeof(ccn_cookie));
     for (i = 0; i < d; i++) {
-        content->skiplinks[i] = pred[i][i];
-        pred[i][i] = content->cookie;
+        y->skiplinks[i] = pred[i][i];
+        pred[i][i] = y->cookie;
     }
     return(0);
 }
@@ -122,21 +122,21 @@ content_skiplist_insert(struct ccn_nametree *h, struct ccny *content)
  * The entry must be present.
  */
 static void
-content_skiplist_remove(struct ccn_nametree *h, struct ccny *content)
+ccny_skiplist_remove(struct ccn_nametree *h, struct ccny *y)
 {
     int i;
     int d;
     ccn_cookie *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
     
-    if (content->skiplinks == NULL)
+    if (y->skiplinks == NULL)
         return;
-    content_skiplist_findbefore(h, content->flatname, content, pred);
-    d = content->skipdim;
+    ccny_skiplist_findbefore(h, y->flatname, y, pred);
+    d = y->skipdim;
     if (h->skipdim < d) abort();
     for (i = 0; i < d; i++)
-        pred[i][i] = content->skiplinks[i];
-    free(content->skiplinks);
-    content->skiplinks = NULL;
+        pred[i][i] = y->skiplinks[i];
+    free(y->skiplinks);
+    y->skiplinks = NULL;
 }
 
 /**
@@ -147,7 +147,7 @@ content_skiplist_remove(struct ccn_nametree *h, struct ccny *content)
  * @returns -1 if an entry with the name is already present.
  */
 int
-enroll_content(struct ccn_nametree *h, struct ccny *content)
+ccny_enroll(struct ccn_nametree *h, struct ccny *y)
 {
     ccn_cookie cookie;
     unsigned i;
@@ -156,18 +156,18 @@ enroll_content(struct ccn_nametree *h, struct ccny *content)
     cookie = ++(h->cookie);
     i = cookie & h->cookiemask;
     if (h->nmentry_by_cookie[i] == NULL) {
-        content->cookie = cookie;
-        res = content_skiplist_insert(h, content);
+        y->cookie = cookie;
+        res = ccny_skiplist_insert(h, y);
         if (res == -1) {
             h->cookie--;
-            content->cookie = 0;
+            y->cookie = 0;
             return(-1);
         }
-        h->nmentry_by_cookie[i] = content;
+        h->nmentry_by_cookie[i] = y;
         return(0);
     }
     /* Add code to expand nmentry_by_cookie or remove old entry */
     if (0)
-        content_skiplist_remove(h, content); /* silence warnings for now */
+        ccny_skiplist_remove(h, y); /* silence warnings for now */
     return(-1);
 }
