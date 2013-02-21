@@ -42,6 +42,7 @@ struct ccn_nametree {
     ccn_cookie cookie;      /**< newest used cookie number */
     unsigned cookiemask;    /**< one less than a power of two */
     struct ccny **nmentry_by_cookie; /**< for direct lookup by cookie */
+    struct ccny *last;      /**< link to last */
     int skipdim;            /**< dimension of skiplinks array */
     ccn_cookie *skiplinks;  /**< skiplist for name-ordered ops */
     unsigned short seed[3]; /**< for PRNG */
@@ -50,6 +51,7 @@ struct ccn_nametree {
 struct ccny {
     ccn_cookie cookie;      /**< cookie for this entry */
     struct ccn_charbuf *flatname; /**< for skiplist, et. al. */
+    struct ccny *prev;      /**< link to previous, in name order */
     int skipdim;            /**< dimension of skiplinks array */
     ccn_cookie *skiplinks;  /**< skiplist links */
 };
