@@ -22,7 +22,30 @@
 #include <ccn/flatname.h>
 #include <ccn/nametree.h>
 
-#define CCN_SKIPLIST_MAX_DEPTH 30
+#define CCN_SKIPLIST_MAX_DEPTH 20
+
+
+/**
+ * Create a new nametree entry, not hooked up to anything
+ *
+ * The skiplinks array needs to be sized with an appropriate random
+ * distribution; for this purpose the caller must provide a word of
+ * random bits in rb.
+ */
+struct ccny *
+ccny_create(struct ccn_nametree *h, unsigned rb)
+{
+    struct ccny *y;
+    int d;
+    
+    for (d = 1; d < CCN_SKIPLIST_MAX_DEPTH - 1; d++, rb >>= 2)
+        if ((rb & 3) != 0) break;
+    y = calloc(1, sizeof(*y) + (d - 1) * sizeof(ccn_cookie));
+    if (y == NULL)
+        return(y);
+    y->skipdim = d;
+    return(y);
+}
 
 /**
  *  Look up an entry, given a cookie.
@@ -32,7 +55,7 @@
  *
  * @returns 1 if an exact match was found
  */
-static struct ccny *
+struct ccny *
 ccny_from_cookie(struct ccn_nametree *h, ccn_cookie cookie)
 {
     struct ccny *ans;
@@ -78,8 +101,7 @@ ccny_skiplist_findbefore(struct ccn_nametree *h,
                 found = 1;
                 break;
             }
-            if (y->skiplinks == NULL || i >= y->skipdim)
-                abort();
+            if (i >= y->skipdim) abort();
             c = y->skiplinks;
         }
         ans[i] = c;
@@ -101,16 +123,13 @@ ccny_skiplist_insert(struct ccn_nametree *h, struct ccny *y)
     int i;
     int d;
     
-    if (y->skiplinks != NULL) abort();
-    for (d = 1; d < CCN_SKIPLIST_MAX_DEPTH - 1; d++)
-        if ((nrand48(h->seed) & 3) != 0) break;
+    d = y->skipdim;
     while (h->skipdim < d)
         h->skiplinks[h->skipdim++] = 0;
     found = ccny_skiplist_findbefore(h, y->flatname, NULL, pred);
     if (found)
         return(-1);
     next = ccny_from_cookie(h, y->skiplinks[0]);
-    y->skiplinks = calloc(d, sizeof(ccn_cookie));
     for (i = 0; i < d; i++) {
         y->skiplinks[i] = pred[i][i];
         pred[i][i] = y->cookie;
@@ -149,16 +168,14 @@ ccny_skiplist_remove(struct ccn_nametree *h, struct ccny *y)
     }
     d = y->skipdim;
     if (h->skipdim < d) abort();
-    for (i = 0; i < d; i++)
+    for (i = 0; i < d; i++) {
         pred[i][i] = y->skiplinks[i];
-    free(y->skiplinks);
-    y->skiplinks = NULL;
+        y->skiplinks[i] = 0;
+    }
 }
 
 /**
  *  Enroll an entry into the nametree
- *
- * Allocation errors are fatal.
  *
  * @returns -1 if an entry with the name is already present.
  */

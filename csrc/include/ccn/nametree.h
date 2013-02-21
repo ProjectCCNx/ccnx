@@ -45,7 +45,6 @@ struct ccn_nametree {
     struct ccny *last;      /**< link to last */
     int skipdim;            /**< dimension of skiplinks array */
     ccn_cookie *skiplinks;  /**< skiplist for name-ordered ops */
-    unsigned short seed[3]; /**< for PRNG */
 };
 
 struct ccny {
@@ -53,7 +52,7 @@ struct ccny {
     struct ccn_charbuf *flatname; /**< for skiplist, et. al. */
     struct ccny *prev;      /**< link to previous, in name order */
     int skipdim;            /**< dimension of skiplinks array */
-    ccn_cookie *skiplinks;  /**< skiplist links */
+    ccn_cookie skiplinks[1];  /**< skiplist links (flex array) */
 };
 
 #endif
