@@ -215,7 +215,8 @@ ccn_keystore.o: ccn_keystore.c ../include/ccn/keystore.h
 ccn_match.o: ccn_match.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/digest.h
-ccn_nametree.o: ccn_nametree.c ../include/ccn/nametree.h
+ccn_nametree.o: ccn_nametree.c ../include/ccn/charbuf.h \
+  ../include/ccn/flatname.h ../include/ccn/nametree.h
 ccn_reg_mgmt.o: ccn_reg_mgmt.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/reg_mgmt.h
