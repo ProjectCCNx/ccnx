@@ -120,6 +120,8 @@ test_inserts_from_stdin(void)
         printf(" %u", node->cookie);
     }
     printf("\n");
+    ccn_nametree_destroy(&ntree);
+    ccn_charbuf_destroy(&c);
     return(res);
 }
 

@@ -68,4 +68,6 @@ int ccny_enroll(struct ccn_nametree *h, struct ccny *y);
 
 void ccn_nametree_delete_entry(struct ccn_nametree *h, struct ccny **y);
 
+void ccn_nametree_destroy(struct ccn_nametree **ph);
+
 #endif

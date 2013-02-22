@@ -233,8 +233,6 @@ ccny_enroll(struct ccn_nametree *h, struct ccny *y)
         return(0);
     }
     /* Add code to expand nmentry_by_cookie or remove old entry */
-    if (0)
-        ccny_skiplist_remove(h, y); /* silence warnings for now */
     return(-1);
 }
 
@@ -248,4 +246,28 @@ ccn_nametree_delete_entry(struct ccn_nametree *h, struct ccny **y)
     ccn_charbuf_destroy(&(*y)->flatname);
     free(*y);
     *y = NULL;
+}
+
+/**
+ * Destroy a nametree, deleting all entries
+ */
+void
+ccn_nametree_destroy(struct ccn_nametree **ph)
+{
+    struct ccny *x;
+    struct ccny *y;
+    struct ccn_nametree *h = *ph;
+    
+    if (h == NULL)
+        return;
+    for (y = h->last; y != NULL; y = x) {
+        x = y->prev;
+        ccn_nametree_delete_entry(h, &y);
+    }
+    if (h->nmentry_by_cookie != NULL)
+        free(h->nmentry_by_cookie);
+    if (h->skiplinks != NULL)
+        free(h->skiplinks);
+    *ph = NULL;
+    free(h);
 }
