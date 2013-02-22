@@ -1035,7 +1035,7 @@ r_store_content_matches_interest_prefix(struct ccnr_handle *h,
 
     ccn_flatname_from_ccnb(flatname, interest_msg, interest_size);
     cmp = ccn_flatname_charbuf_compare(flatname, content->flatname);
-    ans = (cmp == 0 || cmp == -9999);
+    ans = (cmp == 0 || cmp == CCN_STRICT_PREFIX);
     ccn_charbuf_destroy(&flatname);
     return(ans);
 }
@@ -1196,7 +1196,7 @@ r_store_lookup_ccnb(struct ccnr_handle *h,
     content = r_store_look(h, flatname->buf, flatname->length);
     if (content != NULL) {
         res = ccn_flatname_charbuf_compare(flatname, content->flatname);
-        if (res == 0 || res == -9999) {
+        if (res == 0 || res == CCN_STRICT_PREFIX) {
             /* prefix matches */
         }
         else

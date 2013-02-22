@@ -27,8 +27,8 @@
  *  Compare flatnames a and b
  *
  * @returns negative, 0, or positive if a < b, a == b, a > b, respectively.
- * The special return value -9999 means a < b and a is also a prefix of b.
- * Similarly 9999 means b is a strict prefix of a.                              XXX should have defines for these values.
+ * The special return value CCN_STRICT_PREFIX means a < b and a is also a prefix of b.
+ * Similarly CCN_STRICT_REV_PREFIX means b is a strict prefix of a.
  */
 int
 ccn_flatname_charbuf_compare(struct ccn_charbuf *a, struct ccn_charbuf *b)
@@ -48,11 +48,11 @@ ccn_flatname_compare(const unsigned char *a, size_t al, const unsigned char *b, 
     if (res != 0)
         return(res);
     if (al < bl)
-        return(-9999);
+        return(CCN_STRICT_PREFIX);
     else if (al == bl)
         return(0);
     else
-        return(9999);
+        return(CCN_STRICT_REV_PREFIX);
 }
 
 

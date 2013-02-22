@@ -70,6 +70,8 @@ int ccn_uri_append_flatname(struct ccn_charbuf *uri,
 int ccn_flatname_ncomps(const unsigned char *flatname, size_t size);
 
 /* Flatname comparison */
+#define CCN_STRICT_PREFIX (-9999)   /* a is a strict prefix of b */
+#define CCN_STRICT_REV_PREFIX 9999  /* b is a strict prefix of a */
 int ccn_flatname_charbuf_compare(struct ccn_charbuf *a, struct ccn_charbuf *b);
 int ccn_flatname_compare(const unsigned char *a, size_t al,
                          const unsigned char *b, size_t bl);
