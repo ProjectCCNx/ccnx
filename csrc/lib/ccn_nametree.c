@@ -24,6 +24,23 @@
 
 #define CCN_SKIPLIST_MAX_DEPTH 20
 
+/**
+ * Create a new, empty nametree
+ */
+struct ccn_nametree *
+ccn_nametree_create(void)
+{
+    struct ccn_nametree *h;
+    
+    h = calloc(1, sizeof(*h));
+    if (h != NULL) {
+        h->skiplinks = calloc(CCN_SKIPLIST_MAX_DEPTH, sizeof(ccn_cookie));
+        h->skipdim = 0;
+        h->cookiemask = 0xFFFFF; /* XXX - oversize for now */
+        h->nmentry_by_cookie = calloc(h->cookiemask + 1, sizeof(struct ccny *));
+    }
+    return(h);
+}
 
 /**
  * Create a new nametree entry, not hooked up to anything
@@ -61,7 +78,7 @@ ccny_from_cookie(struct ccn_nametree *h, ccn_cookie cookie)
     struct ccny *ans;
     
     ans = h->nmentry_by_cookie[cookie & h->cookiemask];
-    if (ans == NULL && ans->cookie == cookie)
+    if (ans == NULL || ans->cookie == cookie)
         return(ans);
     return(NULL);
 }
@@ -109,6 +126,22 @@ ccny_skiplist_findbefore(struct ccn_nametree *h,
     return(found);
 }
 
+ccn_cookie
+ccn_nametree_lookup(struct ccn_nametree *h,
+                    const unsigned char *key, size_t size)
+{
+    ccn_cookie *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
+    struct ccn_charbuf f;
+    int found;
+    
+    f.buf = (unsigned char *)key;
+    f.length = size;
+    found = ccny_skiplist_findbefore(h, &f, NULL, pred);
+    if (found)
+        return(pred[0][0]);
+    return(0);
+}
+
 /**
  *  Insert an entry into the skiplist
  *
@@ -129,13 +162,15 @@ ccny_skiplist_insert(struct ccn_nametree *h, struct ccny *y)
     found = ccny_skiplist_findbefore(h, y->flatname, NULL, pred);
     if (found)
         return(-1);
-    next = ccny_from_cookie(h, y->skiplinks[0]);
+    next = ccny_from_cookie(h, pred[0][0]);
     for (i = 0; i < d; i++) {
         y->skiplinks[i] = pred[i][i];
         pred[i][i] = y->cookie;
     }
-    if (next == NULL)
+    if (next == NULL) {
         y->prev = h->last;
+        h->last = y;
+    }
     else {
         y->prev = next->prev;
         next->prev = y;
@@ -156,8 +191,6 @@ ccny_skiplist_remove(struct ccn_nametree *h, struct ccny *y)
     int i;
     int d;
     
-    if (y->skiplinks == NULL)
-        return;
     next = ccny_from_cookie(h, y->skiplinks[0]);
     ccny_skiplist_findbefore(h, y->flatname, y, pred);
     if (next == NULL)
@@ -203,4 +236,16 @@ ccny_enroll(struct ccn_nametree *h, struct ccny *y)
     if (0)
         ccny_skiplist_remove(h, y); /* silence warnings for now */
     return(-1);
+}
+
+void
+ccn_nametree_delete_entry(struct ccn_nametree *h, struct ccny **y)
+{
+    if (y == NULL)
+        return;
+    if ((*y)->cookie != 0)
+        ccny_skiplist_remove(h, *y);
+    ccn_charbuf_destroy(&(*y)->flatname);
+    free(*y);
+    *y = NULL;
 }

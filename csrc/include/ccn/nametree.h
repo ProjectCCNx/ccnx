@@ -55,4 +55,17 @@ struct ccny {
     ccn_cookie skiplinks[1];  /**< skiplist links (flex array) */
 };
 
+struct ccn_nametree *ccn_nametree_create(void);
+
+struct ccny *ccny_create(struct ccn_nametree *h, unsigned rb);
+
+struct ccny *ccny_from_cookie(struct ccn_nametree *h, ccn_cookie cookie);
+
+ccn_cookie ccn_nametree_lookup(struct ccn_nametree *h,
+                               const unsigned char *key, size_t size);
+
+int ccny_enroll(struct ccn_nametree *h, struct ccny *y);
+
+void ccn_nametree_delete_entry(struct ccn_nametree *h, struct ccny **y);
+
 #endif

@@ -17,7 +17,7 @@ EXPATLIBS = -lexpat
 CCNLIBDIR = ../lib
 
 PROGRAMS = hashtbtest skel_decode_test \
-    encodedecodetest signbenchtest basicparsetest ccnbtreetest
+    encodedecodetest signbenchtest basicparsetest ccnbtreetest nametreetest
 
 BROKEN_PROGRAMS =
 DEBRIS = ccn_verifysig _bt_* test.keystore
@@ -37,7 +37,7 @@ CSRC = ccn_bloom.c \
        lned.c \
        encodedecodetest.c hashtb.c hashtbtest.c \
        signbenchtest.c skel_decode_test.c \
-       basicparsetest.c ccnbtreetest.c \
+       basicparsetest.c ccnbtreetest.c nametreetest.c \
        ccn_sockaddrutil.c ccn_setup_sockaddr_un.c
 LIBS = libccn.a
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o \
@@ -159,6 +159,12 @@ ccnbtreetest.o:
 ccnbtreetest: ccnbtreetest.o libccn.a
 	$(CC) $(CFLAGS) -o $@ ccnbtreetest.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
+nametreetest.o:
+	$(CC) $(CFLAGS) -Dnametreetest_main=main -c nametreetest.c
+
+nametreetest: nametreetest.o libccn.a
+	$(CC) $(CFLAGS) -o $@ nametreetest.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+
 clean:
 	rm -f *.o libccn.a libccn.1.$(SHEXT) $(PROGRAMS) depend
 	rm -rf *.dSYM $(DEBRIS) *% *~
@@ -276,6 +282,10 @@ ccnbtreetest.o: ccnbtreetest.c ../include/ccn/btree.h \
   ../include/ccn/btree_content.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/indexbuf.h \
   ../include/ccn/flatname.h ../include/ccn/uri.h
+nametreetest.o: nametreetest.c ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h ../include/ccn/flatname.h \
+  ../include/ccn/nametree.h ../include/ccn/uri.h
 ccn_sockaddrutil.o: ccn_sockaddrutil.c ../include/ccn/charbuf.h \
   ../include/ccn/sockaddrutil.h
 ccn_setup_sockaddr_un.o: ccn_setup_sockaddr_un.c ../include/ccn/ccnd.h \
