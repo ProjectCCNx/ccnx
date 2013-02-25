@@ -1312,7 +1312,7 @@ merge_names(struct sync_update_data *ud) {
                         case SCR_after:
                             // add the name from the tree
                             extractBuf(cb, nc, ep);
-                            add_update_name(ud, SyncCopyName(cb), 0);
+                            add_update_name(ud, cb, 0);
                             ent->pos++;
                             break;
                         default:
