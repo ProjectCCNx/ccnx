@@ -180,10 +180,8 @@ resetDiffData(struct sync_diff_data *sdd) {
     sdd->fetchQ = NULL;
     struct ccn_scheduled_event *ev = sdd->ev;
     sdd->ev = NULL;
-    if (sdd->cbX != NULL) {
-        ccn_charbuf_destroy(&sdd->cbX);
-        ccn_charbuf_destroy(&sdd->cbY);
-    }
+    ccn_charbuf_destroy(&sdd->cbX);
+    ccn_charbuf_destroy(&sdd->cbY);
     while (fd != NULL) {
         struct sync_diff_fetch_data *lag = fd;
         fd = fd->next;
@@ -1469,6 +1467,7 @@ updateAction(struct ccn_schedule *sched,
                             }
                         } 
                         free(hex);
+                        ccn_charbuf_destroy(&hash);
                     } else {
                         count = SyncNoteFailed(root, here, "bad node", __LINE__);
                     }
@@ -1522,17 +1521,15 @@ sync_diff_start(struct sync_diff_data *sdd) {
     
     if (ceX != NULL) ceX->lastUsed = mark;
     if (ceY != NULL) ceY->lastUsed = mark;
+    resetDiffData(sdd);
     sdd->twX = SyncTreeWorkerCreate(root->ch, ceX);
     sdd->twY = SyncTreeWorkerCreate(root->ch, ceY);
-    
     sdd->startTime = mark;
     sdd->lastEnter = mark;
     sdd->lastMark = mark;
     sdd->lastFetchOK = mark;
     sdd->cbX = ccn_charbuf_create();
     sdd->cbY = ccn_charbuf_create();
-    
-    sdd->fetchQ = NULL;
     sdd->namesAdded = 0;
     sdd->nodeFetchBusy = 0;
     sdd->nodeFetchFailed = 0;
