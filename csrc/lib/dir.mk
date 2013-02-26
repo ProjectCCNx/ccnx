@@ -174,7 +174,8 @@ clean:
 # but must be updated manually.
 ###############################
 ccn_bloom.o: ccn_bloom.c ../include/ccn/bloom.h
-ccn_btree.o: ccn_btree.c ../include/ccn/charbuf.h ../include/ccn/hashtb.h \
+ccn_btree.o: ccn_btree.c ../include/ccn/charbuf.h \
+  ../include/ccn/flatname.h ../include/ccn/hashtb.h \
   ../include/ccn/btree.h
 ccn_btree_content.o: ccn_btree_content.c ../include/ccn/btree.h \
   ../include/ccn/charbuf.h ../include/ccn/hashtb.h \
