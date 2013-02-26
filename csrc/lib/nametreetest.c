@@ -133,6 +133,11 @@ nametreetest_main(int argc, char **argv)
     if (argv[1] && 0 == strcmp(argv[1], "-")) {
         res = test_inserts_from_stdin();
         CHKSYS(res);
+        if (0) {
+            char buf[40];
+            snprintf(buf, sizeof(buf), "leaks %d", (int)getpid());
+            system(buf);
+        }
         exit(0);
     }
     return(-1);
