@@ -963,8 +963,10 @@ start_interest(struct sync_diff_data *diff_data) {
     struct ccn_charbuf *prefix = SyncCopyName(diff_data->root->topoPrefix);
     int res = 0;
     struct ccn *ccn = base->sd->ccn;
-    if (ccn == NULL)
+    if (ccn == NULL) {
+        ccn_charbuf_destroy(&prefix);
         return SyncNoteFailed(root, here, "bad ccn handle", __LINE__);
+    }
     res |= ccn_name_append_str(prefix, "\xC1.S.ra");
     res |= ccn_name_append(prefix, root->sliceHash->buf, root->sliceHash->length);
     if (ce != NULL) {
@@ -996,6 +998,7 @@ start_interest(struct sync_diff_data *diff_data) {
     if (ch->debug >= CCNL_FINE) {
         SyncNoteUri(diff_data->root, here, "start_interest", prefix);
     }
+    ccn_charbuf_destroy(&prefix);
     if (res < 0) {
         SyncNoteFailed(root, here, "ccn_express_interest failed", __LINE__);
         // return the resources, must free fd first!
@@ -1045,6 +1048,7 @@ my_get(struct sync_diff_get_closure *gc,
                                                    -1, 1, NULL);
     
     res = ccn_express_interest(ccn, name, action, template);
+    ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&template);
     if (res < 0) {
         SyncNoteFailed(root, here, "ccn_express_interest failed", __LINE__);
