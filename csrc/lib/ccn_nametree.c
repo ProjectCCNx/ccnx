@@ -39,8 +39,8 @@ ccn_nametree_create(void)
             free(h);
             return(NULL);
         }
-        h->sentinel->cookie = 0;
-        h->sentinel->prev = NULL;
+        if (h->sentinel->skipdim != CCN_SKIPLIST_MAX_DEPTH) abort();
+        h->sentinel->skipdim = 0;
         // XXX - when we grow flags, mark sentinel as such
         h->cookiemask = 0xFFFFF; /* XXX - oversize for now */
         h->nmentry_by_cookie = calloc(h->cookiemask + 1, sizeof(struct ccny *));
@@ -61,12 +61,14 @@ ccny_create(struct ccn_nametree *h, unsigned rb)
     struct ccny *y;
     int d;
     
-    for (d = 1; d < CCN_SKIPLIST_MAX_DEPTH - 1; d++, rb >>= 2)
+    for (d = 1; d < CCN_SKIPLIST_MAX_DEPTH; d++, rb >>= 2)
         if ((rb & 3) != 0) break;
     y = calloc(1, sizeof(*y) + (d - 1) * sizeof(ccn_cookie));
     if (y == NULL)
         return(y);
     
+    y->cookie = 0;
+    y->prev = NULL;
     y->skipdim = d;
     return(y);
 }
@@ -173,7 +175,7 @@ ccny_skiplist_insert(struct ccn_nametree *h, struct ccny *y)
         y->skiplinks[i] = pred[i][i];
         pred[i][i] = y->cookie;
     }
-    next = ccny_from_cookie(h, pred[0][0]);
+    next = ccny_from_cookie(h, y->skiplinks[0]);
     if (next == NULL)
         next = h->sentinel;
     y->prev = next->prev;
