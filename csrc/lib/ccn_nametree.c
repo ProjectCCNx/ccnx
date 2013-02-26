@@ -34,8 +34,14 @@ ccn_nametree_create(void)
     
     h = calloc(1, sizeof(*h));
     if (h != NULL) {
-        h->skiplinks = calloc(CCN_SKIPLIST_MAX_DEPTH, sizeof(ccn_cookie));
-        h->skipdim = 0;
+        h->sentinel = ccny_create(h, 0);
+        if (h->sentinel == NULL) {
+            free(h);
+            return(NULL);
+        }
+        h->sentinel->cookie = 0;
+        h->sentinel->prev = NULL;
+        // XXX - when we grow flags, mark sentinel as such
         h->cookiemask = 0xFFFFF; /* XXX - oversize for now */
         h->nmentry_by_cookie = calloc(h->cookiemask + 1, sizeof(struct ccny *));
     }
@@ -60,6 +66,7 @@ ccny_create(struct ccn_nametree *h, unsigned rb)
     y = calloc(1, sizeof(*y) + (d - 1) * sizeof(ccn_cookie));
     if (y == NULL)
         return(y);
+    
     y->skipdim = d;
     return(y);
 }
@@ -103,8 +110,8 @@ ccny_skiplist_findbefore(struct ccn_nametree *h,
     int order;
     int found = 0;
     
-    c = h->skiplinks;
-    for (i = h->skipdim - 1; i >= 0; i--) {
+    c = h->sentinel->skiplinks;
+    for (i = h->sentinel->skipdim - 1; i >= 0; i--) {
         for (;;) {
             if (c[i] == 0)
                 break;
@@ -157,24 +164,20 @@ ccny_skiplist_insert(struct ccn_nametree *h, struct ccny *y)
     int d;
     
     d = y->skipdim;
-    while (h->skipdim < d)
-        h->skiplinks[h->skipdim++] = 0;
+    while (h->sentinel->skipdim < d)
+        h->sentinel->skiplinks[h->sentinel->skipdim++] = 0;
     found = ccny_skiplist_findbefore(h, y->flatname, NULL, pred);
     if (found)
         return(-1);
-    next = ccny_from_cookie(h, pred[0][0]);
     for (i = 0; i < d; i++) {
         y->skiplinks[i] = pred[i][i];
         pred[i][i] = y->cookie;
     }
-    if (next == NULL) {
-        y->prev = h->last;
-        h->last = y;
-    }
-    else {
-        y->prev = next->prev;
-        next->prev = y;
-    }
+    next = ccny_from_cookie(h, pred[0][0]);
+    if (next == NULL)
+        next = h->sentinel;
+    y->prev = next->prev;
+    next->prev = y;
     return(0);
 }
 
@@ -192,19 +195,19 @@ ccny_skiplist_remove(struct ccn_nametree *h, struct ccny *y)
     int d;
     
     next = ccny_from_cookie(h, y->skiplinks[0]);
-    ccny_skiplist_findbefore(h, y->flatname, y, pred);
     if (next == NULL)
-        h->last = y->prev;
-    else {
-        if (next->prev != y) abort();
-        next->prev = y->prev;
-    }
+        next = h->sentinel;
+    if (next->prev != y) abort();
+    next->prev = y->prev;
+    y->prev = NULL;
+    ccny_skiplist_findbefore(h, y->flatname, y, pred);
     d = y->skipdim;
-    if (h->skipdim < d) abort();
+    if (h->sentinel->skipdim < d) abort();
     for (i = 0; i < d; i++) {
         pred[i][i] = y->skiplinks[i];
         y->skiplinks[i] = 0;
     }
+    y->cookie = 0;
 }
 
 /**
@@ -260,14 +263,13 @@ ccn_nametree_destroy(struct ccn_nametree **ph)
     
     if (h == NULL)
         return;
-    for (y = h->last; y != NULL; y = x) {
+    for (y = h->sentinel->prev; y != NULL; y = x) {
         x = y->prev;
         ccn_nametree_delete_entry(h, &y);
     }
     if (h->nmentry_by_cookie != NULL)
         free(h->nmentry_by_cookie);
-    if (h->skiplinks != NULL)
-        free(h->skiplinks);
+    free(h->sentinel);
     *ph = NULL;
     free(h);
 }
