@@ -47,6 +47,23 @@ struct ccn_nametree {
     ccn_cookie *skiplinks;  /**< skiplist for name-ordered ops */
 };
 
+/**
+ *  A nametree entry
+ *
+ * Each entry is capable of representing a name prefix, a
+ * content object, or both.  A name prefix is useful for keeping
+ * track of PIT entries, FIB entries, statistics used by
+ * the strategy layer, name enumeration, and creation/deletion
+ * notifications.
+ *
+ * To accomplish this, the nametree nodes are linked into several
+ * data structures.  One of these is a skiplist, so that we can
+ * quickly access the first node that has a given prefix.  Use of the base
+ * layer of the skiplist links also allows for rapid forward traversal.
+ * There is a linked list of the nodes in reverse order, so backward
+ * traversal is fast as well.
+ */
+
 struct ccny {
     ccn_cookie cookie;      /**< cookie for this entry */
     struct ccn_charbuf *flatname; /**< for skiplist, et. al. */
