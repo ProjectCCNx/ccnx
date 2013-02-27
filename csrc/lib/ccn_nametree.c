@@ -34,7 +34,8 @@ ccn_nametree_create(void)
     
     h = calloc(1, sizeof(*h));
     if (h != NULL) {
-        h->sentinel = ccny_create(h, 0);
+        h->n = 0;
+        h->sentinel = ccny_create(0);
         if (h->sentinel == NULL) {
             free(h);
             return(NULL);
@@ -56,7 +57,7 @@ ccn_nametree_create(void)
  * random bits in rb.
  */
 struct ccny *
-ccny_create(struct ccn_nametree *h, unsigned rb)
+ccny_create(unsigned rb)
 {
     struct ccny *y;
     int d;
@@ -75,11 +76,6 @@ ccny_create(struct ccn_nametree *h, unsigned rb)
 
 /**
  *  Look up an entry, given a cookie.
- *
- * The ans array is populated with pointers to the skiplinks
- * at each level.
- *
- * @returns 1 if an exact match was found
  */
 struct ccny *
 ccny_from_cookie(struct ccn_nametree *h, ccn_cookie cookie)
@@ -87,7 +83,7 @@ ccny_from_cookie(struct ccn_nametree *h, ccn_cookie cookie)
     struct ccny *ans;
     
     ans = h->nmentry_by_cookie[cookie & h->cookiemask];
-    if (ans == NULL || ans->cookie == cookie)
+    if (ans != NULL && ans->cookie == cookie)
         return(ans);
     return(NULL);
 }
@@ -215,39 +211,79 @@ ccny_skiplist_remove(struct ccn_nametree *h, struct ccny *y)
 /**
  *  Enroll an entry into the nametree
  *
- * @returns -1 if an entry with the name is already present.
+ * Although this detects a full table, caller should prevent that from ever
+ * happening by trimming or resizing as appropriate, to maintain some
+ * percentage of free slots.
+ *
+ * @returns 1 if an entry with the name is already present,
+ *   -1 if table is full, 0 for success.
  */
 int
 ccny_enroll(struct ccn_nametree *h, struct ccny *y)
 {
     ccn_cookie cookie;
     unsigned i;
+    unsigned m;
     int res;
     
-    cookie = ++(h->cookie);
-    i = cookie & h->cookiemask;
-    if (h->nmentry_by_cookie[i] == NULL) {
-        y->cookie = cookie;
-        res = ccny_skiplist_insert(h, y);
-        if (res == -1) {
-            h->cookie--;
-            y->cookie = 0;
-            return(-1);
+    /* Require one empty slot so safety belt loop counter won't wrap */
+    if (h->n >= h->cookiemask)
+        return(-1);
+    for (m = h->cookiemask; m != 0; m--) {
+        cookie = ++(h->cookie);
+        i = cookie & h->cookiemask;
+        if (h->nmentry_by_cookie[i] == NULL) {
+            y->cookie = cookie;
+            res = ccny_skiplist_insert(h, y);
+            if (res == -1) {
+                h->cookie--;
+                y->cookie = 0;
+                return(1);
+            }
+            h->nmentry_by_cookie[i] = y;
+            h->n += 1;
+            return(0);
         }
-        h->nmentry_by_cookie[i] = y;
-        return(0);
     }
-    /* Add code to expand nmentry_by_cookie or remove old entry */
-    return(-1);
+    abort();
 }
 
+/**
+ *  Remove y from the nametree
+ *
+ * If y is not in the nametree, nothing is changed.
+ * On success, y->cookie is cleared, but y is not freed.
+ */
 void
-ccn_nametree_delete_entry(struct ccn_nametree *h, struct ccny **y)
+ccny_remove(struct ccn_nametree *h, struct ccny *y)
 {
+    unsigned i;
+    
     if (y == NULL)
         return;
-    if ((*y)->cookie != 0)
-        ccny_skiplist_remove(h, *y);
+    if (y->cookie != 0) {
+        i = y->cookie & h->cookiemask;
+        if (h->nmentry_by_cookie[i] != y)
+            return;
+        ccny_skiplist_remove(h, y);
+        y->cookie = 0;
+        h->nmentry_by_cookie[i] = 0;
+        h->n -= 1;
+    }
+}
+
+/**
+ * Destroy a nametree entry
+ *
+ * The entry must not be in any nametree.
+ */
+
+void
+ccny_destroy(struct ccny **y)
+{
+    if (*y == NULL)
+        return;
+    if ((*y)->cookie != 0) abort();
     ccn_charbuf_destroy(&(*y)->flatname);
     free(*y);
     *y = NULL;
@@ -267,7 +303,8 @@ ccn_nametree_destroy(struct ccn_nametree **ph)
         return;
     for (y = h->sentinel->prev; y != NULL; y = x) {
         x = y->prev;
-        ccn_nametree_delete_entry(h, &y);
+        ccny_remove(h, y);
+        ccny_destroy(&y);
     }
     if (h->nmentry_by_cookie != NULL)
         free(h->nmentry_by_cookie);

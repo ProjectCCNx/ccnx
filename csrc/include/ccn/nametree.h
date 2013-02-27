@@ -22,13 +22,11 @@
 
 /**
  * A cookie is used as a more ephemeral way of holding a reference to a
- * content object, without the danger of an undetected dangling reference
- * when the in-memory content handle is destroyed.  This is for internal
- * data structures such as queues or enumeration states, but should not
- * be stored in any long-term way.  Use a ccnr_accession, content name, or
- * digest for that.
+ * nametree entry, without the danger of an undetected dangling reference
+ * when the entry is destroyed.  This is useful for internal
+ * data structures such as queues or enumeration states.
  *
- * Holding a cookie does not prevent the in-memory content handle from being
+ * Holding a cookie does not prevent the entry from being
  * destroyed, either explicitly or to conserve resources.
  *
  * The value 0 is used to denote no entry.
@@ -39,6 +37,7 @@ struct ccn_nametree;
 struct ccny;
 
 struct ccn_nametree {
+    int n;                  /**< number of enrolled entries */
     ccn_cookie cookie;      /**< newest used cookie number */
     unsigned cookiemask;    /**< one less than a power of two */
     struct ccny **nmentry_by_cookie; /**< for direct lookup by cookie */
@@ -72,7 +71,7 @@ struct ccny {
 
 struct ccn_nametree *ccn_nametree_create(void);
 
-struct ccny *ccny_create(struct ccn_nametree *h, unsigned rb);
+struct ccny *ccny_create(unsigned rb);
 
 struct ccny *ccny_from_cookie(struct ccn_nametree *h, ccn_cookie cookie);
 
@@ -81,7 +80,9 @@ ccn_cookie ccn_nametree_lookup(struct ccn_nametree *h,
 
 int ccny_enroll(struct ccn_nametree *h, struct ccny *y);
 
-void ccn_nametree_delete_entry(struct ccn_nametree *h, struct ccny **y);
+void ccny_remove(struct ccn_nametree *h, struct ccny *y);
+
+void ccny_destroy(struct ccny **y);
 
 void ccn_nametree_destroy(struct ccn_nametree **ph);
 

@@ -85,7 +85,9 @@ test_inserts_from_stdin(void)
         if (delete) {
             if (cookie != 0) {
                 node = ccny_from_cookie(ntree, cookie);
-                ccn_nametree_delete_entry(ntree, &node);
+                ccny_remove(ntree, node);
+                ccny_destroy(&node);
+                FAILIF(node != NULL);
                 deleted++;
             }
             else
@@ -93,13 +95,14 @@ test_inserts_from_stdin(void)
             continue;
         }
         /* insert case */
-        node = ccny_create(ntree, lrand48());
+        node = ccny_create(lrand48());
         node->flatname = ccn_charbuf_create();
         ccn_charbuf_append(node->flatname, c->buf, c->length);
         res = ccny_enroll(ntree, node);
         if (cookie != 0) {
-            FAILIF(res != -1);
-            ccn_nametree_delete_entry(ntree, &node);
+            FAILIF(res != 1);
+            ccny_destroy(&node);
+            FAILIF(node != NULL);
             dups++;
         }
         else {
@@ -119,6 +122,7 @@ test_inserts_from_stdin(void)
     for (node = ntree->sentinel->prev; node != NULL; node = node->prev)
         printf(" %u", node->cookie);
     printf("\n");
+    FAILIF(unique - deleted != ntree->n);
     ccn_nametree_destroy(&ntree);
     ccn_charbuf_destroy(&c);
     return(res);
