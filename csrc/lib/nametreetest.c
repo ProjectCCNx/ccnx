@@ -52,9 +52,11 @@ fatal(const char *fn, int lineno)
 int
 test_inserts_from_stdin(void)
 {
-    struct ccn_charbuf *c;
+    struct ccn_charbuf *c = NULL;
+    struct ccn_charbuf *f = NULL;
     int res;
     int delete;      /* Lines ending with a '!' are to be deleted instead */
+    int i;
     int item = 0;
     int dups = 0;
     int unique = 0;
@@ -63,11 +65,14 @@ test_inserts_from_stdin(void)
     ccn_cookie cookie = 0;
     struct ccn_nametree *ntree = NULL;
     struct ccny *node = NULL;
+    unsigned char *p = NULL;
     
     ntree = ccn_nametree_create();
     CHKPTR(ntree);
     c = ccn_charbuf_create();
     CHKPTR(c);
+    f = ccn_charbuf_create();
+    CHKPTR(f);
     CHKPTR(ccn_charbuf_reserve(c, 8800));
     while (fgets((char *)c->buf, c->limit, stdin)) {
         item++;
@@ -80,8 +85,15 @@ test_inserts_from_stdin(void)
             delete = 1;
             c->length--;
         }
-        
-        cookie = ccn_nametree_lookup(ntree, c->buf, c->length);
+        /* Turn the string into a valid flatname, one byte per component */
+        ccn_charbuf_reset(f);
+        p = ccn_charbuf_reserve(f, 2 * c->length);
+        for (i = 0; i < c->length; i++) {
+            p[2 * i] = 1;
+            p[2 * i + 1] = c->buf[i];
+        }
+        f->length = 2 * c->length;
+        cookie = ccn_nametree_lookup(ntree, f->buf, f->length);
         if (delete) {
             if (cookie != 0) {
                 node = ccny_from_cookie(ntree, cookie);
@@ -130,6 +142,7 @@ test_inserts_from_stdin(void)
     FAILIF(unique - deleted != ntree->n);
     ccn_nametree_destroy(&ntree);
     ccn_charbuf_destroy(&c);
+    ccn_charbuf_destroy(&f);
     return(res);
 }
 
