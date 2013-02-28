@@ -43,7 +43,8 @@ ccn_nametree_create(void)
         if (h->sentinel->skipdim != CCN_SKIPLIST_MAX_DEPTH) abort();
         h->sentinel->skipdim = 0;
         // XXX - when we grow flags, mark sentinel as such
-        h->cookiemask = 0xFFFFF; /* XXX - oversize for now */
+        h->cookiemask = 255;
+        h->limit = 255 * 3 / 4;
         h->nmentry_by_cookie = calloc(h->cookiemask + 1, sizeof(struct ccny *));
     }
     return(h);
@@ -261,7 +262,7 @@ ccn_nametree_grow(struct ccn_nametree *h)
     unsigned cookiemask;
     
     cookiemask = 2 * h->cookiemask + 1;
-    if (cookiemask > (ccn_cookie)((~0U) / 2));
+    if (cookiemask > (ccn_cookie)((~0U) / 2))
         return(-1);
     newtab = calloc(cookiemask, sizeof(newtab[0]));
     if (newtab == NULL)
@@ -271,6 +272,7 @@ ccn_nametree_grow(struct ccn_nametree *h)
     free(h->nmentry_by_cookie);
     h->nmentry_by_cookie = newtab;
     h->cookiemask = cookiemask;
+    h->limit = cookiemask - cookiemask / 4;
     return(0);
 }
 

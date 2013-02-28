@@ -98,6 +98,11 @@ test_inserts_from_stdin(void)
         node = ccny_create(lrand48());
         node->flatname = ccn_charbuf_create();
         ccn_charbuf_append(node->flatname, c->buf, c->length);
+        if (ntree->n >= ntree->limit) {
+            res = ccn_nametree_grow(ntree);
+            FAILIF(res != 0);
+            fprintf(stderr, "n=%d, limit=%d\n", ntree->n, ntree->limit);
+        }
         res = ccny_enroll(ntree, node);
         if (cookie != 0) {
             FAILIF(res != 1);

@@ -38,6 +38,7 @@ struct ccny;
 
 struct ccn_nametree {
     int n;                  /**< number of enrolled entries */
+    int limit;              /**< recommended maximum n */
     ccn_cookie cookie;      /**< newest used cookie number */
     unsigned cookiemask;    /**< one less than a power of two */
     struct ccny **nmentry_by_cookie; /**< for direct lookup by cookie */
