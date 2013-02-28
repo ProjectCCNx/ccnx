@@ -44,7 +44,7 @@ ccn_nametree_create(void)
         h->sentinel->skipdim = 0;
         // XXX - when we grow flags, mark sentinel as such
         h->cookiemask = 255;
-        h->limit = 255 * 3 / 4;
+        h->limit = 255 - 255 / 4;
         h->nmentry_by_cookie = calloc(h->cookiemask + 1, sizeof(struct ccny *));
     }
     return(h);
