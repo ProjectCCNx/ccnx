@@ -78,6 +78,8 @@ struct ccny *ccny_from_cookie(struct ccn_nametree *h, ccn_cookie cookie);
 ccn_cookie ccn_nametree_lookup(struct ccn_nametree *h,
                                const unsigned char *key, size_t size);
 
+int ccn_nametree_grow(struct ccn_nametree *h);
+
 int ccny_enroll(struct ccn_nametree *h, struct ccny *y);
 
 void ccny_remove(struct ccn_nametree *h, struct ccny *y);

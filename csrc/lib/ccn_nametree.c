@@ -249,6 +249,32 @@ ccny_enroll(struct ccn_nametree *h, struct ccny *y)
 }
 
 /**
+ *  Double the size of the direct lookup table
+ *
+ * @returns 0 for success, -1 for error.
+ */
+int
+ccn_nametree_grow(struct ccn_nametree *h)
+{
+    struct ccny **newtab = NULL;
+    struct ccny *y = NULL;
+    unsigned cookiemask;
+    
+    cookiemask = 2 * h->cookiemask + 1;
+    if (cookiemask > (ccn_cookie)((~0U) / 2));
+        return(-1);
+    newtab = calloc(cookiemask, sizeof(newtab[0]));
+    if (newtab == NULL)
+        return(-1);
+    for (y = h->sentinel->prev; y != NULL; y = y->prev)
+        newtab[cookiemask & y->cookie] = y;
+    free(h->nmentry_by_cookie);
+    h->nmentry_by_cookie = newtab;
+    h->cookiemask = cookiemask;
+    return(0);
+}
+
+/**
  *  Remove y from the nametree
  *
  * If y is not in the nametree, nothing is changed.
