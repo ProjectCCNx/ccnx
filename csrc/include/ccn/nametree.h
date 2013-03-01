@@ -67,7 +67,7 @@ struct ccny {
     struct ccn_charbuf *flatname; /**< for skiplist, et. al. */
     struct ccny *prev;      /**< link to previous, in name order */
     int skipdim;            /**< dimension of skiplinks array */
-    ccn_cookie skiplinks[1];  /**< skiplist links (flex array) */
+    struct ccny *skiplinks[1]; /**< skiplist links (flex array) */
 };
 
 struct ccn_nametree *ccn_nametree_create(void);
@@ -88,5 +88,7 @@ void ccny_remove(struct ccn_nametree *h, struct ccny *y);
 void ccny_destroy(struct ccny **y);
 
 void ccn_nametree_destroy(struct ccn_nametree **ph);
+
+void ccn_nametree_check(struct ccn_nametree *h);
 
 #endif
