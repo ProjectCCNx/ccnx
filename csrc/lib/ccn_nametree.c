@@ -101,14 +101,12 @@ static int
 ccny_skiplist_findbefore(struct ccn_nametree *h,
                          const unsigned char *key,
                          size_t size,
-                         struct ccny *wanted_old,
                          ccn_cookie **ans)
 {
     int i;
     ccn_cookie *c;
     struct ccny *y;
-    int order;
-    int found = 0;
+    int order = -1;
     
     c = h->sentinel->skiplinks;
     for (i = h->sentinel->skipdim - 1; i >= 0; i--) {
@@ -120,18 +118,14 @@ ccny_skiplist_findbefore(struct ccn_nametree *h,
                 abort();
             order = ccn_flatname_compare(y->flatname->buf, y->flatname->length,
                                          key, size);
-            if (order > 0)
+            if (order >= 0)
                 break;
-            if (order == 0 && (wanted_old == y || wanted_old == NULL)) {
-                found = 1;
-                break;
-            }
             if (i >= y->skipdim) abort();
             c = y->skiplinks;
         }
         ans[i] = c;
     }
-    return(found);
+    return(order == 0);
 }
 
 ccn_cookie
@@ -141,7 +135,7 @@ ccn_nametree_lookup(struct ccn_nametree *h,
     ccn_cookie *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
     int found;
     
-    found = ccny_skiplist_findbefore(h, key, size, NULL, pred);
+    found = ccny_skiplist_findbefore(h, key, size, pred);
     if (found)
         return(pred[0][0]);
     return(0);
@@ -165,7 +159,7 @@ ccny_skiplist_insert(struct ccn_nametree *h, struct ccny *y)
     while (h->sentinel->skipdim < d)
         h->sentinel->skiplinks[h->sentinel->skipdim++] = 0;
     found = ccny_skiplist_findbefore(h, y->flatname->buf, y->flatname->length,
-                                     NULL, pred);
+                                     pred);
     if (found)
         return(-1);
     for (i = 0; i < d; i++) {
@@ -199,7 +193,8 @@ ccny_skiplist_remove(struct ccn_nametree *h, struct ccny *y)
     if (next->prev != y) abort();
     next->prev = y->prev;
     y->prev = NULL;
-    ccny_skiplist_findbefore(h, y->flatname->buf, y->flatname->length, y, pred);
+    ccny_skiplist_findbefore(h, y->flatname->buf, y->flatname->length, pred);
+    if (pred[0][0] != y->cookie) abort();
     d = y->skipdim;
     if (h->sentinel->skipdim < d) abort();
     for (i = 0; i < d; i++) {
