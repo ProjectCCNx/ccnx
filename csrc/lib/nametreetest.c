@@ -130,13 +130,13 @@ test_inserts_from_stdin(void)
     printf("%d unique, %d duplicate, %d deleted, %d missing\n",
                unique,    dups,         deleted,    missing);
     printf("Nametree nodes:");
-    for (cookie = ntree->sentinel->skiplinks[0]; cookie != 0; cookie = node->skiplinks[0]) {
+    for (cookie = ntree->head->skiplinks[0]; cookie != 0; cookie = node->skiplinks[0]) {
         printf(" %u", cookie);
         node = ccny_from_cookie(ntree, cookie);
     }
     printf("\n");
     printf("Reversed nodes:");
-    for (node = ntree->sentinel->prev; node != NULL; node = node->prev)
+    for (node = ntree->head->prev; node != NULL; node = node->prev)
         printf(" %u", node->cookie);
     printf("\n");
     FAILIF(unique - deleted != ntree->n);

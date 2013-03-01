@@ -42,7 +42,7 @@ struct ccn_nametree {
     ccn_cookie cookie;      /**< newest used cookie number */
     unsigned cookiemask;    /**< one less than a power of two */
     struct ccny **nmentry_by_cookie; /**< for direct lookup by cookie */
-    struct ccny *sentinel;  /**< Sentinel for skiplist, etc. */
+    struct ccny *head;      /**< head for skiplist, etc. */
 };
 
 /**
