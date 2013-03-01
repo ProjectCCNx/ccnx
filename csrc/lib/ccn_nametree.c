@@ -128,7 +128,7 @@ ccny_skiplist_findbefore(struct ccn_nametree *h,
     return(order == 0);
 }
 
-ccn_cookie
+struct ccny *
 ccn_nametree_lookup(struct ccn_nametree *h,
                     const unsigned char *key, size_t size)
 {
@@ -137,7 +137,7 @@ ccn_nametree_lookup(struct ccn_nametree *h,
     
     found = ccny_skiplist_findbefore(h, key, size, pred);
     if (found)
-        return(pred[0][0]);
+        return(ccny_from_cookie(h, pred[0][0]));
     return(0);
 }
 

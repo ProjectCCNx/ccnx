@@ -93,10 +93,10 @@ test_inserts_from_stdin(void)
             p[2 * i + 1] = c->buf[i];
         }
         f->length = 2 * c->length;
-        cookie = ccn_nametree_lookup(ntree, f->buf, f->length);
+        node = ccn_nametree_lookup(ntree, f->buf, f->length);
+        cookie = (node != NULL) ? node->cookie : 0;
         if (delete) {
             if (cookie != 0) {
-                node = ccny_from_cookie(ntree, cookie);
                 ccny_remove(ntree, node);
                 ccny_destroy(&node);
                 FAILIF(node != NULL);
