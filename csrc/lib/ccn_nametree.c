@@ -350,6 +350,7 @@ ccn_nametree_check(struct ccn_nametree *h)
             continue;
         if (y->cookie == 0) abort();
         if ((y->cookie & h->cookiemask) != i) abort();
+        if (y != ccny_from_cookie(h, y->cookie)) abort();
         n++;
     }
     if (n != h->n) abort();
