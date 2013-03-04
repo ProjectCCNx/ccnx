@@ -228,7 +228,7 @@ ccny_enroll(struct ccn_nametree *h, struct ccny *y)
     for (m = h->cookiemask; m != 0; m--) {
         cookie = ++(h->cookie);
         i = cookie & h->cookiemask;
-        if (h->nmentry_by_cookie[i] == NULL) {
+        if (cookie != 0 && h->nmentry_by_cookie[i] == NULL) {
             y->cookie = cookie;
             res = ccny_skiplist_insert(h, y);
             if (res == -1) {
