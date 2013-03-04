@@ -99,7 +99,7 @@ test_inserts_from_stdin(void)
         if (delete) {
             if (cookie != 0) {
                 ccny_remove(ntree, node);
-                ccny_destroy(&node);
+                ccny_destroy(ntree, &node);
                 FAILIF(node != NULL);
                 deleted++;
             }
@@ -119,7 +119,7 @@ test_inserts_from_stdin(void)
         res = ccny_enroll(ntree, node);
         if (cookie != 0) {
             FAILIF(res != 1);
-            ccny_destroy(&node);
+            ccny_destroy(ntree, &node);
             FAILIF(node != NULL);
             dups++;
         }

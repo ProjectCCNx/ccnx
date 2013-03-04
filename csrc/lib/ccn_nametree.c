@@ -46,6 +46,11 @@ ccn_nametree_create(void)
         h->cookiemask = 255;
         h->limit = 255 - 255 / 4;
         h->nmentry_by_cookie = calloc(h->cookiemask + 1, sizeof(struct ccny *));
+        h->data = NULL;
+        h->post_enroll = 0;
+        h->pre_remove = 0;
+        h->check = 0;
+        h->finalize = 0;
     }
     return(h);
 }
@@ -238,6 +243,8 @@ ccny_enroll(struct ccn_nametree *h, struct ccny *y)
             }
             h->nmentry_by_cookie[i] = y;
             h->n += 1;
+            if (h->post_enroll)
+                (h->post_enroll)(h, y);
             return(0);
         }
     }
@@ -288,6 +295,8 @@ ccny_remove(struct ccn_nametree *h, struct ccny *y)
         i = y->cookie & h->cookiemask;
         if (h->nmentry_by_cookie[i] != y)
             return;
+        if (h->pre_remove)
+            (h->pre_remove)(h, y);
         ccny_skiplist_remove(h, y);
         y->cookie = 0;
         h->nmentry_by_cookie[i] = NULL;
@@ -302,11 +311,13 @@ ccny_remove(struct ccn_nametree *h, struct ccny *y)
  */
 
 void
-ccny_destroy(struct ccny **y)
+ccny_destroy(struct ccn_nametree *h, struct ccny **y)
 {
     if (*y == NULL)
         return;
     if ((*y)->cookie != 0) abort();
+    if (h != NULL && h->finalize)
+        (h->finalize)(h, *y);
     ccn_charbuf_destroy(&(*y)->flatname);
     free(*y);
     *y = NULL;
@@ -327,7 +338,7 @@ ccn_nametree_destroy(struct ccn_nametree **ph)
     for (y = h->head->prev; y != NULL; y = x) {
         x = y->prev;
         ccny_remove(h, y);
-        ccny_destroy(&y);
+        ccny_destroy(h, &y);
     }
     if (h->nmentry_by_cookie != NULL)
         free(h->nmentry_by_cookie);
@@ -379,4 +390,8 @@ ccn_nametree_check(struct ccn_nametree *h)
         n++;
     }
     if (n != h->n) abort();
+    if (h->check) {
+        for (y = h->head->skiplinks[0]; y != NULL; y = y->skiplinks[0])
+            (h->check)(h, y);
+    }
 }

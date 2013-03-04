@@ -36,6 +36,11 @@ typedef unsigned ccn_cookie;
 struct ccn_nametree;
 struct ccny;
 
+/**
+ *  Procedure type for several optional client callbacks.
+ */
+typedef void (*ccn_nametree_action)(struct ccn_nametree *, struct ccny *);
+
 struct ccn_nametree {
     int n;                  /**< number of enrolled entries */
     int limit;              /**< recommended maximum n */
@@ -43,6 +48,11 @@ struct ccn_nametree {
     unsigned cookiemask;    /**< one less than a power of two */
     struct ccny **nmentry_by_cookie; /**< for direct lookup by cookie */
     struct ccny *head;      /**< head for skiplist, etc. */
+    void *data;             /**< for client use */
+    ccn_nametree_action post_enroll; /**< called after enroll */
+    ccn_nametree_action pre_remove; /**< called before removal */
+    ccn_nametree_action check; /**< called to check client structures */
+    ccn_nametree_action finalize; /**< called from destroy */
 };
 
 /**
@@ -66,7 +76,9 @@ struct ccny {
     ccn_cookie cookie;      /**< cookie for this entry */
     struct ccn_charbuf *flatname; /**< for skiplist, et. al. */
     struct ccny *prev;      /**< link to previous, in name order */
-    int skipdim;            /**< dimension of skiplinks array */
+    void *payload;          /**< client payload */
+    unsigned short info[3]; /**< for client use */
+    short skipdim;          /**< dimension of skiplinks array */
     struct ccny *skiplinks[1]; /**< skiplist links (flex array) */
 };
 
@@ -85,7 +97,7 @@ int ccny_enroll(struct ccn_nametree *h, struct ccny *y);
 
 void ccny_remove(struct ccn_nametree *h, struct ccny *y);
 
-void ccny_destroy(struct ccny **y);
+void ccny_destroy(struct ccn_nametree *h, struct ccny **y);
 
 void ccn_nametree_destroy(struct ccn_nametree **ph);
 
