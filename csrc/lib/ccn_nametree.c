@@ -22,7 +22,7 @@
 #include <ccn/flatname.h>
 #include <ccn/nametree.h>
 
-#define CCN_SKIPLIST_MAX_DEPTH 20
+#define CCN_SKIPLIST_MAX_DEPTH 16
 
 /**
  * Create a new, empty nametree
