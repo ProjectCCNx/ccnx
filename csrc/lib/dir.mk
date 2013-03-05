@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -79,10 +79,11 @@ shlib: $(SHLIBNAME)
 
 lib: libccn.a
 
-test: default encodedecodetest ccnbtreetest
+test: default encodedecodetest ccnbtreetest nametreetest
 	./encodedecodetest -o /dev/null
 	./ccnbtreetest
 	./ccnbtreetest - < q.dat
+	./nametreetest - < q.dat
 	$(RM) -R _bt_*
 
 dtag_check: _always
