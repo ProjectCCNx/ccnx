@@ -164,8 +164,11 @@ ccny_skiplist_insert(struct ccn_nametree *h, struct ccny *y)
         h->head->skiplinks[h->head->skipdim++] = NULL;
     found = ccny_skiplist_findbefore(h, y->flatname->buf, y->flatname->length,
                                      pred);
-    if (found)
+    if (found) {
+        for (i = h->head->skipdim - 1; i >= 0 && h->head->skiplinks[i] == NULL;)
+            h->head->skipdim = i--;
         return(-1);
+    }
     for (i = 0; i < d; i++) {
         z = pred[i]->skiplinks[i];
         y->skiplinks[i] = (z && z->cookie) ? z : NULL;
@@ -206,6 +209,8 @@ ccny_skiplist_remove(struct ccn_nametree *h, struct ccny *y)
         pred[i]->skiplinks[i] = y->skiplinks[i];
         y->skiplinks[i] = NULL;
     }
+    for (i = h->head->skipdim - 1; i >= 0 && h->head->skiplinks[i] == NULL;)
+        h->head->skipdim = i--;
     y->cookie = 0;
 }
 
@@ -390,6 +395,8 @@ ccn_nametree_check(struct ccn_nametree *h)
         n++;
     }
     if (n != h->n) abort();
+    for (i = 0; i < h->head->skipdim; i++)
+        if (h->head->skiplinks[i] == NULL) abort();
     if (h->check) {
         for (y = h->head->skiplinks[0]; y != NULL; y = y->skiplinks[0])
             (h->check)(h, y);
