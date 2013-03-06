@@ -191,6 +191,7 @@ static void
 ccny_skiplist_remove(struct ccn_nametree *h, struct ccny *y)
 {
     struct ccny *next;
+    struct ccny *prev;
     struct ccny *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
     int i;
     int d;
@@ -198,9 +199,17 @@ ccny_skiplist_remove(struct ccn_nametree *h, struct ccny *y)
     next = y->skiplinks[0];
     if (next == NULL)
         next = h->head;
+    prev = y->prev;
+    d = y->skipdim;
     if (next->prev != y) abort();
-    next->prev = y->prev;
+    next->prev = prev;
     y->prev = NULL;
+    if (d == 1 && prev != NULL) {
+        prev->skiplinks[0] = y->skiplinks[0];
+        y->skiplinks[0] = NULL;
+        y->cookie = 0;
+        return;
+    }
     ccny_skiplist_findbefore(h, y->flatname->buf, y->flatname->length, pred);
     if (pred[0]->skiplinks[0] != y) abort();
     d = y->skipdim;
