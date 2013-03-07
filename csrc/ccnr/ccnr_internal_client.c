@@ -220,8 +220,7 @@ ccnr_answer_req(struct ccn_closure *selfp,
         default:
             goto Bail;
     }
-    if (res < 0)
-        goto Bail;
+    // res must be >= 0 at this point
     if (res == CCN_CONTENT_NACK)
         sp.type = res;
     msg = ccn_charbuf_create();
