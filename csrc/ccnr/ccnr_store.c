@@ -102,7 +102,6 @@ r_store_fatal(struct ccnr_handle *h, const char *fn, int lineno)
                  fn, lineno, errno, strerror(errno));
     }
     abort();
-    return(0);
 }
 
 PUBLIC ccnr_accession
