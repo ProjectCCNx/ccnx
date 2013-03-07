@@ -132,14 +132,11 @@ ccnr_answer_req(struct ccn_closure *selfp,
                         info->interest_ccnb, info->pi->offset[CCN_PI_E]);
     morecomps = selfp->intdata & MORECOMPS_MASK;
     if ((info->pi->answerfrom & CCN_AOK_NEW) == 0 &&
-        selfp->intdata != OP_SERVICE &&
-        selfp->intdata != OP_NOTICE)
+        selfp->intdata != OP_SERVICE)
         return(CCN_UPCALL_RESULT_OK);
     if (info->matched_comps >= info->interest_comps->n)
         goto Bail;
-    if (selfp->intdata != OP_PING &&
-        selfp->intdata != OP_NOTICE &&
-        selfp->intdata != OP_SERVICE &&
+    if ((selfp->intdata & OPER_MASK) != OP_SERVICE &&
         info->pi->prefix_comps != info->matched_comps + morecomps)
         goto Bail;
     if (morecomps == 1) {
@@ -218,29 +215,9 @@ ccnr_answer_req(struct ccn_closure *selfp,
             goto Bail;
             break;
         default:
+            // No other OP_xxx are supported here
             goto Bail;
     }
-    // res must be >= 0 at this point
-    if (res == CCN_CONTENT_NACK)
-        sp.type = res;
-    msg = ccn_charbuf_create();
-    name = ccn_charbuf_create();
-    start = info->pi->offset[CCN_PI_B_Name];
-    end = info->interest_comps->buf[info->pi->prefix_comps];
-    ccn_charbuf_append(name, info->interest_ccnb + start, end - start);
-    ccn_charbuf_append_closer(name);
-    res = ccn_sign_content(info->h, msg, name, &sp,
-                           reply_body->buf, reply_body->length);
-    if (res < 0)
-        goto Bail;
-    if (CCNSHOULDLOG(ccnr, LM_128, CCNL_FINE))
-        ccnr_debug_ccnb(ccnr, __LINE__, "ccnr_answer_req_response", NULL,
-                        msg->buf, msg->length);
-    res = ccn_put(info->h, msg->buf, msg->length);
-    if (res < 0)
-        goto Bail;
-    res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
-    goto Finish;
 Bail:
     res = CCN_UPCALL_RESULT_ERR;
 Finish:
