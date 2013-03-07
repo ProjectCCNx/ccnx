@@ -154,7 +154,6 @@ ccny_skiplist_insert(struct ccn_nametree *h, struct ccny *y)
 {
     struct ccny *next = NULL;
     struct ccny *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
-    struct ccny *z = NULL;
     int found;
     int i;
     int d;
@@ -170,8 +169,7 @@ ccny_skiplist_insert(struct ccn_nametree *h, struct ccny *y)
         return(-1);
     }
     for (i = 0; i < d; i++) {
-        z = pred[i]->skiplinks[i];
-        y->skiplinks[i] = z;
+        y->skiplinks[i] = pred[i]->skiplinks[i];
         pred[i]->skiplinks[i] = y;
     }
     next = y->skiplinks[0];
