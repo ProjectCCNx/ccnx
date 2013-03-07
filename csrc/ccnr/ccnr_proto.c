@@ -597,7 +597,7 @@ Bail:
     
 }    
 
-static int
+static enum ccn_upcall_res
 r_proto_policy_complete(struct ccn_closure *selfp,
                         enum ccn_upcall_kind kind,
                         struct ccn_upcall_info *info)
@@ -620,12 +620,12 @@ r_proto_policy_complete(struct ccn_closure *selfp,
     cc = info->content_comps;
     ccn_name_comp_get(ccnb, cc, cc->n - 3, &vers, &vers_size);
     if (vers_size != 7 || vers[0] != CCN_MARKER_VERSION)
-        return(-1);
+        return(CCN_UPCALL_RESULT_ERR);
     if (memcmp(vers, ccnr->parsed_policy->version, sizeof(ccnr->parsed_policy->version)) <= 0) {
         if (CCNSHOULDLOG(ccnr, LM_128, CCNL_INFO))
             ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_policy_complete older policy ignored", NULL,
                             ccnb, ccnb_size);        
-        return (-1);
+        return (CCN_UPCALL_RESULT_ERR);
     }
     // all components not including segment
     name = ccn_charbuf_create();
@@ -635,7 +635,7 @@ r_proto_policy_complete(struct ccn_closure *selfp,
     if (CCNSHOULDLOG(ccnr, LM_128, CCNL_FINEST))
         ccnr_msg(ccnr,"r_proto_policy_complete update scheduled");        
     
-    return (0);
+    return (CCN_UPCALL_RESULT_OK);
 }
 
 static enum ccn_upcall_res
