@@ -2991,7 +2991,7 @@ ccn_guest_prefix(struct ccn *h, struct ccn_charbuf *result, int ms)
     const unsigned char *p = NULL;
     unsigned char me[] = "\xC1.M.K\x00XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
     size_t p_size;
-    int res;
+    int res = -1;
     
     if (h->ccndid == NULL) {
         ccn_initiate_ccndid_fetch(h);
