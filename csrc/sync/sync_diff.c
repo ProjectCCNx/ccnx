@@ -1655,9 +1655,9 @@ sync_update_start(struct sync_update_data *ud, struct SyncNameAccum *acc) {
             kickUpdate(ud, 1);
             return 1;
         }
-        default: return 0;
+        default:
+            return 0;
             // don't restart a busy updater
-            return -1;
     }
 }
 
@@ -1679,6 +1679,5 @@ sync_update_stop(struct sync_update_data *ud) {
             return 1;
         }
     }
-    return 0;
 }
 
