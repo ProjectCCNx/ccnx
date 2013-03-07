@@ -171,7 +171,7 @@ ccny_skiplist_insert(struct ccn_nametree *h, struct ccny *y)
     }
     for (i = 0; i < d; i++) {
         z = pred[i]->skiplinks[i];
-        y->skiplinks[i] = (z && z->cookie) ? z : NULL;
+        y->skiplinks[i] = z;
         pred[i]->skiplinks[i] = y;
     }
     next = y->skiplinks[0];
