@@ -1167,7 +1167,6 @@ try_node_split(struct sync_update_data *ud) {
     int splitMethod = 3;  // was variable, now is constantly enabled
     int maxLen = 0;
     int accLen = 0;
-    int prevMatch = 0;
     int split = 0;
     if (debug >= CCNL_FINE) {
         char tmp[64];
@@ -1181,7 +1180,6 @@ try_node_split(struct sync_update_data *ud) {
         int nameLen = name->length + 8;
         if (nameLen > maxLen) maxLen = nameLen;
         accLen = accLen + nameLen + (maxLen - nameLen) * 2;
-        prev = name;
         if (split+1 < lim) {
             if (splitMethod & 1) {
                 // use level shift to split
