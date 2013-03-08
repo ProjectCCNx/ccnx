@@ -411,7 +411,6 @@ ccn_btree_lookup_internal(struct ccn_btree *btree,
     struct ccn_btree_node *child = NULL;
     struct ccn_btree_internal_payload *e = NULL;
     ccn_btnodeid childid;
-    ccn_btnodeid parent;
     int entdx;
     int level;
     int newlevel;
@@ -420,7 +419,6 @@ ccn_btree_lookup_internal(struct ccn_btree *btree,
     node = root;
     if (node == NULL || node->corrupt)
         return(-1);
-    parent = node->nodeid;
     level = ccn_btree_node_level(node);
     if (level < stoplevel)
         return(-1);
