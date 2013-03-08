@@ -495,7 +495,7 @@ ccn_btree_insert_entry(struct ccn_btree_node *node, int i,
     size_t k, grow, minnewsize, pb, pre, post, org;
     unsigned char *to = NULL;
     unsigned char *from = NULL;
-    struct ccn_btree_entry_trailer space = {};
+    struct ccn_btree_entry_trailer space = { { 0 } };
     struct ccn_btree_entry_trailer *t = &space;
     unsigned reuse[2] = {0, 0};
     int j, n;
@@ -828,7 +828,7 @@ int
 ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
 {
     int i, j, k, n, pb, res;
-    struct ccn_btree_node newnode = {};
+    struct ccn_btree_node newnode = { 0 };
     struct ccn_btree_node *a[2] = {NULL, NULL};
     struct ccn_btree_node *parent = NULL;
     void *payload = NULL;
@@ -1597,8 +1597,8 @@ int
 ccn_btree_check(struct ccn_btree *btree, FILE *outfp) {
     struct ccn_btree_node *node;
     struct ccn_btree_node *child;
-    ccn_btnodeid stack[40] = {};
-    int kstk[40] = {};
+    ccn_btnodeid stack[40] = { 0 };
+    int kstk[40] = { 0 };
     int sp = 0;
     struct ccn_charbuf *buf[3];
     struct ccn_charbuf *q;
