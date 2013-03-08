@@ -405,7 +405,7 @@ public abstract class KeyManager {
 	 * @throws IOException if we run into an error attempting to read the key
 	 */
 	public abstract Key getVerificationKey(
-			PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator, 
+			PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator, String type, String fileName,
 			long timeout) throws IOException;
 
 	/**
@@ -418,8 +418,10 @@ public abstract class KeyManager {
 	 */
 	public Key getVerificationKey(
 			PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator) throws IOException {
-		return getVerificationKey(publisherKeyID, keyLocator, SystemConfiguration.EXTRA_LONG_TIMEOUT);
+		return getVerificationKey(publisherKeyID, keyLocator, null, null, SystemConfiguration.EXTRA_LONG_TIMEOUT);
 	}
+	
+	public abstract void saveVerificationKey(Key key, String type, String fileName) throws ConfigurationException;
 	
 	/**
 	 * Get the public key for a given publisher as it was explicitly published, 

@@ -240,6 +240,7 @@ public class OIDLookup {
 		
 		_m2oid.put("HMac-SHA256", "1.2.840.112549.2.9");
 		_m2oid.put("HMACSHA256", "1.2.840.112549.2.9");
+		_m2oid.put("HMAC-SHA256", "1.2.840.112549.2.9");
 		_oid2m.put("1.2.840.112549.2.9", "HMac-SHA256");
 	
 		_aliasMap = initAliasLookup();

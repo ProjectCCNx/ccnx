@@ -57,7 +57,7 @@ public class UserConfiguration {
 	 * for this, but not all.
 	 */
 	protected static final String DEFAULT_KEY_ALIAS = "ccnxuser";
-	protected static final String DEFAULT_KEYSTORE_TYPE = "PKCS12"; // "JCEKS"; // want JCEKS, but don't want to force keystore regeneration yet
+	protected static final String DEFAULT_KEYSTORE_TYPE = "PKCS12";
 	
 	/**
 	 * Default prefix to use, e.g. for user information if not overridden by local stuff.
@@ -65,6 +65,11 @@ public class UserConfiguration {
 	protected static final String CCNX_DEFAULT_NAMESPACE_PROPERTY = 
 		"org.ccnx.config.CCNxNamespace";
 	protected static final String CCNX_DEFAULT_NAMESPACE_ENVIRONMENT_VARIABLE = "CCNX_NAMESPACE";
+	
+	/**
+	 * Default keystore type for symmetric keys
+	 */
+	protected static final String DEFAULT_SYMMETRIC_KEYSTORE_TYPE = "CCN_AES";
 
 	/**
 	 * Default value of user configuration directory name -- this is not
@@ -443,6 +448,8 @@ public class UserConfiguration {
 	public static String defaultKeyAlias() { return DEFAULT_KEY_ALIAS; }
 	
 	public static String defaultKeystoreType() { return DEFAULT_KEYSTORE_TYPE; }
+	
+	public static String defaultSymmetricKeystoreType() { return DEFAULT_SYMMETRIC_KEYSTORE_TYPE; }
 	
 	public static int defaultKeyLength() { return DEFAULT_KEY_LENGTH; }
 

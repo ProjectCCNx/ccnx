@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -21,11 +21,11 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.security.KeyStore;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.security.keystore.CCNKeyStore;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.Tuple;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
@@ -36,7 +36,6 @@ import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
-
 
 /**
  * This is a network-based implementation of key manager.
@@ -73,7 +72,7 @@ public class NetworkKeyManager extends BasicKeyManager {
 	 * @throws ConfigurationException
 	 */
 	@Override
-	protected KeyStoreInfo loadKeyStore() throws ConfigurationException, IOException {
+	protected KeyStoreInfo loadKeyStore(String directory, String type, String fileName) throws ConfigurationException, IOException {
 		// Is there an existing version of this key store? don't assume repo, so don't enumerate.
 		// timeouts should be ok.
 		// DKS TODO -- once streams pull first block on creation, don't need this much work.
@@ -97,7 +96,7 @@ public class NetworkKeyManager extends BasicKeyManager {
 			Log.info("Loading CCN key store from " + _keystoreName + "...");
 			try {
 				in = new CCNVersionedInputStream(keystoreObject, null, handle());
-				KeyStore keyStore = readKeyStore(in);
+				CCNKeyStore keyStore = readKeyStore(in, _keyStoreType);
 				keyStoreInfo = new KeyStoreInfo(_keystoreName.toURIString(), keyStore, in.getVersion());
 			} catch (IOException e) {
 				Log.warning("Cannot open existing key store: " + _keystoreName);

@@ -21,9 +21,11 @@ import java.util.Random;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 
+import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
 import org.ccnx.ccn.impl.security.keys.SecureKeyCache;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
@@ -48,6 +50,7 @@ public class SymmetricKeyTest extends CCNTestBase {
 	public static void setUpBeforeClass() throws Exception {
 		CCNTestBase.setUpBeforeClass();
 		kg = KeyGenerator.getInstance("HMAC-SHA256", KeyManager.PROVIDER);
+		flosser = new Flosser();
 	}
 
 	/**
@@ -58,11 +61,10 @@ public class SymmetricKeyTest extends CCNTestBase {
 	public void testSymmetricKeys() throws Exception {
 		Log.info(Log.FAC_TEST, "Starting testSymmetricKeys");
 		
-		flosser = new Flosser();
 		SecretKey sk = kg.generateKey();
 		SecureKeyCache skc = putHandle.getNetworkManager().getKeyManager().getSecureKeyCache();
 		PublisherPublicKeyDigest publisher = new PublisherPublicKeyDigest(sk);
-		skc.addSecretKey(null, publisher.digest(), sk);
+		skc.addSecretKey(null, sk);
 		ContentName name = testHelper.getTestChildName("testSymmetricKeys", "testString");
 		CCNStringObject testString1 = new CCNStringObject(name, "A test!", 
 									SaveType.RAW, publisher, null, putHandle);
@@ -76,6 +78,38 @@ public class SymmetricKeyTest extends CCNTestBase {
 		flosser.stopMonitoringNamespaces();
 		
 		Log.info(Log.FAC_TEST, "Completed testSymmetricKeys");
+	}
+	
+	/**
+	 * Tests save and retrieve of symmetric keys in a keyfile
+	 * @throws Exception
+	 */
+	@Test
+	public void testSymmetricKeysWithStore() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testSymmetricKeysWithStore");
+		
+		SecretKey sk = kg.generateKey();
+		KeyManager km = putHandle.keyManager();
+		SecureKeyCache skc = km.getSecureKeyCache();
+		skc.addSecretKey(null, sk);
+		km.saveVerificationKey(sk, null, null);
+		PublisherPublicKeyDigest publisher = new PublisherPublicKeyDigest(sk);
+		BasicKeyManager km2 = new BasicKeyManager();
+		km2.initialize();
+		CCNHandle handle2 = km2.handle();
+		ContentName name = testHelper.getTestChildName("testSymmetricKeysWithStore", "testString");
+		CCNStringObject testString1 = new CCNStringObject(name, "A test!", 
+									SaveType.RAW, publisher, null, putHandle);
+		flosser.handleNamespace(name);
+		testString1.save();
+		CCNStringObject testString2 = new CCNStringObject(name, publisher,handle2);
+		testString2.waitForData(SystemConfiguration.EXTRA_LONG_TIMEOUT);
+		Assert.assertEquals(testString2.string(), "A test!");
+		testString1.close();
+		testString2.close();
+		flosser.stopMonitoringNamespaces();
+		
+		Log.info(Log.FAC_TEST, "Completed testSymmetricKeysWithStore");
 	}
 	
 	@Test
