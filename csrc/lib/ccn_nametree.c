@@ -18,6 +18,7 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 #include <ccn/charbuf.h>
 #include <ccn/flatname.h>
 #include <ccn/nametree.h>
@@ -56,7 +57,7 @@ ccn_nametree_create(void)
 }
 
 /**
- * Create a new nametree entry, not hooked up to anything
+ *  Create a new nametree entry, not hooked up to anything
  *
  * The skiplinks array needs to be sized with an appropriate random
  * distribution; for this purpose the caller must provide a word of
@@ -73,11 +74,44 @@ ccny_create(unsigned rb)
     y = calloc(1, sizeof(*y) + (d - 1) * sizeof(y->skiplinks[0]));
     if (y == NULL)
         return(y);
-    
     y->cookie = 0;
     y->prev = NULL;
     y->skipdim = d;
     return(y);
+}
+
+/**
+ *  Set the key in a nametree entry
+ *
+ * This makes a copy.  The entry must not be in a nametree.
+ * Any old key is freed before making the copy.
+ *
+ * A client may choose to manage the key storage differently,
+ * but in such a case it must provide a finalize action that
+ * leaves y->key NULL.
+ *
+ * @returns -1 for error, 0 for success.
+ */
+int
+ccny_set_key(struct ccny *y, const unsigned char *key, size_t size)
+{
+    if (size >= (~0U)/2)
+        return(-1);
+    if (y->cookie != 0)
+        return(-1);
+    if (y->key != NULL) {
+        free(y->key);
+        y->key = NULL;
+        y->keylen = 0;
+    }
+    if (key == NULL)
+        return(0);
+    y->key = malloc(size);
+    if (y->key == NULL)
+        return(-1);
+    memcpy(y->key, key, size);
+    y->keylen = size;
+    return(0);
 }
 
 /**
@@ -119,8 +153,7 @@ ccny_skiplist_findbefore(struct ccn_nametree *h,
             y = c->skiplinks[i];
             if (y == NULL)
                 break;
-            order = ccn_flatname_compare(y->flatname->buf, y->flatname->length,
-                                         key, size);
+            order = ccn_flatname_compare(y->key, y->keylen, key, size);
             if (order >= 0)
                 break;
             if (i >= y->skipdim) abort();
@@ -161,8 +194,7 @@ ccny_skiplist_insert(struct ccn_nametree *h, struct ccny *y)
     d = y->skipdim;
     while (h->head->skipdim < d)
         h->head->skiplinks[h->head->skipdim++] = NULL;
-    found = ccny_skiplist_findbefore(h, y->flatname->buf, y->flatname->length,
-                                     pred);
+    found = ccny_skiplist_findbefore(h, y->key, y->keylen, pred);
     if (found) {
         for (i = h->head->skipdim - 1; i >= 0 && h->head->skiplinks[i] == NULL;)
             h->head->skipdim = i--;
@@ -208,7 +240,7 @@ ccny_skiplist_remove(struct ccn_nametree *h, struct ccny *y)
         y->cookie = 0;
         return;
     }
-    ccny_skiplist_findbefore(h, y->flatname->buf, y->flatname->length, pred);
+    ccny_skiplist_findbefore(h, y->key, y->keylen, pred);
     if (pred[0]->skiplinks[0] != y) abort();
     d = y->skipdim;
     if (h->head->skipdim < d) abort();
@@ -323,16 +355,18 @@ ccny_remove(struct ccn_nametree *h, struct ccny *y)
  */
 
 void
-ccny_destroy(struct ccn_nametree *h, struct ccny **y)
+ccny_destroy(struct ccn_nametree *h, struct ccny **py)
 {
-    if (*y == NULL)
+    struct ccny *y = *py;
+    if (y == NULL)
         return;
-    if ((*y)->cookie != 0) abort();
+    if (y->cookie != 0) abort();
     if (h != NULL && h->finalize)
-        (h->finalize)(h, *y);
-    ccn_charbuf_destroy(&(*y)->flatname);
-    free(*y);
-    *y = NULL;
+        (h->finalize)(h, y);
+    if (y->key != NULL)
+        free(y->key);
+    free(y);
+    *py = NULL;
 }
 
 /**
@@ -380,9 +414,9 @@ ccn_nametree_check(struct ccn_nametree *h)
     if (n > h->limit) abort();
     if (h->limit > h->cookiemask) abort();
     for (n = 0, y = h->head->prev; y != NULL; y = y->prev) {
-        if (y->flatname->length > y->flatname->limit) abort();
         if (y->prev != NULL) {
-            if (ccn_flatname_charbuf_compare(y->prev->flatname, y->flatname) >= 0) abort();
+            if (ccn_flatname_compare(y->prev->key, y->prev->keylen,
+                                     y->key, y->keylen) >= 0) abort();
             if (y != y->prev->skiplinks[0]) abort();
         }
         else {
@@ -392,11 +426,11 @@ ccn_nametree_check(struct ccn_nametree *h)
     }
     if (n != h->n) abort();
     for (n = 0, y = h->head->skiplinks[0]; y != NULL; y = y->skiplinks[0]) {
-        if (y->flatname->length > y->flatname->limit) abort();
         for (i = 0; i < y->skipdim; i++) {
             z = y->skiplinks[i];
             if (z != NULL) {
-                if (ccn_flatname_charbuf_compare(y->flatname, z->flatname) >= 0) abort();
+                if (ccn_flatname_compare(y->key, y->keylen,
+                                         z->key, z->keylen) >= 0) abort();
             }
         }
         n++;

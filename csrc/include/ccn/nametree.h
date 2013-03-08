@@ -70,12 +70,15 @@ struct ccn_nametree {
  * layer of the skiplist links also allows for rapid forward traversal.
  * There is a linked list of the nodes in reverse order, so backward
  * traversal is fast as well.
+ *
+ * The ordering used is that of ccn_flatname_compare().
  */
 
 struct ccny {
-    ccn_cookie cookie;      /**< cookie for this entry */
-    struct ccn_charbuf *flatname; /**< for skiplist, et. al. */
     struct ccny *prev;      /**< link to previous, in name order */
+    unsigned char *key;     /**< for skiplist, et. al. */
+    unsigned keylen;        /**< size of key, in bytes */
+    ccn_cookie cookie;      /**< cookie for this entry */
     void *payload;          /**< client payload */
     unsigned short info[3]; /**< for client use */
     short skipdim;          /**< dimension of skiplinks array */
@@ -85,6 +88,8 @@ struct ccny {
 struct ccn_nametree *ccn_nametree_create(void);
 
 struct ccny *ccny_create(unsigned rb);
+
+int ccny_set_key(struct ccny *y, const unsigned char *key, size_t size);
 
 struct ccny *ccny_from_cookie(struct ccn_nametree *h, ccn_cookie cookie);
 
@@ -97,7 +102,7 @@ int ccny_enroll(struct ccn_nametree *h, struct ccny *y);
 
 void ccny_remove(struct ccn_nametree *h, struct ccny *y);
 
-void ccny_destroy(struct ccn_nametree *h, struct ccny **y);
+void ccny_destroy(struct ccn_nametree *h, struct ccny **py);
 
 void ccn_nametree_destroy(struct ccn_nametree **ph);
 

@@ -109,8 +109,7 @@ test_inserts_from_stdin(void)
         }
         /* insert case */
         node = ccny_create(lrand48());
-        node->flatname = ccn_charbuf_create();
-        ccn_charbuf_append(node->flatname, f->buf, f->length);
+        ccny_set_key(node, f->buf, f->length);
         if (ntree->n >= ntree->limit) {
             res = ccn_nametree_grow(ntree);
             FAILIF(res != 0);
