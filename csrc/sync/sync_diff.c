@@ -1166,6 +1166,7 @@ try_node_split(struct sync_update_data *ud) {
     int splitMethod = 3;  // was variable, now is constantly enabled
     int maxLen = 0;
     int accLen = 0;
+    int prevMatch = 0;
     int split = 0;
     if (debug >= CCNL_FINE) {
         char tmp[64];
