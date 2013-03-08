@@ -190,8 +190,6 @@ express_bulkdata_interest(struct ccn *h, struct pending *p)
 {
     int res;
     struct bulkdata *b = NULL;
-    int prefix_comps = -1;
-    int addl_comps = -1;
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *templ = NULL;
     struct ccn_charbuf *seq = NULL;
@@ -208,8 +206,6 @@ express_bulkdata_interest(struct ccn *h, struct pending *p)
     seq->length = 0;
     (*b->seqfunc)(p->x, b->seqfunc_param, seq);
     ccn_name_append(name, seq->buf, seq->length);
-    prefix_comps = -1;
-    addl_comps = 1;
     
     ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
 
