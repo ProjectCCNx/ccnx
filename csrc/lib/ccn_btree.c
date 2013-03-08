@@ -83,17 +83,23 @@ seek_trailer(struct ccn_btree_node *node, int i)
         (node->buf->length - sizeof(struct ccn_btree_entry_trailer)));
     last = MYFETCH(t, entdx);
     ent = MYFETCH(t, entsz) * CCN_BT_SIZE_UNITS;
-    if (ent < sizeof(struct ccn_btree_entry_trailer))
-        return(node->corrupt = __LINE__, NULL);
-    if (ent * (last + 1) >= node->buf->length)
-        return(node->corrupt = __LINE__, NULL);
+    if (ent < sizeof(struct ccn_btree_entry_trailer)) {
+        node->corrupt = __LINE__;
+        return(NULL);
+    }
+    if (ent * (last + 1) >= node->buf->length) {
+        node->corrupt = __LINE__;
+        return(NULL);
+    }
     if ((unsigned)i > last)
         return(NULL);
     t = (struct ccn_btree_entry_trailer *)(node->buf->buf + node->buf->length
         - (ent * (last - i))
         - sizeof(struct ccn_btree_entry_trailer));
-    if (MYFETCH(t, entdx) != i)
-        return(node->corrupt = __LINE__, NULL);
+    if (MYFETCH(t, entdx) != i) {
+        node->corrupt = __LINE__;
+        return(NULL);
+    }    
     return(t);
 }
 
@@ -114,8 +120,10 @@ ccn_btree_node_getentry(size_t payload_bytes, struct ccn_btree_node *node, int i
     t = seek_trailer(node, i);
     if (t == NULL)
         return(NULL);
-    if (MYFETCH(t, entsz) * CCN_BT_SIZE_UNITS != entry_bytes)
-        return(node->corrupt = __LINE__, NULL);
+    if (MYFETCH(t, entsz) * CCN_BT_SIZE_UNITS != entry_bytes) {
+        node->corrupt = __LINE__;
+        return(NULL);
+    }
     return(((unsigned char *)t) + sizeof(*t) - entry_bytes);    
 }
 
@@ -130,8 +138,10 @@ ccn_btree_node_internal_entry(struct ccn_btree_node *node, int i)
     ans = ccn_btree_node_getentry(sizeof(*ans), node, i);
     if (ans == NULL)
         return(NULL);
-    if (MYFETCH(ans, magic) != CCN_BT_INTERNAL_MAGIC)
-        return(node->corrupt = __LINE__, NULL);
+    if (MYFETCH(ans, magic) != CCN_BT_INTERNAL_MAGIC) {
+        node->corrupt = __LINE__;
+        return(NULL);
+    }    
     return(ans);
 }
 
