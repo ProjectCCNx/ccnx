@@ -421,7 +421,24 @@ public abstract class KeyManager {
 		return getVerificationKey(publisherKeyID, keyLocator, null, null, SystemConfiguration.EXTRA_LONG_TIMEOUT);
 	}
 	
-	public abstract void saveVerificationKey(Key key, String type, String fileName) throws ConfigurationException;
+	/**
+	 * Save the input key in a keystore
+	 * @param key the key
+	 * @param name name for the key or null if none
+	 * @param type the type of keystore
+	 * @param fileName filename for keystore
+	 * @throws ConfigurationException
+	 */
+	public abstract void saveVerificationKey(Key key, ContentName name, String type, String fileName) throws IOException;
+	
+	/**
+	 * Remove a key and its backing keystore
+	 * @param key the key
+	 * @param type keystore type
+	 * @param fileName filename for key
+	 * @throws IOException
+	 */
+	public abstract void removeVerificationKey(Key key, String type, String fileName) throws IOException;
 	
 	/**
 	 * Get the public key for a given publisher as it was explicitly published, 

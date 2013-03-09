@@ -29,6 +29,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.KeyPair;
@@ -1102,12 +1103,16 @@ public class BasicKeyManager extends KeyManager {
 	/**
 	 * Save a verification key in a keystore
 	 */
-	public void saveVerificationKey(Key key, String type, String fileName) throws ConfigurationException {
+	public void saveVerificationKey(Key key, ContentName name, String type, String fileName) throws IOException {
+		SecureKeyCache skc = getSecureKeyCache();
 		if (null == type) {
-			if (key instanceof SecretKey)
+			if (key instanceof SecretKey) {
+				skc.addSecretKey(name, (SecretKey)key);
 				type = UserConfiguration.defaultSymmetricKeystoreType();
-			else
+			} else {
+				skc.addKey(name, key);
 				type = _keyStoreType;
+			}
 		}
 		if (null == fileName) {
 			fileName = _keyStoreFileName + "-" + DataUtils.printBytes(SecureKeyCache.getKeyIdentifier(key));
@@ -1115,9 +1120,27 @@ public class BasicKeyManager extends KeyManager {
 		try {
 			Tuple<KeyStoreInfo, OutputStream> tuple = createKeyStoreWriteStream(_keyStoreDirectory, fileName);
 			createKeyStore(tuple.second(), key, type, _defaultAlias, _password, _userName);
-		} catch (IOException e) {
-			throw new ConfigurationException(e);
+		} catch (ConfigurationException e) {
+			throw new IOException(e);
 		}
+	}
+	
+	/**
+	 * Remove a verification and its backing keystore if applicable
+	 * TODO - should we remove the key from the cache? No mechanism was created for that in the past
+	 */
+	public void removeVerificationKey(Key key, String type, String fileName) throws IOException {
+		if (null == fileName) {
+			fileName = _keyStoreFileName + "-" + DataUtils.printBytes(SecureKeyCache.getKeyIdentifier(key));
+		}
+		try {
+			Tuple<KeyStoreInfo, OutputStream> tuple = createKeyStoreWriteStream(_keyStoreDirectory, fileName);
+			KeyStoreInfo ksi = tuple.first();
+			File f = new File(new URI(ksi.getKeyStoreURI()).getRawPath());
+			f.delete();
+		} catch (ConfigurationException e) {
+			throw new IOException(e);
+		} catch (URISyntaxException e) {}	// shouldn't happen
 	}
 	
 	/**

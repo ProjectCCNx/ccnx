@@ -90,24 +90,26 @@ public class SymmetricKeyTest extends CCNTestBase {
 		
 		SecretKey sk = kg.generateKey();
 		KeyManager km = putHandle.keyManager();
-		SecureKeyCache skc = km.getSecureKeyCache();
-		skc.addSecretKey(null, sk);
-		km.saveVerificationKey(sk, null, null);
-		PublisherPublicKeyDigest publisher = new PublisherPublicKeyDigest(sk);
-		BasicKeyManager km2 = new BasicKeyManager();
-		km2.initialize();
-		CCNHandle handle2 = km2.handle();
-		ContentName name = testHelper.getTestChildName("testSymmetricKeysWithStore", "testString");
-		CCNStringObject testString1 = new CCNStringObject(name, "A test!", 
-									SaveType.RAW, publisher, null, putHandle);
-		flosser.handleNamespace(name);
-		testString1.save();
-		CCNStringObject testString2 = new CCNStringObject(name, publisher,handle2);
-		testString2.waitForData(SystemConfiguration.EXTRA_LONG_TIMEOUT);
-		Assert.assertEquals(testString2.string(), "A test!");
-		testString1.close();
-		testString2.close();
-		flosser.stopMonitoringNamespaces();
+		try {
+			km.saveVerificationKey(sk, null, null, null);
+			PublisherPublicKeyDigest publisher = new PublisherPublicKeyDigest(sk);
+			BasicKeyManager km2 = new BasicKeyManager();
+			km2.initialize();
+			CCNHandle handle2 = km2.handle();
+			ContentName name = testHelper.getTestChildName("testSymmetricKeysWithStore", "testString");
+			CCNStringObject testString1 = new CCNStringObject(name, "A test!", 
+										SaveType.RAW, publisher, null, putHandle);
+			flosser.handleNamespace(name);
+			testString1.save();
+			CCNStringObject testString2 = new CCNStringObject(name, publisher,handle2);
+			testString2.waitForData(SystemConfiguration.EXTRA_LONG_TIMEOUT);
+			Assert.assertEquals(testString2.string(), "A test!");
+			testString1.close();
+			testString2.close();
+			flosser.stopMonitoringNamespaces();
+		} finally {
+			km.removeVerificationKey(sk, null, null);
+		}
 		
 		Log.info(Log.FAC_TEST, "Completed testSymmetricKeysWithStore");
 	}
