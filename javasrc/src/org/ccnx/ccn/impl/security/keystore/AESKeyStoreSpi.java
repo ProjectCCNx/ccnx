@@ -28,6 +28,7 @@ import java.security.SecureRandom;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.Random;
@@ -44,14 +45,14 @@ import org.ccnx.ccn.impl.support.Tuple;
  * CCN keystores only store 1 key so the algorithm used for the key storage is as follows:
  * 
  * Let P=passphrase
- * Let PT = random 64-bytes
+ * Let PT = symmetric key to store
  * Let IV = random 16-bytes
  *
  * aesK = HMAC-SHA256(P, '\0')
- * macK = HMAC-SHA256(PT, '\1')
- * AES256-CBC(IV, key, plaintext) - performs AES256 in CBC mode
+ * macK = HMAC-SHA256(P, '\1')
+ * AES256-CBC(IV, key, PT) - performs AES256 in CBC mode
  *
- * SK = IV || AES256-CBC(IV, aesK, key) || HMAC-SHA256(macK, AES256-CBC(IV, aesK, key))
+ * SK = IV || AES256-CBC(IV, aesK, PT) || HMAC-SHA256(macK, AES256-CBC(IV, aesK, PT))
  *
  * SK is the symmetric keystore ciphertext
  */
@@ -175,8 +176,8 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 			stream.read(check);
 			_mac.init(keys.second());
 			byte[] hmac = _mac.doFinal(cryptBytes);
-			//if (!Arrays.equals(hmac, check))
-				//throw new IOException("Bad signature in AES keystore");
+			if (!Arrays.equals(hmac, check))
+				throw new IOException("Bad signature in AES keystore");
 		} catch (Exception e) {
 			throw new IOException(e);
 		}
@@ -221,10 +222,10 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 			cipher.init(Cipher.ENCRYPT_MODE, keys.first(), ivspec);
 			aesCBC = cipher.doFinal(_id);
 			_mac.init(keys.second());
-			byte[] part3 = _mac.doFinal(aesCBC);
+			byte[] part4 = _mac.doFinal(aesCBC);
 			stream.write(iv);
 			stream.write(aesCBC);
-			stream.write(part3);
+			stream.write(part4);
 		} catch (Exception e) {
 			throw new IOException(e);
 		}
@@ -242,10 +243,6 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 			byte[] aesKBytes = _mac.doFinal(little);
 			SecretKeySpec aesK = new SecretKeySpec(aesKBytes, MAC_ALGORITHM);
 			_mac.init(passK);
-			byte[] macKRand = new byte[64];
-			_random.nextBytes(macKRand);
-			SecretKeySpec pTK = new SecretKeySpec(macKRand, MAC_ALGORITHM);
-			_mac.init(pTK);
 			little[0] = 1;
 			byte [] macKBytes = _mac.doFinal(little);
 			SecretKeySpec macK = new SecretKeySpec(macKBytes, MAC_ALGORITHM);

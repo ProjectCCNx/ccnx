@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+<!-- Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
 
   Part of the CCNx Java Library.
 
@@ -61,6 +61,7 @@
 	"-Xdebug -Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=n" -->
 	<property name="DEBUG_OPTIONS" value=""/>
 	<property name="TOP_DIR" value="../src"/>
+	<property name="CONFIG_DIR" value="${testout}/.ccnx"/>
 	<!-- TEST_PORT is alternative ccnd port so we can run tests
         with an isolated ccnd rather than the "live" ccnd on the machine.
         -->
@@ -272,6 +273,7 @@
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
+			<sysproperty key="org.ccnx.config.CCNxDir" value="${CONFIG_DIR}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/repo/RepoInitializationTest.class"/>
@@ -337,6 +339,7 @@
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
             <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
+			<sysproperty key="org.ccnx.config.CCNxDir" value="${CONFIG_DIR}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
@@ -358,6 +361,7 @@
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 	        <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
+			<sysproperty key="org.ccnx.config.CCNxDir" value="${CONFIG_DIR}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
@@ -382,6 +386,7 @@
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 	        <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
+			<sysproperty key="org.ccnx.config.CCNxDir" value="${CONFIG_DIR}"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/impl/**/*Test.class"/>
@@ -407,6 +412,7 @@
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
             <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
+			<sysproperty key="org.ccnx.config.CCNxDir" value="${CONFIG_DIR}"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/impl/**/*TestRepo.class"/>
@@ -435,6 +441,7 @@
 				<sysproperty key="org.ccnx.ccn.LogLevel.Sync" value="${SYNC_NOISY}"/>
 				<sysproperty key="org.ccnx.ccn.LogLevel.Test" value="${SYNC_NOISY}"/>
 	            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
+				<sysproperty key="org.ccnx.config.CCNxDir" value="${CONFIG_DIR}"/>
 				<env key="CCNR_DIRECTORY" value="${REPO_ROOT}"/>
 				<env key="PATH" value="${env.PATH}:${cmddir}"/>
 				<batchtest todir="${testout}">
@@ -458,6 +465,7 @@
 	            <sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 	            <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 	            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
+				<sysproperty key="org.ccnx.config.CCNxDir" value="${CONFIG_DIR}"/>
 	            <batchtest todir="${testout}">
 	                <fileset dir="${build}">
 	                    <include name="org/ccnx/ccn/test/impl/**/CCNFlowControlTestRepoExtra.class"/>
@@ -483,6 +491,7 @@
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
             <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
+			<sysproperty key="org.ccnx.config.CCNxDir" value="${CONFIG_DIR}"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/io/**/*Test.class"/>
@@ -504,6 +513,7 @@
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
             <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
+			<sysproperty key="org.ccnx.config.CCNxDir" value="${CONFIG_DIR}"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/io/**/*TestRepo.class"/>
@@ -877,6 +887,7 @@
 				<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 				<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 	            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
+				<sysproperty key="org.ccnx.config.CCNxDir" value="${CONFIG_DIR}"/>
 				<test todir="${testout}"  name="org.ccnx.ccn.test.endtoend.EndToEndTestSource"/>
 			</junit>
 			<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" timeout="200000" dir="${testout}" showoutput="${showoutput}">
@@ -887,6 +898,7 @@
 				<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 				<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 				<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
+				<sysproperty key="org.ccnx.config.CCNxDir" value="${CONFIG_DIR}"/>
 				<test todir="${testout}"  name="org.ccnx.ccn.test.endtoend.EndToEndTestSink"/>
 			</junit>
 		</parallel>
@@ -909,6 +921,7 @@
 			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
+			<sysproperty key="org.ccnx.config.CCNxDir" value="${CONFIG_DIR}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/security/crypto/*Test.class"/>
@@ -933,6 +946,7 @@
 			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
+			<sysproperty key="org.ccnx.config.CCNxDir" value="${CONFIG_DIR}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/security/crypto/*TestRepo.class"/>
@@ -960,6 +974,7 @@
 			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
+			<sysproperty key="org.ccnx.config.CCNxDir" value="${CONFIG_DIR}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/profiles/security/access/**/*Test.class"/>
@@ -983,6 +998,7 @@
 			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
+			<sysproperty key="org.ccnx.config.CCNxDir" value="${CONFIG_DIR}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/profiles/security/access/**/*TestRepo.class"/>
@@ -1007,6 +1023,7 @@
 			<sysproperty key="org.ccnx.ccn.LogLevel.FAC_ENCODING" value="INFO"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
+			<sysproperty key="org.ccnx.config.CCNxDir" value="${CONFIG_DIR}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/profiles/versioning/**/*Test.class"/>
