@@ -55,6 +55,7 @@
 #include <ccn/face_mgmt.h>
 #include <ccn/hashtb.h>
 #include <ccn/indexbuf.h>
+#include <ccn/nametree.h>
 #include <ccn/schedule.h>
 #include <ccn/reg_mgmt.h>
 #include <ccn/uri.h>
@@ -661,123 +662,12 @@ static struct content_entry *
 content_from_accession(struct ccnd_handle *h, ccn_accession_t accession)
 {
     struct content_entry *ans = NULL;
-    if (accession < h->accession_base) {
-        struct sparse_straggler_entry *entry;
-        entry = hashtb_lookup(h->sparse_straggler_tab,
-                              &accession, sizeof(accession));
-        if (entry != NULL)
-            ans = entry->content;
-    }
-    else if (accession < h->accession_base + h->content_by_accession_window) {
-        ans = h->content_by_accession[accession - h->accession_base];
-        if (ans != NULL && ans->accession != accession)
-            ans = NULL;
-    }
+    struct ccny *y;
+    
+    y = ccny_from_cookie(h->content_tree, accession);
+    if (y != NULL)
+        ans = y->payload;
     return(ans);
-}
-
-/**
- *  Sweep old entries out of the direct accession-to-content table
- */
-static void
-cleanout_stragglers(struct ccnd_handle *h)
-{
-    ccn_accession_t accession;
-    struct hashtb_enumerator ee;
-    struct hashtb_enumerator *e = &ee;
-    struct sparse_straggler_entry *entry = NULL;
-    struct content_entry **a = h->content_by_accession;
-    unsigned n_direct;
-    unsigned n_occupied;
-    unsigned window;
-    unsigned i;
-    if (h->accession <= h->accession_base || a[0] == NULL)
-        return;
-    n_direct = h->accession - h->accession_base;
-    if (n_direct < 1000)
-        return;
-    n_occupied = hashtb_n(h->content_tab) - hashtb_n(h->sparse_straggler_tab);
-    if (n_occupied >= (n_direct / 8))
-        return;
-    /* The direct lookup table is too sparse, so sweep stragglers */
-    hashtb_start(h->sparse_straggler_tab, e);
-    window = h->content_by_accession_window;
-    for (i = 0; i < window; i++) {
-        if (a[i] != NULL) {
-            if (n_occupied >= ((window - i) / 8))
-                break;
-            accession = h->accession_base + i;
-            hashtb_seek(e, &accession, sizeof(accession), 0);
-            entry = e->data;
-            if (entry != NULL && entry->content == NULL) {
-                entry->content = a[i];
-                a[i] = NULL;
-                n_occupied -= 1;
-            }
-        }
-    }
-    hashtb_end(e);
-}
-
-/**
- *  Prevent the direct accession-to-content table from becoming too sparse
- */
-static int
-cleanout_empties(struct ccnd_handle *h)
-{
-    unsigned i = 0;
-    unsigned j = 0;
-    struct content_entry **a = h->content_by_accession;
-    unsigned window = h->content_by_accession_window;
-    if (a == NULL)
-        return(-1);
-    cleanout_stragglers(h);
-    while (i < window && a[i] == NULL)
-        i++;
-    if (i == 0)
-        return(-1);
-    h->accession_base += i;
-    while (i < window)
-        a[j++] = a[i++];
-    while (j < window)
-        a[j++] = NULL;
-    return(0);
-}
-
-/**
- * Assign an accession number to a content object
- */
-static void
-enroll_content(struct ccnd_handle *h, struct content_entry *content)
-{
-    unsigned new_window;
-    struct content_entry **new_array;
-    struct content_entry **old_array;
-    unsigned i = 0;
-    unsigned j = 0;
-    unsigned window = h->content_by_accession_window;
-    if ((content->accession - h->accession_base) >= window &&
-          cleanout_empties(h) < 0) {
-        if (content->accession < h->accession_base)
-            return;
-        window = h->content_by_accession_window;
-        old_array = h->content_by_accession;
-        new_window = ((window + 20) * 3 / 2);
-        if (new_window < window)
-            return;
-        new_array = calloc(new_window, sizeof(new_array[0]));
-        if (new_array == NULL)
-            return;
-        while (i < h->content_by_accession_window && old_array[i] == NULL)
-            i++;
-        h->accession_base += i;
-        h->content_by_accession = new_array;
-        while (i < h->content_by_accession_window)
-            new_array[j++] = old_array[i++];
-        h->content_by_accession_window = new_window;
-    free(old_array);
-    }
-    h->content_by_accession[content->accession - h->accession_base] = content;
 }
 
 // the hash table this is for is going away
@@ -812,111 +702,6 @@ finalize_content(struct hashtb_enumerator *content_enumerator)
         free(entry->comps);
         entry->comps = NULL;
     }
-}
-
-/**
- * Find the skiplist entries associated with the key.
- *
- * @returns the number of entries of ans that were filled in.
- */
-static int
-content_skiplist_findbefore(struct ccnd_handle *h,
-                            const unsigned char *key,
-                            size_t keysize,
-                            struct content_entry *wanted_old,
-                            struct ccn_indexbuf **ans)
-{
-    int i;
-    int n = h->skiplinks->n;
-    struct ccn_indexbuf *c;
-    struct content_entry *content;
-    int order;
-    size_t start;
-    size_t end;
-    
-    c = h->skiplinks;
-    for (i = n - 1; i >= 0; i--) {
-        for (;;) {
-            if (c->buf[i] == 0)
-                break;
-            content = content_from_accession(h, c->buf[i]);
-            if (content == NULL)
-                abort();
-            start = content->comps[0];
-            end = content->comps[content->ncomps - 1];
-            order = ccn_compare_names(content->key + start - 1, end - start + 2,
-                                      key, keysize);
-            if (order > 0)
-                break;
-            if (order == 0 && (wanted_old == content || wanted_old == NULL))
-                break;
-            if (content->skiplinks == NULL || i >= content->skiplinks->n)
-                abort();
-            c = content->skiplinks;
-        }
-        ans[i] = c;
-    }
-    return(n);
-}
-
-/**
- * Limit for how deep our skiplists can be
- */
-#define CCN_SKIPLIST_MAX_DEPTH 30
-
-/**
- * Insert a new entry into the skiplist.
- */
-static void
-content_skiplist_insert(struct ccnd_handle *h, struct content_entry *content)
-{
-    int d;
-    int i;
-    size_t start;
-    size_t end;
-    struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
-    if (content->skiplinks != NULL) abort();
-    for (d = 1; d < CCN_SKIPLIST_MAX_DEPTH - 1; d++)
-        if ((nrand48(h->seed) & 3) != 0) break;
-    while (h->skiplinks->n < d)
-        ccn_indexbuf_append_element(h->skiplinks, 0);
-    start = content->comps[0];
-    end = content->comps[content->ncomps - 1];
-    i = content_skiplist_findbefore(h,
-                                    content->key + start - 1,
-                                    end - start + 2, NULL, pred);
-    if (i < d)
-        d = i; /* just in case */
-    content->skiplinks = ccn_indexbuf_create();
-    for (i = 0; i < d; i++) {
-        ccn_indexbuf_append_element(content->skiplinks, pred[i]->buf[i]);
-        pred[i]->buf[i] = content->accession;
-    }
-}
-
-/**
- * Remove an entry from the skiplist.
- */
-static void
-content_skiplist_remove(struct ccnd_handle *h, struct content_entry *content)
-{
-    int i;
-    int d;
-    size_t start;
-    size_t end;
-    struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
-    if (content->skiplinks == NULL) abort();
-    start = content->comps[0];
-    end = content->comps[content->ncomps - 1];
-    d = content_skiplist_findbefore(h,
-                                    content->key + start - 1,
-                                    end - start + 2, content, pred);
-    if (d > content->skiplinks->n)
-        d = content->skiplinks->n;
-    for (i = 0; i < d; i++) {
-        pred[i]->buf[i] = content->skiplinks->buf[i];
-    }
-    ccn_indexbuf_destroy(&content->skiplinks);
 }
 
 /**
@@ -4496,31 +4281,12 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         goto Bail;
     }
     ccnd_meter_bump(h, face->meter[FM_DATI], 1);
-    if (comps->n < 1 ||
-        (keysize = comps->buf[comps->n - 1]) > 65535 - 36) {
-        ccnd_msg(h, "ContentObject with keysize %lu discarded",
-                 (unsigned long)keysize);
-        ccnd_debug_ccnb(h, __LINE__, "oversize", face, msg, size);
-        res = -__LINE__;
-        goto Bail;
-    }
-    /* Make the ContentObject-digest name component explicit */
+    /* Make the ContentObject-digest name component explicit in flatname */
     ccn_digest_ContentObject(msg, &obj);
     if (obj.digest_bytes != 32) {
         ccnd_debug_ccnb(h, __LINE__, "indigestible", face, msg, size);
         goto Bail;
     }
-    i = comps->buf[comps->n - 1];
-    ccn_charbuf_append(cb, msg, i);
-    ccn_charbuf_append_tt(cb, CCN_DTAG_Component, CCN_DTAG);
-    ccn_charbuf_append_tt(cb, obj.digest_bytes, CCN_BLOB);
-    ccn_charbuf_append(cb, obj.digest, obj.digest_bytes);
-    ccn_charbuf_append_closer(cb);
-    ccn_charbuf_append(cb, msg + i, size - i);
-    msg = cb->buf;
-    size = cb->length;
-    res = ccn_parse_ContentObject(msg, size, &obj, comps);
-    if (res < 0) abort(); /* must have just messed up */
     
     if (obj.magic != 20090415) {
         if (++(h->oldformatcontent) == h->oldformatcontentgrumble) {
@@ -4532,12 +4298,24 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
     }
     if (h->debug & 4)
         ccnd_debug_ccnb(h, __LINE__, "content_from", face, msg, size);
-    keysize = obj.offset[CCN_PCO_B_Content];
-    tail = msg + keysize;
-    tailsize = size - keysize;
-    hashtb_start(h->content_tab, e);
-    res = hashtb_seek(e, msg, keysize, tailsize);
-    content = e->data;
+    content = calloc(1, sizeof(*content));
+    if (content == NULL)
+        goto Bail;
+    f = charbuf_obtain(h);
+    ccn_flatname_append_from_ccnb(f, msg, size, 0 -1);
+    ccn_flatname_append_component(f, obj.digest, obj.digest_bytes);
+    y = ccny_create(nrand48(h->seed));
+    ccny_set_key(y, f->buf, f->length);
+    res = ccny_enroll(h->content_tree, y);
+    if (res < 0) {
+        // OK, here is a situation in which we want to have the old entry in case of a dup, so we can do the freshening.
+    }
+    y->payload = content;
+    content->accession = y->cookie;
+
+//    hashtb_start(h->content_tab, e);
+//    res = hashtb_seek(e, msg, keysize, tailsize);
+//    content = e->data;
     if (res == HT_OLD_ENTRY) {
         if (tailsize != e->extsize ||
               0 != memcmp(tail, ((unsigned char *)e->key) + keysize, tailsize)) {
@@ -5688,8 +5466,6 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->dgram_faces = hashtb_create(sizeof(struct face), &param);
     param.finalize = 0;
     h->faceid_by_guid = hashtb_create(sizeof(unsigned), &param);
-    param.finalize = &finalize_content;
-    h->content_tab = hashtb_create(sizeof(struct content_entry), &param);
     param.finalize = &finalize_nameprefix;
     h->nameprefix_tab = hashtb_create(sizeof(struct nameprefix_entry), &param);
     param.finalize = &finalize_interest;

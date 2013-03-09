@@ -111,12 +111,13 @@ struct ccnd_handle {
     struct ccn_charbuf *send_interest_scratch; /**< for use by send_interest */
     struct ccn_charbuf *scratch_charbuf; /**< one-slot scratch cache */
     struct ccn_indexbuf *scratch_indexbuf; /**< one-slot scratch cache */
+    struct ccn_nametree *content_tree;
     /** Next three fields are used for direct accession-to-content table */
-    ccn_accession_t accession_base;
-    unsigned content_by_accession_window;
-    struct content_entry **content_by_accession;
+    //ccn_accession_t accession_base;
+    //unsigned content_by_accession_window;
+    //struct content_entry **content_by_accession;
     /** The following holds stragglers that would otherwise bloat the above */
-    struct hashtb *sparse_straggler_tab; /* keyed by accession */
+    //struct hashtb *sparse_straggler_tab; /* keyed by accession */
     ccn_accession_t accession;      /**< newest used accession number */
     ccn_accession_t min_stale;      /**< smallest accession of stale content */
     ccn_accession_t max_stale;      /**< largest accession of stale content */
@@ -128,6 +129,7 @@ struct ccnd_handle {
     unsigned long oldformatcontentgrumble;
     unsigned long oldformatinterests;
     unsigned long oldformatinterestgrumble;
+    unsigned long content_accessions;
     unsigned long content_dups_recvd;
     unsigned long content_items_sent;
     unsigned long interests_accepted;
@@ -275,7 +277,6 @@ struct content_entry {
     const unsigned char *key;   /**< ccnb-encoded ContentObject */
     int key_size;               /**< Size of fragment prior to Content */
     int size;                   /**< Size of ContentObject */
-    struct ccn_indexbuf *skiplinks; /**< skiplist for name-ordered ops */
 };
 
 /**
