@@ -58,6 +58,7 @@ struct guest_entry;
 struct pit_face_item;
 struct content_tree_node;
 struct ccn_forwarding;
+struct ccn_nametree;
 struct ccn_strategy;
 
 //typedef uint_least64_t ccn_accession_t;
@@ -285,14 +286,6 @@ struct content_entry {
 #define CCN_CONTENT_ENTRY_SLOWSEND  1
 #define CCN_CONTENT_ENTRY_STALE     2
 #define CCN_CONTENT_ENTRY_PRECIOUS  4
-
-/**
- * The sparse_straggler hash table, keyed by accession, holds scattered
- * entries that would otherwise bloat the direct content_by_accession table.
- */
-struct sparse_straggler_entry {
-    struct content_entry *content;
-};
 
 /**
  * State for the strategy engine
