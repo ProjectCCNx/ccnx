@@ -227,7 +227,6 @@ public class CCNNetworkManager implements Runnable {
 	 * refresh them here yet. At some point this should be fixed.
 	 */
 	private class PeriodicWriter implements Runnable {
-		@Override
 		public void run() {
 			boolean refreshError = false;
 			if (_protocol == NetworkProtocol.UDP) {
