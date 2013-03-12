@@ -93,8 +93,20 @@ int ccny_set_key(struct ccny *y, const unsigned char *key, size_t size);
 
 struct ccny *ccny_from_cookie(struct ccn_nametree *h, ccn_cookie cookie);
 
+struct ccny *ccn_nametree_look_lt(struct ccn_nametree *h,
+                                  const unsigned char *key, size_t size);
+
+struct ccny *ccn_nametree_look_le(struct ccn_nametree *h,
+                                  const unsigned char *key, size_t size);
+
 struct ccny *ccn_nametree_lookup(struct ccn_nametree *h,
                                  const unsigned char *key, size_t size);
+
+struct ccny *ccn_nametree_look_gt(struct ccn_nametree *h,
+                                  const unsigned char *key, size_t size);
+
+struct ccny *ccn_nametree_look_ge(struct ccn_nametree *h,
+                                  const unsigned char *key, size_t size);
 
 int ccn_nametree_grow(struct ccn_nametree *h);
 

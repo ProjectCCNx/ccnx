@@ -42,8 +42,8 @@ ccn_nametree_create(void)
             return(NULL);
         }
         if (h->head->skipdim != CCN_SKIPLIST_MAX_DEPTH) abort();
-        h->head->skipdim = 0;
-        // XXX - when we grow flags, mark head as such
+        h->head->skipdim = 1;
+        h->head->skiplinks[0] = NULL;
         h->cookiemask = 255;
         h->limit = 255 - 255 / 4;
         h->nmentry_by_cookie = calloc(h->cookiemask + 1, sizeof(struct ccny *));
@@ -164,6 +164,48 @@ ccny_skiplist_findbefore(struct ccn_nametree *h,
     return(order == 0);
 }
 
+/**
+ *  Look for an entry with a key less than the given key
+ *
+ * When there are multiple possibilities, the one with the largest
+ * key is returned.  Returns NULL if nothing matches.
+ */
+struct ccny *
+ccn_nametree_look_lt(struct ccn_nametree *h,
+                     const unsigned char *key, size_t size)
+{
+    struct ccny *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
+    
+    ccny_skiplist_findbefore(h, key, size, pred);
+    if (pred[0] == h->head)
+        return(NULL);
+    return(pred[0]);
+}
+
+/**
+ *  Look for an entry with a key less than or equal to the given key
+ *
+ * When there are multiple possibilities, the one with the largest
+ * key is returned.  Returns NULL if nothing matches.
+ */
+struct ccny *
+ccn_nametree_look_le(struct ccn_nametree *h,
+                     const unsigned char *key, size_t size)
+{
+    struct ccny *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
+    int found;
+    
+    found = ccny_skiplist_findbefore(h, key, size, pred);
+    if (found)
+        return(pred[0]->skiplinks[0]);
+    if (pred[0] == h->head)
+        return(NULL);
+    return(pred[0]);
+}
+
+/**
+ *  Look for an entry with a key equal to given key
+ */
 struct ccny *
 ccn_nametree_lookup(struct ccn_nametree *h,
                     const unsigned char *key, size_t size)
@@ -175,6 +217,41 @@ ccn_nametree_lookup(struct ccn_nametree *h,
     if (found)
         return(pred[0]->skiplinks[0]);
     return(NULL);
+}
+
+/**
+ *  Look for an entry with a key greater than or equal to the given key
+ *
+ * When there are multiple possibilities, the one with the smallest
+ * key is returned.  Returns NULL if nothing matches.
+ */
+struct ccny *
+ccn_nametree_look_ge(struct ccn_nametree *h,
+                     const unsigned char *key, size_t size)
+{
+    struct ccny *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
+    
+    ccny_skiplist_findbefore(h, key, size, pred);
+    return(pred[0]->skiplinks[0]);
+}
+
+/**
+ *  Look for an entry with a key greater than the given key
+ *
+ * When there are multiple possibilities, the one with the smallest
+ * key is returned.  Returns NULL if nothing matches.
+ */
+struct ccny *
+ccn_nametree_look_gt(struct ccn_nametree *h,
+                     const unsigned char *key, size_t size)
+{
+    struct ccny *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
+    int found;
+    
+    found = ccny_skiplist_findbefore(h, key, size, pred);
+    if (found)
+        return(pred[0]->skiplinks[0]->skiplinks[0]);
+    return(pred[0]->skiplinks[0]);
 }
 
 /**
@@ -190,14 +267,15 @@ ccny_skiplist_insert(struct ccn_nametree *h, struct ccny *y)
     int found;
     int i;
     int d;
+    int skipdim;
     
     d = y->skipdim;
+    skipdim = h->head->skipdim;
     while (h->head->skipdim < d)
         h->head->skiplinks[h->head->skipdim++] = NULL;
     found = ccny_skiplist_findbefore(h, y->key, y->keylen, pred);
     if (found) {
-        for (i = h->head->skipdim - 1; i >= 0 && h->head->skiplinks[i] == NULL;)
-            h->head->skipdim = i--;
+        h->head->skipdim = skipdim;
         return(-1);
     }
     for (i = 0; i < d; i++) {
@@ -248,7 +326,7 @@ ccny_skiplist_remove(struct ccn_nametree *h, struct ccny *y)
         pred[i]->skiplinks[i] = y->skiplinks[i];
         y->skiplinks[i] = NULL;
     }
-    for (i = h->head->skipdim - 1; i >= 0 && h->head->skiplinks[i] == NULL;)
+    for (i = h->head->skipdim - 1; i > 0 && h->head->skiplinks[i] == NULL;)
         h->head->skipdim = i--;
     y->cookie = 0;
 }
@@ -422,6 +500,8 @@ ccn_nametree_check(struct ccn_nametree *h)
         else {
             if (y != h->head->skiplinks[0]) abort();
         }
+        if (ccn_nametree_look_lt(h, y->key, y->keylen) != y->prev) abort();
+        if (ccn_nametree_look_le(h, y->key, y->keylen) != y) abort();
         n++;
     }
     if (n != h->n) abort();
@@ -433,6 +513,9 @@ ccn_nametree_check(struct ccn_nametree *h)
                                          z->key, z->keylen) >= 0) abort();
             }
         }
+        z = y->skiplinks[0];
+        if (ccn_nametree_look_gt(h, y->key, y->keylen) != z) abort();
+        if (ccn_nametree_look_ge(h, y->key, y->keylen) != y) abort();
         n++;
     }
     if (n != h->n) abort();
