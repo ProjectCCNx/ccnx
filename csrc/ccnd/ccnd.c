@@ -713,7 +713,6 @@ find_first_match_candidate(struct ccnd_handle *h,
                            const unsigned char *interest_msg,
                            const struct ccn_parsed_interest *pi)
 {
-    int res;
     size_t start = pi->offset[CCN_PI_B_Name];
     size_t end = pi->offset[CCN_PI_E_Name];
     struct ccn_charbuf *namebuf = charbuf_obtain(h); // XXX Need to release
@@ -750,7 +749,7 @@ find_first_match_candidate(struct ccnd_handle *h,
             }
         }
     }
-    ccn_nametree_start(h, namebuf, &y); // XXX need to write this
+    y = ccn_nametree_look_ge(h->content_tree, namebuf->buf, namebuf->length);
     charbuf_release(h, namebuf);
     if (y == NULL)
         return(NULL);
@@ -4302,12 +4301,37 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
     ccn_flatname_append_component(f, obj.digest, obj.digest_bytes);
     y = ccny_create(nrand48(h->seed));
     ccny_set_key(y, f->buf, f->length);
+    // XXX - check h->content_tree->n
     res = ccny_enroll(h->content_tree, y);
-    if (res < 0) {
+    if (res != 0) {
         // OK, here is a situation in which we want to have the old entry in case of a dup, so we can do the freshening.
+        // XXX this res should be a cookie
+        ccny_destroy(h->content_tree, &y);
+        free(content);
+        content = content_from_accession(h->content_tree, res);
+        if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0) {
+            /* When old content arrives after it has gone stale, freshen it */
+            // XXX - ought to do mischief checks before this
+            content->flags &= ~CCN_CONTENT_ENTRY_STALE;
+            h->n_stale--;
+            set_content_timer(h, content, &obj);
+            /* Record the new arrival face only if the old face is gone */
+            // XXX - it is not clear that this is the most useful choice
+            if (face_from_faceid(h, content->arrival_faceid) == NULL)
+                content->arrival_faceid = face->faceid;
+            // XXX - no counter for this case
+            res = 0;
+        }
+        else {
+            h->content_dups_recvd++;
+            ccnd_debug_ccnb(h, __LINE__, "dup", face, msg, size);
+            res = -1;
+        }
     }
-    y->payload = content;
-    content->accession = y->cookie;
+    else {
+        y->payload = content;
+        content->accession = y->cookie;
+    }
 
 //    hashtb_start(h->content_tab, e);
 //    res = hashtb_seek(e, msg, keysize, tailsize);
