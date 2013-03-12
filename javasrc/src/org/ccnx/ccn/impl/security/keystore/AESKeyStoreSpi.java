@@ -38,6 +38,10 @@ import javax.crypto.Mac;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.bouncycastle.asn1.ASN1InputStream;
+import org.bouncycastle.asn1.ASN1OctetString;
+import org.bouncycastle.asn1.ASN1OutputStream;
+import org.bouncycastle.asn1.DEROctetString;
 import org.ccnx.ccn.impl.support.Tuple;
 
 /**
@@ -158,22 +162,24 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 			return;
 		if (null != _id)
 			return;		// We already have the key so don't need to reload it
+		ASN1InputStream ais = new ASN1InputStream(stream);
+		ASN1OctetString os = (ASN1OctetString) ais.readObject();
+		byte [] cryptoData = os.getOctets();
+		int checkLength = cryptoData.length - (IV_SIZE + AES_SIZE);
+		if (checkLength <= 0)
+			throw new IOException("Corrupted keystore");
 		byte[] iv = new byte[IV_SIZE];
-		if (stream.read(iv) < IV_SIZE) {
-			throw new IOException("Truncated AES keystore");
-		}
+		System.arraycopy(cryptoData, 0, iv, 0, iv.length);
 		Tuple<SecretKeySpec, SecretKeySpec> keys = initializeForAES(password);
 		try {
 			Cipher cipher = Cipher.getInstance(AES_CRYPTO_ALGORITHM);
 			IvParameterSpec ivspec = new IvParameterSpec(iv);
 			cipher.init(Cipher.DECRYPT_MODE, keys.first(), ivspec);
 			byte[] cryptBytes = new byte[AES_SIZE];
-			if (stream.read(cryptBytes) < AES_SIZE) {
-				throw new IOException("Truncated AES keystore");
-			}
+			System.arraycopy(cryptoData, IV_SIZE, cryptBytes, 0, cryptBytes.length);
 			_id = cipher.doFinal(cryptBytes);
-			byte[] check = new byte[stream.available()];
-			stream.read(check);
+			byte[] check = new byte[checkLength];
+			System.arraycopy(cryptoData, IV_SIZE + AES_SIZE, check, 0, checkLength);
 			_mac.init(keys.second());
 			byte[] hmac = _mac.doFinal(cryptBytes);
 			if (!Arrays.equals(hmac, check))
@@ -212,6 +218,7 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 			NoSuchAlgorithmException, CertificateException {
 		if (null == _id)
 			throw new IOException("Key not entered yet");
+		ASN1OutputStream aos = new ASN1OutputStream(stream);
 		Tuple<SecretKeySpec, SecretKeySpec> keys = initializeForAES(password);
 		try {
 			byte[] iv = new byte[IV_SIZE];
@@ -222,10 +229,17 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 			cipher.init(Cipher.ENCRYPT_MODE, keys.first(), ivspec);
 			aesCBC = cipher.doFinal(_id);
 			_mac.init(keys.second());
-			byte[] part4 = _mac.doFinal(aesCBC);
-			stream.write(iv);
-			stream.write(aesCBC);
-			stream.write(part4);
+			byte[] part3 = _mac.doFinal(aesCBC);
+			// TODO might be a better way to do this but am not sure how
+			// (and its not really that important anyway)
+			byte[] asn1buf = new byte[iv.length + aesCBC.length + part3.length];
+			System.arraycopy(iv, 0, asn1buf, 0, iv.length);
+			System.arraycopy(aesCBC, 0, asn1buf, iv.length, aesCBC.length);
+			System.arraycopy(part3, 0, asn1buf, iv.length + aesCBC.length, part3.length);
+			ASN1OctetString os = new DEROctetString(asn1buf);
+			aos.writeObject(os);
+			aos.flush();
+			aos.close();
 		} catch (Exception e) {
 			throw new IOException(e);
 		}
