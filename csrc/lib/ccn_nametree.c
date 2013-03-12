@@ -257,9 +257,9 @@ ccn_nametree_look_gt(struct ccn_nametree *h,
 /**
  *  Insert an entry into the skiplist
  *
- * @returns -1 and does not insert if an exact key match is found
+ * @returns old cookie and does not insert if an exact key match is found
  */
-static int
+static ccn_cookie
 ccny_skiplist_insert(struct ccn_nametree *h, struct ccny *y)
 {
     struct ccny *next = NULL;
@@ -276,7 +276,7 @@ ccny_skiplist_insert(struct ccn_nametree *h, struct ccny *y)
     found = ccny_skiplist_findbefore(h, y->key, y->keylen, pred);
     if (found) {
         h->head->skipdim = skipdim;
-        return(-1);
+        return(pred[0]->skiplinks[0]->cookie);
     }
     for (i = 0; i < d; i++) {
         y->skiplinks[i] = pred[i]->skiplinks[i];
@@ -338,30 +338,31 @@ ccny_skiplist_remove(struct ccn_nametree *h, struct ccny *y)
  * happening by trimming or resizing as appropriate, to maintain some
  * percentage of free slots.
  *
- * @returns 1 if an entry with the name is already present,
- *   -1 if table is full, 0 for success.
+ * @returns cookie of old entry in the case that one with the old key is 
+ *   present, or 0 upon success or a full table.  The latter case
+ *   may be disambiguated by examining y->cookie.
  */
-int
+ccn_cookie
 ccny_enroll(struct ccn_nametree *h, struct ccny *y)
 {
     ccn_cookie cookie;
     unsigned i;
-    unsigned m;
-    int res;
+    unsigned lastslot;
+    ccn_cookie res;
     
-    /* Require one empty slot so safety belt loop counter won't wrap */
-    if (h->n >= h->cookiemask)
-        return(-1);
-    for (m = h->cookiemask; m != 0; m--) {
+    if (y->cookie != 0)
+        abort();
+    lastslot = h->cookie & h->cookiemask;
+    for (;;) {
         cookie = ++(h->cookie);
         i = cookie & h->cookiemask;
         if (cookie != 0 && h->nmentry_by_cookie[i] == NULL) {
             y->cookie = cookie;
             res = ccny_skiplist_insert(h, y);
-            if (res == -1) {
+            if (res != 0) {
                 h->cookie--;
                 y->cookie = 0;
-                return(1);
+                return(res);
             }
             h->nmentry_by_cookie[i] = y;
             h->n += 1;
@@ -369,8 +370,9 @@ ccny_enroll(struct ccn_nametree *h, struct ccny *y)
                 (h->post_enroll)(h, y);
             return(0);
         }
+        if (i == lastslot)
+            return(0);
     }
-    abort();
 }
 
 /**
@@ -519,7 +521,7 @@ ccn_nametree_check(struct ccn_nametree *h)
         n++;
     }
     if (n != h->n) abort();
-    for (i = 0; i < h->head->skipdim; i++)
+    for (i = 1; i < h->head->skipdim; i++)
         if (h->head->skiplinks[i] == NULL) abort();
     if (h->check) {
         for (y = h->head->skiplinks[0]; y != NULL; y = y->skiplinks[0])

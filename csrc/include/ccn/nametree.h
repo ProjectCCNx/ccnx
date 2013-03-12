@@ -110,7 +110,8 @@ struct ccny *ccn_nametree_look_ge(struct ccn_nametree *h,
 
 int ccn_nametree_grow(struct ccn_nametree *h);
 
-int ccny_enroll(struct ccn_nametree *h, struct ccny *y);
+/* Consult documentation about the return value to avoid surprises */
+ccn_cookie ccny_enroll(struct ccn_nametree *h, struct ccny *y);
 
 void ccny_remove(struct ccn_nametree *h, struct ccny *y);
 
