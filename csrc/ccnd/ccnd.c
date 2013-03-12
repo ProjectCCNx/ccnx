@@ -90,10 +90,6 @@ static void clean_needed(struct ccnd_handle *h);
 static struct face *get_dgram_source(struct ccnd_handle *h, struct face *face,
                                      struct sockaddr *addr, socklen_t addrlen,
                                      int why);
-static void content_skiplist_insert(struct ccnd_handle *h,
-                                    struct content_entry *content);
-static void content_skiplist_remove(struct ccnd_handle *h,
-                                    struct content_entry *content);
 static void mark_stale(struct ccnd_handle *h,
                        struct content_entry *content);
 static ccn_accession_t content_skiplist_next(struct ccnd_handle *h,
@@ -671,38 +667,20 @@ content_from_accession(struct ccnd_handle *h, ccn_accession_t accession)
     return(ans);
 }
 
-// the hash table this is for is going away
 static void
-finalize_content(struct hashtb_enumerator *content_enumerator)
+finalize_content(struct ccn_nametree *ntree, struct ccny *y)
 {
-//    struct ccnd_handle *h = hashtb_get_param(content_enumerator->ht, NULL);
-//    struct content_entry *entry = content_enumerator->data;
-//    unsigned i = entry->accession - h->accession_base;
-//    if (i < h->content_by_accession_window &&
-//          h->content_by_accession[i] == entry) {
-//        content_skiplist_remove(h, entry);
-//        h->content_by_accession[i] = NULL;
-//    }
-//    else {
-//        struct hashtb_enumerator ee;
-//        struct hashtb_enumerator *e = &ee;
-//        hashtb_start(h->sparse_straggler_tab, e);
-//        if (hashtb_seek(e, &entry->accession, sizeof(entry->accession), 0) ==
-//              HT_NEW_ENTRY) {
-//            ccnd_msg(h, "orphaned content %llu",
-//                     (unsigned long long)(entry->accession));
-//            hashtb_delete(e);
-//            hashtb_end(e);
-//            return;
-//        }
-//        content_skiplist_remove(h, entry);
-//        hashtb_delete(e);
-//        hashtb_end(e);
-//    }
-//    if (entry->comps != NULL) {
-//        free(entry->comps);
-//        entry->comps = NULL;
-//    }
+    struct ccnd_handle *h = ntree->data;
+    struct content_entry *content = y->payload;
+    
+    if (content == NULL)
+        return;
+    if (h == NULL) abort();
+    /* Update stats here??*/
+    y->payload = NULL;
+    if (content->ccnb != NULL)
+        free(content->ccnb);
+    free(content);
 }
 
 /**
@@ -757,33 +735,23 @@ find_first_match_candidate(struct ccnd_handle *h,
 }
 
 /**
- * Check for a prefix match.
+ *  Check for a prefix match
  */
 static int
-content_matches_interest_prefix(struct ccnd_handle *h,
-                                struct content_entry *content,
-                                const unsigned char *interest_msg,
-                                struct ccn_indexbuf *comps,
-                                int prefix_comps)
+content_matches_prefix(struct ccnd_handle *h,
+                       struct content_entry *content,
+                       struct ccn_charbuf *flat)
 {
-    size_t prefixlen;
-    if (prefix_comps < 0 || prefix_comps >= comps->n)
-        abort();
-    /* First verify the prefix match. */
-    if (content->ncomps < prefix_comps + 1)
-            return(0);
-    prefixlen = comps->buf[prefix_comps] - comps->buf[0];
-    if (content->comps[prefix_comps] - content->comps[0] != prefixlen)
-        return(0);
-    if (0 != memcmp(content->key + content->comps[0],
-                    interest_msg + comps->buf[0],
-                    prefixlen))
-        return(0);
-    return(1);
+    struct ccny *y = NULL;
+    int res;
+    
+    y = ccny_from_cookie(h->content_tree, content->accession);
+    res = ccn_flatname_compare(flat->buf, flat->length, y->key, y->keylen);
+    return (res == CCN_STRICT_PREFIX || res == 0);
 }
 
 /**
- * Advance to the next entry in the skiplist.
+ * Advance to the next entry in the nametree
  */
 static ccn_accession_t
 content_skiplist_next(struct ccnd_handle *h, struct content_entry *content)
@@ -1285,23 +1253,16 @@ shutdown_client_fd(struct ccnd_handle *h, int fd)
 static void
 send_content(struct ccnd_handle *h, struct face *face, struct content_entry *content)
 {
-    int n, a, b, size;
+    size_t size;
+    
     if ((face->flags & CCN_FACE_NOSEND) != 0) {
         // XXX - should count this.
         return;
     }
     size = content->size;
     if (h->debug & 4)
-        ccnd_debug_ccnb(h, __LINE__, "content_to", face,
-                        content->key, size);
-    /* Excise the message-digest name component */
-    n = content->ncomps;
-    if (n < 2) abort();
-    a = content->comps[n - 2];
-    b = content->comps[n - 1];
-    if (b - a != 36)
-        abort(); /* strange digest length */
-    stuff_and_send(h, face, content->key, a, content->key + b, size - b, 0, 0);
+        ccnd_debug_ccnb(h, __LINE__, "content_to", face, content->ccnb, size);
+    stuff_and_send(h, face, content->ccnb, size, NULL, 0, 0, 0);
     ccnd_meter_bump(h, face->meter[FM_DATO], 1);
     h->content_items_sent += 1;
 }
@@ -1471,7 +1432,7 @@ face_send_queue_insert(struct ccnd_handle *h,
             if (ans >= 0) {
                 if (h->debug & 8)
                     ccnd_debug_ccnb(h, __LINE__, "content_otherq", face,
-                                    content->key, content->size);
+                                    content->ccnb, content->size);
                 return(ans);
             }
         }
@@ -1531,7 +1492,7 @@ consume_matching_interests(struct ccnd_handle *h,
     size_t content_size;
     
     head = &npe->ie_head;
-    content_msg = content->key;
+    content_msg = content->ccnb;
     content_size = content->size;
     for (pl = head->next; pl != head; pl = next) {
         next = pl->next;
@@ -1540,7 +1501,7 @@ consume_matching_interests(struct ccnd_handle *h,
             continue;
         if (face != NULL && is_pending_on(h, p, face->faceid) == 0)
             continue;
-        if (ccn_content_matches_interest(content_msg, content_size, 0, pc,
+        if (ccn_content_matches_interest(content_msg, content_size, 1, pc,
                                          p->interest_msg, p->size, NULL)) {
             for (x = p->pfl; x != NULL; x = x->next) {
                 if ((x->pfi_flags & CCND_PFI_PENDING) != 0)
@@ -1633,22 +1594,35 @@ note_content_from(struct ccnd_handle *h,
  */
 static int
 match_interests(struct ccnd_handle *h, struct content_entry *content,
-                           struct ccn_parsed_ContentObject *pc,
-                           struct face *face, struct face *from_face)
+                struct ccn_parsed_ContentObject *pc,
+                struct face *face, struct face *from_face)
 {
     int n_matched = 0;
     int new_matches;
     int ci;
     int cm = 0;
-    unsigned c0 = content->comps[0];
-    const unsigned char *key = content->key + c0;
+    struct ccn_charbuf *name = NULL;
+    struct ccn_indexbuf *namecomps = NULL;
+    unsigned c0 = 0;
+    const unsigned char *key = content->ccnb + c0;
     struct nameprefix_entry *npe = NULL;
-    for (ci = content->ncomps - 1; ci >= 0; ci--) {
-        int size = content->comps[ci] - c0;
+    struct ccny *y = NULL;
+    
+    y = ccny_from_cookie(h->content_tree, content->accession);
+    name = charbuf_obtain(h);
+    ccn_name_init(name);
+    ccn_name_append_flatname(name, y->key, y->keylen, 0, -1);
+    namecomps = indexbuf_obtain(h);
+    ccn_name_split(name, namecomps);
+    c0 = namecomps->buf[0];
+    for (ci = namecomps->n - 1; ci >= 0; ci--) {
+        int size = namecomps->buf[ci] - c0;
         npe = hashtb_lookup(h->nameprefix_tab, key, size);
         if (npe != NULL)
             break;
     }
+    charbuf_release(h, name);
+    indexbuf_release(h, namecomps);
     for (; npe != NULL; npe = npe->parent, ci--) {
         if (npe->fgen != h->forward_to_gen)
             update_forward_to(h, npe);
@@ -2065,23 +2039,21 @@ reap_needed(struct ccnd_handle *h, int init_delay_usec)
 static int
 remove_content(struct ccnd_handle *h, struct content_entry *content)
 {
-    struct hashtb_enumerator ee;
-    struct hashtb_enumerator *e = &ee;
-    int res;
+    struct ccny *y = NULL;
+    
     if (content == NULL)
         return(-1);
-    hashtb_start(h->content_tab, e);
-    res = hashtb_seek(e, content->key,
-                      content->key_size, content->size - content->key_size);
-    if (res != HT_OLD_ENTRY)
-        abort();
-    if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
-        h->n_stale--;
+    y = ccny_from_cookie(h->content_tree, content->accession);
+    if (y == NULL)
+        return(-1);
     if (h->debug & 4)
         ccnd_debug_ccnb(h, __LINE__, "remove", NULL,
-                        content->key, content->size);
-    hashtb_delete(e);
-    hashtb_end(e);
+                        content->ccnb, content->size);
+    if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
+        h->n_stale--;
+    ccny_remove(h->content_tree, y);
+    content = NULL;
+    ccny_destroy(h->content_tree, &y); /* releases content as well */
     return(0);
 }
 
@@ -2103,9 +2075,9 @@ clean_daemon(struct ccn_schedule *sched,
     ccn_accession_t min_stale;
     int check_limit = 500;  /* Do not run for too long at once */
     struct content_entry *content = NULL;
-    int res = 0;
-    //int ignore;
+    int ignore;
     int i;
+    int res = 0;
     
     /*
      * If we ran into our processing limit (check_limit) last time,
@@ -2116,7 +2088,7 @@ clean_daemon(struct ccn_schedule *sched,
         h->clean = NULL;
         return(0);
     }
-    n = hashtb_n(h->content_tab);
+    n = h->content_tree->n;
     if (n <= h->capacity) {
         h->clean = NULL;
         return(0);
@@ -2136,7 +2108,7 @@ clean_daemon(struct ccn_schedule *sched,
             remove_content(h, content);
     }
     h->unsol->n = 0;
-    n = hashtb_n(h->content_tab);
+    n = h->content_tree->n;
     if (h->min_stale <= h->max_stale) {
         /* clean out stale content next */
         limit = h->max_stale;
@@ -2179,16 +2151,19 @@ clean_daemon(struct ccn_schedule *sched,
             return(5000);
     }
     else {
-        /* Make oldish content stale, for cleanup on next round  XXX */
-//        limit = h->accession;
-//        ignore = CCN_CONTENT_ENTRY_STALE | CCN_CONTENT_ENTRY_PRECIOUS;
-//        for (a = h->accession_base; a <= limit && n > h->capacity; a++) {
-//            content = content_from_accession(h, a);
-//            if (content != NULL && (content->flags & ignore) == 0) {
-//                mark_stale(h, content);
-//                n--;
-//            }
-//        }
+        /* Make oldish content stale, for cleanup on next round */
+        // XXX accession_base update needs fixing when stale content is freshened
+        limit = h->accession;
+        ignore = CCN_CONTENT_ENTRY_STALE | CCN_CONTENT_ENTRY_PRECIOUS;
+        for (a = h->accession_base; a <= limit && n > h->capacity; a++) {
+            content = content_from_accession(h, a);
+            if (content != NULL && (content->flags & ignore) == 0) {
+                mark_stale(h, content);
+                n--;
+            }
+            else
+                h->accession_base++;
+        }
         ev->evint = 0;
         return(5000);
     }
@@ -3924,34 +3899,40 @@ next_child_at_level(struct ccnd_handle *h,
                     struct content_entry *content, int level)
 {
     struct content_entry *next = NULL;
-    struct ccn_charbuf *name;
-//    int d;
+    struct ccn_charbuf *flatname = NULL;
+    struct ccn_charbuf *name = NULL;
+    struct ccny *y = NULL;
     int res;
     
     if (content == NULL)
         return(NULL);
     if (content->ncomps <= level + 1)
         return(NULL);
-    name = ccn_charbuf_create();
+    name = charbuf_obtain(h);
     ccn_name_init(name);
-    res = ccn_name_append_components(name, content->key,
-                                     content->comps[0],
-                                     content->comps[level + 1]);
-    if (res < 0) abort();
+    y = ccny_from_cookie(h->content_tree, content->accession);
+    res = ccn_name_append_flatname(name, y->key, y->keylen, 0, level + 1);
+    if (res < level)
+        goto Bail;
     res = ccn_name_next_sibling(name);
-    if (res < 0) abort();
+    if (res == level)
+        res = ccn_name_append(name, NULL, 0);
+    else if (res == level + 1)
+        res = ccn_name_next_sibling(name); // XXX - would be nice to have a flatname version of this
+    if (res < 0)
+        goto Bail;
     if (h->debug & 8)
         ccnd_debug_ccnb(h, __LINE__, "child_successor", NULL,
                         name->buf, name->length);
-//    d = content_skiplist_findbefore(h, name->buf, name->length,
-//                                    NULL, pred);
-//    next = content_from_accession(h, pred[0]->buf[0]);
-    if (next == content) {
-        // XXX - I think this case should not occur, but just in case, avoid a loop.
-        next = content_from_accession(h, content_skiplist_next(h, content));
-        ccnd_debug_ccnb(h, __LINE__, "bump", NULL, next->key, next->size);
-    }
-    ccn_charbuf_destroy(&name);
+    flatname = ccn_charbuf_create();
+    ccn_flatname_from_ccnb(flatname, name->buf, name->length);
+    y = ccn_nametree_look_ge(h->content_tree,
+                             flatname->buf, flatname->length);
+    if (y != NULL)
+        next = y->payload;
+Bail:
+    charbuf_release(h, name);
+    ccn_charbuf_destroy(&flatname);
     return(next);
 }
 
@@ -4006,6 +3987,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
     struct nameprefix_entry *npe = NULL;
     struct content_entry *content = NULL;
     struct content_entry *last_match = NULL;
+    struct ccn_charbuf *flatname = NULL;
     struct ccn_indexbuf *comps = indexbuf_obtain(h);
     if (size > 65535)
         res = -__LINE__;
@@ -4066,15 +4048,16 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
         if (npe == NULL || drop_nonlocal_interest(h, npe, face, msg, size))
             goto Bail;
         if ((pi->answerfrom & CCN_AOK_CS) != 0) {
+            flatname = ccn_charbuf_create();
+            ccn_flatname_append_from_ccnb(flatname, msg, size, 0, -1);
             last_match = NULL;
             content = find_first_match_candidate(h, msg, pi);
             if (content != NULL && (h->debug & 8))
                 ccnd_debug_ccnb(h, __LINE__, "first_candidate", NULL,
-                                content->key,
+                                content->ccnb,
                                 content->size);
             if (content != NULL &&
-                !content_matches_interest_prefix(h, content, msg, comps,
-                                                 pi->prefix_comps)) {
+                !content_matches_prefix(h, content, flatname)) {
                 if (h->debug & 8)
                     ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
                                     msg, size);
@@ -4082,12 +4065,12 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
             }
             for (try = 0; content != NULL; try++) {
                 if ((s_ok || (content->flags & CCN_CONTENT_ENTRY_STALE) == 0) &&
-                    ccn_content_matches_interest(content->key,
+                    ccn_content_matches_interest(content->ccnb,
                                        content->size,
-                                       0, NULL, msg, size, pi)) {
+                                       1, NULL, msg, size, pi)) {
                     if (h->debug & 8)
                         ccnd_debug_ccnb(h, __LINE__, "matches", NULL,
-                                        content->key,
+                                        content->ccnb,
                                         content->size);
                     if ((pi->orderpref & 1) == 0) // XXX - should be symbolic
                         break;
@@ -4098,11 +4081,10 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                 content = content_from_accession(h, content_skiplist_next(h, content));
             check_next_prefix:
                 if (content != NULL &&
-                    !content_matches_interest_prefix(h, content, msg,
-                                                     comps, pi->prefix_comps)) {
+                    !content_matches_prefix(h, content, flatname)) {
                     if (h->debug & 8)
                         ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
-                                        content->key,
+                                        content->ccnb,
                                         content->size);
                     content = NULL;
                 }
@@ -4135,6 +4117,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
         hashtb_end(e);
     }
     indexbuf_release(h, comps);
+    ccn_charbuf_destroy(&flatname);
 }
 
 /**
@@ -4148,7 +4131,7 @@ mark_stale(struct ccnd_handle *h, struct content_entry *content)
         return;
     if (h->debug & 4)
             ccnd_debug_ccnb(h, __LINE__, "stale", NULL,
-                            content->key, content->size);
+                            content->ccnb, content->size);
     content->flags |= CCN_CONTENT_ENTRY_STALE;
     h->n_stale++;
     if (accession < h->min_stale)
@@ -4178,7 +4161,7 @@ expire_content(struct ccn_schedule *sched,
         return(0);
     content = content_from_accession(h, accession);
     if (content != NULL) {
-        n = hashtb_n(h->content_tab);
+        n = h->content_tree->n;
         /* The fancy test here lets existing stale content go away, too. */
         if ((n - (n >> 3)) > h->capacity ||
             (n > h->capacity && h->min_stale > h->max_stale)) {
@@ -4213,7 +4196,7 @@ set_content_timer(struct ccnd_handle *h, struct content_entry *content,
     else
         seconds = ccn_fetch_tagged_nonNegativeInteger(
                 CCN_DTAG_FreshnessSeconds,
-                content->key,
+                content->ccnb,
                 start, stop);
     if (seconds <= 0 || (h->tts_limit > 0 && seconds > h->tts_limit))
         seconds = h->tts_limit;
@@ -4221,7 +4204,7 @@ set_content_timer(struct ccnd_handle *h, struct content_entry *content,
         return;
     if (seconds > ((1U<<31) / 1000000)) {
         ccnd_debug_ccnb(h, __LINE__, "FreshnessSeconds_too_large", NULL,
-            content->key, pco->offset[CCN_PCO_E]);
+            content->ccnb, pco->offset[CCN_PCO_E]);
         return;
     }
     microseconds = seconds * 1000000;
@@ -4254,18 +4237,14 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
 {
     unsigned char *msg;
     size_t size;
-    struct hashtb_enumerator ee;
-    struct hashtb_enumerator *e = &ee;
     struct ccn_parsed_ContentObject obj = {0};
     int res;
-    size_t keysize = 0;
-    size_t tailsize = 0;
-    unsigned char *tail = NULL;
     struct content_entry *content = NULL;
     int i;
     struct ccn_indexbuf *comps = indexbuf_obtain(h);
     struct ccn_charbuf *f = charbuf_obtain(h);
     struct ccny *y = NULL;
+    ccn_cookie ocookie;
     
     msg = wire_msg;
     size = wire_size;
@@ -4302,13 +4281,13 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
     y = ccny_create(nrand48(h->seed));
     ccny_set_key(y, f->buf, f->length);
     // XXX - check h->content_tree->n
-    res = ccny_enroll(h->content_tree, y);
-    if (res != 0) {
-        // OK, here is a situation in which we want to have the old entry in case of a dup, so we can do the freshening.
-        // XXX this res should be a cookie
+    ocookie = ccny_enroll(h->content_tree, y);
+    if (ocookie != 0) {
+        /* An entry was already present */
         ccny_destroy(h->content_tree, &y);
         free(content);
-        content = content_from_accession(h->content_tree, res);
+        y = ccny_from_cookie(h->content_tree, ocookie);
+        content = y->payload;
         if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0) {
             /* When old content arrives after it has gone stale, freshen it */
             // XXX - ought to do mischief checks before this
@@ -4329,74 +4308,24 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         }
     }
     else {
+        res = 1;
         y->payload = content;
-        content->accession = y->cookie;
-    }
-
-//    hashtb_start(h->content_tab, e);
-//    res = hashtb_seek(e, msg, keysize, tailsize);
-//    content = e->data;
-    if (res == HT_OLD_ENTRY) {
-        if (tailsize != e->extsize ||
-              0 != memcmp(tail, ((unsigned char *)e->key) + keysize, tailsize)) {
-            ccnd_msg(h, "ContentObject name collision!!!!!");
-            ccnd_debug_ccnb(h, __LINE__, "new", face, msg, size);
-            ccnd_debug_ccnb(h, __LINE__, "old", NULL, e->key, e->keysize + e->extsize);
-            content = NULL;
-            hashtb_delete(e); /* XXX - Mercilessly throw away both of them. */
-            res = -__LINE__;
-        }
-        else if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0) {
-            /* When old content arrives after it has gone stale, freshen it */
-            // XXX - ought to do mischief checks before this
-            content->flags &= ~CCN_CONTENT_ENTRY_STALE;
-            h->n_stale--;
-            set_content_timer(h, content, &obj);
-            /* Record the new arrival face only if the old face is gone */
-            // XXX - it is not clear that this is the most useful choice
-            if (face_from_faceid(h, content->arrival_faceid) == NULL)
-                content->arrival_faceid = face->faceid;
-            // XXX - no counter for this case
-        }
-        else {
-            h->content_dups_recvd++;
-            ccnd_msg(h, "received duplicate ContentObject from %u (accession %llu)",
-                     face->faceid, (unsigned long long)content->accession);
-            ccnd_debug_ccnb(h, __LINE__, "dup", face, msg, size);
-        }
-    }
-    else if (res == HT_NEW_ENTRY) {
-        unsigned long n = hashtb_n(h->content_tab);
-        if (n > h->capacity + (h->capacity >> 3))
-            clean_needed(h);
-        content->accession = ++(h->accession);
+        content->accession = h->accession = y->cookie;
         content->arrival_faceid = face->faceid;
-        enroll_content(h, content);
-        if (content == content_from_accession(h, content->accession)) {
-            content->ncomps = comps->n;
-            content->comps = calloc(comps->n, sizeof(comps[0]));
-            if (content->comps == NULL) {
-                ccnd_msg(h, "could not enroll ContentObject (accession %llu)",
-                         (unsigned long long)content->accession);
-                content = NULL;
-                hashtb_delete(e);
-                res = -__LINE__;
-                hashtb_end(e);
-                goto Bail;
-            }
+        content->ncomps = comps->n + 1;
+        content->ccnb = malloc(size);
+        content->size = size;
+        if (content->ccnb == NULL) {
+            ccnd_msg(h, "out of memory");
+            exit(1);
         }
-        content->key_size = e->keysize;
-        content->size = e->keysize + e->extsize;
-        content->key = e->key;
-        for (i = 0; i < comps->n; i++)
-            content->comps[i] = comps->buf[i];
-        content_skiplist_insert(h, content);
         set_content_timer(h, content, &obj);
         /* Mark public keys supplied at startup as precious. */
         if (obj.type == CCN_CONTENT_KEY && content->accession <= (h->capacity + 7)/8)
             content->flags |= CCN_CONTENT_ENTRY_PRECIOUS;
+        if (h->content_tree->n >= h->content_tree->limit)
+            clean_needed(h);
     }
-    hashtb_end(e);
 Bail:
     indexbuf_release(h, comps);
     charbuf_release(h, f);
@@ -4406,7 +4335,7 @@ Bail:
         enum cq_delay_class c;
         struct content_queue *q;
         n_matches = match_interests(h, content, &obj, NULL, face);
-        if (res == HT_NEW_ENTRY) {
+        if (res == 1) {
             if (n_matches < 0) {
                 remove_content(h, content);
                 return;
@@ -5493,6 +5422,9 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     param.finalize = &finalize_guest;
     h->guest_tab = hashtb_create(sizeof(struct guest_entry), &param);
     param.finalize = 0;
+    h->content_tree = ccn_nametree_create();
+    h->content_tree->data = h;
+    h->content_tree->finalize = &finalize_content;
     h->min_stale = ~0;
     h->max_stale = 0;
     h->send_interest_scratch = ccn_charbuf_create();

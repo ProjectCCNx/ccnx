@@ -81,7 +81,6 @@ struct ccnd_handle {
     struct hashtb *faces_by_fd;     /**< keyed by fd */
     struct hashtb *dgram_faces;     /**< keyed by sockaddr */
     struct hashtb *faceid_by_guid;  /**< keyed by guid */
-    struct hashtb *content_tab;     /**< keyed by portion of ContentObject */
     struct hashtb *nameprefix_tab;  /**< keyed by name prefix components */
     struct hashtb *interest_tab;    /**< keyed by interest msg sans Nonce */
     struct hashtb *guest_tab;       /**< keyed by faceid */
@@ -112,14 +111,9 @@ struct ccnd_handle {
     struct ccn_charbuf *send_interest_scratch; /**< for use by send_interest */
     struct ccn_charbuf *scratch_charbuf; /**< one-slot scratch cache */
     struct ccn_indexbuf *scratch_indexbuf; /**< one-slot scratch cache */
-    struct ccn_nametree *content_tree;
-    /** Next three fields are used for direct accession-to-content table */
-    //ccn_accession_t accession_base;
-    //unsigned content_by_accession_window;
-    //struct content_entry **content_by_accession;
-    /** The following holds stragglers that would otherwise bloat the above */
-    //struct hashtb *sparse_straggler_tab; /* keyed by accession */
+    struct ccn_nametree *content_tree; /**< content store */
     ccn_accession_t accession;      /**< newest used accession number */
+    ccn_accession_t accession_base; /**< follower for reaping oldest content */
     ccn_accession_t min_stale;      /**< smallest accession of stale content */
     ccn_accession_t max_stale;      /**< largest accession of stale content */
     unsigned long capacity;         /**< may toss content if there more than
@@ -260,23 +254,17 @@ struct face {
 #define CCN_NOFACEID    (~0U)    /** denotes no face */
 
 /**
- *  The content hash table is keyed by the initial portion of the ContentObject
- *  that contains all the parts of the complete name.  The extdata of the hash
- *  table holds the rest of the object, so that the whole ContentObject is
- *  stored contiguously.  The internal form differs from the on-wire form in
- *  that the final content-digest name component is represented explicitly,
- *  which simplifies the matching logic.
- *  The original ContentObject may be reconstructed simply by excising this
- *  last name component, which is easily located via the comps array.
+ * Content table entry
+ *
+ * The content table is built on a nametree that is keyed by the flatname
+ * representation of the content name (including the implicit digest).
  */
 struct content_entry {
     ccn_accession_t accession;  /**< assigned in arrival order */
     unsigned arrival_faceid;    /**< the faceid of first arrival */
-    unsigned short *comps;      /**< Name Component byte boundary offsets */
     int ncomps;                 /**< Number of name components plus one */
-    int flags;                  /**< see below */
-    const unsigned char *key;   /**< ccnb-encoded ContentObject */
-    int key_size;               /**< Size of fragment prior to Content */
+    int flags;                  /**< see defines below */
+    unsigned char *ccnb;        /**< ccnb-encoded ContentObject */
     int size;                   /**< Size of ContentObject */
 };
 

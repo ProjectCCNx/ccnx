@@ -5,7 +5,7 @@
  *
  * Part of ccnd - the CCNx Daemon.
  *
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -39,6 +39,7 @@
 #include <ccn/schedule.h>
 #include <ccn/sockaddrutil.h>
 #include <ccn/hashtb.h>
+#include <ccn/nametree.h>
 #include <ccn/uri.h>
 
 #include "ccnd_private.h"
@@ -407,9 +408,9 @@ collect_stats_html(struct ccnd_handle *h)
         h->sec,
         h->usec,
         (unsigned long long)h->accession,
-        hashtb_n(h->content_tab),
+        h->content_tree->n,
         h->n_stale,
-        hashtb_n(h->sparse_straggler_tab),
+        0,
         h->content_dups_recvd,
         h->content_items_sent,
         hashtb_n(h->nameprefix_tab), stats.total_interest_counts,
@@ -578,9 +579,9 @@ collect_stats_xml(struct ccnd_handle *h)
         "<stuffed>%lu</stuffed>"
         "</interests>",
         (unsigned long long)h->accession,
-        hashtb_n(h->content_tab),
+        h->content_tree->n,
         h->n_stale,
-        hashtb_n(h->sparse_straggler_tab),
+        0,
         h->content_dups_recvd,
         h->content_items_sent,
         hashtb_n(h->nameprefix_tab), stats.total_interest_counts,
