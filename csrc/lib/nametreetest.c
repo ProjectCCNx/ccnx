@@ -63,12 +63,14 @@ test_inserts_from_stdin(void)
     int deleted = 0;
     int missing = 0;
     ccn_cookie cookie = 0;
+    ccn_cookie ocookie = 0;
     struct ccn_nametree *ntree = NULL;
     struct ccny *node = NULL;
     unsigned char *p = NULL;
     
     ntree = ccn_nametree_create();
     CHKPTR(ntree);
+    ccn_nametree_check(ntree);
     c = ccn_charbuf_create();
     CHKPTR(c);
     f = ccn_charbuf_create();
@@ -115,15 +117,16 @@ test_inserts_from_stdin(void)
             FAILIF(res != 0);
             fprintf(stderr, "n=%d, limit=%d\n", ntree->n, ntree->limit);
         }
-        res = ccny_enroll(ntree, node);
+        ocookie = ccny_enroll(ntree, node);
         if (cookie != 0) {
-            FAILIF(res != 1);
+            FAILIF(ocookie != cookie);
             ccny_destroy(ntree, &node);
             FAILIF(node != NULL);
             dups++;
         }
         else {
             FAILIF(res != 0);
+            FAILIF(node->cookie == 0);
             unique++;
         }
     }
