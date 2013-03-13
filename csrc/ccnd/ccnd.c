@@ -1609,6 +1609,7 @@ match_interests(struct ccnd_handle *h, struct content_entry *content,
     struct ccny *y = NULL;
     
     y = ccny_from_cookie(h->content_tree, content->accession);
+    if (y == NULL) abort();
     name = charbuf_obtain(h);
     ccn_name_init(name);
     ccn_name_append_flatname(name, y->key, y->keylen, 0, -1);
@@ -1623,7 +1624,9 @@ match_interests(struct ccnd_handle *h, struct content_entry *content,
             break;
     }
     charbuf_release(h, name);
+    name = NULL;
     indexbuf_release(h, namecomps);
+    namecomps = NULL;
     for (; npe != NULL; npe = npe->parent, ci--) {
         if (npe->fgen != h->forward_to_gen)
             update_forward_to(h, npe);
@@ -4263,7 +4266,6 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         ccnd_debug_ccnb(h, __LINE__, "indigestible", face, msg, size);
         goto Bail;
     }
-    
     if (obj.magic != 20090415) {
         if (++(h->oldformatcontent) == h->oldformatcontentgrumble) {
             h->oldformatcontentgrumble *= 10;
@@ -4274,23 +4276,21 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
     }
     if (h->debug & 4)
         ccnd_debug_ccnb(h, __LINE__, "content_from", face, msg, size);
-    content = calloc(1, sizeof(*content));
-    if (content == NULL)
-        goto Bail;
     f = charbuf_obtain(h);
     ccn_flatname_append_from_ccnb(f, msg, size, 0, -1);
     ccn_flatname_append_component(f, obj.digest, obj.digest_bytes);
     y = ccny_create(nrand48(h->seed));
-    ccny_set_key(y, f->buf, f->length);
+    res = ccny_set_key(y, f->buf, f->length);
+    if (res < 0) {
+        res = -__LINE__;
+        goto Bail;
+    }
     // XXX - check h->content_tree->n
     ocookie = ccny_enroll(h->content_tree, y);
     if (ocookie != 0) {
         /* An entry was already present */
         ccny_destroy(h->content_tree, &y);
-        free(content);
-        y = ccny_from_cookie(h->content_tree, ocookie);
-        content = y->payload;
-        res = 0;
+        content = ccny_from_cookie(h->content_tree, ocookie)->payload;
         if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0) {
             /* When old content arrives after it has gone stale, freshen it */
             // XXX - ought to do mischief checks before this
@@ -4307,19 +4307,25 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
             h->content_dups_recvd++;
             ccnd_debug_ccnb(h, __LINE__, "dup", face, msg, size);
         }
+        res = 0;
+    }
+    else if (y->cookie == 0) {
+        /* Reporting and cleanup happens below */
+        res = -__LINE__;
     }
     else {
-        res = 1;
+        res = -__LINE__;
+        content = calloc(1, sizeof(*content));
+        if (content == NULL)
+            goto Bail;
         y->payload = content;
         content->accession = h->accession = y->cookie;
         content->arrival_faceid = face->faceid;
         content->ncomps = comps->n + 1;
         content->ccnb = malloc(size);
+        if (content->ccnb == NULL)
+            goto Bail;
         content->size = size;
-        if (content->ccnb == NULL) {
-            ccnd_msg(h, "out of memory");
-            exit(1);
-        }
         memcpy(content->ccnb, msg, size);
         set_content_timer(h, content, &obj);
         /* Mark public keys supplied at startup as precious. */
@@ -4330,15 +4336,22 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
             if (h->content_tree->limit < h->capacity)
                 ccn_nametree_grow(h->content_tree);
         }
+        res = 1;
     }
 Bail:
     indexbuf_release(h, comps);
     charbuf_release(h, f);
     f = NULL;
-    if (res >= 0 && content != NULL) {
+    if (res < 0) {
+        ccnd_debug_ccnb(h, -res, "content_dropped", face, msg, size);
+        ccny_destroy(h->content_tree, &y);
+        if (content != NULL) abort();
+    }
+    else {
         int n_matches;
         enum cq_delay_class c;
         struct content_queue *q;
+        if (content == NULL) abort();
         n_matches = match_interests(h, content, &obj, NULL, face);
         if (res == 1) {
             if (n_matches < 0) {
