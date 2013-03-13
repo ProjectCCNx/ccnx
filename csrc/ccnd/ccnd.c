@@ -717,9 +717,9 @@ find_first_match_candidate(struct ccnd_handle *h,
                 ccn_buf_advance_past_element(d);
                 ex1end = pi->offset[CCN_PI_B_Exclude] + d->decoder.token_index;
                 if (d->decoder.state >= 0) {
-                    ccn_flatname_append_component(namebuf,
+                    ccn_flatname_append_from_ccnb(namebuf,
                                                   interest_msg + ex1start,
-                                                  ex1end - ex1start);
+                                                  ex1end - ex1start, 0, 1);
 //                    if (h->debug & 8)
 //                        ccnd_debug_ccnb(h, __LINE__, "fastex", NULL,
 //                                        namebuf->buf, namebuf->length);
@@ -1604,7 +1604,7 @@ match_interests(struct ccnd_handle *h, struct content_entry *content,
     struct ccn_charbuf *name = NULL;
     struct ccn_indexbuf *namecomps = NULL;
     unsigned c0 = 0;
-    const unsigned char *key = content->ccnb + c0;
+    const unsigned char *key = NULL;
     struct nameprefix_entry *npe = NULL;
     struct ccny *y = NULL;
     
@@ -1615,6 +1615,7 @@ match_interests(struct ccnd_handle *h, struct content_entry *content,
     namecomps = indexbuf_obtain(h);
     ccn_name_split(name, namecomps);
     c0 = namecomps->buf[0];
+    key = name->buf + c0;
     for (ci = namecomps->n - 1; ci >= 0; ci--) {
         int size = namecomps->buf[ci] - c0;
         npe = hashtb_lookup(h->nameprefix_tab, key, size);
@@ -3914,7 +3915,8 @@ next_child_at_level(struct ccnd_handle *h,
     res = ccn_name_append_flatname(name, y->key, y->keylen, 0, level + 1);
     if (res < level)
         goto Bail;
-    res = ccn_name_next_sibling(name);
+//    ccnd_debug_ccnb(h, __LINE__, "ccn_name_next_sibling_is_next", NULL,
+//                    name->buf, name->length);
     if (res == level)
         res = ccn_name_append(name, NULL, 0);
     else if (res == level + 1)
@@ -4288,6 +4290,7 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         free(content);
         y = ccny_from_cookie(h->content_tree, ocookie);
         content = y->payload;
+        res = 0;
         if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0) {
             /* When old content arrives after it has gone stale, freshen it */
             // XXX - ought to do mischief checks before this
@@ -4299,12 +4302,10 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
             if (face_from_faceid(h, content->arrival_faceid) == NULL)
                 content->arrival_faceid = face->faceid;
             // XXX - no counter for this case
-            res = 0;
         }
         else {
             h->content_dups_recvd++;
             ccnd_debug_ccnb(h, __LINE__, "dup", face, msg, size);
-            res = -1;
         }
     }
     else {
