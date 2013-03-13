@@ -92,8 +92,8 @@ static struct face *get_dgram_source(struct ccnd_handle *h, struct face *face,
                                      int why);
 static void mark_stale(struct ccnd_handle *h,
                        struct content_entry *content);
-static ccn_accession_t content_skiplist_next(struct ccnd_handle *h,
-                                             struct content_entry *content);
+static struct content_entry *content_next(struct ccnd_handle *h,
+                                          struct content_entry *content);
 static void reap_needed(struct ccnd_handle *h, int init_delay_usec);
 static void check_comm_file(struct ccnd_handle *h);
 static int nameprefix_seek(struct ccnd_handle *h,
@@ -753,19 +753,19 @@ content_matches_prefix(struct ccnd_handle *h,
 /**
  * Advance to the next entry in the nametree
  */
-static ccn_accession_t
-content_skiplist_next(struct ccnd_handle *h, struct content_entry *content)
+static struct content_entry *
+content_next(struct ccnd_handle *h, struct content_entry *content)
 {
     struct ccny *y = NULL;
     if (content == NULL)
-        return(0);
+        return(NULL);
     y = ccny_from_cookie(h->content_tree, content->accession);
     if (y == NULL)
-        return(0);
+        return(NULL);
     y = y->skiplinks[0];
     if (y == NULL)
-        return(0);
-    return(y->cookie);
+        return(NULL);
+    return(y->payload);
 }
 
 /**
@@ -4078,7 +4078,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                     content = next_child_at_level(h, content, comps->n - 1);
                     goto check_next_prefix;
                 }
-                content = content_from_accession(h, content_skiplist_next(h, content));
+                content = content_next(h, content);
             check_next_prefix:
                 if (content != NULL &&
                     !content_matches_prefix(h, content, flatname)) {
@@ -4319,12 +4319,16 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
             ccnd_msg(h, "out of memory");
             exit(1);
         }
+        memcpy(content->ccnb, msg, size);
         set_content_timer(h, content, &obj);
         /* Mark public keys supplied at startup as precious. */
         if (obj.type == CCN_CONTENT_KEY && content->accession <= (h->capacity + 7)/8)
             content->flags |= CCN_CONTENT_ENTRY_PRECIOUS;
-        if (h->content_tree->n >= h->content_tree->limit)
+        if (h->content_tree->n >= h->content_tree->limit) {
             clean_needed(h);
+            if (h->content_tree->limit < h->capacity)
+                ccn_nametree_grow(h->content_tree);
+        }
     }
 Bail:
     indexbuf_release(h, comps);
@@ -5406,7 +5410,6 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->logpid = (int)getpid();
     h->progname = progname;
     h->debug = -1;
-    h->skiplinks = ccn_indexbuf_create();
     param.finalize_data = h;
     h->face_limit = 1024; /* soft limit */
     h->faces_by_faceid = calloc(h->face_limit, sizeof(h->faces_by_faceid[0]));
@@ -5452,7 +5455,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
         portstr = CCN_DEFAULT_UNICAST_PORT;
     h->portstr = portstr;
     entrylimit = getenv("CCND_CAP");
-    h->capacity = ~0;
+    h->capacity = (~0U)/2;
     if (entrylimit != NULL && entrylimit[0] != 0) {
         h->capacity = atol(entrylimit);
         if (h->capacity == 0)
@@ -5587,7 +5590,6 @@ ccnd_destroy(struct ccnd_handle **pccnd)
     ccn_charbuf_destroy(&h->send_interest_scratch);
     ccn_charbuf_destroy(&h->scratch_charbuf);
     ccn_charbuf_destroy(&h->autoreg);
-    ccn_indexbuf_destroy(&h->skiplinks);
     ccn_indexbuf_destroy(&h->scratch_indexbuf);
     ccn_indexbuf_destroy(&h->unsol);
     if (h->face0 != NULL) {

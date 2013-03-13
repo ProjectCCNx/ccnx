@@ -84,7 +84,6 @@ struct ccnd_handle {
     struct hashtb *nameprefix_tab;  /**< keyed by name prefix components */
     struct hashtb *interest_tab;    /**< keyed by interest msg sans Nonce */
     struct hashtb *guest_tab;       /**< keyed by faceid */
-    struct ccn_indexbuf *skiplinks; /**< skiplist for content-ordered ops */
     unsigned forward_to_gen;        /**< for forward_to updates */
     unsigned face_gen;              /**< faceid generation number */
     unsigned face_rover;            /**< for faceid allocation */
@@ -116,7 +115,7 @@ struct ccnd_handle {
     ccn_accession_t accession_base; /**< follower for reaping oldest content */
     ccn_accession_t min_stale;      /**< smallest accession of stale content */
     ccn_accession_t max_stale;      /**< largest accession of stale content */
-    unsigned long capacity;         /**< may toss content if there more than
+    unsigned capacity;              /**< may toss content if there more than
                                      this many content objects in the store */
     unsigned long n_stale;          /**< Number of stale content objects */
     struct ccn_indexbuf *unsol;     /**< unsolicited content */
