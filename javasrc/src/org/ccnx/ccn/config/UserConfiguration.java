@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.config;
 
+import org.ccnx.ccn.impl.security.keystore.AESKeyStoreSpi;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
@@ -69,7 +70,7 @@ public class UserConfiguration {
 	/**
 	 * Default keystore type for symmetric keys
 	 */
-	protected static final String DEFAULT_SYMMETRIC_KEYSTORE_TYPE = "CCN_AES";
+	protected static final String DEFAULT_SYMMETRIC_KEYSTORE_TYPE = AESKeyStoreSpi.TYPE;
 
 	/**
 	 * Default value of user configuration directory name -- this is not

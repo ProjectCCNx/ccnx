@@ -31,7 +31,7 @@ public class CCNKeyStore extends KeyStore {
 	protected static Class<KeyStoreSpi> _searchedClass = null;
 	
 	static {
-		_ccnKeyStores.put("CCN_AES", (Class)AESKeyStoreSpi.class);
+		_ccnKeyStores.put(AESKeyStoreSpi.TYPE, (Class)AESKeyStoreSpi.class);
 	}
 
 	protected CCNKeyStore(KeyStoreSpi spi, Provider provider, String type, boolean requiresSymmetric) {

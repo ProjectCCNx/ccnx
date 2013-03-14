@@ -19,6 +19,7 @@ package org.ccnx.ccn;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.net.URI;
 import java.security.InvalidKeyException;
 import java.security.Key;
@@ -53,6 +54,7 @@ import org.ccnx.ccn.protocol.ContentObject.SimpleVerifier;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.KeyLocator.KeyLocatorType;
 import org.ccnx.ccn.protocol.KeyName;
+import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
@@ -406,7 +408,7 @@ public abstract class KeyManager {
 	 */
 	public abstract Key getVerificationKey(
 			PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator, String type, String fileName,
-			long timeout) throws IOException;
+			String password, long timeout) throws IOException;
 
 	/**
 	 * Get the verification key for a given publisher, going to the network to retrieve it if necessary.
@@ -418,7 +420,7 @@ public abstract class KeyManager {
 	 */
 	public Key getVerificationKey(
 			PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator) throws IOException {
-		return getVerificationKey(publisherKeyID, keyLocator, null, null, SystemConfiguration.EXTRA_LONG_TIMEOUT);
+		return getVerificationKey(publisherKeyID, keyLocator, null, null, null, SystemConfiguration.EXTRA_LONG_TIMEOUT);
 	}
 	
 	/**
@@ -427,9 +429,10 @@ public abstract class KeyManager {
 	 * @param name name for the key or null if none
 	 * @param type the type of keystore
 	 * @param fileName filename for keystore
+	 * @param password password for keystore
 	 * @throws ConfigurationException
 	 */
-	public abstract void saveVerificationKey(Key key, ContentName name, String type, String fileName) throws IOException;
+	public abstract void saveVerificationKey(Key key, ContentName name, String type, String fileName, String password) throws IOException;
 	
 	/**
 	 * Remove a key and its backing keystore
@@ -439,6 +442,51 @@ public abstract class KeyManager {
 	 * @throws IOException
 	 */
 	public abstract void removeVerificationKey(Key key, String type, String fileName) throws IOException;
+	
+	/**
+	 * Translate the digest portion of a key filename to a PublisherPublicKeyDigest using the specified keynaming
+	 * version (currently this is always version "1").
+	 * We code a positive suffix with "0" and a negative one with "1" in the first character of the String
+	 * @param version
+	 * @param fileDigest
+	 * @return
+	 */
+	public static PublisherPublicKeyDigest keyStoreToDigest(int version, String fileDigest) {
+		String realValue = fileDigest.substring(1);
+		if (fileDigest.startsWith("1"))
+			realValue = "-" + realValue;
+		BigInteger bi = new BigInteger(realValue, SystemConfiguration.DEBUG_RADIX);
+		return new PublisherPublicKeyDigest(bi.toByteArray());
+	}
+	
+	/**
+	 * Translate a PublisherPublicKeyDigest into the digest portion of a keystore filename
+	 * 
+	 * @param version
+	 * @param ppkd
+	 * @return
+	 */
+	public static String digestToKeyStoreSuffix(int version, PublisherPublicKeyDigest ppkd) {
+		return suffixSign(new BigInteger(ppkd.digest()).toString(SystemConfiguration.DEBUG_RADIX));
+	}
+	
+	/**
+	 * Translate a key into the digest portion of a keystore filename
+	 * @param version
+	 * @param key
+	 * @return
+	 */
+	public static String keyToKeyStoreSuffix(int version, Key key) {
+		return suffixSign(new BigInteger(PublisherID.generatePublicKeyDigest(key)).toString(SystemConfiguration.DEBUG_RADIX));
+	}
+	
+	private static String suffixSign(String suffix) {
+		if (suffix.startsWith("-"))
+			suffix = "1" + suffix.substring(1);
+		else
+			suffix = "0" + suffix;
+		return suffix;
+	}
 	
 	/**
 	 * Get the public key for a given publisher as it was explicitly published, 

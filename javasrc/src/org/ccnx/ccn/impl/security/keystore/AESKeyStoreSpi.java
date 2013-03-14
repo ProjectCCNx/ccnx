@@ -45,8 +45,8 @@ import org.bouncycastle.asn1.DEROctetString;
 import org.ccnx.ccn.impl.support.Tuple;
 
 /**
- * This is a specialized keystore for users who are using a symmetric key as their user key.
- * CCN keystores only store 1 key so the algorithm used for the key storage is as follows:
+ * This is a specialized keystore for storing symmetric keys. We looked at PKCS #11 for this but decided against
+ * it for now because industry doesn't seem to be standardizing around it - at least not yet.
  * 
  * Let P=passphrase
  * Let PT = symmetric key to store
@@ -62,6 +62,7 @@ import org.ccnx.ccn.impl.support.Tuple;
  */
 public class AESKeyStoreSpi extends KeyStoreSpi {
 	
+	public static final String TYPE = "CCN_AES";
 	public static final String MAC_ALGORITHM = "HMAC-SHA256";	// XXX Should these be settable?
 	public static final String AES_CRYPTO_ALGORITHM = "AES/CBC/PKCS5Padding";
 	

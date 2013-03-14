@@ -91,7 +91,7 @@ public class SymmetricKeyTest extends CCNTestBase {
 		SecretKey sk = kg.generateKey();
 		KeyManager km = putHandle.keyManager();
 		try {
-			km.saveVerificationKey(sk, null, null, null);
+			km.saveVerificationKey(sk, null, null, null, null);
 			PublisherPublicKeyDigest publisher = new PublisherPublicKeyDigest(sk);
 			BasicKeyManager km2 = new BasicKeyManager();
 			km2.initialize();

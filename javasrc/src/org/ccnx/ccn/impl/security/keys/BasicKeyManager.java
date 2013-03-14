@@ -51,6 +51,7 @@ import javax.crypto.SecretKey;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.security.crypto.EncryptedObjectFileHelper;
 import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
@@ -211,7 +212,7 @@ public class BasicKeyManager extends KeyManager {
 		_publicKeyCache = new PublicKeyCache();
 		_privateKeyCache = new SecureKeyCache();
 		_keyStoreInfo = loadKeyStore(_keyStoreDirectory, _keyStoreType, _keyStoreFileName); // uses _keyRepository and _privateKeyCache
-		if (!loadValuesFromKeystore(_keyStoreInfo)) {
+		if (!loadValuesFromKeystore(_keyStoreInfo, null)) {
 			Log.warning("Cannot process keystore!");
 		}
 		// This also loads our cached keys.
@@ -397,11 +398,13 @@ public class BasicKeyManager extends KeyManager {
 	 * @param keyStore
 	 * @throws ConfigurationException 
 	 */
-	protected boolean loadValuesFromKeystore(KeyStoreInfo keyStoreInfo) throws ConfigurationException {
+	protected boolean loadValuesFromKeystore(KeyStoreInfo keyStoreInfo, char[] password) throws ConfigurationException {
 		KeyStore.Entry entry = null;
+		if (null == password)
+			password = _password;
 		try {
 			if (keyStoreInfo.getKeyStore().requiresSymmetric()) {
-				entry = (KeyStore.SecretKeyEntry)keyStoreInfo.getKeyStore().getEntry(_defaultAlias, new KeyStore.PasswordProtection(_password));
+				entry = (KeyStore.SecretKeyEntry)keyStoreInfo.getKeyStore().getEntry(_defaultAlias, new KeyStore.PasswordProtection(password));
 				SecretKey key = ((KeyStore.SecretKeyEntry)entry).getSecretKey();
 				_privateKeyCache.addSecretKey(null, key);
 			} else {
@@ -409,7 +412,7 @@ public class BasicKeyManager extends KeyManager {
 					Log.info(Log.FAC_KEYS, "Loading key store {0} version {1} version component {2} millis {3}", keyStoreInfo.getKeyStoreURI(), keyStoreInfo.getVersion().toString(), 
 							VersioningProfile.printAsVersionComponent(keyStoreInfo.getVersion()), keyStoreInfo.getVersion().getTime());
 				// Default alias should be a PrivateKeyEntry
-				entry = (KeyStore.PrivateKeyEntry)keyStoreInfo.getKeyStore().getEntry(_defaultAlias, new KeyStore.PasswordProtection(_password));
+				entry = (KeyStore.PrivateKeyEntry)keyStoreInfo.getKeyStore().getEntry(_defaultAlias, new KeyStore.PasswordProtection(password));
 				if (null == entry) {
 					Log.warning("Cannot get default key entry: " + _defaultAlias);
 					generateConfigurationException("Cannot retrieve default user keystore entry.", null);
@@ -423,7 +426,7 @@ public class BasicKeyManager extends KeyManager {
 				if (Log.isLoggable(Log.FAC_KEYS, Level.INFO))
 					Log.info(Log.FAC_KEYS, "Default key ID for user " + _userName + ": " + _defaultKeyID);
 				
-				_privateKeyCache.loadKeyStore(keyStoreInfo, _password, _publicKeyCache);
+				_privateKeyCache.loadKeyStore(keyStoreInfo, password, _publicKeyCache);
 			}
 		} catch (Exception e) {
 			generateConfigurationException("Cannot retrieve default user keystore entry.", e);
@@ -1068,7 +1071,7 @@ public class BasicKeyManager extends KeyManager {
 	@Override
 	public Key getVerificationKey(
 			PublisherPublicKeyDigest desiredKeyID, KeyLocator keyLocator, String type, String fileName,
-			long timeout) throws IOException {		
+			String password, long timeout) throws IOException {		
 		
 		if (Log.isLoggable(Log.FAC_KEYS, Level.FINER))
 			Log.finer(Log.FAC_KEYS, "getVerificationKey: retrieving key: " + desiredKeyID + " located at: " + keyLocator);
@@ -1081,11 +1084,16 @@ public class BasicKeyManager extends KeyManager {
 					type = UserConfiguration.defaultSymmetricKeystoreType();
 				}
 				if (null == fileName) {
-					fileName = _keyStoreFileName + "-" + DataUtils.printBytes(desiredKeyID.digest());
+					fileName = _keyStoreFileName + "-" + digestToKeyStoreSuffix(SystemConfiguration.KEYSTORE_NAMING_VERSION, desiredKeyID);
 				}
+				char[] pwd;
+				if (null == password)
+					pwd = _password;
+				else
+					pwd = password.toCharArray();
 				try {
 					KeyStoreInfo ksi = loadKeyStore(_keyStoreDirectory, type, fileName);
-					loadValuesFromKeystore(ksi);
+					loadValuesFromKeystore(ksi, pwd);
 					key = getSecureKeyCache().getPrivateKey(desiredKeyID.digest());
 				} catch (ConfigurationException e) {
 					throw new IOException(e);
@@ -1103,7 +1111,8 @@ public class BasicKeyManager extends KeyManager {
 	/**
 	 * Save a verification key in a keystore
 	 */
-	public void saveVerificationKey(Key key, ContentName name, String type, String fileName) throws IOException {
+	public void saveVerificationKey(Key key, ContentName name, String type, String fileName, String password) throws IOException {
+		char[] pwd;
 		SecureKeyCache skc = getSecureKeyCache();
 		if (null == type) {
 			if (key instanceof SecretKey) {
@@ -1115,11 +1124,12 @@ public class BasicKeyManager extends KeyManager {
 			}
 		}
 		if (null == fileName) {
-			fileName = _keyStoreFileName + "-" + DataUtils.printBytes(SecureKeyCache.getKeyIdentifier(key));
+			fileName = _keyStoreFileName + "-" + keyToKeyStoreSuffix(SystemConfiguration.KEYSTORE_NAMING_VERSION, key);
 		}
+		pwd = (null == password) ? _password : password.toCharArray();
 		try {
 			Tuple<KeyStoreInfo, OutputStream> tuple = createKeyStoreWriteStream(_keyStoreDirectory, fileName);
-			createKeyStore(tuple.second(), key, type, _defaultAlias, _password, _userName);
+			createKeyStore(tuple.second(), key, type, _defaultAlias, pwd, _userName);
 		} catch (ConfigurationException e) {
 			throw new IOException(e);
 		}
