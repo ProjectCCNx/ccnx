@@ -56,7 +56,7 @@ import org.ccnx.ccn.impl.support.Tuple;
  * macK = HMAC-SHA256(P, '\1')
  * AES256-CBC(IV, key, PT) - performs AES256 in CBC mode
  *
- * SK = IV || AES256-CBC(IV, aesK, PT) || HMAC-SHA256(macK, AES256-CBC(IV, aesK, PT))
+ * SK = (PT.size << 2) || IV || AES256-CBC(IV, aesK, PT) || HMAC-SHA256(macK, AES256-CBC(IV, aesK, PT))
  *
  * SK is the symmetric keystore ciphertext
  */
@@ -67,7 +67,6 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 	public static final String AES_CRYPTO_ALGORITHM = "AES/CBC/PKCS5Padding";
 	
 	public static final int IV_SIZE = 16;
-	public static final int AES_SIZE = 48;
 
 	public static final Random _random = new SecureRandom();
 	
@@ -166,21 +165,22 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 		ASN1InputStream ais = new ASN1InputStream(stream);
 		ASN1OctetString os = (ASN1OctetString) ais.readObject();
 		byte [] cryptoData = os.getOctets();
-		int checkLength = cryptoData.length - (IV_SIZE + AES_SIZE);
+		int aeslen = (int)(cryptoData[0] << 2);
+		int checkLength = cryptoData.length - (IV_SIZE + aeslen + 1);
 		if (checkLength <= 0)
 			throw new IOException("Corrupted keystore");
 		byte[] iv = new byte[IV_SIZE];
-		System.arraycopy(cryptoData, 0, iv, 0, iv.length);
+		System.arraycopy(cryptoData, 1, iv, 0, iv.length);
 		Tuple<SecretKeySpec, SecretKeySpec> keys = initializeForAES(password);
 		try {
 			Cipher cipher = Cipher.getInstance(AES_CRYPTO_ALGORITHM);
 			IvParameterSpec ivspec = new IvParameterSpec(iv);
 			cipher.init(Cipher.DECRYPT_MODE, keys.first(), ivspec);
-			byte[] cryptBytes = new byte[AES_SIZE];
-			System.arraycopy(cryptoData, IV_SIZE, cryptBytes, 0, cryptBytes.length);
+			byte[] cryptBytes = new byte[aeslen];
+			System.arraycopy(cryptoData, IV_SIZE + 1, cryptBytes, 0, cryptBytes.length);
 			_id = cipher.doFinal(cryptBytes);
 			byte[] check = new byte[checkLength];
-			System.arraycopy(cryptoData, IV_SIZE + AES_SIZE, check, 0, checkLength);
+			System.arraycopy(cryptoData, IV_SIZE + aeslen + 1, check, 0, checkLength);
 			_mac.init(keys.second());
 			byte[] hmac = _mac.doFinal(cryptBytes);
 			if (!Arrays.equals(hmac, check))
@@ -233,10 +233,11 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 			byte[] part3 = _mac.doFinal(aesCBC);
 			// TODO might be a better way to do this but am not sure how
 			// (and its not really that important anyway)
-			byte[] asn1buf = new byte[iv.length + aesCBC.length + part3.length];
-			System.arraycopy(iv, 0, asn1buf, 0, iv.length);
-			System.arraycopy(aesCBC, 0, asn1buf, iv.length, aesCBC.length);
-			System.arraycopy(part3, 0, asn1buf, iv.length + aesCBC.length, part3.length);
+			byte[] asn1buf = new byte[1 + iv.length + aesCBC.length + part3.length];
+			asn1buf[0] = (byte)(aesCBC.length >> 2);
+			System.arraycopy(iv, 0, asn1buf, 1, iv.length);
+			System.arraycopy(aesCBC, 0, asn1buf, iv.length + 1, aesCBC.length);
+			System.arraycopy(part3, 0, asn1buf, iv.length + aesCBC.length + 1, part3.length);
 			ASN1OctetString os = new DEROctetString(asn1buf);
 			aos.writeObject(os);
 			aos.flush();

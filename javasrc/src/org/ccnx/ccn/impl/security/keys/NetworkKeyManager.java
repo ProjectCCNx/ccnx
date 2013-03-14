@@ -72,7 +72,7 @@ public class NetworkKeyManager extends BasicKeyManager {
 	 * @throws ConfigurationException
 	 */
 	@Override
-	protected KeyStoreInfo loadKeyStore(String directory, String type, String fileName) throws ConfigurationException, IOException {
+	protected KeyStoreInfo loadKeyStore(String directory, String type, String fileName, char[] password) throws ConfigurationException, IOException {
 		// Is there an existing version of this key store? don't assume repo, so don't enumerate.
 		// timeouts should be ok.
 		// DKS TODO -- once streams pull first block on creation, don't need this much work.
@@ -96,7 +96,7 @@ public class NetworkKeyManager extends BasicKeyManager {
 			Log.info("Loading CCN key store from " + _keystoreName + "...");
 			try {
 				in = new CCNVersionedInputStream(keystoreObject, null, handle());
-				CCNKeyStore keyStore = readKeyStore(in, _keyStoreType);
+				CCNKeyStore keyStore = readKeyStore(in, _keyStoreType, password);
 				keyStoreInfo = new KeyStoreInfo(_keystoreName.toURIString(), keyStore, in.getVersion());
 			} catch (IOException e) {
 				Log.warning("Cannot open existing key store: " + _keystoreName);

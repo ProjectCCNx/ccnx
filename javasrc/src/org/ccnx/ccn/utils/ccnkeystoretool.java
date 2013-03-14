@@ -33,7 +33,7 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 /**
- * Command line utility to write a keystore file for testing
+ * Command line utility to write and read a symmetric keystore file for testing
  **/
  public class ccnkeystoretool extends CommonOutput implements Usage {
 	 static final int KEYSIZE = 128/8;
@@ -43,7 +43,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 	/**
 	 * @param args
 	 */
-	public void create(String[] args) {
+	public void keytool(String[] args) {
 		Log.setDefaultLevel(Level.WARNING);
 		boolean readMode = false;
 		String data = null;
@@ -84,6 +84,9 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 						SystemConfiguration.NO_TIMEOUT);
 				if (null == key)
 					System.out.println("Couldn't get the key for: " + digest);
+				else {
+					System.out.println("Retrieved key: " +  new String(((SecretKey)key).getEncoded()));
+				}
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -105,10 +108,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 					sk = new SecretKeySpec(keyBytes, "HMAC-SHA256");
 				}
 				km.saveVerificationKey(sk, null, null, null, password);
-				PublisherPublicKeyDigest ppkd = new PublisherPublicKeyDigest(sk);
-				String suffix = KeyManager.digestToKeyStoreSuffix(SystemConfiguration.KEYSTORE_NAMING_VERSION, ppkd);
-				PublisherPublicKeyDigest ppkd2 = KeyManager.keyStoreToDigest(SystemConfiguration.KEYSTORE_NAMING_VERSION, suffix);
-				System.out.println("foo");
+				System.out.println("Stored key successfully");
 			} catch (NoSuchAlgorithmException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -130,6 +130,6 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 	}
 
 	public static void main(String[] args) {
-		createkeystore.create(args);
+		createkeystore.keytool(args);
 	}
 }

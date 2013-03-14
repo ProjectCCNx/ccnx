@@ -211,7 +211,7 @@ public class BasicKeyManager extends KeyManager {
 			return;
 		_publicKeyCache = new PublicKeyCache();
 		_privateKeyCache = new SecureKeyCache();
-		_keyStoreInfo = loadKeyStore(_keyStoreDirectory, _keyStoreType, _keyStoreFileName); // uses _keyRepository and _privateKeyCache
+		_keyStoreInfo = loadKeyStore(_keyStoreDirectory, _keyStoreType, _keyStoreFileName, _password); // uses _keyRepository and _privateKeyCache
 		if (!loadValuesFromKeystore(_keyStoreInfo, null)) {
 			Log.warning("Cannot process keystore!");
 		}
@@ -302,7 +302,7 @@ public class BasicKeyManager extends KeyManager {
 	 * 	uses default in user's home directory.
 	 * @throws ConfigurationException
 	 */
-	protected KeyStoreInfo loadKeyStore(String storeDirectory, String type, String fileName) throws ConfigurationException, IOException {
+	protected KeyStoreInfo loadKeyStore(String storeDirectory, String type, String fileName, char[] password) throws ConfigurationException, IOException {
 		
 		KeyStoreInfo keyStoreInfo = null;
 		File keyStoreFile = new File(storeDirectory, fileName);
@@ -326,7 +326,7 @@ public class BasicKeyManager extends KeyManager {
 				Log.info(Log.FAC_KEYS, "Loading CCN key store from " + keyStoreFile.getAbsolutePath() + "...last modified " + keyStoreFile.lastModified() + "(ms).");
 			try {
 				in = new FileInputStream(keyStoreFile);
-				keyStore = readKeyStore(in, type);
+				keyStore = readKeyStore(in, type, password);
 				keyStoreInfo = new KeyStoreInfo(keyStoreFile.toURI().toString(), keyStore, new CCNTime(keyStoreFile.lastModified()));
 				if (Log.isLoggable(Log.FAC_KEYS, Level.INFO))
 					Log.info(Log.FAC_KEYS, "Loaded CCN key store from " + keyStoreFile.getAbsolutePath() + "...version " + keyStoreInfo.getVersion() + " ms: " + keyStoreInfo.getVersion().getTime());
@@ -344,13 +344,15 @@ public class BasicKeyManager extends KeyManager {
 	 * @param in input stream
 	 * @throws ConfigurationException
 	 */
-	protected CCNKeyStore readKeyStore(InputStream in, String type) throws ConfigurationException {
+	protected CCNKeyStore readKeyStore(InputStream in, String type, char[] password) throws ConfigurationException {
 		CCNKeyStore keyStore = null;
 		try {
 			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO))
 				Log.info(Log.FAC_KEYS, "Loading CCN key store...");
+			if (null == password)
+				password = _password;
 			keyStore = CCNKeyStore.getInstance(type);
-			keyStore.load(in, _password);
+			keyStore.load(in, password);
 		} catch (NoSuchAlgorithmException e) {
 			Log.warning("Cannot load keystore: " + e);
 			throw new ConfigurationException("Cannot load default keystore: " + e);
@@ -1092,7 +1094,7 @@ public class BasicKeyManager extends KeyManager {
 				else
 					pwd = password.toCharArray();
 				try {
-					KeyStoreInfo ksi = loadKeyStore(_keyStoreDirectory, type, fileName);
+					KeyStoreInfo ksi = loadKeyStore(_keyStoreDirectory, type, fileName, pwd);
 					loadValuesFromKeystore(ksi, pwd);
 					key = getSecureKeyCache().getPrivateKey(desiredKeyID.digest());
 				} catch (ConfigurationException e) {
