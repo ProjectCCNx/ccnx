@@ -18,8 +18,8 @@ WithCCND 4 env CCND_DEBUG=-1 ccnd 2>locotcp.out &
 trap "WithCCND 4 ccndstop" 0  # Tear it down at end of test
 PORT4=$((CCN_LOCAL_PORT_BASE+4))
 ccnc -r 'read i && echo Hello $i' /test/locotcp &
-ccndc add / tcp 127.0.0.1 $PORT4
 WithCCND 4 ccndsmoketest || SkipTest No ccnd 4
+ccndc add / tcp 127.0.0.1 $PORT4
 CONNECTBACK=`WithCCND 4 ccndstatus | grep remote | cut -f 7- -d :`
 [ $((CONNECTBACK)) -gt 0 ] || CONNECTBACK=`sleep 1; WithCCND 4 ccndstatus | grep remote | cut -f 7- -d :`
 WithCCND 4 ccndc add / tcp 127.0.0.1 $CONNECTBACK || Fail Unable to forward back
