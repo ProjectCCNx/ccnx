@@ -1143,7 +1143,7 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	public void removeVerificationKey(Key key, String type, String fileName) throws IOException {
 		if (null == fileName) {
-			fileName = _keyStoreFileName + "-" + DataUtils.printBytes(SecureKeyCache.getKeyIdentifier(key));
+			fileName = _keyStoreFileName + "-" + keyToKeyStoreSuffix(SystemConfiguration.KEYSTORE_NAMING_VERSION, key);
 		}
 		try {
 			Tuple<KeyStoreInfo, OutputStream> tuple = createKeyStoreWriteStream(_keyStoreDirectory, fileName);

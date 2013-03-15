@@ -56,7 +56,7 @@ import org.ccnx.ccn.impl.support.Tuple;
  * macK = HMAC-SHA256(P, '\1')
  * AES256-CBC(IV, key, PT) - performs AES256 in CBC mode
  *
- * SK = (PT.size << 2) || IV || AES256-CBC(IV, aesK, PT) || HMAC-SHA256(macK, AES256-CBC(IV, aesK, PT))
+ * SK = (AESK256-CBC.size << 3) || IV || AES256-CBC(IV, aesK, PT) || HMAC-SHA256(macK, AES256-CBC(IV, aesK, PT))
  *
  * SK is the symmetric keystore ciphertext
  */
@@ -84,6 +84,10 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 		}
 	}
 
+	/*
+	 * TODO
+	 * As far as I know we don't need to do most of this stuff. If we discover its needed, it will be filled in later
+	 */
 	@Override
 	public Enumeration<String> engineAliases() {
 		// TODO Auto-generated method stub
@@ -165,7 +169,7 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 		ASN1InputStream ais = new ASN1InputStream(stream);
 		ASN1OctetString os = (ASN1OctetString) ais.readObject();
 		byte [] cryptoData = os.getOctets();
-		int aeslen = (int)(cryptoData[0] << 2);
+		int aeslen = (int)(cryptoData[0] << 3);
 		int checkLength = cryptoData.length - (IV_SIZE + aeslen + 1);
 		if (checkLength <= 0)
 			throw new IOException("Corrupted keystore");
@@ -234,7 +238,7 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 			// TODO might be a better way to do this but am not sure how
 			// (and its not really that important anyway)
 			byte[] asn1buf = new byte[1 + iv.length + aesCBC.length + part3.length];
-			asn1buf[0] = (byte)(aesCBC.length >> 2);
+			asn1buf[0] = (byte)(aesCBC.length >> 3);
 			System.arraycopy(iv, 0, asn1buf, 1, iv.length);
 			System.arraycopy(aesCBC, 0, asn1buf, iv.length + 1, aesCBC.length);
 			System.arraycopy(part3, 0, asn1buf, iv.length + aesCBC.length + 1, part3.length);
