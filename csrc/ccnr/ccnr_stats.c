@@ -653,7 +653,7 @@ ccnr_meter_init(struct ccnr_handle *h, struct ccnr_meter *m, const char *what)
 {
     if (m == NULL)
         return;
-    memset(m, 0, sizeof(m));
+    memset(m, 0, sizeof(*m));
     if (what != NULL)
         strncpy(m->what, what, sizeof(m->what)-1);
     ccnr_meter_bump(h, m, 0);
