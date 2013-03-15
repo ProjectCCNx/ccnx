@@ -3578,6 +3578,7 @@ do_propagate(struct ccn_schedule *sched,
     
     if (ie->ev == ev)
         ie->ev = NULL;
+    else if (ie->ev != NULL) abort();
     if (flags & CCN_SCHEDULE_CANCEL)
         return(0);
     now = h->wtnow;  /* capture our reference */
@@ -3643,6 +3644,8 @@ do_propagate(struct ccn_schedule *sched,
                 break;
         if (i < n) {
             p = send_interest(h, ie, d[i], p);
+            if (ie->ev != NULL)
+                ccn_schedule_cancel(h->sched, ie->ev);
             upstreams++;
             rem = p->expiry - now;
             if (rem < mn)
@@ -3662,6 +3665,7 @@ do_propagate(struct ccn_schedule *sched,
     if (mn == 0) abort();
     next_delay = mn * (1000000 / WTHZ);
     ev->evint = h->wtnow + mn;
+    if (ie->ev != NULL) abort();
     ie->ev = ev;
     return(next_delay);
 }
