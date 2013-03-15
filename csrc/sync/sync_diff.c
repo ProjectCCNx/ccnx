@@ -180,10 +180,8 @@ resetDiffData(struct sync_diff_data *sdd) {
     sdd->fetchQ = NULL;
     struct ccn_scheduled_event *ev = sdd->ev;
     sdd->ev = NULL;
-    if (sdd->cbX != NULL) {
-        ccn_charbuf_destroy(&sdd->cbX);
-        ccn_charbuf_destroy(&sdd->cbY);
-    }
+    ccn_charbuf_destroy(&sdd->cbX);
+    ccn_charbuf_destroy(&sdd->cbY);
     while (fd != NULL) {
         struct sync_diff_fetch_data *lag = fd;
         fd = fd->next;
@@ -192,7 +190,6 @@ resetDiffData(struct sync_diff_data *sdd) {
     sdd->twX = SyncTreeWorkerFree(sdd->twX);
     sdd->twY = SyncTreeWorkerFree(sdd->twY);
     if (ev != NULL && ev->evdata == sdd) {
-        sdd->ev = NULL;
         ccn_schedule_cancel(root->base->sd->sched, ev);
     }
 }
@@ -210,7 +207,6 @@ resetUpdateData(struct sync_update_data *ud) {
     ud->tw = SyncTreeWorkerFree(ud->tw);
     struct ccn_scheduled_event *ev = ud->ev;
     if (ev != NULL && ev->evdata == ud) {
-        ud->ev = NULL;
         ccn_schedule_cancel(root->base->sd->sched, ev);
     }
 }
@@ -312,7 +308,6 @@ kickCompare(struct sync_diff_data *sdd, int micros) {
     struct ccn_scheduled_event *ev = sdd->ev;
     if (ev != NULL && ev->evdata == sdd) {
         // this one may wait too long, kick it now!
-        sdd->ev = NULL;
         ccn_schedule_cancel(base->sd->sched, ev);
     }
     sdd->ev = ccn_schedule_event(base->sd->sched,
@@ -331,7 +326,6 @@ kickUpdate(struct sync_update_data *ud, int micros) {
     struct ccn_scheduled_event *ev = ud->ev;
     if (ev != NULL && ev->evdata == ud) {
         // this one may wait too long, kick it now!
-        ud->ev = NULL;
         ccn_schedule_cancel(base->sd->sched, ev);
     }
     ud->ev = ccn_schedule_event(base->sd->sched,
@@ -932,6 +926,7 @@ compareAction(struct ccn_schedule *sched,
                 // give the client a last shot at the data
                 sdd->add_closure->add(sdd->add_closure, NULL);
             delay = -1;
+            sdd->ev = NULL; // event will not be rescheduled
             break;
         }
         case sync_diff_state_error: {
@@ -1315,7 +1310,7 @@ merge_names(struct sync_update_data *ud) {
                         case SCR_after:
                             // add the name from the tree
                             extractBuf(cb, nc, ep);
-                            add_update_name(ud, SyncCopyName(cb), 0);
+                            add_update_name(ud, cb, 0);
                             ent->pos++;
                             break;
                         default:
@@ -1387,6 +1382,10 @@ updateAction(struct ccn_schedule *sched,
     
     if (ud == NULL) {
         // cancelled some time ago
+        return -1;
+    }
+    if (ud->ev != ev) {
+        // orphaned?
         return -1;
     }
     if (flags & CCN_SCHEDULE_CANCEL) {
@@ -1468,6 +1467,7 @@ updateAction(struct ccn_schedule *sched,
                             }
                         } 
                         free(hex);
+                        ccn_charbuf_destroy(&hash);
                     } else {
                         count = SyncNoteFailed(root, here, "bad node", __LINE__);
                     }
@@ -1521,17 +1521,15 @@ sync_diff_start(struct sync_diff_data *sdd) {
     
     if (ceX != NULL) ceX->lastUsed = mark;
     if (ceY != NULL) ceY->lastUsed = mark;
+    resetDiffData(sdd);
     sdd->twX = SyncTreeWorkerCreate(root->ch, ceX);
     sdd->twY = SyncTreeWorkerCreate(root->ch, ceY);
-    
     sdd->startTime = mark;
     sdd->lastEnter = mark;
     sdd->lastMark = mark;
     sdd->lastFetchOK = mark;
     sdd->cbX = ccn_charbuf_create();
     sdd->cbY = ccn_charbuf_create();
-    
-    sdd->fetchQ = NULL;
     sdd->namesAdded = 0;
     sdd->nodeFetchBusy = 0;
     sdd->nodeFetchFailed = 0;
@@ -1614,7 +1612,6 @@ sync_diff_stop(struct sync_diff_data *sdd) {
     if (ev != NULL && ev->evdata == sdd) {
         // no more callbacks
         ccn_schedule_cancel(root->base->sd->sched, ev);
-        sdd->ev = NULL;
     }
     resetDiffData(sdd);
     return 1; 
