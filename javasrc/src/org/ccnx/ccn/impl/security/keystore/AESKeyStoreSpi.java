@@ -254,11 +254,11 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 	private Tuple<SecretKeySpec, SecretKeySpec> initializeForAES(char[] password) throws IOException, NoSuchAlgorithmException {
 		Tuple<SecretKeySpec, SecretKeySpec> result = null;
 		
-		byte[] passwordAsBytes = charToByteArray(password);		
+		byte[] passwordAsBytes = charToByteArray(password);
+		byte[] little = new byte[1];
 		SecretKeySpec passK = new SecretKeySpec(passwordAsBytes, MAC_ALGORITHM);
 		try {
 			_mac.init(passK);
-			byte[] little = new byte[1];
 			little[0] = 0;
 			byte[] aesKBytes = _mac.doFinal(little);
 			SecretKeySpec aesK = new SecretKeySpec(aesKBytes, MAC_ALGORITHM);
@@ -274,11 +274,9 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 	}
 	
 	private byte[] charToByteArray(char[] in) {
-		byte[] bytes = new byte[in.length << 1];
+		byte[] bytes = new byte[in.length];
 		for (int i = 0; i < in.length; i++) {
-			int bpos = i << 1;
-			bytes[bpos] = (byte)((in[i] & 0xff00) >> 8);
-			bytes[bpos + 1] = (byte)(in[i] & 0xff);
+			bytes[i] = (byte)in[i];
 		}
 		return bytes;
 	}
