@@ -72,24 +72,25 @@ public class LogTest {
 			int result = writeLog(facility, level, "test me off");
 			if (result > 0) {
 				byte[] contents = _baos.toByteArray();
-				byte[] b = new byte[_lastFinish - _lastStart];
-				/* b = Arrays.copyOfRange(contents, _lastStart, _lastFinish); */
+				byte[] b;
 				if (!(contents.length < _lastFinish)) {
+					b = new byte[_lastFinish - _lastStart];
 					int j = 0;
 					for (int i = _lastStart; i < _lastFinish; i++) {
 						b[j] = contents[i];
 						j++;
 					}
-				} else {
+				} else if (contents.length > _lastStart) {
+					b = new byte[contents.length - _lastStart];
 					int j = 0;
 					for (int i = _lastStart; i < contents.length; i++) {
 						b[j] = contents[i];
 						j++;
 					}
-					// Null out excess range
-					for (; j < _lastFinish; j++) {
-						b[j] = (byte) 0;	
-					}
+				} else {
+					Log.setLevel(Level.ALL);
+					Log.severe("Logging problem: we saw - too few bytes: {0}, {1}", _lastStart, contents.length);
+					throw new AssertionError("Too few bytes");
 				}
 				System.out.println("Logging problem - we saw: \"" + DataUtils.printBytes(b) + "\" when there should have been no log");
 				Log.setLevel(Level.ALL);
