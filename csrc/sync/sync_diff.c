@@ -1124,11 +1124,14 @@ node_from_names(struct sync_update_data *ud, int split) {
         for (i = 0; i < split; i++) {
             struct ccn_charbuf *name = na->ents[i].name;
             SyncNodeAddName(nc, name);
-            ccn_charbuf_destroy(&name);
-            na->ents[i].name = NULL;
         }
         SyncEndComposite(nc);
         newNodeCommon(root, ud->nodes, nc);
+    }
+    // names 0..split - 1 must be freed as they are either represented by
+    // an existing node or have been copied to a new node
+    for (i = 0; i < split; i++) {
+        ccn_charbuf_destroy(&na->ents[i].name);
     }
     // shift remaining elements down in the name accum
     ud->nameLenAccum = 0;
