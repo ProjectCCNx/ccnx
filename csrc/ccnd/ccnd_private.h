@@ -33,6 +33,7 @@
 
 #include <ccn/ccn_private.h>
 #include <ccn/coding.h>
+#include <ccn/nametree.h>
 #include <ccn/reg_mgmt.h>
 #include <ccn/schedule.h>
 #include <ccn/seqwriter.h>
@@ -58,11 +59,7 @@ struct guest_entry;
 struct pit_face_item;
 struct content_tree_node;
 struct ccn_forwarding;
-struct ccn_nametree;
 struct ccn_strategy;
-
-//typedef uint_least64_t ccn_accession_t;
-typedef unsigned ccn_accession_t;
 
 /**
  * Used for keeping track of interest expiry.
@@ -111,10 +108,10 @@ struct ccnd_handle {
     struct ccn_charbuf *scratch_charbuf; /**< one-slot scratch cache */
     struct ccn_indexbuf *scratch_indexbuf; /**< one-slot scratch cache */
     struct ccn_nametree *content_tree; /**< content store */
-    ccn_accession_t accession;      /**< newest used accession number */
-    ccn_accession_t accession_base; /**< follower for reaping oldest content */
-    ccn_accession_t min_stale;      /**< smallest accession of stale content */
-    ccn_accession_t max_stale;      /**< largest accession of stale content */
+    ccn_cookie accession;      /**< newest used accession number */
+    ccn_cookie accession_base; /**< follower for reaping oldest content */
+    ccn_cookie min_stale;      /**< smallest accession of stale content */
+    ccn_cookie max_stale;      /**< largest accession of stale content */
     unsigned capacity;              /**< may toss content if there more than
                                      this many content objects in the store */
     unsigned long n_stale;          /**< Number of stale content objects */
@@ -259,7 +256,7 @@ struct face {
  * representation of the content name (including the implicit digest).
  */
 struct content_entry {
-    ccn_accession_t accession;  /**< assigned in arrival order */
+    ccn_cookie accession;       /**< for associated nametree entry */
     unsigned arrival_faceid;    /**< the faceid of first arrival */
     int ncomps;                 /**< Number of name components plus one */
     int flags;                  /**< see defines below */

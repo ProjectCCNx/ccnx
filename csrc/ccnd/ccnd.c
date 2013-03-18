@@ -656,7 +656,7 @@ finalize_face(struct hashtb_enumerator *e)
  * @returns content handle, or NULL if it is no longer available.
  */
 static struct content_entry *
-content_from_accession(struct ccnd_handle *h, ccn_accession_t accession)
+content_from_accession(struct ccnd_handle *h, ccn_cookie accession)
 {
     struct content_entry *ans = NULL;
     struct ccny *y;
@@ -2074,9 +2074,9 @@ clean_daemon(struct ccn_schedule *sched,
     (void)(sched);
     (void)(ev);
     unsigned long n;
-    ccn_accession_t limit;
-    ccn_accession_t a;
-    ccn_accession_t min_stale;
+    ccn_cookie limit;
+    ccn_cookie a;
+    ccn_cookie min_stale;
     int check_limit = 500;  /* Do not run for too long at once */
     struct content_entry *content = NULL;
     int ignore;
@@ -4135,7 +4135,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
 static void
 mark_stale(struct ccnd_handle *h, struct content_entry *content)
 {
-    ccn_accession_t accession = content->accession;
+    ccn_cookie accession = content->accession;
     if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
         return;
     if (h->debug & 4)
@@ -4162,7 +4162,7 @@ expire_content(struct ccn_schedule *sched,
                int flags)
 {
     struct ccnd_handle *h = clienth;
-    ccn_accession_t accession = ev->evint;
+    ccn_cookie accession = ev->evint;
     struct content_entry *content = NULL;
     int res;
     unsigned n;
