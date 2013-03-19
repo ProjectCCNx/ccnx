@@ -4202,7 +4202,7 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
     f = charbuf_obtain(h);
     ccn_flatname_append_from_ccnb(f, msg, size, 0, -1);
     ccn_flatname_append_component(f, obj.digest, obj.digest_bytes);
-    y = ccny_create(nrand48(h->seed));
+    y = ccny_create(nrand48(h->seed), 0);
     res = ccny_set_key(y, f->buf, f->length);
     if (res < 0) {
         res = -__LINE__;
@@ -5336,6 +5336,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     int fd;
     struct ccnd_handle *h;
     struct hashtb_param param = {0};
+    unsigned cap;
     
     sockname = ccnd_get_local_sockname();
     h = calloc(1, sizeof(*h));
@@ -5365,10 +5366,6 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->headx = calloc(1, sizeof(*h->headx));
     h->headx->staletime = -1;
     h->headx->nextx = h->headx->prevx = h->headx;
-    h->content_tree = ccn_nametree_create();
-    h->content_tree->data = h;
-    h->content_tree->finalize = &finalize_content;
-    h->content_tree->pre_remove = &content_preremove;
     h->send_interest_scratch = ccn_charbuf_create();
     h->unsol = ccn_indexbuf_create();
     h->ticktock.descr[0] = 'C';
@@ -5403,6 +5400,12 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
             h->capacity = 10;
     }
     ccnd_msg(h, "CCND_DEBUG=%d CCND_CAP=%lu", h->debug, h->capacity);
+    cap = 100000; /* Don't try to allocate an insanely high number */
+    cap = h->capacity < cap ? h->capacity : cap;
+    h->content_tree = ccn_nametree_create(cap);
+    h->content_tree->data = h;
+    h->content_tree->finalize = &finalize_content;
+    h->content_tree->pre_remove = &content_preremove;
     h->mtu = 0;
     mtu = getenv("CCND_MTU");
     if (mtu != NULL && mtu[0] != 0) {
