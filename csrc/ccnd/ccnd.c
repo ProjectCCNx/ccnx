@@ -752,6 +752,47 @@ content_next(struct ccnd_handle *h, struct content_entry *content)
     return(y->payload);
 }
 
+static int
+ex_index_cmp(const unsigned char *a, size_t alen,
+                 const unsigned char *b, size_t blen)
+{
+    /* Just use the lengths for this compare, and reverse the order */
+    /* These are times in seconds since ccnd start, so no overflow worries. */ 
+    return((int)blen - (int)alen);
+}
+
+/**
+ *  Update the index to the expiry queue
+ *
+ * This index is used for quickly finding the last entry in the expiry queue
+ * that has a staletime less than or equal to the given value.
+ *
+ */
+static void
+update_ex_index(struct ccnd_handle *h, int staletime, ccn_cookie c)
+{
+    struct ccn_nametree *e = NULL;
+    struct ccny *y = NULL;
+    
+    e = h->ex_index;
+    y = ccn_nametree_lookup(e, NULL, staletime);
+    if (c == 0) {
+        if (y != NULL) {
+            ccny_remove(e, y);
+            ccny_destroy(e, &y);
+        }
+    }
+    else {
+        if (y == NULL) {
+            y = ccny_create(nrand48(h->seed), 0);
+            y->key = NULL; /* Our compare action expects this. */
+            y->keylen = staletime;
+            ccny_enroll(e, y);
+        }
+        y->info = c;
+    }
+}
+
 /**
  *  Enter content into the content expiry queue according to its staletime
  */
@@ -773,6 +814,10 @@ content_enqueuex(struct ccnd_handle *h, struct content_entry *content)
     content->nextx = next;
     content->prevx = prev;
     next->prevx = prev->nextx = content;
+    if (next != h->headx)
+        update_ex_index(h, content->staletime, content->accession);
+    else if (prev != h->headx && prev->staletime < tts)
+        update_ex_index(h, prev->staletime, prev->accession);
 }
 
 /**
@@ -792,6 +837,13 @@ content_dequeuex(struct ccnd_handle *h, struct content_entry *content)
     prev->nextx = next;
     next->prevx = prev;
     content->nextx = content->prevx = NULL;
+    if (content->staletime != next->staletime) {
+        /* On average, we get here no more than once per second */
+        if (content->staletime == prev->staletime)
+            update_ex_index(h, prev->staletime, prev->accession);
+        else
+            update_ex_index(h, content->staletime, 0);
+    }
 }
 
 /**
@@ -5344,6 +5396,8 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->headx = calloc(1, sizeof(*h->headx));
     h->headx->staletime = -1;
     h->headx->nextx = h->headx->prevx = h->headx;
+    h->ex_index = ccn_nametree_create(1);
+    h->ex_index->compare = &ex_index_cmp;
     h->send_interest_scratch = ccn_charbuf_create();
     h->unsol = ccn_indexbuf_create();
     h->ticktock.descr[0] = 'C';
@@ -5506,6 +5560,7 @@ ccnd_destroy(struct ccnd_handle **pccnd)
         h->face_limit = h->face_gen = 0;
     }
     ccn_nametree_destroy(&h->content_tree);
+    ccn_nametree_destroy(&h->ex_index);
     ccn_charbuf_destroy(&h->send_interest_scratch);
     ccn_charbuf_destroy(&h->scratch_charbuf);
     ccn_charbuf_destroy(&h->autoreg);

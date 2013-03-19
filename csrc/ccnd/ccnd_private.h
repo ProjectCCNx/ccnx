@@ -108,9 +108,9 @@ struct ccnd_handle {
     struct ccn_indexbuf *scratch_indexbuf; /**< one-slot scratch cache */
     struct ccn_nametree *content_tree; /**< content store */
     struct content_entry *headx;    /**< list head for expiry queue */
-    ccn_cookie nextx;               /**< For next content to expire */
     unsigned capacity;              /**< may toss content if there more than
                                      this many content objects in the store */
+    struct ccn_nametree *ex_index;  /**< for speedy adds to expiry queue */
     struct ccn_indexbuf *unsol;     /**< unsolicited content */
     unsigned long accessioned;
     unsigned long oldformatcontent;
