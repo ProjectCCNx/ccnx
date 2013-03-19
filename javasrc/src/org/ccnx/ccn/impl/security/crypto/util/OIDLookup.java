@@ -344,6 +344,14 @@ public class OIDLookup {
 		algorithm = resolveSignatureAlias(algorithm);
 		return mapGet(_s2oid, algorithm);
 	}
+	
+	/**
+	 * Return the preferred OID for a MAC algorithm
+	 */
+	public static String getMacOID(String algorithm) {
+		algorithm = resolveMacAlias(algorithm);
+		return mapGet(_m2oid, algorithm);
+	}
 
 	/**
 	 * Return the preferred name for a signature OID.

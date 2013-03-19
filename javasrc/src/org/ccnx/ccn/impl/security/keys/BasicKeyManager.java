@@ -56,7 +56,6 @@ import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.security.crypto.EncryptedObjectFileHelper;
 import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
 import org.ccnx.ccn.impl.security.keystore.CCNKeyStore;
-import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.Tuple;
 import org.ccnx.ccn.io.content.KeyValueSet;

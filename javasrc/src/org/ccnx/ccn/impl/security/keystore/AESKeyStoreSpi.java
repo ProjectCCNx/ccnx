@@ -31,6 +31,8 @@ import java.security.cert.CertificateException;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 
 import javax.crypto.Cipher;
@@ -41,7 +43,10 @@ import javax.crypto.spec.SecretKeySpec;
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.ASN1OutputStream;
+import org.bouncycastle.asn1.DERObjectIdentifier;
 import org.bouncycastle.asn1.DEROctetString;
+import org.ccnx.ccn.impl.security.crypto.util.DigestHelper;
+import org.ccnx.ccn.impl.security.crypto.util.OIDLookup;
 import org.ccnx.ccn.impl.support.Tuple;
 
 /**
@@ -56,12 +61,15 @@ import org.ccnx.ccn.impl.support.Tuple;
  * macK = HMAC-SHA256(P, '\1')
  * AES256-CBC(IV, key, PT) - performs AES256 in CBC mode
  *
- * SK = (AESK256-CBC.size << 3) || IV || AES256-CBC(IV, aesK, PT) || HMAC-SHA256(macK, AES256-CBC(IV, aesK, PT))
+ * SK = IV || AES256-CBC(IV, aesK, PT) || HMAC-SHA256(macK, AES256-CBC(IV, aesK, PT))
  *
  * SK is the symmetric keystore ciphertext
+ * 
+ * KeyStore = Version || Key algorithm OID || SK
  */
 public class AESKeyStoreSpi extends KeyStoreSpi {
 	
+	public static final String VERSION = "0.1";
 	public static final String TYPE = "CCN_AES";
 	public static final String MAC_ALGORITHM = "HMAC-SHA256";	// XXX Should these be settable?
 	public static final String AES_CRYPTO_ALGORITHM = "AES/CBC/PKCS5Padding";
@@ -70,10 +78,22 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 
 	public static final Random _random = new SecureRandom();
 	
-	public Mac _mac;
+	public static Mac _mac;
+	
+	protected static DERObjectIdentifier _versionOID = new DERObjectIdentifier(VERSION);
 	
 	protected byte[] _id = null;
 	protected KeyStore.Entry _ourEntry = null;
+	protected DERObjectIdentifier _oid = null;
+	
+	/*
+	 * XXX might be some better way to do this but I don't know what it is...
+	 */
+	private static Map<String,Integer> _k2Size = new HashMap<String,Integer>();
+	
+	static {
+		_k2Size.put("HMac-SHA256", 48);
+	}
 	
 	public AESKeyStoreSpi() {
 		try {
@@ -167,24 +187,30 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 		if (null != _id)
 			return;		// We already have the key so don't need to reload it
 		ASN1InputStream ais = new ASN1InputStream(stream);
+		DERObjectIdentifier versionAsOid = (DERObjectIdentifier)ais.readObject();
+		if (!versionAsOid.toString().equals(VERSION))
+			throw new IOException("Unsupported AESKeyStore version: " + versionAsOid.toString());
+		_oid = (DERObjectIdentifier) ais.readObject();
+		String keyAlgorithm = OIDLookup.getSignatureAlgorithm(DigestHelper.DEFAULT_DIGEST_ALGORITHM, 
+				_oid.toString());
+		int aeslen = keyAlgorithmToCipherSize(keyAlgorithm);
 		ASN1OctetString os = (ASN1OctetString) ais.readObject();
 		byte [] cryptoData = os.getOctets();
-		int aeslen = (int)(cryptoData[0] << 3);
-		int checkLength = cryptoData.length - (IV_SIZE + aeslen + 1);
+		int checkLength = cryptoData.length - (IV_SIZE + aeslen);
 		if (checkLength <= 0)
 			throw new IOException("Corrupted keystore");
 		byte[] iv = new byte[IV_SIZE];
-		System.arraycopy(cryptoData, 1, iv, 0, iv.length);
+		System.arraycopy(cryptoData, 0, iv, 0, iv.length);
 		Tuple<SecretKeySpec, SecretKeySpec> keys = initializeForAES(password);
 		try {
 			Cipher cipher = Cipher.getInstance(AES_CRYPTO_ALGORITHM);
 			IvParameterSpec ivspec = new IvParameterSpec(iv);
 			cipher.init(Cipher.DECRYPT_MODE, keys.first(), ivspec);
 			byte[] cryptBytes = new byte[aeslen];
-			System.arraycopy(cryptoData, IV_SIZE + 1, cryptBytes, 0, cryptBytes.length);
+			System.arraycopy(cryptoData, IV_SIZE, cryptBytes, 0, cryptBytes.length);
 			_id = cipher.doFinal(cryptBytes);
 			byte[] check = new byte[checkLength];
-			System.arraycopy(cryptoData, IV_SIZE + aeslen + 1, check, 0, checkLength);
+			System.arraycopy(cryptoData, IV_SIZE + aeslen, check, 0, checkLength);
 			_mac.init(keys.second());
 			byte[] hmac = _mac.doFinal(cryptBytes);
 			if (!Arrays.equals(hmac, check))
@@ -210,6 +236,10 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 	public void engineSetKeyEntry(String name, Key key, char[] arg2,
 			Certificate[] arg3) throws KeyStoreException {
 		_id = key.getEncoded();
+		String oid = OIDLookup.getMacOID(key.getAlgorithm());
+		if (null == oid)
+			throw new KeyStoreException("Not a Mac algorithm we recognize: " + key.getAlgorithm());
+		_oid = new DERObjectIdentifier(oid);
 	}
 
 	@Override
@@ -235,13 +265,14 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 			aesCBC = cipher.doFinal(_id);
 			_mac.init(keys.second());
 			byte[] part3 = _mac.doFinal(aesCBC);
+			aos.writeObject(_versionOID);
+			aos.writeObject(_oid);
 			// TODO might be a better way to do this but am not sure how
 			// (and its not really that important anyway)
-			byte[] asn1buf = new byte[1 + iv.length + aesCBC.length + part3.length];
-			asn1buf[0] = (byte)(aesCBC.length >> 3);
-			System.arraycopy(iv, 0, asn1buf, 1, iv.length);
-			System.arraycopy(aesCBC, 0, asn1buf, iv.length + 1, aesCBC.length);
-			System.arraycopy(part3, 0, asn1buf, iv.length + aesCBC.length + 1, part3.length);
+			byte[] asn1buf = new byte[iv.length + aesCBC.length + part3.length];
+			System.arraycopy(iv, 0, asn1buf, 0, iv.length);
+			System.arraycopy(aesCBC, 0, asn1buf, iv.length, aesCBC.length);
+			System.arraycopy(part3, 0, asn1buf, iv.length + aesCBC.length, part3.length);
 			ASN1OctetString os = new DEROctetString(asn1buf);
 			aos.writeObject(os);
 			aos.flush();
@@ -271,6 +302,13 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 			throw new IOException(e);
 		}
 		return result;
+	}
+	
+	private int keyAlgorithmToCipherSize(String algorithm) throws NoSuchAlgorithmException {
+		Integer size = _k2Size.get(algorithm);
+		if (null == size)
+			throw new NoSuchAlgorithmException("Not a recognized algorithm: " + algorithm);
+		return size;
 	}
 	
 	private byte[] charToByteArray(char[] in) {
