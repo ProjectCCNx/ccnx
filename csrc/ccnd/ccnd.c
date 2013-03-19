@@ -668,25 +668,6 @@ content_from_accession(struct ccnd_handle *h, ccn_cookie accession)
 }
 
 /**
- *  Cleanup content nametree entry before freeing it
- */
-static void
-finalize_content(struct ccn_nametree *ntree, struct ccny *y)
-{
-    struct ccnd_handle *h = ntree->data;
-    struct content_entry *content = y->payload;
-    
-    if (content == NULL)
-        return;
-    if (h == NULL) abort();
-    /* Update stats here??*/
-    y->payload = NULL;
-    if (content->ccnb != NULL)
-        free(content->ccnb);
-    free(content);
-}
-
-/**
  * Find the first candidate that might match the given interest.
  */
 static struct content_entry *
@@ -4202,18 +4183,19 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
     f = charbuf_obtain(h);
     ccn_flatname_append_from_ccnb(f, msg, size, 0, -1);
     ccn_flatname_append_component(f, obj.digest, obj.digest_bytes);
-    y = ccny_create(nrand48(h->seed), 0);
+    y = ccny_create(nrand48(h->seed), sizeof(*content));
     res = ccny_set_key(y, f->buf, f->length);
     if (res < 0) {
         res = -__LINE__;
         goto Bail;
     }
     if (h->content_tree->n >= h->capacity) {
+        /* Remove entry with the earliest staletime */
         content = h->headx->nextx;
         if (content != h->headx)
             remove_content(h, content);
-        content = NULL;
     }
+    content = y->payload; /* Allocated by ccny_create */
     ocookie = ccny_enroll(h->content_tree, y);
     if (ocookie != 0) {
         /* An entry was already present */
@@ -4241,10 +4223,6 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
     }
     else {
         res = -__LINE__;
-        content = calloc(1, sizeof(*content));
-        if (content == NULL)
-            goto Bail;
-        y->payload = content;
         content->accession = y->cookie;
         content->arrival_faceid = face->faceid;
         content->ncomps = comps->n + 1;
@@ -5404,7 +5382,6 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     cap = h->capacity < cap ? h->capacity : cap;
     h->content_tree = ccn_nametree_create(cap);
     h->content_tree->data = h;
-    h->content_tree->finalize = &finalize_content;
     h->content_tree->pre_remove = &content_preremove;
     h->mtu = 0;
     mtu = getenv("CCND_MTU");
