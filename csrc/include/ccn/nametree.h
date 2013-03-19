@@ -80,14 +80,16 @@ struct ccny {
     unsigned keylen;        /**< size of key, in bytes */
     ccn_cookie cookie;      /**< cookie for this entry */
     void *payload;          /**< client payload */
-    unsigned short info[3]; /**< for client use */
+    unsigned info;          /**< for client use */
+    unsigned short prv;     /**< not for client use */
     short skipdim;          /**< dimension of skiplinks array */
     struct ccny *skiplinks[1]; /**< skiplist links (flex array) */
 };
 
-struct ccn_nametree *ccn_nametree_create(void);
+struct ccn_nametree *ccn_nametree_create(int initial_limit);
 
-struct ccny *ccny_create(unsigned rb);
+/* reasonably good random bits must be provided, crypto quality not needed */
+struct ccny *ccny_create(unsigned randombits, size_t payload_size);
 
 int ccny_set_key(struct ccny *y, const unsigned char *key, size_t size);
 

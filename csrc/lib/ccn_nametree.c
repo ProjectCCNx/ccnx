@@ -24,19 +24,26 @@
 #include <ccn/nametree.h>
 
 #define CCN_SKIPLIST_MAX_DEPTH 16
+#define NAMETREE_PVT_PAYLOAD_OWNED 0x40
 
 /**
- * Create a new, empty nametree
+ *  Create a new, empty nametree
+ *
+ * The initial_limit is the number of entries that may be
+ * inserted before growing the table.
  */
 struct ccn_nametree *
-ccn_nametree_create(void)
+ccn_nametree_create(int initial_limit)
 {
     struct ccn_nametree *h;
+    ccn_cookie c;
     
+    if (initial_limit < 6)
+        initial_limit = 6;
     h = calloc(1, sizeof(*h));
     if (h != NULL) {
         h->n = 0;
-        h->head = ccny_create(0);
+        h->head = ccny_create(0, 0);
         if (h->head == NULL) {
             free(h);
             return(NULL);
@@ -44,9 +51,16 @@ ccn_nametree_create(void)
         if (h->head->skipdim != CCN_SKIPLIST_MAX_DEPTH) abort();
         h->head->skipdim = 1;
         h->head->skiplinks[0] = NULL;
-        h->cookiemask = 255;
-        h->limit = 255 - 255 / 4;
-        h->nmentry_by_cookie = calloc(h->cookiemask + 1, sizeof(struct ccny *));
+        for (c = (~0U) / 2; c / 2 - c / 8 > initial_limit;)
+            c = c / 2;
+        h->cookiemask = c;
+        h->limit = c - c / 4;
+        h->nmentry_by_cookie = calloc(c + 1, sizeof(struct ccny *));
+        if (h->nmentry_by_cookie == NULL) {
+            free(h->head);
+            free(h);
+            return(NULL);
+        }
         h->data = NULL;
         h->post_enroll = 0;
         h->pre_remove = 0;
@@ -61,22 +75,40 @@ ccn_nametree_create(void)
  *
  * The skiplinks array needs to be sized with an appropriate random
  * distribution; for this purpose the caller must provide a word of
- * random bits in rb.
+ * random bits.
+ *
+ * If payload_size is non-zero, extra zero-initialized space will
+ * be allocated, and a pointer to it provided in the payload field.
+ * This will be automatically freed when the entry is destroyed.
+ *
+ * If the payload size is zero, the caller assumes resonsibility
+ * for managing the payload memory, probably by providing a suitable
+ * finalize action.
  */
 struct ccny *
-ccny_create(unsigned rb)
+ccny_create(unsigned randombits, size_t payload_size)
 {
-    struct ccny *y;
+    struct ccny *y = NULL;
     int d;
+    unsigned rb;
+    size_t base_size;
     
-    for (d = 1; d < CCN_SKIPLIST_MAX_DEPTH; d++, rb >>= 2)
+    for (d = 1, rb = randombits; d < CCN_SKIPLIST_MAX_DEPTH; d++, rb >>= 2)
         if ((rb & 3) != 0) break;
-    y = calloc(1, sizeof(*y) + (d - 1) * sizeof(y->skiplinks[0]));
+    base_size = sizeof(*y) + (d - 1) * sizeof(y->skiplinks[0]);
+    if (payload_size > 0)
+        base_size = (base_size + 7) / 8 * 8; /* 8-byte alignment */
+    y = calloc(1, base_size + payload_size);
     if (y == NULL)
         return(y);
     y->cookie = 0;
     y->prev = NULL;
+    y->payload = NULL;
     y->skipdim = d;
+    if (payload_size > 0) {
+        y->payload = ((unsigned char *)y) + base_size;
+        y->prv |= NAMETREE_PVT_PAYLOAD_OWNED;
+    }
     return(y);
 }
 
@@ -95,7 +127,7 @@ ccny_create(unsigned rb)
 int
 ccny_set_key(struct ccny *y, const unsigned char *key, size_t size)
 {
-    if (size >= (~0U)/2)
+    if (size >= (~0U) / 2)
         return(-1);
     if (y->cookie != 0)
         return(-1);
@@ -433,7 +465,6 @@ ccny_remove(struct ccn_nametree *h, struct ccny *y)
  *
  * The entry must not be in any nametree.
  */
-
 void
 ccny_destroy(struct ccn_nametree *h, struct ccny **py)
 {
