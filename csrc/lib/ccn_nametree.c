@@ -66,6 +66,7 @@ ccn_nametree_create(int initial_limit)
         h->pre_remove = 0;
         h->check = 0;
         h->finalize = 0;
+        h->compare = &ccn_flatname_compare;
     }
     return(h);
 }
@@ -178,6 +179,8 @@ ccny_skiplist_findbefore(struct ccn_nametree *h,
     struct ccny *c;
     struct ccny *y;
     int order = -1;
+    ccn_nametree_compare cmp = h->compare;
+    
     
     c = h->head;
     for (i = h->head->skipdim - 1; i >= 0; i--) {
@@ -185,7 +188,7 @@ ccny_skiplist_findbefore(struct ccn_nametree *h,
             y = c->skiplinks[i];
             if (y == NULL)
                 break;
-            order = ccn_flatname_compare(y->key, y->keylen, key, size);
+            order = (*cmp)(y->key, y->keylen, key, size);
             if (order >= 0)
                 break;
             if (i >= y->skipdim) abort();
@@ -526,8 +529,8 @@ ccn_nametree_check(struct ccn_nametree *h)
     if (h->limit > h->cookiemask) abort();
     for (n = 0, y = h->head->prev; y != NULL; y = y->prev) {
         if (y->prev != NULL) {
-            if (ccn_flatname_compare(y->prev->key, y->prev->keylen,
-                                     y->key, y->keylen) >= 0) abort();
+            if ((h->compare)(y->prev->key, y->prev->keylen,
+                             y->key, y->keylen) >= 0) abort();
             if (y != y->prev->skiplinks[0]) abort();
         }
         else {
@@ -542,8 +545,8 @@ ccn_nametree_check(struct ccn_nametree *h)
         for (i = 0; i < y->skipdim; i++) {
             z = y->skiplinks[i];
             if (z != NULL) {
-                if (ccn_flatname_compare(y->key, y->keylen,
-                                         z->key, z->keylen) >= 0) abort();
+                if ((h->compare)(y->key, y->keylen,
+                                 z->key, z->keylen) >= 0) abort();
             }
         }
         z = y->skiplinks[0];
