@@ -86,10 +86,10 @@ static void process_input(struct ccnd_handle *h, int fd);
 static int ccn_stuff_interest(struct ccnd_handle *h,
                               struct face *face, struct ccn_charbuf *c);
 static void do_deferred_write(struct ccnd_handle *h, int fd);
-static void clean_needed(struct ccnd_handle *h);
 static struct face *get_dgram_source(struct ccnd_handle *h, struct face *face,
                                      struct sockaddr *addr, socklen_t addrlen,
                                      int why);
+static int is_stale(struct ccnd_handle *h, struct content_entry *content);
 static void mark_stale(struct ccnd_handle *h,
                        struct content_entry *content);
 static struct content_entry *content_next(struct ccnd_handle *h,
@@ -667,6 +667,9 @@ content_from_accession(struct ccnd_handle *h, ccn_cookie accession)
     return(ans);
 }
 
+/**
+ *  Cleanup content nametree entry before freeing it
+ */
 static void
 finalize_content(struct ccn_nametree *ntree, struct ccny *y)
 {
@@ -766,6 +769,100 @@ content_next(struct ccnd_handle *h, struct content_entry *content)
     if (y == NULL)
         return(NULL);
     return(y->payload);
+}
+
+/**
+ *  Enter content into the content expiry queue according to its staletime
+ */
+static void
+content_enqueuex(struct ccnd_handle *h, struct content_entry *content)
+{
+    struct content_entry *next = NULL;
+    struct content_entry *prev = NULL;
+    int tts;
+    
+    tts = content->staletime;
+    if (content->nextx != 0 || content->accession == 0 || tts < -1) abort();
+    next = h->headx;
+    tts = content->staletime;
+    // XXX - linear scan for initial cut, replace with better index
+    for (prev = h->headx->prevx; prev->staletime > tts;)
+        prev = prev->prevx;
+    next = prev->nextx;
+    content->nextx = next;
+    content->prevx = prev;
+    next->prevx = prev->nextx = content;
+}
+
+/**
+ *  Remove content from the content expiry queue
+ */
+static void
+content_dequeuex(struct ccnd_handle *h, struct content_entry *content)
+{
+    struct content_entry *next = NULL;
+    struct content_entry *prev = NULL;
+    
+    if (content->nextx == NULL && content->prevx == NULL)
+        return;
+    next = content->nextx;
+    prev = content->prevx;
+    if (prev->nextx != content || next->prevx != content) abort();
+    prev->nextx = next;
+    next->prevx = prev;
+    content->nextx = content->prevx = NULL;
+}
+
+/**
+ *  Check to see whether content is stale
+ *
+ * This depends on h->sec being more or less up to date, but that should
+ * be true pretty anytime we care about staleness.
+ */
+static int
+is_stale(struct ccnd_handle *h, struct content_entry *content)
+{
+    // ccnd_msg(h, "is_stale.%d acc %u staletime %d : now %d", __LINE__, content->accession, content->staletime, (int)(h->sec - h->starttime));
+    return(content->staletime <= h->sec - h->starttime);
+}
+
+/**
+ *  Return the number of stale content objects still cached
+ *
+ * This is only used for status reporting
+ */
+int
+ccnd_n_stale(struct ccnd_handle *h)
+{
+    unsigned n = 0;
+    struct content_entry *p = NULL;
+    int now;
+    
+    p = h->headx->prevx;
+    if (p == h->headx)
+        return(0);
+    now = h->sec - h->starttime;
+    if (p->staletime <= now)
+        return(h->content_tree->n); /* Everything is stale */
+    /* We know there is an entry with staletime > now, so this terminates. */
+    for (p = h->headx->nextx; p->staletime <= now; p = p->nextx)
+        n++;
+    return(n);
+}
+
+/**
+ *  Dequeue content from expiry queue when removing it from nametree
+ */
+static void
+content_preremove(struct ccn_nametree *ntree, struct ccny *y)
+{
+    struct ccnd_handle *h = ntree->data;
+    struct content_entry *content = y->payload;
+    
+    if (content == NULL)
+        return;
+    if (content->nextx != NULL)
+        content_dequeuex(h, content);
 }
 
 /**
@@ -2053,136 +2150,10 @@ remove_content(struct ccnd_handle *h, struct content_entry *content)
     if (h->debug & 4)
         ccnd_debug_ccnb(h, __LINE__, "remove", NULL,
                         content->ccnb, content->size);
-    if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
-        h->n_stale--;
     ccny_remove(h->content_tree, y);
     content = NULL;
     ccny_destroy(h->content_tree, &y); /* releases content as well */
     return(0);
-}
-
-/**
- * Periodic content cleaning
- */
-static int
-clean_daemon(struct ccn_schedule *sched,
-             void *clienth,
-             struct ccn_scheduled_event *ev,
-             int flags)
-{
-    struct ccnd_handle *h = clienth;
-    (void)(sched);
-    (void)(ev);
-    unsigned long n;
-    ccn_cookie limit;
-    ccn_cookie a;
-    ccn_cookie min_stale;
-    int check_limit = 500;  /* Do not run for too long at once */
-    struct content_entry *content = NULL;
-    int ignore;
-    int i;
-    int res = 0;
-    
-    /*
-     * If we ran into our processing limit (check_limit) last time,
-     * ev->evint tells us where to restart.
-     */
-    
-    if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
-        h->clean = NULL;
-        return(0);
-    }
-    n = h->content_tree->n;
-    if (n <= h->capacity) {
-        h->clean = NULL;
-        return(0);
-    }
-    /* Toss unsolicited content first */
-    for (i = 0; i < h->unsol->n; i++) {
-        if (i == check_limit) {
-            for (i = check_limit; i < h->unsol->n; i++)
-                h->unsol->buf[i-check_limit] = h->unsol->buf[i];
-            h->unsol->n -= check_limit;
-            return(500);
-        }
-        a = h->unsol->buf[i];
-        content = content_from_accession(h, a);
-        if (content != NULL &&
-            (content->flags & CCN_CONTENT_ENTRY_PRECIOUS) == 0)
-            remove_content(h, content);
-    }
-    h->unsol->n = 0;
-    n = h->content_tree->n;
-    if (h->min_stale <= h->max_stale) {
-        /* clean out stale content next */
-        limit = h->max_stale;
-        if (limit > h->accession)
-            limit = h->accession;
-        min_stale = ~0;
-        a = ev->evint;
-        if (a <= h->min_stale || a > h->max_stale)
-            a = h->min_stale;
-        else
-            min_stale = h->min_stale;
-        for (; a <= limit && n > h->capacity; a++) {
-            if (check_limit-- <= 0) {
-                ev->evint = a;
-                break;
-            }
-            content = content_from_accession(h, a);
-            if (content != NULL &&
-                  (content->flags & CCN_CONTENT_ENTRY_STALE) != 0) {
-                res = remove_content(h, content);
-                if (res < 0) {
-                    if (a < min_stale)
-                        min_stale = a;
-                }
-                else {
-                    content = NULL;
-                    n -= 1;
-                }
-            }
-        }
-        if (min_stale < a)
-            h->min_stale = min_stale;
-        else if (a > limit) {
-            h->min_stale = ~0;
-            h->max_stale = 0;
-        }
-        else
-            h->min_stale = a;
-        if (check_limit <= 0)
-            return(5000);
-    }
-    else {
-        /* Make oldish content stale, for cleanup on next round */
-        // XXX accession_base update needs fixing when stale content is freshened
-        limit = h->accession;
-        ignore = CCN_CONTENT_ENTRY_STALE | CCN_CONTENT_ENTRY_PRECIOUS;
-        for (a = h->accession_base; a <= limit && n > h->capacity; a++) {
-            content = content_from_accession(h, a);
-            if (content != NULL && (content->flags & ignore) == 0) {
-                mark_stale(h, content);
-                n--;
-            }
-            else
-                h->accession_base++;
-        }
-        ev->evint = 0;
-        return(5000);
-    }
-    h->clean = NULL;
-    return(0);
-}
-
-/**
- * Schedule clean_daemon, if it is not already scheduled.
- */
-static void
-clean_needed(struct ccnd_handle *h)
-{
-    if (h->clean == NULL)
-        h->clean = ccn_schedule_event(h->sched, 5000, clean_daemon, NULL, 0);
 }
 
 /**
@@ -4073,7 +4044,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                 content = NULL;
             }
             for (try = 0; content != NULL; try++) {
-                if ((s_ok || (content->flags & CCN_CONTENT_ENTRY_STALE) == 0) &&
+                if ((s_ok || !is_stale(h, content)) &&
                     ccn_content_matches_interest(content->ccnb,
                                        content->size,
                                        1, NULL, msg, size, pi)) {
@@ -4135,52 +4106,11 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
 static void
 mark_stale(struct ccnd_handle *h, struct content_entry *content)
 {
-    ccn_cookie accession = content->accession;
-    if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
+    if (is_stale(h, content))
         return;
-    if (h->debug & 4)
-            ccnd_debug_ccnb(h, __LINE__, "stale", NULL,
-                            content->ccnb, content->size);
-    content->flags |= CCN_CONTENT_ENTRY_STALE;
-    h->n_stale++;
-    if (accession < h->min_stale)
-        h->min_stale = accession;
-    if (accession > h->max_stale)
-        h->max_stale = accession;
-}
-
-/**
- * Scheduled event that makes content stale when its FreshnessSeconds
- * has exported.
- *
- * May actually remove the content if we are over quota.
- */
-static int
-expire_content(struct ccn_schedule *sched,
-               void *clienth,
-               struct ccn_scheduled_event *ev,
-               int flags)
-{
-    struct ccnd_handle *h = clienth;
-    ccn_cookie accession = ev->evint;
-    struct content_entry *content = NULL;
-    int res;
-    unsigned n;
-    if ((flags & CCN_SCHEDULE_CANCEL) != 0)
-        return(0);
-    content = content_from_accession(h, accession);
-    if (content != NULL) {
-        n = h->content_tree->n;
-        /* The fancy test here lets existing stale content go away, too. */
-        if ((n - (n >> 3)) > h->capacity ||
-            (n > h->capacity && h->min_stale > h->max_stale)) {
-            res = remove_content(h, content);
-            if (res == 0)
-                return(0);
-        }
-        mark_stale(h, content);
-    }
-    return(0);
+    content_dequeuex(h, content);
+    content->staletime = h->sec - h->starttime;
+    content_enqueuex(h, content);
 }
 
 /**
@@ -4192,14 +4122,10 @@ set_content_timer(struct ccnd_handle *h, struct content_entry *content,
                   struct ccn_parsed_ContentObject *pco)
 {
     int seconds = 0;
-    int microseconds = 0;
     size_t start = pco->offset[CCN_PCO_B_FreshnessSeconds];
     size_t stop  = pco->offset[CCN_PCO_E_FreshnessSeconds];
-    if (h->force_zero_freshness) {
-        /* Keep around for long enough to make it through the queues */
-        microseconds = 8 * h->data_pause_microsec + 10000;
+    if (h->force_zero_freshness)
         goto Finish;
-    }
     if (start == stop)
         seconds = h->tts_default;
     else
@@ -4207,19 +4133,12 @@ set_content_timer(struct ccnd_handle *h, struct content_entry *content,
                 CCN_DTAG_FreshnessSeconds,
                 content->ccnb,
                 start, stop);
-    if (seconds <= 0 || (h->tts_limit > 0 && seconds > h->tts_limit))
+    if (seconds < 0 || seconds > h->tts_limit)
         seconds = h->tts_limit;
-    if (seconds <= 0)
-        return;
-    if (seconds > ((1U<<31) / 1000000)) {
-        ccnd_debug_ccnb(h, __LINE__, "FreshnessSeconds_too_large", NULL,
-            content->ccnb, pco->offset[CCN_PCO_E]);
-        return;
-    }
-    microseconds = seconds * 1000000;
 Finish:
-    ccn_schedule_event(h->sched, microseconds,
-                       &expire_content, NULL, content->accession);
+    content_dequeuex(h, content);
+    content->staletime = h->sec - h->starttime + seconds;
+    content_enqueuex(h, content);
 }
 
 /**
@@ -4289,17 +4208,20 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         res = -__LINE__;
         goto Bail;
     }
-    // XXX - check h->content_tree->n
+    if (h->content_tree->n >= h->capacity) {
+        content = h->headx->nextx;
+        if (content != h->headx)
+            remove_content(h, content);
+        content = NULL;
+    }
     ocookie = ccny_enroll(h->content_tree, y);
     if (ocookie != 0) {
         /* An entry was already present */
         ccny_destroy(h->content_tree, &y);
         content = ccny_from_cookie(h->content_tree, ocookie)->payload;
-        if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0) {
+        if (is_stale(h, content)) {
             /* When old content arrives after it has gone stale, freshen it */
             // XXX - ought to do mischief checks before this
-            content->flags &= ~CCN_CONTENT_ENTRY_STALE;
-            h->n_stale--;
             set_content_timer(h, content, &obj);
             /* Record the new arrival face only if the old face is gone */
             // XXX - it is not clear that this is the most useful choice
@@ -4323,7 +4245,7 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         if (content == NULL)
             goto Bail;
         y->payload = content;
-        content->accession = h->accession = y->cookie;
+        content->accession = y->cookie;
         content->arrival_faceid = face->faceid;
         content->ncomps = comps->n + 1;
         content->ccnb = malloc(size);
@@ -4332,11 +4254,8 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         content->size = size;
         memcpy(content->ccnb, msg, size);
         set_content_timer(h, content, &obj);
-        /* Mark public keys supplied at startup as precious. */
-        if (obj.type == CCN_CONTENT_KEY && content->accession <= (h->capacity + 7)/8)
-            content->flags |= CCN_CONTENT_ENTRY_PRECIOUS;
+        h->accessioned++;
         if (h->content_tree->n >= h->content_tree->limit) {
-            clean_needed(h);
             if (h->content_tree->limit < h->capacity)
                 ccn_nametree_grow(h->content_tree);
         }
@@ -5443,11 +5362,13 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     param.finalize = &finalize_guest;
     h->guest_tab = hashtb_create(sizeof(struct guest_entry), &param);
     param.finalize = 0;
+    h->headx = calloc(1, sizeof(*h->headx));
+    h->headx->staletime = -1;
+    h->headx->nextx = h->headx->prevx = h->headx;
     h->content_tree = ccn_nametree_create();
     h->content_tree->data = h;
     h->content_tree->finalize = &finalize_content;
-    h->min_stale = ~0;
-    h->max_stale = 0;
+    h->content_tree->pre_remove = &content_preremove;
     h->send_interest_scratch = ccn_charbuf_create();
     h->unsol = ccn_indexbuf_create();
     h->ticktock.descr[0] = 'C';
@@ -5500,24 +5421,24 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
         if (h->data_pause_microsec > 1000000)
             h->data_pause_microsec = 1000000;
     }
-    h->tts_default = -1;
-    tts_default = getenv("CCND_DEFAULT_TIME_TO_STALE");
-    if (tts_default != NULL && tts_default[0] != 0) {
-        h->tts_default = atoi(tts_default);
-        if (h->tts_default <= 0)
-            h->tts_default = -1;
-        ccnd_msg(h, "CCND_DEFAULT_TIME_TO_STALE=%d", h->tts_default);
-    }
-    h->tts_limit = ~0U;
+    h->tts_limit = 126230400; /* 4 years, assuming 1 leap year */
     tts_limit = getenv("CCND_MAX_TIME_TO_STALE");
     if (tts_limit != NULL && tts_limit[0] != 0) {
-        h->tts_limit = atoi(tts_limit);
-        if (h->tts_limit <= 0)
-            h->tts_limit = -1;
-        else if (h->tts_limit > ((1U<<31) / 1000000))
-            h->tts_limit = (1U<<31) / 1000000;
+        int v = atoi(tts_limit);
+        if (v <= 0)
+            v = 1;
+        if (v < h->tts_limit)
+            h->tts_limit = v;
         ccnd_msg(h, "CCND_MAX_TIME_TO_STALE=%d", h->tts_limit);
     }
+    h->tts_default = -1;
+    tts_default = getenv("CCND_DEFAULT_TIME_TO_STALE");
+    if (tts_default != NULL && tts_default[0] != 0)
+        h->tts_default = atoi(tts_default);
+    if (h->tts_default <= 0 || h->tts_default > h->tts_limit)
+        h->tts_default = h->tts_limit;
+    if (h->tts_default != h->tts_limit || tts_default != NULL)
+        ccnd_msg(h, "CCND_DEFAULT_TIME_TO_STALE=%d", h->tts_default);
     listen_on = getenv("CCND_LISTEN_ON");
     autoreg = getenv("CCND_AUTOREG");
     
@@ -5616,6 +5537,8 @@ ccnd_destroy(struct ccnd_handle **pccnd)
         free(h->face0);
         h->face0 = NULL;
     }
+    if (h->headx != NULL)
+        free(h->headx);
     free(h);
     *pccnd = NULL;
 }

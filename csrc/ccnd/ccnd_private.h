@@ -57,7 +57,6 @@ struct nameprefix_entry;
 struct interest_entry;
 struct guest_entry;
 struct pit_face_item;
-struct content_tree_node;
 struct ccn_forwarding;
 struct ccn_strategy;
 
@@ -108,14 +107,12 @@ struct ccnd_handle {
     struct ccn_charbuf *scratch_charbuf; /**< one-slot scratch cache */
     struct ccn_indexbuf *scratch_indexbuf; /**< one-slot scratch cache */
     struct ccn_nametree *content_tree; /**< content store */
-    ccn_cookie accession;      /**< newest used accession number */
-    ccn_cookie accession_base; /**< follower for reaping oldest content */
-    ccn_cookie min_stale;      /**< smallest accession of stale content */
-    ccn_cookie max_stale;      /**< largest accession of stale content */
+    struct content_entry *headx;    /**< list head for expiry queue */
+    ccn_cookie nextx;               /**< For next content to expire */
     unsigned capacity;              /**< may toss content if there more than
                                      this many content objects in the store */
-    unsigned long n_stale;          /**< Number of stale content objects */
     struct ccn_indexbuf *unsol;     /**< unsolicited content */
+    unsigned long accessioned;
     unsigned long oldformatcontent;
     unsigned long oldformatcontentgrumble;
     unsigned long oldformatinterests;
@@ -262,14 +259,15 @@ struct content_entry {
     int flags;                  /**< see defines below */
     unsigned char *ccnb;        /**< ccnb-encoded ContentObject */
     int size;                   /**< Size of ContentObject */
+    int staletime;              /**< Time in seconds, relative to starttime */
+    struct content_entry *nextx; /**< Next to expire after us */
+    struct content_entry *prevx; /**< Expiry doubly linked for fast removal */
 };
 
 /**
  * content_entry flags
  */
 #define CCN_CONTENT_ENTRY_SLOWSEND  1
-#define CCN_CONTENT_ENTRY_STALE     2
-#define CCN_CONTENT_ENTRY_PRECIOUS  4
 
 /**
  * State for the strategy engine
@@ -489,6 +487,8 @@ void ccnd_face_status_change(struct ccnd_handle *, unsigned);
 int ccnd_destroy_face(struct ccnd_handle *h, unsigned faceid);
 void ccnd_send(struct ccnd_handle *h, struct face *face,
                const void *data, size_t size);
+
+int ccnd_n_stale(struct ccnd_handle *h);
 
 /* Consider a separate header for these */
 int ccnd_stats_handle_http_connection(struct ccnd_handle *, struct face *);
