@@ -68,7 +68,7 @@ test_inserts_from_stdin(void)
     struct ccny *node = NULL;
     unsigned char *p = NULL;
     
-    ntree = ccn_nametree_create();
+    ntree = ccn_nametree_create(42);
     CHKPTR(ntree);
     ccn_nametree_check(ntree);
     c = ccn_charbuf_create();
@@ -110,7 +110,7 @@ test_inserts_from_stdin(void)
             continue;
         }
         /* insert case */
-        node = ccny_create(lrand48());
+        node = ccny_create(lrand48(), 0);
         ccny_set_key(node, f->buf, f->length);
         if (ntree->n >= ntree->limit) {
             res = ccn_nametree_grow(ntree);

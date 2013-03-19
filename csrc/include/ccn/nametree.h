@@ -41,6 +41,17 @@ struct ccny;
  */
 typedef void (*ccn_nametree_action)(struct ccn_nametree *, struct ccny *);
 
+/**
+ *  Procedure type for comparison callback used for ordering
+ *
+ * The result is tested for negative, zero, or positive,
+ * meaning less, equal, or greater.
+ *
+ * The default is to use ccn_flatname_compare().
+ */
+typedef int (*ccn_nametree_compare)(const unsigned char *, size_t,
+                                    const unsigned char *, size_t);
+
 struct ccn_nametree {
     int n;                  /**< number of enrolled entries */
     int limit;              /**< recommended maximum n */
@@ -49,6 +60,7 @@ struct ccn_nametree {
     struct ccny **nmentry_by_cookie; /**< for direct lookup by cookie */
     struct ccny *head;      /**< head for skiplist, etc. */
     void *data;             /**< for client use */
+    ccn_nametree_compare compare; /**< for comparison */
     ccn_nametree_action post_enroll; /**< called after enroll */
     ccn_nametree_action pre_remove; /**< called before removal */
     ccn_nametree_action check; /**< called to check client structures */
@@ -80,14 +92,16 @@ struct ccny {
     unsigned keylen;        /**< size of key, in bytes */
     ccn_cookie cookie;      /**< cookie for this entry */
     void *payload;          /**< client payload */
-    unsigned short info[3]; /**< for client use */
+    unsigned info;          /**< for client use */
+    unsigned short prv;     /**< not for client use */
     short skipdim;          /**< dimension of skiplinks array */
     struct ccny *skiplinks[1]; /**< skiplist links (flex array) */
 };
 
-struct ccn_nametree *ccn_nametree_create(void);
+struct ccn_nametree *ccn_nametree_create(int initial_limit);
 
-struct ccny *ccny_create(unsigned rb);
+/* reasonably good random bits must be provided, crypto quality not needed */
+struct ccny *ccny_create(unsigned randombits, size_t payload_size);
 
 int ccny_set_key(struct ccny *y, const unsigned char *key, size_t size);
 
