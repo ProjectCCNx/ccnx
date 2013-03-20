@@ -754,11 +754,11 @@ content_next(struct ccnd_handle *h, struct content_entry *content)
 
 static int
 ex_index_cmp(const unsigned char *a, size_t alen,
-                 const unsigned char *b, size_t blen)
+             const unsigned char *b, size_t blen)
 {
-    /* Just use the lengths for this compare, and reverse the order */
+    /* Just use the lengths for this compare, ignore the pointers */
     /* These are times in seconds since ccnd start, so no overflow worries. */ 
-    return((int)blen - (int)alen);
+    return((int)alen - (int)blen);
 }
 
 /**
@@ -787,7 +787,10 @@ update_ex_index(struct ccnd_handle *h, int staletime, ccn_cookie c)
             y = ccny_create(nrand48(h->seed), 0);
             y->key = NULL; /* Our compare action expects this. */
             y->keylen = staletime;
+            if (e->n >= e->limit)
+                ccn_nametree_grow(e);
             ccny_enroll(e, y);
+            if (y->cookie == 0) abort();
         }
         y->info = c;
     }
@@ -801,15 +804,27 @@ content_enqueuex(struct ccnd_handle *h, struct content_entry *content)
 {
     struct content_entry *next = NULL;
     struct content_entry *prev = NULL;
+    struct ccny *y = NULL;
     int tts;
     
     tts = content->staletime;
-    if (content->nextx != 0 || content->accession == 0 || tts < -1) abort();
-    next = h->headx;
-    tts = content->staletime;
-    // XXX - linear scan for initial cut, replace with better index
-    for (prev = h->headx->prevx; prev->staletime > tts;)
-        prev = prev->prevx;
+    if (content->nextx != NULL || content->accession == 0 || tts < 0) abort();    
+    prev = h->headx->prevx;
+    if (prev->staletime > tts) {
+        y = ccn_nametree_look_le(h->ex_index, NULL, tts);
+        if (y == NULL)
+            prev = h->headx;
+        else
+            prev = content_from_accession(h, y->info);
+        // if prev is NULL, we forgot to remove an entry
+    }
+    if (prev->nextx->staletime <= tts && prev->nextx != h->headx) abort();
+    if (prev->staletime > tts) {
+        // Oops, this should not happen.  Revert to slow-but-sure.
+        ccnd_msg(h, "Err, break at ccnd.c:%d to debug this", __LINE__);
+        for (prev = h->headx->prevx; prev->staletime > tts;)
+            prev = prev->prevx;
+    }
     next = prev->nextx;
     content->nextx = next;
     content->prevx = prev;
