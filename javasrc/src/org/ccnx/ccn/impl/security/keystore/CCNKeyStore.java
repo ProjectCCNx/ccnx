@@ -24,6 +24,12 @@ import java.util.HashMap;
 
 import sun.security.jca.GetInstance;
 
+/**
+ * Allows extensions of the KeyStore and usage of our own service providers.
+ * It may be possible to add our service provider to the lists of one of the standard
+ * providers but I haven't been able to figure out how to do that.
+ *
+ */
 @SuppressWarnings({ "rawtypes", "unchecked" })
 public class CCNKeyStore extends KeyStore {
 	protected static HashMap<String, Class<KeyStoreSpi>> _ccnKeyStores = new HashMap<String, Class<KeyStoreSpi>>();
@@ -39,13 +45,21 @@ public class CCNKeyStore extends KeyStore {
 		_requiresSymmetric = requiresSymmetric;
 	}
 	
+	/**
+	 * Get instance of either our KeyStore or one of the standard ones based on type
+	 * @param type
+	 * @return
+	 * @throws KeyStoreException
+	 */
 	public static CCNKeyStore getInstance(String type) throws KeyStoreException {
 		boolean requiresSymmetric = false;
 		Class<KeyStoreSpi> ourClass = null;
+		
+		// Is the type one of ours?
 		for (String ccnType : _ccnKeyStores.keySet()) {
 			if (ccnType.equals(type)) {
 				ourClass = (Class<KeyStoreSpi>)_ccnKeyStores.get(type);
-				requiresSymmetric = true;
+				requiresSymmetric = true;	// yes
 				break;
 			}
 		}

@@ -50,8 +50,13 @@ import org.ccnx.ccn.impl.security.crypto.util.OIDLookup;
 import org.ccnx.ccn.impl.support.Tuple;
 
 /**
- * This is a specialized keystore for storing symmetric keys. We looked at PKCS #11 for this but decided against
- * it for now because industry doesn't seem to be standardizing around it - at least not yet.
+ * This is a specialized keystore for storing symmetric keys. We looked at PKCS #11 for this but decided 
+ * against it for now because industry doesn't seem to be standardizing around it - at least not yet.
+ * 
+ * The keystore can be used for only one key at a time and is located by naming it with a suffix
+ * created from the key's digest.
+ * 
+ * Following is the formula for the KeyStore
  * 
  * Let P=passphrase
  * Let PT = symmetric key to store
@@ -65,7 +70,7 @@ import org.ccnx.ccn.impl.support.Tuple;
  *
  * SK is the symmetric keystore ciphertext
  * 
- * KeyStore = Version || Key algorithm OID || SK
+ * ASN1 encoded KeyStore = Version || Key algorithm OID || SK
  */
 public class AESKeyStoreSpi extends KeyStoreSpi {
 	
@@ -87,15 +92,13 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 	protected DERObjectIdentifier _oid = null;
 	
 	/*
+	 * Convert from a key algorithm to a size for an encrypted key
 	 * XXX might be some better way to do this but I don't know what it is...
 	 */
 	private static Map<String,Integer> _k2Size = new HashMap<String,Integer>();
 	
 	static {
 		_k2Size.put("HMac-SHA256", 48);
-	}
-	
-	public AESKeyStoreSpi() {
 		try {
 			_mac = Mac.getInstance(MAC_ALGORITHM);
 		} catch (NoSuchAlgorithmException e) {
@@ -103,7 +106,7 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 			e.printStackTrace();
 		}
 	}
-
+	
 	/*
 	 * TODO
 	 * As far as I know we don't need to do most of this stuff. If we discover its needed, it will be filled in later
@@ -150,6 +153,10 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 		return null;
 	}
 	
+	/**
+	 * Create a new entry for the keystore if needed. Since there is only 1 key in the keystore
+	 * we only ever return the single entry.
+	 */
 	public KeyStore.Entry engineGetEntry(String alias, KeyStore.ProtectionParameter protParam) {
 		if (null == _ourEntry) {
 			if (null != _id) {
@@ -179,6 +186,9 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 		return false;
 	}
 
+	/**
+	 * Load in the key from the keystore file
+	 */
 	@Override
 	public void engineLoad(InputStream stream, char[] password) throws IOException,
 			NoSuchAlgorithmException, CertificateException {
@@ -248,6 +258,9 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 		return 0;
 	}
 
+	/**
+	 * Store the key from _id into a keystore file
+	 */
 	@Override
 	public void engineStore(OutputStream stream, char[] password) throws IOException,
 			NoSuchAlgorithmException, CertificateException {
@@ -282,6 +295,13 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 		}
 	}
 	
+	/**
+	 * Create aesK and macK from password as in formula above
+	 * @param password
+	 * @return
+	 * @throws IOException
+	 * @throws NoSuchAlgorithmException
+	 */
 	private Tuple<SecretKeySpec, SecretKeySpec> initializeForAES(char[] password) throws IOException, NoSuchAlgorithmException {
 		Tuple<SecretKeySpec, SecretKeySpec> result = null;
 		
@@ -311,6 +331,15 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 		return size;
 	}
 	
+	/**
+	 * Service providers automatically supply the passphrase in a char array but we need
+	 * a byte array. 
+	 * 
+	 * TODO Perhaps this should be moved to DataUtils
+	 * 
+	 * @param in
+	 * @return
+	 */
 	private byte[] charToByteArray(char[] in) {
 		byte[] bytes = new byte[in.length];
 		for (int i = 0; i < in.length; i++) {

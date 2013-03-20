@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.utils;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.security.Key;
 import java.security.NoSuchAlgorithmException;
@@ -36,7 +37,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * Command line utility to write and read a symmetric keystore file for testing
  **/
  public class ccnkeystoretool extends CommonOutput implements Usage {
-	 static final int KEYSIZE = 128/8;
+	 static final int KEYSIZE = 256/8;
 	 static ccnkeystoretool createkeystore = new ccnkeystoretool();
 	 static String[] okArgs = {"-log", "-v"};
 
@@ -87,6 +88,8 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 				else {
 					System.out.println("Retrieved key: " +  new String(((SecretKey)key).getEncoded()));
 				}
+			} catch (FileNotFoundException fnfe) {
+				System.out.println("Can't find key file for digest: " + digest);
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
