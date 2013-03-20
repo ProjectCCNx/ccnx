@@ -4162,6 +4162,17 @@ mark_stale(struct ccnd_handle *h, struct content_entry *content)
 }
 
 /**
+ * Arrange to toss unsolicited content before anything else
+ */
+static void
+mark_unsolicited(struct ccnd_handle *h, struct content_entry *content)
+{
+    content_dequeuex(h, content);
+    content->staletime = 0;
+    content_enqueuex(h, content);
+}
+
+/**
  * Schedules content expiration based on its FreshnessSeconds, and the
  * configured default and limit.
  */
@@ -4327,8 +4338,8 @@ Bail:
                 return;
             }
             if (n_matches == 0 && (face->flags & CCN_FACE_GG) == 0) {
-                content->flags |= CCN_CONTENT_ENTRY_SLOWSEND;
-                ccn_indexbuf_append_element(h->unsol, content->accession);
+                ccnd_debug_ccnb(h, __LINE__, "content_unsolicted", face, msg, size);
+                mark_unsolicited(h, content);
             }
         }
         // ZZZZ - review whether the following is actually needed
@@ -5414,7 +5425,6 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->ex_index = ccn_nametree_create(1);
     h->ex_index->compare = &ex_index_cmp;
     h->send_interest_scratch = ccn_charbuf_create();
-    h->unsol = ccn_indexbuf_create();
     h->ticktock.descr[0] = 'C';
     h->ticktock.micros_per_base = 1000000;
     h->ticktock.gettime = &ccnd_gettime;
@@ -5580,7 +5590,6 @@ ccnd_destroy(struct ccnd_handle **pccnd)
     ccn_charbuf_destroy(&h->scratch_charbuf);
     ccn_charbuf_destroy(&h->autoreg);
     ccn_indexbuf_destroy(&h->scratch_indexbuf);
-    ccn_indexbuf_destroy(&h->unsol);
     if (h->face0 != NULL) {
         ccn_charbuf_destroy(&h->face0->inbuf);
         ccn_charbuf_destroy(&h->face0->outbuf);

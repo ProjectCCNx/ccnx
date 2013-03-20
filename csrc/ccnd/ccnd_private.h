@@ -111,7 +111,6 @@ struct ccnd_handle {
     unsigned capacity;              /**< may toss content if there more than
                                      this many content objects in the store */
     struct ccn_nametree *ex_index;  /**< for speedy adds to expiry queue */
-    struct ccn_indexbuf *unsol;     /**< unsolicited content */
     unsigned long accessioned;
     unsigned long oldformatcontent;
     unsigned long oldformatcontentgrumble;
