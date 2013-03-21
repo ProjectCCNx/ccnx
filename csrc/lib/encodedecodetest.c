@@ -471,6 +471,7 @@ main(int argc, char *argv[])
         struct ccn_charbuf *a[2];
         int t0 = 1363899678;
         
+        printf("Unit test case %d\n", i++);
         /* Run many increasing inputs and make sure the output is in order. */
         a[0] = ccn_charbuf_create();
         a[1] = ccn_charbuf_create();
