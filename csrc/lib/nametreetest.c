@@ -125,7 +125,6 @@ test_inserts_from_stdin(void)
             dups++;
         }
         else {
-            FAILIF(res != 0);
             FAILIF(node->cookie == 0);
             unique++;
         }
