@@ -54,7 +54,6 @@ test_inserts_from_stdin(void)
 {
     struct ccn_charbuf *c = NULL;
     struct ccn_charbuf *f = NULL;
-    int res;
     int delete;      /* Lines ending with a '!' are to be deleted instead */
     int i;
     int item = 0;
@@ -113,7 +112,7 @@ test_inserts_from_stdin(void)
         node = ccny_create(lrand48(), 0);
         ccny_set_key(node, f->buf, f->length);
         if (ntree->n >= ntree->limit) {
-            res = ccn_nametree_grow(ntree);
+            int res = ccn_nametree_grow(ntree);
             FAILIF(res != 0);
             fprintf(stderr, "n=%d, limit=%d\n", ntree->n, ntree->limit);
         }
@@ -144,7 +143,7 @@ test_inserts_from_stdin(void)
     ccn_nametree_destroy(&ntree);
     ccn_charbuf_destroy(&c);
     ccn_charbuf_destroy(&f);
-    return(res);
+    return(0);
 }
 
 int
