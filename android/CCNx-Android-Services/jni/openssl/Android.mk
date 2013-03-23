@@ -14,7 +14,8 @@
 LOCAL_PATH := $(call my-dir)
 
 subdirs := $(addprefix $(LOCAL_PATH)/,$(addsuffix /Android.mk, \
-		openssl-armv5 \
+		../../../external/openssl_android_mks \
 	))
+#		openssl-armv5 \
 
 include $(subdirs)
