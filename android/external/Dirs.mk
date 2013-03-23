@@ -27,7 +27,7 @@ OPENSSL_TARGET = openssl-armv5
 #################################
 # Nothing user-settable down here
 #
-SUBDIRS = $(OPENSSL_TARGET)
+SUBDIRS = $(OPENSSL_TARGET) openssl_android_mks/make_timestamp
 
 
 JARDIR = obj
@@ -59,4 +59,5 @@ $(OPENSSL_TARGET)/make_timestamp: downloads/$(OPENSSL_SRC) $(SSLMKS)
 
 distclean:
 	rm -rf $(SUBDIRS)
+	rm -f all_made
 	rm -rf downloads

@@ -17,6 +17,7 @@
 APK_NAME = CCNx-Android-Services-debug.apk
 BIN = bin
 GEN = gen
+GENERATED_SOURCE_FILES = obj
 
 ############
 # Nothing tweekable down here
@@ -102,8 +103,8 @@ simpleclean:
 	rm -f local.properties
 
 distclean: environment simpleclean
-	$(ANDROID_NDK)/ndk-build clean
-	rm -f $(GENERATED_SOURCE_FILES)
+	rm -rf obj
+	rm -rf $(GENERATED_SOURCE_FILES)
 
 test:
 	@echo "No automated tests for services"
