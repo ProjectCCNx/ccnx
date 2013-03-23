@@ -88,7 +88,6 @@ simpleclean:
 	rm -f local.properties
 
 distclean: environment simpleclean
-	$(ANDROID_NDK)/ndk-build clean
 	rm -f $(GENERATED_SOURCE_FILES)
 
 test:
