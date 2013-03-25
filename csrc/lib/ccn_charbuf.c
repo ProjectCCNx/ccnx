@@ -160,7 +160,6 @@ ccn_charbuf_putf(struct ccn_charbuf *c, const char *fmt, ...)
         c->length += sz;
         return(sz);
     }
-    va_end(ap);
     buf = (char *)ccn_charbuf_reserve(c, sz + 1); /* accurate */
     if (buf == NULL) return(-1);
     va_start(ap, fmt);
