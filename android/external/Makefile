@@ -34,5 +34,5 @@ clean:
 	@echo Use distclean if you want to clean an external project
 
 distclean:
-	$(MAKE) -f Dirs.mk distclean all_made
+	$(MAKE) -f Dirs.mk distclean
 

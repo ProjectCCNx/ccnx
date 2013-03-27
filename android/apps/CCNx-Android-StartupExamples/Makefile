@@ -1,4 +1,4 @@
-# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -87,7 +87,6 @@ simpleclean:
 	rm -f local.properties
 
 distclean: environment simpleclean
-	$(ANDROID_NDK)/ndk-build clean
 	rm -f $(GENERATED_SOURCE_FILES)
 
 test:
