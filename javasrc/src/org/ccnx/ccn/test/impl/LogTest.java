@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2010-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -23,6 +23,7 @@ import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 import java.util.logging.StreamHandler;
 
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -35,6 +36,7 @@ public class LogTest {
 	protected static Level[] prevLevels;
 	protected int _lastStart;
 	protected int _lastFinish;
+	protected static Object _testLock = new Object();
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -64,34 +66,35 @@ public class LogTest {
 	}
 
 	protected void doTest(int facility, Level level) {
-		synchronized (this) {
+		synchronized (_testLock) {
 			// set level off and make sure no logging
 			Log.setLevel(facility, Level.OFF);
 			int result = writeLog(facility, level, "test me off");
 			if (result > 0) {
 				byte[] contents = _baos.toByteArray();
-				byte[] b = new byte[_lastFinish - _lastStart];
-				/* b = Arrays.copyOfRange(contents, _lastStart, _lastFinish); */
+				byte[] b;
 				if (!(contents.length < _lastFinish)) {
+					b = new byte[_lastFinish - _lastStart];
 					int j = 0;
-					for (int i = _lastStart; i <= _lastFinish; i++) {
+					for (int i = _lastStart; i < _lastFinish; i++) {
 						b[j] = contents[i];
 						j++;
 					}
-				} else {
+				} else if (contents.length > _lastStart) {
+					b = new byte[contents.length - _lastStart];
 					int j = 0;
 					for (int i = _lastStart; i < contents.length; i++) {
 						b[j] = contents[i];
 						j++;
 					}
-					// Null out excess range
-					for (; j < _lastFinish; j++) {
-						b[j] = (byte) 0;	
-					}
+				} else {
+					Log.setLevel(Level.ALL);
+					Log.severe("Logging problem: we saw - too few bytes: {0}, {1}", _lastStart, contents.length);
+					throw new AssertionError("Too few bytes");
 				}
-				System.out.println("Logging problem - we saw: \"" + new String(b) + "\" when there should have been no log");
+				System.out.println("Logging problem - we saw: \"" + DataUtils.printBytes(b) + "\" when there should have been no log");
 				Log.setLevel(Level.ALL);
-				Log.severe("Logging problem: we saw: \"{0}\" when there should have been no log", new String(b));
+				Log.severe("Logging problem: we saw: \"{0}\" when there should have been no log", DataUtils.printBytes(b));
 			}
 			Assert.assertEquals(0, result);
 	
@@ -132,7 +135,7 @@ public class LogTest {
 
 	@Test
 	public void testGetLevelInt() {
-		synchronized (this) {
+		synchronized (_testLock) {
 			Log.setLevel(Level.OFF);
 			Assert.assertEquals(Level.OFF.intValue(), Log.getLevel().intValue());
 			Assert.assertEquals(Level.OFF.intValue(), Log.getLevel(Log.FAC_DEFAULT).intValue());
@@ -144,7 +147,7 @@ public class LogTest {
 
 	@Test
 	public void testGetSetLevels() {
-		synchronized (this) {
+		synchronized (_testLock) {
 			Log.setLevel(Log.FAC_ALL, Level.WARNING);
 			Log.setLevel(Log.FAC_NETMANAGER, Level.INFO);
 			Log.setLevel(Log.FAC_IO, Level.FINE);
