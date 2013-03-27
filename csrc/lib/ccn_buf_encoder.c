@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -320,12 +320,17 @@ ccnb_append_timestamp_blob(struct ccn_charbuf *c,
 {
     int i;
     int n;
-    intmax_t ts;
+    uintmax_t ts, tsh;
+    int tsl;
     unsigned char *p;
     if (secs <= 0 || nsecs < 0 || nsecs > 999999999)
         return(-1);
+    /* arithmetic contortions are to avoid overflowing 31 bits */
+    tsl = ((int)(secs & 0xf) << 12) + ((nsecs / 5 * 8 + 195312) / 390625);
+    tsh = (secs >> 4) + (tsl >> 16);
+    tsl &= 0xffff;
     n = 2;
-    for (ts = secs >> 4; n < 7 && ts != 0; ts >>= 8)
+    for (ts = tsh; n < 7 && ts != 0; ts >>= 8)
         n++;
     ccn_charbuf_append_tt(c, n + (marker >= 0), CCN_BLOB);
     if (marker >= 0)
@@ -333,13 +338,10 @@ ccnb_append_timestamp_blob(struct ccn_charbuf *c,
     p = ccn_charbuf_reserve(c, n);
     if (p == NULL)
         return(-1);
-    ts = secs >> 4;
     for (i = 0; i < n - 2; i++)
-        p[i] = ts >> (8 * (n - 3 - i));
-    /* arithmetic contortions are to avoid overflowing 31 bits */
-    ts = ((secs & 15) << 12) + ((nsecs / 5 * 8 + 195312) / 390625);
+        p[i] = tsh >> (8 * (n - 3 - i));
     for (i = n - 2; i < n; i++)
-        p[i] = ts >> (8 * (n - 1 - i));
+        p[i] = tsl >> (8 * (n - 1 - i));
     c->length += n;
     return(0);
 }

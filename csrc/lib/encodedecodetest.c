@@ -4,7 +4,7 @@
  *
  * A CCNx program.
  *
- * Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -461,6 +461,36 @@ main(int argc, char *argv[])
         }
         ccn_charbuf_destroy(&buffer);
         ccn_charbuf_destroy(&uri_out);
+    } while (0);
+    printf("Timestamp tests\n");
+    do {
+        intmax_t sec;
+        int nsec;
+        int r;
+        int f;
+        struct ccn_charbuf *a[2];
+        int t0 = 1363899678;
+        
+        printf("Unit test case %d\n", i++);
+        /* Run many increasing inputs and make sure the output is in order. */
+        a[0] = ccn_charbuf_create();
+        a[1] = ccn_charbuf_create();
+        ccnb_append_timestamp_blob(a[1], CCN_MARKER_NONE, t0 - 1, 0);
+        for (f = 0, nsec = 0, sec = t0; sec < t0 + 20; nsec += 122099) {
+            while (nsec >= 1000000000) {
+                sec++;
+                nsec -= 1000000000;
+            }
+            ccn_charbuf_reset(a[f]);
+            r = ccnb_append_timestamp_blob(a[f], CCN_MARKER_NONE, sec, nsec);
+            if (r != 0 || a[f]->length != 7 || memcmp(a[1-f]->buf, a[f]->buf, 6) > 0) {
+                printf("Failed ccnb_append_timestamp_blob(...,%jd,%d)\n", sec, nsec);
+                result = 1;
+            }
+            f = 1 - f;
+        }
+        ccn_charbuf_destroy(&a[0]);
+        ccn_charbuf_destroy(&a[1]);
     } while (0);
     printf("Message digest tests\n");
     do {
