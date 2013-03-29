@@ -74,6 +74,8 @@ Options for *ccnd* are set via environment variables.
       Limit, in seconds, until content becomes stale.  Must be positive.
       If necessary, this will be reduced to the largest value
       that the implemementation can enforce.
+    CCND_MAX_RTE_MICROSEC=
+      Value used to limit response time estimates kept by default strategy.
     CCND_KEYSTORE_DIRECTORY=
       Directory readable only by ccnd where its keystores are kept
       Defaults to a private subdirectory of /var/tmp

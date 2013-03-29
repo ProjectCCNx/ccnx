@@ -208,6 +208,8 @@ const char *ccnd_usage_message =
     "      Default for content objects without explicit FreshnessSeconds\n"
     "    CCND_MAX_TIME_TO_STALE=\n"
     "      Limit, in seconds, until content becomes stale\n"
+    "    CCND_MAX_RTE_MICROSEC=\n"
+    "      Value used to limit response time estimates kept by default strategy.\n"
     "    CCND_KEYSTORE_DIRECTORY=\n"
     "      Directory readable only by ccnd where its keystores are kept\n"
     "      Defaults to a private subdirectory of /var/tmp\n"

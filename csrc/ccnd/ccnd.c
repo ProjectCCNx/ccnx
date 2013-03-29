@@ -1793,8 +1793,8 @@ adjust_npe_predicted_response(struct ccnd_handle *h,
         t = t - (t >> 7);
     if (t < 127)
         t = 127;
-    else if (t > 160000)
-        t = 160000;
+    else if (t > h->predicted_response_limit)
+        t = h->predicted_response_limit;
     npe->usec = t;
 }
 
@@ -3469,7 +3469,6 @@ strategy_callout(struct ccnd_handle *h,
     unsigned nleft;
     unsigned amt;
     int usec;
-    int usefirst;
     
     switch (op) {
         case CCNST_NOP:
@@ -3492,13 +3491,11 @@ strategy_callout(struct ccnd_handle *h,
                                 ie->interest_msg, ie->size);
                 break;
             }
-            if (best == CCN_NOFACEID || npe->usec > 150000) {
-                usefirst = 1;
+            if (best == CCN_NOFACEID) {
                 randlow = 4000;
                 randrange = 75000;
             }
             else {
-                usefirst = 0;
                 randlow = npe->usec;
                 randrange = (randlow + 1) / 2;
             }
@@ -3511,10 +3508,6 @@ strategy_callout(struct ccnd_handle *h,
                     }
                     else if (ccn_indexbuf_member(tap, p->faceid) >= 0)
                         p = send_interest(h, ie, x, p);
-                    else if (usefirst) {
-                        usefirst = 0;
-                        pfi_set_expiry_from_micros(h, ie, p, 0);
-                    }
                     else if (p->faceid == npe->osrc)
                         pfi_set_expiry_from_micros(h, ie, p, randlow);
                     else {
@@ -5667,6 +5660,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     const char *data_pause;
     const char *tts_default;
     const char *tts_limit;
+    const char *predicted_response_limit;
     const char *autoreg;
     const char *listen_on;
     int fd;
@@ -5773,6 +5767,16 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
         else if (h->tts_limit > ((1U<<31) / 1000000))
             h->tts_limit = (1U<<31) / 1000000;
         ccnd_msg(h, "CCND_MAX_TIME_TO_STALE=%d", h->tts_limit);
+    }
+    h->predicted_response_limit = 160000;
+    predicted_response_limit = getenv("CCND_MAX_RTE_MICROSEC");
+    if (predicted_response_limit != NULL && predicted_response_limit[0] != 0) {
+        h->predicted_response_limit = atoi(predicted_response_limit);
+        if (h->predicted_response_limit <= 2000)
+            h->predicted_response_limit = 2000;
+        else if (h->predicted_response_limit > 60000000)
+            h->predicted_response_limit = 60000000;
+        ccnd_msg(h, "CCND_MAX_RTE_MICROSEC=%d", h->predicted_response_limit);
     }
     listen_on = getenv("CCND_LISTEN_ON");
     autoreg = getenv("CCND_AUTOREG");
