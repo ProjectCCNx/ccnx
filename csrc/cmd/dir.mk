@@ -35,6 +35,7 @@ PROGRAMS = $(INSTALLED_PROGRAMS) \
     dataresponsetest \
     ccn_fetch_test \
     ccnsnew \
+    ccninitaeskeystore \
    $(PCAP_PROGRAMS)
 
 EXPAT_PROGRAMS = ccn_xmltoccnb
@@ -51,7 +52,8 @@ CSRC =  ccn_ccnbtoxml.c ccn_splitccnb.c ccn_xmltoccnb.c ccnbasicconfig.c \
        ccninitkeystore.c ccnls.c ccnnamelist.c ccnpoke.c ccnrm.c ccnsendchunks.c \
        ccnseqwriter.c \
        ccnsnew.c \
-       ccnsyncwatch.c ccnsyncslice.c ccn_fetch_test.c ccnlibtest.c ccnslurp.c dataresponsetest.c 
+       ccnsyncwatch.c ccnsyncslice.c ccn_fetch_test.c ccnlibtest.c ccnslurp.c dataresponsetest.c \
+       ccninitaeskeystore.c
 
 default all: $(PROGRAMS)
 # Don't try to build broken programs right now.
@@ -150,6 +152,9 @@ ccnhexdumpdata: ccnhexdumpdata.o
 
 ccninitkeystore: ccninitkeystore.o
 	$(CC) $(CFLAGS) -o $@ ccninitkeystore.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+
+ccninitaeskeystore: ccninitaeskeystore.o
+	$(CC) $(CFLAGS) -o $@ ccninitaeskeystore.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccn_digest.o:
 	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_digest.c

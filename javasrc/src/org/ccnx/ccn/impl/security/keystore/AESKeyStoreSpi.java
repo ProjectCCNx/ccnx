@@ -40,18 +40,21 @@ import javax.crypto.Mac;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.ASN1OutputStream;
+import org.bouncycastle.asn1.DERInteger;
 import org.bouncycastle.asn1.DERObjectIdentifier;
 import org.bouncycastle.asn1.DEROctetString;
-import org.ccnx.ccn.impl.security.crypto.util.DigestHelper;
+import org.bouncycastle.asn1.DERSequence;
 import org.ccnx.ccn.impl.security.crypto.util.OIDLookup;
 import org.ccnx.ccn.impl.support.Tuple;
 
 /**
  * This is a specialized keystore for storing symmetric keys. We looked at PKCS #11 for this but decided 
- * against it for now because industry doesn't seem to be standardizing around it - at least not yet.
+ * against it for now because industry doesn't seem to be standardizing around it - at least not yet, and
+ * standard support for it is somewhat sketchy at this point.
  * 
  * The keystore can be used for only one key at a time and is located by naming it with a suffix
  * created from the key's digest.
@@ -74,7 +77,7 @@ import org.ccnx.ccn.impl.support.Tuple;
  */
 public class AESKeyStoreSpi extends KeyStoreSpi {
 	
-	public static final String VERSION = "0.1";
+	public static final int VERSION = 1;
 	public static final String TYPE = "CCN_AES";
 	public static final String MAC_ALGORITHM = "HMAC-SHA256";	// XXX Should these be settable?
 	public static final String AES_CRYPTO_ALGORITHM = "AES/CBC/PKCS5Padding";
@@ -85,7 +88,7 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 	
 	public static Mac _mac;
 	
-	protected static DERObjectIdentifier _versionOID = new DERObjectIdentifier(VERSION);
+	protected static DERInteger _version = new DERInteger(VERSION);
 	
 	protected byte[] _id = null;
 	protected KeyStore.Entry _ourEntry = null;
@@ -98,7 +101,7 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 	private static Map<String,Integer> _k2Size = new HashMap<String,Integer>();
 	
 	static {
-		_k2Size.put("HMac-SHA256", 48);
+		_k2Size.put("SHA256", 48);
 		try {
 			_mac = Mac.getInstance(MAC_ALGORITHM);
 		} catch (NoSuchAlgorithmException e) {
@@ -197,14 +200,14 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 		if (null != _id)
 			return;		// We already have the key so don't need to reload it
 		ASN1InputStream ais = new ASN1InputStream(stream);
-		DERObjectIdentifier versionAsOid = (DERObjectIdentifier)ais.readObject();
-		if (!versionAsOid.toString().equals(VERSION))
-			throw new IOException("Unsupported AESKeyStore version: " + versionAsOid.toString());
-		_oid = (DERObjectIdentifier) ais.readObject();
-		String keyAlgorithm = OIDLookup.getSignatureAlgorithm(DigestHelper.DEFAULT_DIGEST_ALGORITHM, 
-				_oid.toString());
+		DERSequence ds = (DERSequence) ais.readObject();
+		DERInteger version = (DERInteger)ds.getObjectAt(0);
+		if (version.getValue().intValue() != VERSION)
+			throw new IOException("Unsupported AESKeyStore version: " + version.getValue().intValue());
+		_oid = (DERObjectIdentifier) ds.getObjectAt(1);
+		String keyAlgorithm = OIDLookup.getDigestName(_oid.toString());
 		int aeslen = keyAlgorithmToCipherSize(keyAlgorithm);
-		ASN1OctetString os = (ASN1OctetString) ais.readObject();
+		ASN1OctetString os = (ASN1OctetString) ds.getObjectAt(2);
 		byte [] cryptoData = os.getOctets();
 		int checkLength = cryptoData.length - (IV_SIZE + aeslen);
 		if (checkLength <= 0)
@@ -219,10 +222,13 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 			byte[] cryptBytes = new byte[aeslen];
 			System.arraycopy(cryptoData, IV_SIZE, cryptBytes, 0, cryptBytes.length);
 			_id = cipher.doFinal(cryptBytes);
+			byte[] checkbuf = new byte[IV_SIZE + cryptBytes.length];
+			System.arraycopy(iv, 0, checkbuf, 0, IV_SIZE);
+			System.arraycopy(cryptBytes, 0, checkbuf, IV_SIZE, cryptBytes.length);
 			byte[] check = new byte[checkLength];
 			System.arraycopy(cryptoData, IV_SIZE + aeslen, check, 0, checkLength);
 			_mac.init(keys.second());
-			byte[] hmac = _mac.doFinal(cryptBytes);
+			byte[] hmac = _mac.doFinal(checkbuf);
 			if (!Arrays.equals(hmac, check))
 				throw new IOException("Bad signature in AES keystore");
 		} catch (Exception e) {
@@ -246,7 +252,7 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 	public void engineSetKeyEntry(String name, Key key, char[] arg2,
 			Certificate[] arg3) throws KeyStoreException {
 		_id = key.getEncoded();
-		String oid = OIDLookup.getMacOID(key.getAlgorithm());
+		String oid = OIDLookup.getDigestOID(key.getAlgorithm());
 		if (null == oid)
 			throw new KeyStoreException("Not a Mac algorithm we recognize: " + key.getAlgorithm());
 		_oid = new DERObjectIdentifier(oid);
@@ -270,24 +276,31 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 		Tuple<SecretKeySpec, SecretKeySpec> keys = initializeForAES(password);
 		try {
 			byte[] iv = new byte[IV_SIZE];
-			_random.nextBytes(iv);
+			//_random.nextBytes(iv);
+for (int i = 0; i < IV_SIZE; i++)
+	iv[i] = (byte)i;
 			byte[] aesCBC = null;
 			Cipher cipher = Cipher.getInstance(AES_CRYPTO_ALGORITHM);
 			IvParameterSpec ivspec = new IvParameterSpec(iv);
 			cipher.init(Cipher.ENCRYPT_MODE, keys.first(), ivspec);
 			aesCBC = cipher.doFinal(_id);
 			_mac.init(keys.second());
-			byte[] part3 = _mac.doFinal(aesCBC);
-			aos.writeObject(_versionOID);
-			aos.writeObject(_oid);
+			byte[] checkbuf = new byte[iv.length + aesCBC.length];
+			System.arraycopy(iv, 0, checkbuf, 0, iv.length);
+			System.arraycopy(aesCBC, 0, checkbuf, iv.length, aesCBC.length);
+			byte[] part3 = _mac.doFinal(checkbuf);
 			// TODO might be a better way to do this but am not sure how
 			// (and its not really that important anyway)
 			byte[] asn1buf = new byte[iv.length + aesCBC.length + part3.length];
-			System.arraycopy(iv, 0, asn1buf, 0, iv.length);
-			System.arraycopy(aesCBC, 0, asn1buf, iv.length, aesCBC.length);
+			System.arraycopy(checkbuf, 0, asn1buf, 0, checkbuf.length);
 			System.arraycopy(part3, 0, asn1buf, iv.length + aesCBC.length, part3.length);
 			ASN1OctetString os = new DEROctetString(asn1buf);
-			aos.writeObject(os);
+			ASN1Encodable[] ae = new ASN1Encodable[3];
+			ae[0] = _version;
+			ae[1] = _oid;
+			ae[2] = os;
+			DERSequence ds = new DERSequence(ae);
+			aos.writeObject(ds);
 			aos.flush();
 			aos.close();
 		} catch (Exception e) {

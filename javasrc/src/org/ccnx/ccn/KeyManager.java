@@ -19,7 +19,6 @@ package org.ccnx.ccn;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.math.BigInteger;
 import java.net.URI;
 import java.security.InvalidKeyException;
 import java.security.Key;
@@ -27,6 +26,8 @@ import java.security.Provider;
 import java.security.PublicKey;
 import java.security.Security;
 import java.util.logging.Level;
+
+import javax.xml.bind.DatatypeConverter;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ccnx.ccn.config.ConfigurationException;
@@ -446,17 +447,12 @@ public abstract class KeyManager {
 	/**
 	 * Translate the digest portion of a key filename to a PublisherPublicKeyDigest using the specified keynaming
 	 * version (currently this is always version "1").
-	 * We code a positive suffix with "0" and a negative one with "1" in the first character of the String
 	 * @param version
 	 * @param fileDigest
 	 * @return
 	 */
 	public static PublisherPublicKeyDigest keyStoreToDigest(int version, String fileDigest) {
-		String realValue = fileDigest.substring(1);
-		if (fileDigest.startsWith("1"))
-			realValue = "-" + realValue;
-		BigInteger bi = new BigInteger(realValue, SystemConfiguration.DEBUG_RADIX);
-		return new PublisherPublicKeyDigest(bi.toByteArray());
+		return new PublisherPublicKeyDigest(DatatypeConverter.parseHexBinary(fileDigest));
 	}
 	
 	/**
@@ -467,7 +463,7 @@ public abstract class KeyManager {
 	 * @return
 	 */
 	public static String digestToKeyStoreSuffix(int version, PublisherPublicKeyDigest ppkd) {
-		return suffixSign(new BigInteger(ppkd.digest()).toString(SystemConfiguration.DEBUG_RADIX));
+		return DatatypeConverter.printHexBinary(ppkd.digest());
 	}
 	
 	/**
@@ -477,15 +473,7 @@ public abstract class KeyManager {
 	 * @return
 	 */
 	public static String keyToKeyStoreSuffix(int version, Key key) {
-		return suffixSign(new BigInteger(PublisherID.generatePublicKeyDigest(key)).toString(SystemConfiguration.DEBUG_RADIX));
-	}
-	
-	private static String suffixSign(String suffix) {
-		if (suffix.startsWith("-"))
-			suffix = "1" + suffix.substring(1);
-		else
-			suffix = "0" + suffix;
-		return suffix;
+		return DatatypeConverter.printHexBinary(PublisherID.generatePublicKeyDigest(key));
 	}
 	
 	/**
