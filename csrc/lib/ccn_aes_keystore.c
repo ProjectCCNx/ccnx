@@ -24,6 +24,7 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <ccn/ccn.h>
+#include <ccn/digest.h>
 #include <openssl/bn.h>
 #include <openssl/evp.h>
 #include <openssl/sha.h>
@@ -42,6 +43,7 @@ static unsigned char *create_derived_key(unsigned char *key, unsigned int keylen
 struct ccn_aes_keystore {
     int initialized;
     char *digest_algorithm;
+    EVP_PKEY *secret_key;
 };
 
 struct ccn_aes_keystore *
@@ -59,6 +61,19 @@ ccn_aes_keystore_destroy(struct ccn_aes_keystore **p)
 int
 ccn_aes_keystore_init(struct ccn_aes_keystore *p, char *filename, char *password)
 {
+    FILE *fp;
+    AESKeystore_info *keystore = NULL;
+
+    OpenSSL_add_all_algorithms();
+    fp = fopen(filename, "rb");
+    if (fp == NULL)
+        return (-1);
+
+    /* keystore = d2i_AESKeystore_fp(fp, NULL); */
+    fclose(fp);
+    if (keystore == NULL)
+        return (-1);
+
     return (0);
 }
 
@@ -94,7 +109,6 @@ ccn_aes_keystore_file_init(char *filename, char *password, unsigned char *key,
 {
     FILE *fp = NULL;
     int fd = -1;
-    int res;
     int i;
     int ans = -1;
     EVP_MD_CTX *mdctx;
@@ -112,6 +126,8 @@ ccn_aes_keystore_file_init(char *filename, char *password, unsigned char *key,
     unsigned char *p;
     int ekl = IV_SIZE + keylength/8 + SHA256_DIGEST_LENGTH + AES_BLOCK_SIZE;
     int encrypt_length;
+    struct ccn_digest *digest = NULL;
+    int res = 0;
 
     OpenSSL_add_all_algorithms();
     
@@ -119,11 +135,12 @@ ccn_aes_keystore_file_init(char *filename, char *password, unsigned char *key,
  	/* Create the filename based on SHA256 digest of the key */
 	memcpy(md_value, key, keylength/8);
         built_filename = malloc(strlen(filename) + 2 + ((keylength/8) * 2));
-        md = EVP_get_digestbyname(CCN_SIGNING_DEFAULT_DIGEST_ALGORITHM);   
-        mdctx = EVP_MD_CTX_create();
-        EVP_DigestInit(mdctx, md);
-        EVP_DigestUpdate(mdctx, md_value, md_len);
-        EVP_DigestFinal(mdctx, md_value, &md_len);
+	digest = ccn_digest_create(CCN_DIGEST_SHA256);
+	ccn_digest_init(digest);
+	res |= ccn_digest_update(digest, md_value, md_len);
+	res |= ccn_digest_final(digest, md_value, md_len);
+        if (res < 0)
+	    goto Bail;
         strcpy(built_filename, filename);
 	strcat(built_filename, "-");
         start_slot = strlen(built_filename);
@@ -147,9 +164,7 @@ ccn_aes_keystore_file_init(char *filename, char *password, unsigned char *key,
     encrypted_key = malloc(ekl);
     if (!encrypted_key)
 	goto Bail;
-    /* RAND_bytes(encrypted_key, IV_SIZE); */
-for (i = 0; i < IV_SIZE; i++)
-encrypted_key[i] = i;
+    RAND_bytes(encrypted_key, IV_SIZE);
     EVP_CIPHER_CTX_init(&ctx);
     if (!EVP_EncryptInit(&ctx, EVP_aes_256_cbc(), aes_key, encrypted_key))
 	goto Bail;
@@ -181,6 +196,7 @@ encrypted_key[i] = i;
 Bail:
     ans = -1;
 cleanup:
+    ccn_digest_destroy(&digest);
     if (fp != NULL)
 	fclose(fp);
     if (built_filename)

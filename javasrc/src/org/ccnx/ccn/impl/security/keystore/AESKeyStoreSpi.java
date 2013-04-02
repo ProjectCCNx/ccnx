@@ -276,9 +276,7 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 		Tuple<SecretKeySpec, SecretKeySpec> keys = initializeForAES(password);
 		try {
 			byte[] iv = new byte[IV_SIZE];
-			//_random.nextBytes(iv);
-for (int i = 0; i < IV_SIZE; i++)
-	iv[i] = (byte)i;
+			_random.nextBytes(iv);
 			byte[] aesCBC = null;
 			Cipher cipher = Cipher.getInstance(AES_CRYPTO_ALGORITHM);
 			IvParameterSpec ivspec = new IvParameterSpec(iv);
