@@ -3497,6 +3497,8 @@ strategy_callout(struct ccnd_handle *h,
             }
             else {
                 randlow = npe->usec;
+                if (randlow < 2000)
+                    randlow = 100 + nrand48(h->seed) % 4096U;
                 randrange = (randlow + 1) / 2;
             }
             nleft = 0;
