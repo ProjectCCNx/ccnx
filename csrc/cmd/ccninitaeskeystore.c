@@ -21,7 +21,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <errno.h>
 #include <pwd.h>
 #include <sys/stat.h>
 #include <ccn/ccn.h>
@@ -41,11 +40,12 @@ usage(const char *progname)
             "%s [-h] [-f] [-k keydata] [-p password] [-d directory] [name]\n"
             "   Initialize a CCNx AES keystore with given parameters\n", progname);
     fprintf(stderr,
-            "   -h  Display this help message.\n"
-            "   -f  Force overwriting an existing keystore. Default no overwrite permitted.\n" 
+            "   -h           Display this help message.\n"
+            "   -f 	     Force overwriting an existing keystore. Default no overwrite permitted.\n" 
             "   -k key 	     Key data for this key.\n"
             "   -p password  Password for this keystore.  Default default CCN password.\n"
-            "   -d directory Directory in which to create .ccnx/.ccnx_keystore. Default $HOME.\n" 
+            "   -d directory Directory in which to create .ccnx/.ccnx_keystore. Default $HOME.\n"
+	    "   -r           Read & decrpyt key from existing file and print if ASCII. \n"
             "   name         Name of keystore file.  Default .ccnx-keystore-[keyhash]. \n"
             );
 }
@@ -55,20 +55,20 @@ main(int argc, char **argv)
 {
     int res;
     int opt;
-    struct stat statbuf;
     char *dir = NULL;
     struct ccn_charbuf *keystore = NULL;
     int force = 0;
     char *password = CCN_KEYSTORE_PASS;
-    struct passwd *pwd = NULL;
     char *name = ".ccnx_keystore";
     char *username;
     int fullname = 0;
     char *key = NULL;
-    char keybuf[CCN_SECRET_KEY_LENGTH/8];
+    unsigned char keybuf[CCN_SECRET_KEY_LENGTH/8];
     int copylen = CCN_SECRET_KEY_LENGTH/8;
+    struct stat statbuf;
+    int read_mode = 0;
     
-    while ((opt = getopt(argc, argv, "hfk:p:d:")) != -1) {
+    while ((opt = getopt(argc, argv, "hfk:p:d:r")) != -1) {
         switch (opt) {
             case 'f':
                 force = 1;
@@ -81,6 +81,9 @@ main(int argc, char **argv)
                 break;
             case 'd':
                 dir = optarg;
+                break;
+            case 'r':
+                read_mode = 1;
                 break;
             case 'h':
             default:
@@ -117,12 +120,6 @@ main(int argc, char **argv)
     }
     ccn_charbuf_append_string(keystore, "/");
     ccn_charbuf_append_string(keystore, name);
-    res = stat(ccn_charbuf_as_string(keystore), &statbuf);
-    if (res != -1 && fullname && !force) {
-        errno=EEXIST;
-        perror(ccn_charbuf_as_string(keystore));
-        exit(1);
-    }
 
     if (key == NULL) {
 	RAND_bytes(keybuf, CCN_SECRET_KEY_LENGTH);
@@ -132,8 +129,21 @@ main(int argc, char **argv)
             copylen = strlen(key);
         memcpy(keybuf, key, copylen);
     }
-    ccn_aes_keystore_file_init(ccn_charbuf_as_string(keystore), password,
-                                 keybuf, CCN_SECRET_KEY_LENGTH, fullname);
+
+    if (!fullname)
+	create_aes_filename_from_key(keystore, keybuf, CCN_SECRET_KEY_LENGTH);
+
+    if (!force) {
+        res = stat(ccn_charbuf_as_string(keystore), &statbuf);
+        if (res != -1) {
+            errno=EEXIST;
+            perror(ccn_charbuf_as_string(keystore));
+            exit(1);
+        }
+    }
+
+    res = ccn_aes_keystore_file_init(ccn_charbuf_as_string(keystore), password, keybuf, 
+			CCN_SECRET_KEY_LENGTH);
     if (res != 0) {
         if (errno != 0)
             perror(ccn_charbuf_as_string(keystore));

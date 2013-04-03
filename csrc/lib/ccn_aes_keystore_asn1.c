@@ -28,7 +28,12 @@ ASN1_SEQUENCE(AESKeystore_info) = {
 
 IMPLEMENT_ASN1_FUNCTIONS(AESKeystore_info)
 
-int i2d_AESKeystore_fp(FILE *fp, AESKeystore_info **aki) 
+int i2d_AESKeystore_fp(FILE *fp, AESKeystore_info *aki) 
 {
     return ASN1_item_i2d_fp(ASN1_ITEM_rptr(AESKeystore_info), fp, aki);
+}
+
+AESKeystore_info *d2i_AESKeystore_fp(FILE *fp, AESKeystore_info *aki)
+{
+    return ASN1_item_d2i_fp(ASN1_ITEM_rptr(AESKeystore_info), fp, aki);
 }

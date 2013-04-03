@@ -27,11 +27,12 @@
 typedef struct AESKeystore_info_st {
     ASN1_INTEGER *version;
     ASN1_OBJECT *algorithm_oid;
-    ASN1_OBJECT *encrypted_key;
+    ASN1_OCTET_STRING *encrypted_key;
 } AESKeystore_info;
 
 DECLARE_ASN1_FUNCTIONS(AESKeystore_info)
 
-int i2d_AESKeystore_fp(FILE *fp, AESKeystore_info **aki);
+int i2d_AESKeystore_fp(FILE *fp, AESKeystore_info *aki);
+AESKeystore_info *d2i_AESKeystore_fp(FILE *fp, AESKeystore_info *aki);
 
 #endif

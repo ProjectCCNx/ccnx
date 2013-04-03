@@ -23,74 +23,56 @@
 #include <string.h>
 #include <ctype.h>
 #include <fcntl.h>
+#include <errno.h>
 #include <ccn/ccn.h>
+#include <ccn/charbuf.h>
 #include <ccn/digest.h>
 #include <openssl/bn.h>
 #include <openssl/evp.h>
 #include <openssl/sha.h>
 #include <openssl/rand.h>
 #include <openssl/aes.h>
+#include <openssl/hmac.h>
 
 #include <ccn/keystore.h>
+#include <ccn/key.h>
 #include <ccn/aeskeystoreasn1.h>
 
 #define AES_KEYSTORE_VERSION 1L
 #define IV_SIZE 16
 
-static unsigned char *create_derived_key(unsigned char *key, unsigned int keylength, unsigned char *salt, 
+static void create_filename_with_digest_suffix(struct ccn_charbuf *filename, unsigned char *digest, int digest_len);
+static unsigned char *create_derived_key(char *key, unsigned int keylength, unsigned char *salt, 
 			unsigned int saltlen);
 
 struct ccn_aes_keystore {
     int initialized;
-    char *digest_algorithm;
-    EVP_PKEY *secret_key;
+    ccn_symmetric_key *key;   
 };
-
-struct ccn_aes_keystore *
-ccn_aes_keystore_create(void)
-{
-    struct ccn_aes_keystore *res = calloc(1, sizeof(*res));
-    return (res);
-}
-
-void
-ccn_aes_keystore_destroy(struct ccn_aes_keystore **p)
-{
-}
 
 int
 ccn_aes_keystore_init(struct ccn_aes_keystore *p, char *filename, char *password)
 {
-    FILE *fp;
+    FILE *fp = NULL;
     AESKeystore_info *keystore = NULL;
+    int ans = -1;
 
     OpenSSL_add_all_algorithms();
+
     fp = fopen(filename, "rb");
     if (fp == NULL)
-        return (-1);
+        goto Bail;
 
-    /* keystore = d2i_AESKeystore_fp(fp, NULL); */
+    keystore = d2i_AESKeystore_fp(fp, NULL);
     fclose(fp);
     if (keystore == NULL)
-        return (-1);
+        goto Bail;
+    ans = 0;
 
-    return (0);
-}
-
-const struct ccn_pkey *
-ccn_aes_keystore_secret_key(struct ccn_aes_keystore *p)
-{
-    if (0 == p->initialized)
-        return (NULL);
-
-    return NULL;
-}
-
-ccn_aes_keystore_digest_algorithm(struct ccn_aes_keystore *p)
-{
-    if (0 == p->initialized)
-        return (NULL);
-    return (p->digest_algorithm);
+Bail:
+    if (fp != NULL)
+        fclose(fp);
+    return (ans);
 }
 
 /**
@@ -98,25 +80,14 @@ ccn_aes_keystore_digest_algorithm(struct ccn_aes_keystore *p)
  * @param filename  the name of the keystore file to be created.
  * @param password  the import/export password for the keystore.
  * @param key       the key to encrypt in the keystore
- * @param keylength the number of bits in the input secret key
- * @param fullname  0 if filename is only a header & needs the digest appended to it,
- *		    1, if fullname
  * @returns 0 on success, -1 on failure
  */
 int
-ccn_aes_keystore_file_init(char *filename, char *password, unsigned char *key,
-                       int keylength, int fullname)
+ccn_aes_keystore_file_init(char *filename, char *password, unsigned char *key, int keylength)
 {
     FILE *fp = NULL;
     int fd = -1;
-    int i;
     int ans = -1;
-    EVP_MD_CTX *mdctx;
-    const EVP_MD *md;
-    unsigned char md_value[keylength/8];
-    unsigned int md_len = keylength/8;
-    char *built_filename = NULL;
-    int start_slot;
     AESKeystore_info *keystore = NULL;
     int nid;
     unsigned char *aes_key = NULL;
@@ -127,29 +98,8 @@ ccn_aes_keystore_file_init(char *filename, char *password, unsigned char *key,
     int ekl = IV_SIZE + keylength/8 + SHA256_DIGEST_LENGTH + AES_BLOCK_SIZE;
     int encrypt_length;
     struct ccn_digest *digest = NULL;
-    int res = 0;
 
     OpenSSL_add_all_algorithms();
-    
-    if (!fullname) {
- 	/* Create the filename based on SHA256 digest of the key */
-	memcpy(md_value, key, keylength/8);
-        built_filename = malloc(strlen(filename) + 2 + ((keylength/8) * 2));
-	digest = ccn_digest_create(CCN_DIGEST_SHA256);
-	ccn_digest_init(digest);
-	res |= ccn_digest_update(digest, md_value, md_len);
-	res |= ccn_digest_final(digest, md_value, md_len);
-        if (res < 0)
-	    goto Bail;
-        strcpy(built_filename, filename);
-	strcat(built_filename, "-");
-        start_slot = strlen(built_filename);
-        for (i = 0; i < md_len; i++) {
-            snprintf(&built_filename[start_slot], 3, "%02X", md_value[i]);
-	    start_slot += 2;
-        }
-        filename = built_filename;
-    }
     
     fd = open(filename, O_CREAT | O_WRONLY | O_TRUNC, 0600);
     if (fd == -1)
@@ -158,8 +108,8 @@ ccn_aes_keystore_file_init(char *filename, char *password, unsigned char *key,
     if (fp == NULL)
         goto Bail;
 
-    aes_key = create_derived_key(password, strlen(password), "\0", 1);
-    mac_key = create_derived_key(password, strlen(password), "\1", 1);
+    aes_key = create_derived_key(password, strlen(password), (unsigned char *)"\0", 1);
+    mac_key = create_derived_key(password, strlen(password), (unsigned char *)"\1", 1);
     
     encrypted_key = malloc(ekl);
     if (!encrypted_key)
@@ -199,8 +149,6 @@ cleanup:
     ccn_digest_destroy(&digest);
     if (fp != NULL)
 	fclose(fp);
-    if (built_filename)
-        free(built_filename);
     if (encrypted_key)
 	free(encrypted_key);
     if (keystore) {
@@ -211,7 +159,38 @@ cleanup:
     return (ans);
 }
 
-static unsigned char *create_derived_key(unsigned char *key, unsigned int keylength, unsigned char *salt, 
+/* Create the filename based on SHA256 digest of the key */
+int 
+create_aes_filename_from_key(struct ccn_charbuf *filename, unsigned char *key, int keylength) 
+{
+    unsigned char md_value[keylength/8];
+    unsigned int md_len = keylength/8;
+    int res = 0;
+    struct ccn_digest *digest;
+
+    memcpy(md_value, key, keylength/8);
+    digest = ccn_digest_create(CCN_DIGEST_SHA256);
+    ccn_digest_init(digest);
+    res |= ccn_digest_update(digest, md_value, md_len);
+    res |= ccn_digest_final(digest, md_value, md_len);
+    if (res < 0) 
+        return 0;
+    create_filename_with_digest_suffix(filename, md_value, md_len);
+    return 1;
+}
+
+static void
+create_filename_with_digest_suffix(struct ccn_charbuf *filename, unsigned char *digest, int digest_len)
+{
+    int i;
+
+    ccn_charbuf_append_string(filename, "-");
+    for (i = 0; i < digest_len; i++) {
+        ccn_charbuf_putf(filename, "%02X", digest[i]);
+    }
+}
+
+static unsigned char *create_derived_key(char *key, unsigned int keylength, unsigned char *salt, 
 			unsigned int saltlen) 
 {
     unsigned char *ans = malloc(SHA256_DIGEST_LENGTH);
