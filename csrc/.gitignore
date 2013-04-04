@@ -32,6 +32,7 @@ cmd/ccnguestprefix
 cmd/ccnpeek
 cmd/ccnhexdumpdata
 cmd/ccninitkeystore
+cmd/ccninitaeskeystore
 cmd/ccnlibtest
 cmd/ccnls
 cmd/ccnnamelist

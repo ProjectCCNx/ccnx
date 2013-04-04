@@ -47,15 +47,25 @@ static unsigned char *create_derived_key(char *key, unsigned int keylength, unsi
 
 struct ccn_aes_keystore {
     int initialized;
-    ccn_symmetric_key *key;   
+    ccn_symmetric_key *key;
 };
 
 int
-ccn_aes_keystore_init(struct ccn_aes_keystore *p, char *filename, char *password)
+ccn_aes_keystore_init(struct ccn_keystore **keystore, char *filename, char *password)
 {
     FILE *fp = NULL;
-    AESKeystore_info *keystore = NULL;
+    AESKeystore_info *ki = NULL;
     int ans = -1;
+    struct ccn_aes_keystore *ks;
+    int version;
+    char oidstr[80];
+    unsigned char *aes_key;
+    unsigned char *mac_key;
+    unsigned char check[SHA256_DIGEST_LENGTH];
+    int check_start;
+    EVP_CIPHER_CTX ctx;
+    int length;
+    int final_length;
 
     OpenSSL_add_all_algorithms();
 
@@ -63,16 +73,64 @@ ccn_aes_keystore_init(struct ccn_aes_keystore *p, char *filename, char *password
     if (fp == NULL)
         goto Bail;
 
-    keystore = d2i_AESKeystore_fp(fp, NULL);
+    ki = d2i_AESKeystore_fp(fp, NULL);
     fclose(fp);
-    if (keystore == NULL)
+    if (ki == NULL)
         goto Bail;
+    version = ASN1_INTEGER_get(ki->version);
+    if (version != AES_KEYSTORE_VERSION)
+	goto Bail;
+    OBJ_obj2txt(oidstr, sizeof(oidstr), ki->algorithm_oid, 0);
+    if (strcasecmp(oidstr, CCN_SIGNING_DEFAULT_DIGEST_ALGORITHM))
+        goto Bail;
+    if (ki->encrypted_key->length < IV_SIZE + (SHA256_DIGEST_LENGTH * 2) + AES_BLOCK_SIZE)
+	goto Bail;
+    
+    aes_key = create_derived_key(password, strlen(password), (unsigned char *)"\0", 1);
+    mac_key = create_derived_key(password, strlen(password), (unsigned char *)"\1", 1);
+    
+    check_start = ki->encrypted_key->length - SHA256_DIGEST_LENGTH;
+    HMAC(EVP_sha256(), mac_key, SHA256_DIGEST_LENGTH, ki->encrypted_key->data, check_start, check, NULL);
+    if (memcmp(&ki->encrypted_key->data[check_start], check, SHA256_DIGEST_LENGTH))
+	goto Bail;
+    (*keystore) = (struct ccn_keystore *)malloc(sizeof(struct ccn_aes_keystore));
+    ks = (struct ccn_aes_keystore *)(*keystore);
+    if (!keystore)
+	goto Bail;
+    ks->key = (ccn_symmetric_key *)malloc(sizeof(ccn_symmetric_key));
+    if (!ks->key)
+	goto Bail;
+    ks->key->key = malloc(sizeof(CCN_SECRET_KEY_LENGTH/8));
+    if (!ks->key->key)
+	goto Bail;
+    EVP_CIPHER_CTX_init(&ctx);
+    if (!EVP_DecryptInit(&ctx, EVP_aes_256_cbc(), aes_key, ki->encrypted_key->data))
+	goto Bail;
+    if (!EVP_DecryptUpdate(&ctx, ks->key->key, &length, &ki->encrypted_key->data[IV_SIZE], 
+		ki->encrypted_key->length - IV_SIZE - SHA256_DIGEST_LENGTH)) {
+	goto Bail;
+    if (!EVP_DecryptFinal(&ctx, ks->key->key + length, &final_length))
+	goto Bail;
+    }
     ans = 0;
+    goto out;
 
 Bail:
-    if (fp != NULL)
-        fclose(fp);
+    ans = -1;
+    ccn_aes_keystore_destroy((struct ccn_keystore **)&keystore);
+out:
     return (ans);
+}
+
+void
+ccn_aes_keystore_destroy(struct ccn_keystore **p)
+{
+    struct ccn_aes_keystore *ks = (struct ccn_aes_keystore *) (*p);
+    if (ks != NULL) {
+        if (ks->key != NULL)
+	   free(ks->key);
+        free(ks);
+    }
 }
 
 /**
@@ -157,6 +215,14 @@ cleanup:
     if (fd != -1)
         close(fd);
     return (ans);
+}
+
+struct ccn_pkey *
+get_key_from_aes_keystore(struct ccn_keystore *ks) 
+{
+    struct ccn_aes_keystore *ak;
+    ak = (struct ccn_aes_keystore *)ks;
+    return (struct ccn_pkey *)ak->key;
 }
 
 /* Create the filename based on SHA256 digest of the key */
