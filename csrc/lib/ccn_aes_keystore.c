@@ -35,8 +35,8 @@
 #include <openssl/hmac.h>
 
 #include <ccn/keystore.h>
-#include <ccn/key.h>
 #include <ccn/aeskeystoreasn1.h>
+#include <ccn/openssl_ex.h>
 
 #define AES_KEYSTORE_VERSION 1L
 #define IV_SIZE 16
@@ -45,23 +45,62 @@ static void create_filename_with_digest_suffix(struct ccn_charbuf *filename, uns
 static unsigned char *create_derived_key(char *key, unsigned int keylength, unsigned char *salt, 
 			unsigned int saltlen);
 
-struct ccn_aes_keystore {
+struct ccn_keystore {
     int initialized;
-    ccn_symmetric_key *key;
+    EVP_PKEY *symmetric_key;
 };
 
+#ifndef EVP_PKEY_HMAC
+/*
+ * In theory this should allow us to "seamlessly integrate" with OpenSSL 1.0.X (and eventually remove this) 
+ * but probably that won't really be true...
+ */
+
+#define EVP_PKEY_HMAC	NID_hmac
+
+EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *e,
+                                const unsigned char *key, int keylen) 
+{
+    EVP_PKEY *pkey = EVP_PKEY_new();
+    EVP_PKEY_assign(pkey, type, (char *)key);
+    return pkey;
+}
+
+void *EVP_PKEY_get0(EVP_PKEY *pkey)
+{
+    return pkey->pkey.ptr;
+}
+
+#endif
+
+struct ccn_keystore *
+ccn_aes_keystore_create(void)
+{
+    struct ccn_keystore *res = calloc(1, sizeof(*res));
+    return (res);
+}
+
+void
+ccn_aes_keystore_destroy(struct ccn_keystore **p)
+{
+    if ((*p) != NULL) {
+	EVP_PKEY_free((*p)->symmetric_key);
+        free(*p);
+    }
+}
+
 int
-ccn_aes_keystore_init(struct ccn_keystore **keystore, char *filename, char *password)
+ccn_aes_keystore_init(struct ccn_keystore *keystore, char *filename, char *password)
 {
     FILE *fp = NULL;
     AESKeystore_info *ki = NULL;
     int ans = -1;
-    struct ccn_aes_keystore *ks;
     int version;
     char oidstr[80];
     unsigned char *aes_key;
     unsigned char *mac_key;
     unsigned char check[SHA256_DIGEST_LENGTH];
+    unsigned char *keybuf = NULL;
     int check_start;
     EVP_CIPHER_CTX ctx;
     int length;
@@ -93,23 +132,17 @@ ccn_aes_keystore_init(struct ccn_keystore **keystore, char *filename, char *pass
     HMAC(EVP_sha256(), mac_key, SHA256_DIGEST_LENGTH, ki->encrypted_key->data, check_start, check, NULL);
     if (memcmp(&ki->encrypted_key->data[check_start], check, SHA256_DIGEST_LENGTH))
 	goto Bail;
-    (*keystore) = (struct ccn_keystore *)malloc(sizeof(struct ccn_aes_keystore));
-    ks = (struct ccn_aes_keystore *)(*keystore);
-    if (!keystore)
-	goto Bail;
-    ks->key = (ccn_symmetric_key *)malloc(sizeof(ccn_symmetric_key));
-    if (!ks->key)
-	goto Bail;
-    ks->key->key = malloc(sizeof(CCN_SECRET_KEY_LENGTH/8));
-    if (!ks->key->key)
+    keybuf = malloc(SHA256_DIGEST_LENGTH + AES_BLOCK_SIZE);
+    keystore->symmetric_key = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, keybuf, -1);
+    if (!keystore->symmetric_key)
 	goto Bail;
     EVP_CIPHER_CTX_init(&ctx);
     if (!EVP_DecryptInit(&ctx, EVP_aes_256_cbc(), aes_key, ki->encrypted_key->data))
 	goto Bail;
-    if (!EVP_DecryptUpdate(&ctx, ks->key->key, &length, &ki->encrypted_key->data[IV_SIZE], 
+    if (!EVP_DecryptUpdate(&ctx, keybuf, &length, &ki->encrypted_key->data[IV_SIZE], 
 		ki->encrypted_key->length - IV_SIZE - SHA256_DIGEST_LENGTH)) {
 	goto Bail;
-    if (!EVP_DecryptFinal(&ctx, ks->key->key + length, &final_length))
+    if (!EVP_DecryptFinal(&ctx, keybuf + length, &final_length))
 	goto Bail;
     }
     ans = 0;
@@ -117,20 +150,9 @@ ccn_aes_keystore_init(struct ccn_keystore **keystore, char *filename, char *pass
 
 Bail:
     ans = -1;
-    ccn_aes_keystore_destroy((struct ccn_keystore **)&keystore);
+    EVP_PKEY_free(keystore->symmetric_key);
 out:
     return (ans);
-}
-
-void
-ccn_aes_keystore_destroy(struct ccn_keystore **p)
-{
-    struct ccn_aes_keystore *ks = (struct ccn_aes_keystore *) (*p);
-    if (ks != NULL) {
-        if (ks->key != NULL)
-	   free(ks->key);
-        free(ks);
-    }
 }
 
 /**
@@ -158,6 +180,9 @@ ccn_aes_keystore_file_init(char *filename, char *password, unsigned char *key, i
     struct ccn_digest *digest = NULL;
 
     OpenSSL_add_all_algorithms();
+ 
+    if (key == NULL)
+	goto Bail;
     
     fd = open(filename, O_CREAT | O_WRONLY | O_TRUNC, 0600);
     if (fd == -1)
@@ -217,12 +242,22 @@ cleanup:
     return (ans);
 }
 
+void
+generate_symmetric_key(unsigned char *keybuf, int keylength) 
+{
+    RAND_bytes(keybuf, keylength/8);
+}
+
 struct ccn_pkey *
 get_key_from_aes_keystore(struct ccn_keystore *ks) 
 {
-    struct ccn_aes_keystore *ak;
-    ak = (struct ccn_aes_keystore *)ks;
-    return (struct ccn_pkey *)ak->key;
+    return (struct ccn_pkey *)ks->symmetric_key;
+}
+
+const char *
+ccn_aes_keystore_digest_algorithm(struct ccn_keystore *p)
+{
+    return "HMAC";
 }
 
 /* Create the filename based on SHA256 digest of the key */

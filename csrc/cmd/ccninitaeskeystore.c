@@ -26,7 +26,6 @@
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/keystore.h>
-#include <ccn/key.h>
 
 #include <openssl/engine.h>
 
@@ -69,8 +68,8 @@ main(int argc, char **argv)
     struct stat statbuf;
     char *digest = NULL;
     int read_mode = 0;
-    struct ccn_keystore *keystore = NULL;
-    ccn_symmetric_key *sk;
+    struct ccn_keystore *keystore = ccn_aes_keystore_create();
+    EVP_PKEY *sk;
     
     while ((opt = getopt(argc, argv, "hfk:p:d:rs:")) != -1) {
         switch (opt) {
@@ -128,17 +127,26 @@ main(int argc, char **argv)
     ccn_charbuf_append_string(filename, "/");
     ccn_charbuf_append_string(filename, name);
 
+    if (key == NULL) {
+	generate_symmetric_key(keybuf, CCN_SECRET_KEY_LENGTH);
+    }
     if (!fullname) {
 	if (read_mode) {
     	    ccn_charbuf_append_string(filename, "-");
     	    ccn_charbuf_append_string(filename, digest);
 	} else {
+            if (key != NULL) {
+                memset(keybuf, 0, sizeof(keybuf));
+                if (strlen(key) < sizeof(keybuf))
+                    copylen = strlen(key);
+                memcpy(keybuf, key, copylen);
+            }
 	    create_aes_filename_from_key(filename, keybuf, CCN_SECRET_KEY_LENGTH);
 	}
     }
 
     if (read_mode) {
-    	res = ccn_aes_keystore_init(&keystore, ccn_charbuf_as_string(filename), password);
+    	res = ccn_aes_keystore_init(keystore, ccn_charbuf_as_string(filename), password);
     } else {
     	if (!force) {
             res = stat(ccn_charbuf_as_string(filename), &statbuf);
@@ -149,14 +157,6 @@ main(int argc, char **argv)
             }
         }
 
-        if (key == NULL) {
-    	    RAND_bytes(keybuf, CCN_SECRET_KEY_LENGTH);
-        } else {
-            memset(keybuf, 0, sizeof(keybuf));
-            if (strlen(key) < sizeof(keybuf))
-                copylen = strlen(key);
-            memcpy(keybuf, key, copylen);
-        }
     	res = ccn_aes_keystore_file_init(ccn_charbuf_as_string(filename), password, keybuf, 
 			CCN_SECRET_KEY_LENGTH);
     }
@@ -170,8 +170,9 @@ main(int argc, char **argv)
     }
 
     if (read_mode) {
-	sk = (ccn_symmetric_key *) get_key_from_aes_keystore(keystore);
-	printf("The key is %s\n", (char *)sk->key);
+	sk = (EVP_PKEY *) get_key_from_aes_keystore(keystore);
+        // I'm sure this isn't the right way to do this but this is just for testing anyway...
+	printf("The key is %s\n", (char *)sk->pkey.ptr);
     }
 	
     return(0);

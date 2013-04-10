@@ -1,8 +1,10 @@
 /**
- * @file ccn/key.h
+ * @file ccn/openssl_ex.h
  *
- * KEY interface
- * Needed because Openssl has no definition for symmetric keys
+ * OpenSSL extension interface.
+ *
+ * Used to define our own OpenSSL 1.0.X extensions that will go away when
+ * we switch to OpenSSL 1.0.X
  *
  * Part of the CCNx C Library.
  *
@@ -20,15 +22,13 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef CCN_KEY_DEFINED
-#define CCN_KEY_DEFINED
+#ifndef CCN_OPENSSL_EX_DEFINED
+#define CCN_OPENSSL_EX_DEFINED
 
-#define CCN_SECRET_KEY_LENGTH 256	/* We only support HMAC-SHA256 right now */
+#include <openssl/evp.h>
 
-typedef struct ccn_symmetric_key_st {
-    unsigned char *key;
-    int keylength;
-    char *digest_algorithm;
-} ccn_symmetric_key;
+#ifndef EVP_PKEY_HMAC
+void *EVP_PKEY_get0(EVP_PKEY *pkey);
+#endif
 
 #endif
