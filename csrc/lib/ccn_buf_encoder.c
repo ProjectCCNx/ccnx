@@ -169,7 +169,7 @@ ccn_encode_ContentObject(struct ccn_charbuf *buf,
 {
     int res = 0;
     struct ccn_sigc *sig_ctx = NULL;
-    struct ccn_signature *signature;
+    struct ccn_signature *signature = NULL;
     size_t signature_size;
     struct ccn_charbuf *content_header;
     size_t closer_start;

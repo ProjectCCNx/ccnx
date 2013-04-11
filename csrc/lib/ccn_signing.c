@@ -69,6 +69,12 @@ static const EVP_MD sha256ec_md=
 };
 #endif
 
+int ccn_hmac_init(void *ctx, const void *key, int len, const EVP_MD *md) 
+{
+    HMAC_Init((HMAC_CTX *)ctx, key, len, md);
+    return (1);
+}
+
 int ccn_evp_sign_init(void *ctx, const void *key, int len, const EVP_MD *md)
 {
     return EVP_SignInit_ex((EVP_MD_CTX *)ctx, md, NULL);
