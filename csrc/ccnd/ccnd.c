@@ -4363,6 +4363,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
             if (h->debug & 2)
                 ccnd_debug_ccnb(h, __LINE__, "interest_dupnonce", face, msg, size);
             h->interests_dropped += 1;
+            indexbuf_release(h, comps);
             return;
         }
         ie = hashtb_lookup(h->interest_tab, msg,
