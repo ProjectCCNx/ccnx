@@ -5,7 +5,7 @@
  *
  * Part of ccnd - the CCNx Daemon.
  *
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -58,7 +58,6 @@ struct ccnd_meter {
 
 struct ccnd_stats {
     long total_interest_counts;
-    long total_flood_control;      /* done propagating, still recorded */
 };
 
 static int ccnd_collect_stats(struct ccnd_handle *h, struct ccnd_stats *ans);
@@ -197,7 +196,6 @@ ccnd_collect_stats(struct ccnd_handle *h, struct ccnd_stats *ans)
     }
     ans->total_interest_counts = sum;
     hashtb_end(e);
-    ans->total_flood_control = 0; /* N/A */
     /* Do a consistency check on pending interest counts */
     for (sum = 0, i = 0; i < h->face_limit; i++) {
         struct face *face = h->faces_by_faceid[i];
@@ -393,7 +391,7 @@ collect_stats_html(struct ccnd_handle *h)
         "<div><b>Content items:</b> %llu accessioned,"
         " %d stored, %lu stale, %d sparse, %lu duplicate, %lu sent</div>" NL
         "<div><b>Interests:</b> %d names,"
-        " %ld pending, %ld propagating, %ld noted</div>" NL
+        " %ld pending, %d propagating, %d noted</div>" NL
         "<div><b>Interest totals:</b> %lu accepted,"
         " %lu dropped, %lu sent, %lu stuffed</div>" NL,
         un.nodename,
@@ -413,8 +411,8 @@ collect_stats_html(struct ccnd_handle *h)
         h->content_dups_recvd,
         h->content_items_sent,
         hashtb_n(h->nameprefix_tab), stats.total_interest_counts,
-        hashtb_n(h->interest_tab) - stats.total_flood_control,
-        stats.total_flood_control,
+        hashtb_n(h->interest_tab),
+        hashtb_n(h->nonce_tab),
         h->interests_accepted, h->interests_dropped,
         h->interests_sent, h->interests_stuffed);
     if (0)
@@ -570,8 +568,8 @@ collect_stats_xml(struct ccnd_handle *h)
         "<interests>"
         "<names>%d</names>"
         "<pending>%ld</pending>"
-        "<propagating>%ld</propagating>"
-        "<noted>%ld</noted>"
+        "<propagating>%d</propagating>"
+        "<noted>%d</noted>"
         "<accepted>%lu</accepted>"
         "<dropped>%lu</dropped>"
         "<sent>%lu</sent>"
@@ -584,8 +582,8 @@ collect_stats_xml(struct ccnd_handle *h)
         h->content_dups_recvd,
         h->content_items_sent,
         hashtb_n(h->nameprefix_tab), stats.total_interest_counts,
-        hashtb_n(h->interest_tab) - stats.total_flood_control,
-        stats.total_flood_control,
+        hashtb_n(h->interest_tab),
+        hashtb_n(h->nonce_tab),
         h->interests_accepted, h->interests_dropped,
         h->interests_sent, h->interests_stuffed);
     collect_faces_xml(h, b);
