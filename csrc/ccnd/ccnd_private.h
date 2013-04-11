@@ -169,6 +169,7 @@ struct ccnd_handle {
                                     /**< pluggable nonce generation */
     int tts_default;                /**< CCND_DEFAULT_TIME_TO_STALE (seconds) */
     int tts_limit;                  /**< CCND_MAX_TIME_TO_STALE (seconds) */
+    int predicted_response_limit;   /**< CCND_MAX_RTE_MICROSEC */
 };
 
 /**
