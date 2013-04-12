@@ -69,6 +69,27 @@ static const EVP_MD sha256ec_md=
 };
 #endif
 
+#if defined(NEED_OPENSSL_1_0_COMPAT)
+/*
+ * In theory this should allow us to "seamlessly integrate" with OpenSSL 1.0.X (and eventually remove this) 
+ * but probably that won't really be true...
+ */
+EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *e,
+                                const unsigned char *key, int keylen) 
+{
+    EVP_PKEY *pkey = EVP_PKEY_new();
+    EVP_PKEY_assign(pkey, type, (char *)key);
+    pkey->type = type;		// Doesn't work in assign because OpenSSL tries to type check it
+    return pkey;
+}
+
+void *EVP_PKEY_get0(EVP_PKEY *pkey)
+{
+    return pkey->pkey.ptr;
+}
+
+#endif
+
 int ccn_hmac_init(void *ctx, const void *key, int len, const EVP_MD *md) 
 {
     HMAC_Init((HMAC_CTX *)ctx, key, len, md);
@@ -272,9 +293,13 @@ ccn_sigc_final(struct ccn_sigc *ctx, struct ccn_signature *signature, size_t *si
 }
 
 size_t
-ccn_sigc_signature_max_size(struct ccn_sigc *ctx, const struct ccn_pkey *priv_key)
+ccn_sigc_signature_max_size(struct ccn_sigc *ctx, const struct ccn_pkey *key)
 {
-    return (EVP_PKEY_size((EVP_PKEY *)priv_key));
+#if defined(NEED_OPENSSL_1_0_COMPAT)
+    if (((EVP_PKEY *)key)->type == EVP_PKEY_HMAC)
+	return EVP_MAX_MD_SIZE;
+#endif
+    return (EVP_PKEY_size((EVP_PKEY *)key));
 }
 
 #define is_left(x) (0 == (x & 1))

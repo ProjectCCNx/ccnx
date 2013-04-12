@@ -50,29 +50,6 @@ struct ccn_keystore {
     EVP_PKEY *symmetric_key;
 };
 
-#ifndef EVP_PKEY_HMAC
-/*
- * In theory this should allow us to "seamlessly integrate" with OpenSSL 1.0.X (and eventually remove this) 
- * but probably that won't really be true...
- */
-
-#define EVP_PKEY_HMAC	NID_hmac
-
-EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *e,
-                                const unsigned char *key, int keylen) 
-{
-    EVP_PKEY *pkey = EVP_PKEY_new();
-    EVP_PKEY_assign(pkey, type, (char *)key);
-    return pkey;
-}
-
-void *EVP_PKEY_get0(EVP_PKEY *pkey)
-{
-    return pkey->pkey.ptr;
-}
-
-#endif
-
 struct ccn_keystore *
 ccn_aes_keystore_create(void)
 {

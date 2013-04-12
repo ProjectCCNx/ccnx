@@ -28,7 +28,12 @@
 #include <openssl/evp.h>
 
 #ifndef EVP_PKEY_HMAC
+
+#define EVP_PKEY_HMAC	NID_hmac
+#define NEED_OPENSSL_1_0_COMPAT
+
 void *EVP_PKEY_get0(EVP_PKEY *pkey);
+EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *e, const unsigned char *key, int keylen);
 #endif
 
 #endif
