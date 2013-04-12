@@ -327,6 +327,16 @@ main(int argc, char *argv[])
             printf("Failed decode\n");
             result = 1;
         }
+        ccn_charbuf_destroy(&buffer);
+        buffer = ccn_charbuf_create();
+        if (encode_message(buffer, cur_path, contents[i], strlen(contents[i]), signed_info,
+                       get_key_from_aes_keystore(aes_keystore), ccn_aes_keystore_digest_algorithm(aes_keystore))) {
+            printf("Failed encode\n");
+            result = 1;
+        } else if (decode_message(buffer, cur_path, contents[i], strlen(contents[i]), get_key_from_aes_keystore(aes_keystore))) {
+            printf("Failed decode\n");
+            result = 1;
+        }
         path_destroy(&cur_path);
         ccn_charbuf_destroy(&buffer);
     }
