@@ -1390,7 +1390,23 @@ ccn_locate_key(struct ccn *h,
 	    res = ccn_aes_keystore_init(keystore, ccn_charbuf_as_string(path), 
 				(char *)get_password());
 	    if (res == 0) {
+        	struct hashtb_enumerator ee;
+        	struct hashtb_enumerator *e = &ee;
+
 		*key = get_key_from_aes_keystore(keystore);
+        	hashtb_start(h->keys, e);
+        	res = hashtb_seek(e, (void *)pkeyid, pkeyid_size, 0);
+        	if (res < 0) {
+            	    hashtb_end(e);
+            	    return(NOTE_ERRNO(h));
+        	}
+        	entry = e->data;
+        	if (res == HT_NEW_ENTRY) {
+            	    *entry = *key;
+        	}
+        	else
+            	    THIS_CANNOT_HAPPEN(h);
+                hashtb_end(e);
 		return (0);
 	    }
 	}
