@@ -72,7 +72,6 @@ static const EVP_MD sha256ec_md=
 #if defined(NEED_OPENSSL_1_0_COMPAT)
 /*
  * In theory this should allow us to "seamlessly integrate" with OpenSSL 1.0.X (and eventually remove this) 
- * but probably that won't really be true...
  */
 EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *e,
                                 const unsigned char *key, int keylen) 
@@ -156,7 +155,12 @@ sigc_from_digest_and_pkey(struct ccn_sigc *sigc, const char *digest, const struc
         }
     }
 
-    if (md_nid == NID_hmac) {
+#if defined(NEED_OPENSSL_1_0_COMPAT)
+    pkey_type = ((EVP_PKEY *)pkey)->type;
+#else
+    pkey_type = EVP_PKEY_type(((EVP_PKEY *)pkey)->type);
+#endif
+    if (md_nid == NID_hmac || pkey_type == NID_hmac) {
     	sigc->init_func = (int (*)(void *ctx, const void *, int, const EVP_MD *))HMAC_Init;
     	sigc->verify_init_func = (int (*)(void *ctx, const void *, int, const EVP_MD *))HMAC_Init;
     	sigc->update_func = (int (*)(void *, const void *, size_t))HMAC_Update;
@@ -178,7 +182,6 @@ sigc_from_digest_and_pkey(struct ccn_sigc *sigc, const char *digest, const struc
     sigc->cleanup_func = cleanup_evp_ctx;
     EVP_MD_CTX_init(&sigc->context);
     sigc->ctx_to_use = &sigc->context;
-    pkey_type = EVP_PKEY_type(((EVP_PKEY *)pkey)->type);
     switch (pkey_type) {
         case EVP_PKEY_RSA:
         case EVP_PKEY_DSA:

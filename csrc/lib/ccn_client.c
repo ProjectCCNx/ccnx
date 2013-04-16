@@ -1297,6 +1297,49 @@ finalize_pkey(struct hashtb_enumerator *e)
         ccn_pubkey_free(*entry);
 }
 
+static const char *get_password() 
+{
+    const char *password;
+
+    password = getenv("CCNX_KEYSTORE_PASSWORD");
+    if (password == 0)
+        password = "Th1s1sn0t8g00dp8ssw0rd.";
+    return password;
+}
+
+static int
+ccn_create_keystore_path(struct ccn *h, struct ccn_charbuf **path)
+{
+    const char *s = NULL;
+    int res = 0;
+    
+    (*path) = ccn_charbuf_create();
+    if ((*path) == NULL) {
+	NOTE_ERRNO(h);
+	return -1;
+    }
+    s = getenv("CCNX_DIR");
+    if (s != NULL && s[0] != 0)
+        ccn_charbuf_putf((*path), "%s", s);
+    else {
+        s = getenv("HOME");
+        if (s != NULL && s[0] != 0) {
+            ccn_charbuf_putf((*path), "%s/.ccnx", s);
+            res = mkdir(ccn_charbuf_as_string(*path), S_IRWXU);
+            if (res == -1) {
+                if (errno == EEXIST)
+                    res = 0;
+                else
+                    res = NOTE_ERRNO(h);
+            }
+        }
+        else
+            res = NOTE_ERR(h, -1);
+    }
+    ccn_charbuf_putf((*path), "/%s", ".ccnx_keystore");
+    return res;
+}
+
 /**
  * Examine a ContentObject and try to find the public key needed to
  * verify it.  It might be present in our cache of keys, or in the
@@ -1311,7 +1354,7 @@ static int
 ccn_locate_key(struct ccn *h,
                const unsigned char *msg,
                struct ccn_parsed_ContentObject *pco,
-               struct ccn_pkey **pubkey)
+               struct ccn_pkey **key)
 {
     int res;
     const unsigned char *pkeyid;
@@ -1319,6 +1362,8 @@ ccn_locate_key(struct ccn *h,
     struct ccn_pkey **entry;
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d;
+    struct ccn_charbuf *path;
+    struct ccn_keystore *keystore = NULL;
 
     if (h->keys == NULL) {
         return (NOTE_ERR(h, EINVAL));
@@ -1332,12 +1377,25 @@ ccn_locate_key(struct ccn *h,
         return (NOTE_ERR(h, res));
     entry = hashtb_lookup(h->keys, pkeyid, pkeyid_size);
     if (entry != NULL) {
-        *pubkey = *entry;
+        *key = *entry;
         return (0);
     }
     /* Is a key locator present? */
-    if (pco->offset[CCN_PCO_B_KeyLocator] == pco->offset[CCN_PCO_E_KeyLocator])
+    if (pco->offset[CCN_PCO_B_KeyLocator] == pco->offset[CCN_PCO_E_KeyLocator]) {
+	/* Assume symmetric */
+	res = ccn_create_keystore_path(h, &path);
+	if (res == 0) {
+	    keystore = ccn_aes_keystore_create();
+	    create_filename_with_digest_suffix(path, pkeyid, pkeyid_size);
+	    res = ccn_aes_keystore_init(keystore, ccn_charbuf_as_string(path), 
+				(char *)get_password());
+	    if (res == 0) {
+		*key = get_key_from_aes_keystore(keystore);
+		return (0);
+	    }
+	}
         return (-1);
+    }
     /* Use the key locator */
     d = ccn_buf_decoder_start(&decoder, msg + pco->offset[CCN_PCO_B_Key_Certificate_KeyName],
                               pco->offset[CCN_PCO_E_Key_Certificate_KeyName] -
@@ -1358,7 +1416,7 @@ ccn_locate_key(struct ccn *h,
                                   pco->offset[CCN_PCO_B_Key_Certificate_KeyName],
                                   pco->offset[CCN_PCO_E_Key_Certificate_KeyName],
                                   &dkey, &dkey_size);
-        *pubkey = ccn_d2i_pubkey(dkey, dkey_size);
+        *key = ccn_d2i_pubkey(dkey, dkey_size);
         digest = ccn_digest_create(CCN_DIGEST_SHA256);
         ccn_digest_init(digest);
         key_digest_size = ccn_digest_size(digest);
@@ -1379,7 +1437,7 @@ ccn_locate_key(struct ccn *h,
         }
         entry = e->data;
         if (res == HT_NEW_ENTRY) {
-            *entry = *pubkey;
+            *entry = *key;
         }
         else
             THIS_CANNOT_HAPPEN(h);
@@ -2596,12 +2654,9 @@ ccn_load_or_create_key(struct ccn *h,
                        const char *keystore,
                        struct ccn_charbuf *pubid)
 {
-    const char *password;
+    const char *password = get_password();;
     int res;
     
-    password = getenv("CCNX_KEYSTORE_PASSWORD");
-    if (password == 0)
-        password = "Th1s1sn0t8g00dp8ssw0rd.";
     res = ccn_load_private_key(h, keystore, password, pubid);
     if (res != 0) {
         /* Either file exists and password is wrong or file does not exist */
@@ -2631,44 +2686,25 @@ ccn_load_or_create_key(struct ccn *h,
 static int
 ccn_load_or_create_default_key(struct ccn *h)
 {
-    const char *s = NULL;
-    struct ccn_charbuf *path = NULL;
+    struct ccn_charbuf *path;
     struct ccn_charbuf *default_pubid = NULL;
     int res = 0;
-    
+
     if (h->default_pubid != NULL)
         return(0);
-    
-    path = ccn_charbuf_create();
+   
+    res = ccn_create_keystore_path(h, &path); 
     default_pubid = ccn_charbuf_create();
-    if (default_pubid == NULL || path == NULL)
-        return(NOTE_ERRNO(h));
-    s = getenv("CCNX_DIR");
-    if (s != NULL && s[0] != 0)
-        ccn_charbuf_putf(path, "%s", s);
-    else {
-        s = getenv("HOME");
-        if (s != NULL && s[0] != 0) {
-            ccn_charbuf_putf(path, "%s/.ccnx", s);
-            res = mkdir(ccn_charbuf_as_string(path), S_IRWXU);
-            if (res == -1) {
-                if (errno == EEXIST)
-                    res = 0;
-                else
-                    res = NOTE_ERRNO(h);
-            }
-        }
-        else
-            res = NOTE_ERR(h, -1);
-    }
-    ccn_charbuf_putf(path, "/%s", ".ccnx_keystore");
-    res = ccn_load_or_create_key(h,
+    if (res == 0 && default_pubid != NULL && path != NULL) {
+    	res = ccn_load_or_create_key(h,
                                  ccn_charbuf_as_string(path),
                                  default_pubid);
-    if (res == 0) {
-        h->default_pubid = default_pubid;
-        default_pubid = NULL;
-    }
+    	if (res == 0) {
+       	    h->default_pubid = default_pubid;
+            default_pubid = NULL;
+    	}
+    } else
+        res = (NOTE_ERRNO(h));
     ccn_charbuf_destroy(&default_pubid);
     ccn_charbuf_destroy(&path);
     return(res);

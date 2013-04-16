@@ -40,9 +40,9 @@
 
 #define AES_KEYSTORE_VERSION 1L
 #define IV_SIZE 16
+#define AES_MAX_DIGEST_SIZE 128
 
-static void create_filename_with_digest_suffix(struct ccn_charbuf *filename, unsigned char *digest, int digest_len);
-static unsigned char *create_derived_key(char *key, unsigned int keylength, unsigned char *salt, 
+static unsigned char *create_derived_key(const char *key, unsigned int keylength, unsigned char *salt, 
 			unsigned int saltlen);
 
 struct ccn_keystore {
@@ -67,7 +67,7 @@ ccn_aes_keystore_destroy(struct ccn_keystore **p)
 }
 
 int
-ccn_aes_keystore_init(struct ccn_keystore *keystore, char *filename, char *password)
+ccn_aes_keystore_init(struct ccn_keystore *keystore, char *filename, const char *password)
 {
     FILE *fp = NULL;
     AESKeystore_info *ki = NULL;
@@ -140,7 +140,7 @@ out:
  * @returns 0 on success, -1 on failure
  */
 int
-ccn_aes_keystore_file_init(char *filename, char *password, unsigned char *key, int keylength)
+ccn_aes_keystore_file_init(char *filename, const char *password, unsigned char *key, int keylength)
 {
     FILE *fp = NULL;
     int fd = -1;
@@ -257,8 +257,8 @@ create_aes_filename_from_key(struct ccn_charbuf *filename, unsigned char *key, i
     return 1;
 }
 
-static void
-create_filename_with_digest_suffix(struct ccn_charbuf *filename, unsigned char *digest, int digest_len)
+void
+create_filename_with_digest_suffix(struct ccn_charbuf *filename, const unsigned char *digest, int digest_len)
 {
     int i;
 
@@ -268,7 +268,7 @@ create_filename_with_digest_suffix(struct ccn_charbuf *filename, unsigned char *
     }
 }
 
-static unsigned char *create_derived_key(char *key, unsigned int keylength, unsigned char *salt, 
+static unsigned char *create_derived_key(const char *key, unsigned int keylength, unsigned char *salt, 
 			unsigned int saltlen) 
 {
     unsigned char *ans = malloc(SHA256_DIGEST_LENGTH);

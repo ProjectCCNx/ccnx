@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx command line utilities
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -19,6 +19,7 @@ package org.ccnx.ccn.utils;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 public class CommonParameters {
 	public static Integer timeout = SystemConfiguration.MAX_TIMEOUT;
@@ -33,4 +34,6 @@ public class CommonParameters {
 	
 	public static ContentName userStorage = new ContentName(UserConfiguration.defaultNamespace(), "Users");
 	public static ContentName groupStorage = new ContentName(UserConfiguration.defaultNamespace(), "Groups");
+	
+	public static PublisherPublicKeyDigest publisher = null;
 }

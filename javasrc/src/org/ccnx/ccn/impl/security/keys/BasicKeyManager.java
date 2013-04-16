@@ -1058,7 +1058,15 @@ public class BasicKeyManager extends KeyManager {
 			Log.finer(Log.FAC_KEYS, "getSigningKey: retrieving key: " + publisher);
 		if (null == publisher)
 			return null;
-		return _privateKeyCache.getPrivateKey(publisher.digest());
+		Key key = _privateKeyCache.getPrivateKey(publisher.digest());
+		if (null == key) {  // Maybe its symmetric and we don't have it yet...
+			try {
+				key = readSymmetricKey(publisher, null, null, null);
+			} catch (IOException e) {
+				return null;
+			}
+		}
+		return key;
 	}
 
 	/**
@@ -1081,24 +1089,7 @@ public class BasicKeyManager extends KeyManager {
 			Key key = getSecureKeyCache().getPrivateKey(desiredKeyID.digest());
 			if (null == key) {
 				// We don't have it - try reading it in from a keystore
-				if (null == type) {
-					type = UserConfiguration.defaultSymmetricKeystoreType();
-				}
-				if (null == fileName) {
-					fileName = _keyStoreFileName + "-" + digestToKeyStoreSuffix(SystemConfiguration.KEYSTORE_NAMING_VERSION, desiredKeyID);
-				}
-				char[] pwd;
-				if (null == password)
-					pwd = _password;
-				else
-					pwd = password.toCharArray();
-				try {
-					KeyStoreInfo ksi = loadKeyStore(_keyStoreDirectory, type, fileName, pwd);
-					loadValuesFromKeystore(ksi, pwd);
-					key = getSecureKeyCache().getPrivateKey(desiredKeyID.digest());
-				} catch (ConfigurationException e) {
-					throw new IOException(e);
-				}
+				key = readSymmetricKey(desiredKeyID, type, fileName, password);
 			}
 			return key;
 		}
@@ -1152,6 +1143,36 @@ public class BasicKeyManager extends KeyManager {
 		} catch (ConfigurationException e) {
 			throw new IOException(e);
 		} catch (URISyntaxException e) {}	// shouldn't happen
+	}
+	
+	/**
+	 * Read a symmetric key fron a symmetric keystore
+	 * @param desiredKeyID
+	 * @param type
+	 * @param fileName
+	 * @param password
+	 * @return
+	 * @throws IOException
+	 */
+	protected Key readSymmetricKey(PublisherPublicKeyDigest desiredKeyID, String type, String fileName, String password) throws IOException {
+		if (null == type) {
+			type = UserConfiguration.defaultSymmetricKeystoreType();
+		}
+		if (null == fileName) {
+			fileName = _keyStoreFileName + "-" + digestToKeyStoreSuffix(SystemConfiguration.KEYSTORE_NAMING_VERSION, desiredKeyID);
+		}
+		char[] pwd;
+		if (null == password)
+			pwd = _password;
+		else
+			pwd = password.toCharArray();
+		try {
+			KeyStoreInfo ksi = loadKeyStore(_keyStoreDirectory, type, fileName, pwd);
+			loadValuesFromKeystore(ksi, pwd);
+			return getSecureKeyCache().getPrivateKey(desiredKeyID.digest());
+		} catch (ConfigurationException e) {
+			throw new IOException(e);
+		}
 	}
 	
 	/**
