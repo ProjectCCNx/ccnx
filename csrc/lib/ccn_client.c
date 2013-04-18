@@ -1340,6 +1340,31 @@ ccn_create_keystore_path(struct ccn *h, struct ccn_charbuf **path)
     return res;
 }
 
+static int
+add_key_to_hashtb(struct ccn *h, const struct ccn_pkey *key, const unsigned char *keyid, 
+                 unsigned int size)
+{
+    int res = 0;
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    const struct ccn_pkey **entry;
+
+    hashtb_start(h->keys, e);
+    res = hashtb_seek(e, (void *)keyid, size, 0);
+    if (res < 0) {
+        hashtb_end(e);
+        return(NOTE_ERRNO(h));
+    }
+    entry = e->data;
+    if (res == HT_NEW_ENTRY) {
+        *entry = key;
+    }
+    else
+        THIS_CANNOT_HAPPEN(h);
+    hashtb_end(e);
+    return (res);
+}
+
 /**
  * Examine a ContentObject and try to find the public key needed to
  * verify it.  It might be present in our cache of keys, or in the
@@ -1354,7 +1379,7 @@ static int
 ccn_locate_key(struct ccn *h,
                const unsigned char *msg,
                struct ccn_parsed_ContentObject *pco,
-               struct ccn_pkey **key)
+               const struct ccn_pkey **key)
 {
     int res;
     const unsigned char *pkeyid;
@@ -1382,7 +1407,7 @@ ccn_locate_key(struct ccn *h,
     }
     /* Is a key locator present? */
     if (pco->offset[CCN_PCO_B_KeyLocator] == pco->offset[CCN_PCO_E_KeyLocator]) {
-	/* Assume symmetric */
+	/* No - assume symmetric */
 	res = ccn_create_keystore_path(h, &path);
 	if (res == 0) {
 	    keystore = ccn_aes_keystore_create();
@@ -1390,24 +1415,8 @@ ccn_locate_key(struct ccn *h,
 	    res = ccn_aes_keystore_init(keystore, ccn_charbuf_as_string(path), 
 				(char *)get_password());
 	    if (res == 0) {
-        	struct hashtb_enumerator ee;
-        	struct hashtb_enumerator *e = &ee;
-
-		*key = get_key_from_aes_keystore(keystore);
-        	hashtb_start(h->keys, e);
-        	res = hashtb_seek(e, (void *)pkeyid, pkeyid_size, 0);
-        	if (res < 0) {
-            	    hashtb_end(e);
-            	    return(NOTE_ERRNO(h));
-        	}
-        	entry = e->data;
-        	if (res == HT_NEW_ENTRY) {
-            	    *entry = *key;
-        	}
-        	else
-            	    THIS_CANNOT_HAPPEN(h);
-                hashtb_end(e);
-		return (0);
+		*key = ccn_keystore_key(keystore);
+		return (add_key_to_hashtb(h, *key, pkeyid, pkeyid_size));
 	    }
 	}
         return (-1);
@@ -1425,8 +1434,6 @@ ccn_locate_key(struct ccn *h,
         struct ccn_digest *digest = NULL;
         unsigned char *key_digest = NULL;
         size_t key_digest_size;
-        struct hashtb_enumerator ee;
-        struct hashtb_enumerator *e = &ee;
 
         res = ccn_ref_tagged_BLOB(CCN_DTAG_Key, msg,
                                   pco->offset[CCN_PCO_B_Key_Certificate_KeyName],
@@ -1443,22 +1450,9 @@ ccn_locate_key(struct ccn *h,
         res = ccn_digest_final(digest, key_digest, key_digest_size);
         if (res < 0) abort();
         ccn_digest_destroy(&digest);
-        hashtb_start(h->keys, e);
-        res = hashtb_seek(e, (void *)key_digest, key_digest_size, 0);
+        res = add_key_to_hashtb(h, *key, key_digest, key_digest_size);
         free(key_digest);
-        key_digest = NULL;
-        if (res < 0) {
-            hashtb_end(e);
-            return(NOTE_ERRNO(h));
-        }
-        entry = e->data;
-        if (res == HT_NEW_ENTRY) {
-            *entry = *key;
-        }
-        else
-            THIS_CANNOT_HAPPEN(h);
-        hashtb_end(e);
-        return (0);
+        return (res);
     }
     else if (ccn_buf_match_dtag(d, CCN_DTAG_Certificate)) {
         XXX; // what should we really do in this case?
@@ -1740,7 +1734,7 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                                                                  interest->size,
                                                                  info.pi)) {
                                     enum ccn_upcall_kind upcall_kind = CCN_UPCALL_CONTENT;
-                                    struct ccn_pkey *pubkey = NULL;
+                                    const struct ccn_pkey *pubkey = NULL;
                                     int type = ccn_get_content_type(msg, info.pco);
                                     if (type == CCN_CONTENT_KEY)
                                         res = ccn_cache_key(h, msg, size, info.pco);
@@ -2488,7 +2482,7 @@ ccn_verify_content(struct ccn *h,
                    const unsigned char *msg,
                    struct ccn_parsed_ContentObject *pco)
 {
-    struct ccn_pkey *pubkey = NULL;
+    const struct ccn_pkey *pubkey = NULL;
     int res;
     unsigned char *buf = (unsigned char *)msg; /* XXX - discard const */
 
@@ -2502,18 +2496,18 @@ ccn_verify_content(struct ccn *h,
 }
 
 /**
- * Load a private key from a keystore file.
+ * Load a signing key from a keystore file.
  *
  * This call is only required for applications that use something other
  * than the user's default signing key.
  * @param h is the ccn handle
  * @param keystore_path is the pathname of the keystore file
  * @param keystore_passphrase is the passphase needed to unlock the keystore
- * @param pubid_out, if not NULL, is loaded with the digest of the public key
+ * @param pubid_out, if not NULL, is loaded with the digest of the key
  * @result is 0 for success, negative for error.
  */
 int
-ccn_load_private_key(struct ccn *h,
+ccn_load_signing_key(struct ccn *h,
                      const char *keystore_path,
                      const char *keystore_passphrase,
                      struct ccn_charbuf *pubid_out)
@@ -2540,13 +2534,21 @@ ccn_load_private_key(struct ccn *h,
                            (char *)keystore_path,
                            (char *)keystore_passphrase);
     if (res != 0) {
-        res = NOTE_ERRNO(h);
-        goto Cleanup;
-    }
+        /* Try symmetric */
+        ccn_keystore_destroy(&keystore);
+        keystore = ccn_aes_keystore_create();
+        res = ccn_aes_keystore_init(keystore,
+                           (char *)keystore_path,
+                           (char *)keystore_passphrase);
+        if (res != 0) {
+            res = NOTE_ERRNO(h);
+            goto Cleanup;
+        }
+    } 
     pubid->length = 0;
     ccn_charbuf_append(pubid,
-                       ccn_keystore_public_key_digest(keystore),
-                       ccn_keystore_public_key_digest_length(keystore));
+                       ccn_keystore_key_digest(keystore),
+                       ccn_keystore_key_digest_length(keystore));
     hashtb_start(h->keystores, e);
     res = hashtb_seek(e, pubid->buf, pubid->length, 0);
     if (res == HT_NEW_ENTRY) {
@@ -2590,7 +2592,7 @@ ccn_load_default_key(struct ccn *h,
     default_pubid = ccn_charbuf_create();
     if (default_pubid == NULL)
         return(NOTE_ERRNO(h));
-    res = ccn_load_private_key(h,
+    res = ccn_load_signing_key(h,
                                keystore_path,
                                keystore_passphrase,
                                default_pubid);
@@ -2638,8 +2640,8 @@ ccn_get_public_key(struct ccn *h,
         if (digest_result != NULL) {
             digest_result->length = 0;
             ccn_charbuf_append(digest_result,
-                               ccn_keystore_public_key_digest(keystore),
-                               ccn_keystore_public_key_digest_length(keystore));
+                               ccn_keystore_key_digest(keystore),
+                               ccn_keystore_key_digest_length(keystore));
         }
         if (result != NULL) {
             struct ccn_buf_decoder decoder;
@@ -2673,7 +2675,7 @@ ccn_load_or_create_key(struct ccn *h,
     const char *password = get_password();;
     int res;
     
-    res = ccn_load_private_key(h, keystore, password, pubid);
+    res = ccn_load_signing_key(h, keystore, password, pubid);
     if (res != 0) {
         /* Either file exists and password is wrong or file does not exist */
         if (access(keystore, R_OK) == 0) {
@@ -2694,7 +2696,7 @@ ccn_load_or_create_key(struct ccn *h,
             res = NOTE_ERRNO(h);
             return(res);
         }
-        res = ccn_load_private_key(h, keystore, password, pubid);
+        res = ccn_load_signing_key(h, keystore, password, pubid);
     }
     return(res);
 }
@@ -2936,8 +2938,8 @@ ccn_sign_content(struct ccn *h,
         }
         if (res >= 0)
             res = ccn_signed_info_create(signed_info,
-                                         ccn_keystore_public_key_digest(keystore),
-                                         ccn_keystore_public_key_digest_length(keystore),
+                                         ccn_keystore_key_digest(keystore),
+                                         ccn_keystore_key_digest_length(keystore),
                                          timestamp,
                                          p.type,
                                          p.freshness,
@@ -2961,7 +2963,7 @@ ccn_sign_content(struct ccn *h,
                                            data,
                                            size,
                                            ccn_keystore_digest_algorithm(keystore),
-                                           ccn_keystore_private_key(keystore));
+                                           ccn_keystore_key(keystore));
     }
     else {
         res = NOTE_ERR(h, -1);

@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -34,7 +34,7 @@
 #include <ccn/keystore.h>
 
 struct ccn_keystore {
-    int initialized;
+    keystore_header header;	// All keystores must begin with this
     EVP_PKEY *private_key;
     EVP_PKEY *public_key;
     X509 *certificate;
@@ -43,15 +43,32 @@ struct ccn_keystore {
     unsigned char pubkey_digest[SHA256_DIGEST_LENGTH];
 };
 
-struct ccn_keystore *
-ccn_keystore_create(void)
+static ssize_t
+ccn_pkcs12_public_key_digest_length(struct ccn_keystore *p)
 {
-    struct ccn_keystore *res = calloc(1, sizeof(*res));
-    return (res);
+    return (p->pubkey_digest_length);
 }
 
-void
-ccn_keystore_destroy(struct ccn_keystore **p)
+static const unsigned char *
+ccn_pkcs12_public_key_digest(struct ccn_keystore *p)
+{
+    return (p->pubkey_digest);
+}
+
+static const struct ccn_pkey *
+ccn_pkcs12_private_key(struct ccn_keystore *p)
+{
+    return ((const struct ccn_pkey *)(p->private_key));
+}
+
+static const char *
+ccn_pkcs12_digest_algorithm(struct ccn_keystore *p)
+{
+    return (p->digest_algorithm);
+}
+
+static void
+ccn_pkcs12_keystore_destroy(struct ccn_keystore **p)
 {
     if (*p != NULL) {
         if ((*p)->private_key != NULL)
@@ -64,6 +81,26 @@ ccn_keystore_destroy(struct ccn_keystore **p)
             free((*p)->digest_algorithm);
         free(*p);
         *p = NULL;
+    }
+}
+
+struct ccn_keystore *
+ccn_keystore_create(void)
+{
+    struct ccn_keystore *res = calloc(1, sizeof(*res));
+    res->header.digest_length_func = ccn_pkcs12_public_key_digest_length;
+    res->header.digest_func = ccn_pkcs12_public_key_digest;
+    res->header.key_func = ccn_pkcs12_private_key;
+    res->header.digest_algorithm_func = ccn_pkcs12_digest_algorithm;
+    res->header.destroy_func = ccn_pkcs12_keystore_destroy;
+    return (res);
+}
+
+void
+ccn_keystore_destroy(struct ccn_keystore **p)
+{
+    if (*p != NULL) {
+         (*(*p)->header.destroy_func)(p);
     }
 }
 
@@ -117,23 +154,23 @@ ccn_keystore_init(struct ccn_keystore *p, char *filename, char *password)
         p->digest_algorithm = NULL;
     }
     
-    p->initialized = 1;
+    p->header.initialized = 1;
     return (0);
 }
 
 const struct ccn_pkey *
-ccn_keystore_private_key(struct ccn_keystore *p)
+ccn_keystore_key(struct ccn_keystore *p)
 {
-    if (0 == p->initialized)
+    if (0 == p->header.initialized)
         return (NULL);
 
-    return ((const struct ccn_pkey *)(p->private_key));
+    return ((*p->header.key_func)(p));
 }
 
 const struct ccn_pkey *
 ccn_keystore_public_key(struct ccn_keystore *p)
 {
-    if (0 == p->initialized)
+    if (0 == p->header.initialized)
         return (NULL);
 
     return ((const struct ccn_pkey *)(p->public_key));
@@ -142,29 +179,29 @@ ccn_keystore_public_key(struct ccn_keystore *p)
 const char *
 ccn_keystore_digest_algorithm(struct ccn_keystore *p)
 {
-    if (0 == p->initialized)
+    if (0 == p->header.initialized)
         return (NULL);
-    return (p->digest_algorithm);
+    return ((*p->header.digest_algorithm_func)(p));
 }
 
 ssize_t
-ccn_keystore_public_key_digest_length(struct ccn_keystore *p)
+ccn_keystore_key_digest_length(struct ccn_keystore *p)
 {
-    return ((0 == p->initialized) ? -1 : p->pubkey_digest_length);
+    return ((0 == p->header.initialized) ? -1 : (*p->header.digest_length_func)(p));
 }
 
 const unsigned char *
-ccn_keystore_public_key_digest(struct ccn_keystore *p)
+ccn_keystore_key_digest(struct ccn_keystore *p)
 {
-    if (0 == p->initialized)
+    if (0 == p->header.initialized)
         return (NULL);
-    return (p->pubkey_digest);
+    return ((*p->header.digest_func)(p));
 }
 
 const struct ccn_certificate *
 ccn_keystore_certificate(struct ccn_keystore *p)
 {
-    if (0 == p->initialized)
+    if (0 == p->header.initialized)
         return (NULL);
 
     return ((const void *)(p->certificate));

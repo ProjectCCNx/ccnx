@@ -170,7 +170,7 @@ main(int argc, char **argv)
     }
 
     if (read_mode) {
-	sk = (EVP_PKEY *) get_key_from_aes_keystore(keystore);
+	sk = (EVP_PKEY *) ccn_keystore_key(keystore);
         // I'm sure this isn't the right way to do this but this is just for testing anyway...
 	printf("The key is %s\n", (char *)sk->pkey.ptr);
     }

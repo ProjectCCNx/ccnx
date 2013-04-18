@@ -58,8 +58,8 @@ main(int argc, char **argv)
   ccn_charbuf_destroy(&temp);
   
   res = ccn_signed_info_create(signed_info,
-			       /* pubkeyid */ ccn_keystore_public_key_digest(keystore),
-			       /* publisher_key_id_size */ ccn_keystore_public_key_digest_length(keystore),
+			       /* pubkeyid */ ccn_keystore_key_digest(keystore),
+			       /* publisher_key_id_size */ ccn_keystore_key_digest_length(keystore),
 			       /* datetime */ NULL,
 			       /* type */ CCN_CONTENT_DATA,
 			       /* freshness */ FRESHNESS,
@@ -97,7 +97,7 @@ main(int argc, char **argv)
 				   path, signed_info, 
 				   msgbuf, PAYLOAD_SIZE,
 				   ccn_keystore_digest_algorithm(keystore), 
-				   ccn_keystore_private_key(keystore));
+				   ccn_keystore_key(keystore));
 
     ccn_charbuf_reset(message);
     ccn_charbuf_reset(path);

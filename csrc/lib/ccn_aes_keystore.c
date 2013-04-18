@@ -46,24 +46,71 @@ static unsigned char *create_derived_key(const char *key, unsigned int keylength
 			unsigned int saltlen);
 
 struct ccn_keystore {
-    int initialized;
+    keystore_header header;	// All keystores must begin with this
     EVP_PKEY *symmetric_key;
+    char *digest_algorithm;
+    ssize_t key_digest_length;
+    unsigned char key_digest[SHA256_DIGEST_LENGTH];
 };
 
-struct ccn_keystore *
-ccn_aes_keystore_create(void)
+static ssize_t
+ccn_aes_keystore_key_digest_length(struct ccn_keystore *p)
 {
-    struct ccn_keystore *res = calloc(1, sizeof(*res));
-    return (res);
+    return (p->key_digest_length);
 }
 
-void
+static const unsigned char *
+ccn_aes_keystore_key_digest(struct ccn_keystore *p)
+{
+    return (p->key_digest);
+}
+
+static const struct ccn_pkey *
+get_key_from_aes_keystore(struct ccn_keystore *ks) 
+{
+    return (struct ccn_pkey *)ks->symmetric_key;
+}
+
+static const char *
+ccn_aes_keystore_digest_algorithm(struct ccn_keystore *p)
+{
+    return "HMAC";
+}
+
+static void
 ccn_aes_keystore_destroy(struct ccn_keystore **p)
 {
     if ((*p) != NULL) {
 	EVP_PKEY_free((*p)->symmetric_key);
         free(*p);
     }
+}
+
+struct ccn_keystore *
+ccn_aes_keystore_create(void)
+{
+    struct ccn_keystore *res = calloc(1, sizeof(*res));
+    res->header.digest_length_func = ccn_aes_keystore_key_digest_length;
+    res->header.digest_func = ccn_aes_keystore_key_digest;
+    res->header.key_func = get_key_from_aes_keystore;
+    res->header.digest_algorithm_func = ccn_aes_keystore_digest_algorithm;
+    res->header.destroy_func = ccn_aes_keystore_destroy;
+    return (res);
+}
+
+static int
+ccn_aes_digest(unsigned char *key, unsigned int keylength, unsigned char *key_digest)
+{
+    unsigned int md_len = keylength/8;
+    int res = 0;
+    struct ccn_digest *digest;
+
+    memcpy(key_digest, key, keylength/8);
+    digest = ccn_digest_create(CCN_DIGEST_SHA256);
+    ccn_digest_init(digest);
+    res |= ccn_digest_update(digest, key_digest, md_len);
+    res |= ccn_digest_final(digest, key_digest, md_len);
+    return res;
 }
 
 int
@@ -80,8 +127,8 @@ ccn_aes_keystore_init(struct ccn_keystore *keystore, char *filename, const char 
     unsigned char *keybuf = NULL;
     int check_start;
     EVP_CIPHER_CTX ctx;
-    int length;
-    int final_length;
+    int length = 0;
+    int final_length = 0;
 
     OpenSSL_add_all_algorithms();
 
@@ -119,10 +166,14 @@ ccn_aes_keystore_init(struct ccn_keystore *keystore, char *filename, const char 
     if (!EVP_DecryptUpdate(&ctx, keybuf, &length, &ki->encrypted_key->data[IV_SIZE], 
 		ki->encrypted_key->length - IV_SIZE - SHA256_DIGEST_LENGTH)) {
 	goto Bail;
+    }
     if (!EVP_DecryptFinal(&ctx, keybuf + length, &final_length))
 	goto Bail;
-    }
+    if (ccn_aes_digest(keybuf, length * 8, keystore->key_digest))
+        goto Bail;
     ans = 0;
+    keystore->header.initialized = 1;
+    keystore->key_digest_length = length;
     goto out;
 
 Bail:
@@ -225,35 +276,17 @@ generate_symmetric_key(unsigned char *keybuf, int keylength)
     RAND_bytes(keybuf, keylength/8);
 }
 
-struct ccn_pkey *
-get_key_from_aes_keystore(struct ccn_keystore *ks) 
-{
-    return (struct ccn_pkey *)ks->symmetric_key;
-}
-
-const char *
-ccn_aes_keystore_digest_algorithm(struct ccn_keystore *p)
-{
-    return "HMAC";
-}
-
 /* Create the filename based on SHA256 digest of the key */
 int 
 create_aes_filename_from_key(struct ccn_charbuf *filename, unsigned char *key, int keylength) 
 {
     unsigned char md_value[keylength/8];
-    unsigned int md_len = keylength/8;
     int res = 0;
-    struct ccn_digest *digest;
 
-    memcpy(md_value, key, keylength/8);
-    digest = ccn_digest_create(CCN_DIGEST_SHA256);
-    ccn_digest_init(digest);
-    res |= ccn_digest_update(digest, md_value, md_len);
-    res |= ccn_digest_final(digest, md_value, md_len);
+    res = ccn_aes_digest(key, keylength, md_value);
     if (res < 0) 
         return 0;
-    create_filename_with_digest_suffix(filename, md_value, md_len);
+    create_filename_with_digest_suffix(filename, md_value, keylength);
     return 1;
 }
 
