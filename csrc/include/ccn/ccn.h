@@ -39,6 +39,17 @@
  */
 #define CCN_API_VERSION 7001
 
+#if !defined(DEPRECATED)
+/*
+ * only certain compilers support __attribute__((deprecated))
+ */
+#if defined(__GNUC__) && ((__GNUC__ >= 4) || ((__GNUC__ == 3) && (__GNUC_MINOR__ >= 1)))
+    #define DEPRECATED __attribute__((deprecated))
+#else
+    #define DEPRECATED
+#endif
+#endif
+
 /**
  * Interest lifetime default.
  *
@@ -831,7 +842,7 @@ int ccn_sign_content(struct ccn *h,
                      const struct ccn_signing_params *params,
                      const void *data, size_t size);
 
-int ccn_load_private_key(struct ccn *h,
+int ccn_load_signing_key(struct ccn *h,
                          const char *keystore_path,
                          const char *keystore_passphrase,
                          struct ccn_charbuf *pubid_out);
@@ -1028,5 +1039,12 @@ int ccn_create_version(struct ccn *h,
                        intmax_t secs, int nsecs);
 
 int ccn_guest_prefix(struct ccn *h, struct ccn_charbuf *result, int ms);
+
+/* Deprecated functions after 0.7.1 */
+
+int ccn_load_private_key(struct ccn *h,
+                         const char *keystore_path,
+                         const char *keystore_passphrase,
+                         struct ccn_charbuf *pubid_out) DEPRECATED;
 
 #endif

@@ -387,3 +387,31 @@ Bail:
     }
     return (ans);
 }
+
+/*
+ * Deprecated functions
+ *
+ * Deprecated in favor of ccn_keystore_key
+ */
+const struct ccn_pkey *
+ccn_keystore_private_key(struct ccn_keystore *p) {
+    return ccn_keystore_key(p);
+}
+
+/*
+ * Deprecated in favor of ccn_keystore_digest_length
+ */
+ssize_t
+ccn_keystore_public_key_digest_length(struct ccn_keystore *p)
+{
+    return ccn_keystore_key_digest_length(p);
+}
+
+/*
+ * Deprecated in favor of ccn_keystore_key_digest
+ */
+const unsigned char *
+ccn_keystore_public_key_digest(struct ccn_keystore *p)
+{
+    return ccn_keystore_key_digest(p);
+}

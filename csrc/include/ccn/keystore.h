@@ -26,6 +26,7 @@
 #define CCN_KEYSTORE_DEFINED
 
 #include <stddef.h>
+#include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 
 #define CCN_SECRET_KEY_LENGTH 256      /* We only support HMAC-SHA256 right now */
@@ -61,7 +62,6 @@ void ccn_keystore_destroy(struct ccn_keystore **p);
 int ccn_keystore_init(struct ccn_keystore *p, char *name, char *password);
 const struct ccn_pkey *ccn_keystore_key(struct ccn_keystore *p);
 const struct ccn_pkey *ccn_keystore_public_key(struct ccn_keystore *p);
-const struct ccn_pkey *ccn_keystore_secret_key(struct ccn_keystore *p);
 const char *ccn_keystore_digest_algorithm(struct ccn_keystore *p);
 ssize_t ccn_keystore_key_digest_length(struct ccn_keystore *p);
 const unsigned char *ccn_keystore_key_digest(struct ccn_keystore *p);
@@ -74,4 +74,9 @@ void create_filename_with_digest_suffix(struct ccn_charbuf *filename, const unsi
 void create_aes_filename_from_digest(struct ccn_charbuf *filename, const unsigned char *digest, int digest_len);
 int create_aes_filename_from_key(struct ccn_charbuf *filename, unsigned char *key, int keylength);
 void generate_symmetric_key(unsigned char *keybuf, int keylength);
+
+/* Deprecated functions after 0.7.1 */
+const struct ccn_pkey *ccn_keystore_private_key(struct ccn_keystore *p) DEPRECATED;
+ssize_t ccn_keystore_public_key_digest_length(struct ccn_keystore *p) DEPRECATED;
+const unsigned char *ccn_keystore_public_key_digest(struct ccn_keystore *p) DEPRECATED;
 #endif

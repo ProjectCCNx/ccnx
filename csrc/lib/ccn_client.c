@@ -1362,7 +1362,7 @@ add_key_to_hashtb(struct ccn *h, const struct ccn_pkey *key, const unsigned char
     else
         THIS_CANNOT_HAPPEN(h);
     hashtb_end(e);
-    return (res);
+    return (0);
 }
 
 /**
@@ -1416,8 +1416,11 @@ ccn_locate_key(struct ccn *h,
 				(char *)get_password());
 	    if (res == 0) {
 		*key = ccn_keystore_key(keystore);
-		return (add_key_to_hashtb(h, *key, pkeyid, pkeyid_size));
+		res = add_key_to_hashtb(h, *key, pkeyid, pkeyid_size);
 	    }
+            ccn_keystore_destroy(&keystore);
+            ccn_charbuf_destroy(&path);
+            return (res);
 	}
         return (-1);
     }
@@ -2554,7 +2557,7 @@ ccn_load_signing_key(struct ccn *h,
     if (res == HT_NEW_ENTRY) {
         struct ccn_keystore **p = e->data;
         *p = keystore;
-        keystore = NULL;
+        keystore=NULL;	// We don't want to destroy it below
         res = 0;
     }
     else if (res == HT_OLD_ENTRY)
@@ -3092,4 +3095,18 @@ Bail:
     ccn_charbuf_destroy(&cob);
     ccn_charbuf_destroy(&templ);
     return((res < 0) ? -1 : 0);
+}
+
+/*
+ * Deprecated functions
+ *
+ * Deprecated in favor of ccn_load_private_key
+ */
+int
+ccn_load_private_key(struct ccn *h,
+                     const char *keystore_path,
+                     const char *keystore_passphrase,
+                     struct ccn_charbuf *pubid_out)
+{
+    return ccn_load_signing_key(h, keystore_path, keystore_passphrase, pubid_out);
 }

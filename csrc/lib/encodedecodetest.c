@@ -148,7 +148,7 @@ decode_message(struct ccn_charbuf *message, struct path * name_path, char *data,
 }
 
 int
-unit_tests_for_signing(struct ccn *h, int *ip)
+unit_tests_for_signing(struct ccn *h, int *ip, int symmetric)
 {
     struct ccn_charbuf *co = ccn_charbuf_create();
     struct ccn_signing_params sparm = CCN_SIGNING_PARAMS_INIT;
@@ -186,6 +186,20 @@ unit_tests_for_signing(struct ccn *h, int *ip)
     if (res != -1) {
         printf("Failed: res == %d\n", (int)res);
         result = 1;
+    }
+
+    /*
+     * We can run this test with symmetric keys if the problem of being able
+     * to store both a keystore and its associated key in the corresponding
+     * hashtables of a handle can be solved.
+     */
+    if (!symmetric) {
+        printf("Unit test case %d\n", (*ip)++);
+        res = ccn_verify_content(h, co->buf, &pco);
+        if (res != 0) {
+            printf("Failed: res == %d\n", (int)res);
+            result = 1;
+        }
     }
 Bail:
     ccn_charbuf_destroy(&name);
@@ -643,7 +657,7 @@ main(int argc, char *argv[])
     do {
         struct ccn *h = ccn_create();
 	int res;
-	res = unit_tests_for_signing(h, &i);
+	res = unit_tests_for_signing(h, &i, 0);
 	if (res == 1)
             result = 1;
         printf("Unit test case %d\n", i++);
@@ -657,7 +671,7 @@ main(int argc, char *argv[])
             result = 1;
             printf("Failed: res == %d\n", (int)res);
         } else 
-            res = unit_tests_for_signing(h, &i);
+            res = unit_tests_for_signing(h, &i, 1);
 	if (res == 1)
             result = 1;
         printf("Unit test case %d\n", i++);
