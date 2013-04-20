@@ -55,6 +55,15 @@ public class Component implements ComponentProvider {
 		private static final long serialVersionUID = 4667513234636853164L;
 	}
 
+    private static final boolean uriReserved(char ch) {
+        if (('a' <= ch && ch <= 'z') ||
+            ('A' <= ch && ch <= 'Z') ||
+            ('0' <= ch && ch <= '9') ||
+            ch == '-' || ch == '.' || ch == '_' || ch == '~')
+            return false;
+        return true;
+    }
+    
 	/**
 	 * Parse the URI Generic Syntax of RFC 3986.
 	 * Including handling percent encoding of sequences that are not legal character
@@ -76,6 +85,8 @@ public class Component implements ComponentProvider {
 		byte[] decodedName = null;
 		boolean alldots = true; // does this component contain only dots after unescaping?
 		boolean quitEarly = false;
+		boolean hexEncoding = false;
+		int b1, b2;
 	
 		ByteBuffer result = ByteBuffer.allocate(name.length());
 		for (int i = 0; i < name.length() && !quitEarly; i++) {
@@ -88,8 +99,8 @@ public class Component implements ComponentProvider {
 				if (name.length()-1 < i+2) {
 					throw new URISyntaxException(name, "malformed %xy byte representation: too short", i);
 				}
-				int b1 = Character.digit(name.charAt(++i), 16); // consume x
-				int b2 = Character.digit(name.charAt(++i), 16); // consume y
+				b1 = Character.digit(name.charAt(++i), 16); // consume x
+				b2 = Character.digit(name.charAt(++i), 16); // consume y
 				if (b1 < 0 || b2 < 0)
 					throw new URISyntaxException(name, "malformed %xy byte representation: not legal hex number: " + name.substring(i-2, i+1), i-2);
 				result.put((byte)((b1 * 16) + b2));
@@ -101,25 +112,35 @@ public class Component implements ComponentProvider {
 			case '#':
 				quitEarly = true; // early exit from containing loop
 				break;
+			case '=':
+				if (name.length()-1 < i+2 || ((name.length() - i) & 1) == 0) {
+					throw new URISyntaxException(name, "malformed =xy byte representation: too short", i);
+				}
+				hexEncoding = true;
+				break;
 			case ':': case '[': case ']': case '@':
 			case '!': case '$': case '&': case '\'': case '(': case ')':
-			case '*': case '+': case ',': case ';': case '=':
+			case '*': case '+': case ',': case ';':
 				// Permit unescaped reserved characters
 				result.put((byte)ch);
 				break;
-			default: 
-				if (('a' <= ch && ch <= 'z') ||
-						('A' <= ch && ch <= 'Z') ||
-						('0' <= ch && ch <= '9') ||
-						ch == '-' || ch == '.' || ch == '_' || ch == '~') {
+			default:
+				if (uriReserved(ch))
+					throw new URISyntaxException(name, "Illegal characters in URI", i);
+
+				if (hexEncoding) {
+					b1 = Character.digit(ch, 16); // consume x
+					b2 = Character.digit(name.charAt(++i), 16); // consume y
+					if (b1 < 0 || b2 < 0)
+						throw new URISyntaxException(name, "malformed =xy byte representation: not legal hex number: " + name.substring(i-1, i), i-1);
+					result.put((byte)((b1 * 16) + b2));
+				} else {
 					// This character remains the same
 					result.put((byte)ch);
-				} else {
-					throw new URISyntaxException(name, "Illegal characters in URI", i);
 				}
 				break;
 			}
-			if (!quitEarly && result.get(result.position()-1) != '.') {
+			if (!quitEarly && result.position() > 0 && result.get(result.position()-1) != '.') {
 				alldots = false;
 			}
 		}
@@ -156,14 +177,23 @@ public class Component implements ComponentProvider {
 		return new String(bs);
 	}
 
-	public static String printURI(byte [] bs) {
-		return printURI(bs, 0, bs.length);
-	}
-
+    static enum URIEscape {
+        PERCENT, MIXED
+    }
+    
 	static final char HEX_DIGITS[] = {
 		'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
 	};
+    
+    
+	public static String printURI(byte [] bs) {
+		return printURI(bs, 0, bs.length, URIEscape.MIXED);
+	}
 
+	public static String printURI(byte [] bs, int offset, int length) {
+		return printURI(bs, offset, length, URIEscape.MIXED);
+	}
+    
 	/**
 	 * Print bytes in the URI Generic Syntax of RFC 3986 
 	 * including byte sequences that are not legal character
@@ -188,8 +218,10 @@ public class Component implements ComponentProvider {
 	 * @param bs input byte array.
 	 * @return
 	 */
-	public static String printURI(byte[] bs, int offset, int length) {
+
+	private static String printURI(byte[] bs, int offset, int length, URIEscape escape) {
 		int i;
+        boolean hexEncoding = false;
 		if (null == bs || bs.length == 0) {
 			// Empty component represented by three '.'
 			return "...";
@@ -213,20 +245,44 @@ public class Component implements ComponentProvider {
 			// all dots
 			result.append("...");
 		}
-		for (i = 0; i < bs.length; i++) {
-			char ch = (char) bs[i];
-			if (('a' <= ch && ch <= 'z') ||
-					('A' <= ch && ch <= 'Z') ||
-					('0' <= ch && ch <= '9') ||
-					ch == '-' || ch == '.' || ch == '_' || ch == '~')
-				result.append(ch);
-			else {
-				result.append('%');
-				result.append(HEX_DIGITS[(ch >> 4) & 0xF]);
-				result.append(HEX_DIGITS[ch & 0xF]);
-			}
-		}
-		return result.toString();
+        if (escape == URIEscape.MIXED && (bs[0] == '\000' || bs[0] == '\375')) {
+            hexEncoding = true;
+            result.append("=");
+        }
+        // If the option of limiting escaping to percent disappears this
+        // branch of the if can also disappear.
+        if (escape == URIEscape.PERCENT) {
+        	for (i = 0; i < bs.length; i++) {
+        		char ch = (char) bs[i];
+        		if (!uriReserved(ch))
+        			result.append(ch);
+        		else {
+        			result.append('%');
+        			result.append(HEX_DIGITS[(ch >> 4) & 0xF]);
+        			result.append(HEX_DIGITS[ch & 0xF]);
+        		}
+        	}
+
+        } else
+        	for (i = 0; i < bs.length; i++) {
+        		char ch = (char) bs[i];
+        		if (hexEncoding) {
+        			result.append(HEX_DIGITS[(ch >> 4) & 0xF]);
+        			result.append(HEX_DIGITS[ch & 0xF]);
+        		} else if (!uriReserved(ch))
+        			result.append(ch);
+        		else {
+        			if (bs.length == (i + 1) || !uriReserved((char)bs[i + 1]))
+        				result.append('%');
+        			else {
+        				result.append('=');
+        				hexEncoding = true;
+        			}
+        			result.append(HEX_DIGITS[(ch >> 4) & 0xF]);
+        			result.append(HEX_DIGITS[ch & 0xF]);
+        		}
+        	}
+        return result.toString();
 	}
 
 	private static Random random = new Random();

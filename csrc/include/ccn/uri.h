@@ -29,12 +29,26 @@ void
 ccn_uri_append_percentescaped(struct ccn_charbuf *c,
                               const unsigned char *data, size_t size);
 
+/* Conversion from ccnb name component to mixed percent/equals escaped uri component */
+void
+ccn_uri_append_mixedescaped(struct ccn_charbuf *c,
+                              const unsigned char *data, size_t size);
+
 /* Conversion from ccnb to uri */
+#define CCN_URI_INCLUDESCHEME   1
+#define CCN_URI_MIXEDESCAPE    2
+#define CCN_URI_PERCENTESCAPE  4
+
+#define CCN_URI_ESCAPE_MASK    (CCN_URI_MIXEDESCAPE|CCN_URI_PERCENTESCAPE)
+#ifndef CCN_URI_DEFAULT_ESCAPE
+#define CCN_URI_DEFAULT_ESCAPE CCN_URI_MIXEDESCAPE
+#endif
+
 int
 ccn_uri_append(struct ccn_charbuf *c,
                const unsigned char *ccnb,
                size_t size,
-               int includescheme);
+               int flags);
 
 
 /* Conversion from uri to ccnb form */
