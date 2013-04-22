@@ -1297,7 +1297,7 @@ finalize_pkey(struct hashtb_enumerator *e)
         ccn_pubkey_free(*entry);
 }
 
-static const char *get_password() 
+static const char *get_password(void) 
 {
     const char *password;
 
