@@ -3100,7 +3100,7 @@ Bail:
 /*
  * Deprecated functions
  *
- * Deprecated in favor of ccn_load_private_key
+ * Deprecated in favor of ccn_load_signing_key
  */
 int
 ccn_load_private_key(struct ccn *h,
