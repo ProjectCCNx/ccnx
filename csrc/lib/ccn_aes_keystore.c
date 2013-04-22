@@ -276,7 +276,10 @@ generate_symmetric_key(unsigned char *keybuf, int keylength)
     RAND_bytes(keybuf, keylength/8);
 }
 
-/* Create the filename based on SHA256 digest of the key */
+/* 
+ * Create the filename based on SHA256 digest of the key 
+ * keylength is bit length
+ */
 int 
 create_aes_filename_from_key(struct ccn_charbuf *filename, unsigned char *key, int keylength) 
 {
@@ -286,7 +289,7 @@ create_aes_filename_from_key(struct ccn_charbuf *filename, unsigned char *key, i
     res = ccn_aes_digest(key, keylength, md_value);
     if (res < 0) 
         return 0;
-    create_filename_with_digest_suffix(filename, md_value, keylength);
+    create_filename_with_digest_suffix(filename, md_value, keylength/8);
     return 1;
 }
 

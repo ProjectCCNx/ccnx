@@ -1417,8 +1417,8 @@ ccn_locate_key(struct ccn *h,
 	    if (res == 0) {
 		*key = ccn_keystore_key(keystore);
 		res = add_key_to_hashtb(h, *key, pkeyid, pkeyid_size);
-	    }
-            ccn_keystore_destroy(&keystore);
+	    } else
+                ccn_keystore_destroy(&keystore);
             ccn_charbuf_destroy(&path);
             return (res);
 	}
