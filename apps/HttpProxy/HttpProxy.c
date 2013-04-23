@@ -2609,11 +2609,11 @@ AdjustForRanges(RequestBase rb) {
                     h->rangeList->rangeStop = rStop;
                     rLen = rStop - rStart + 1;
                 }
-                tpos =+ snprintf(temp+tpos, sizeof(temp) - tpos,
+                tpos += snprintf(temp+tpos, sizeof(temp) - tpos,
                                  "Content-Length: %jd\r\n",
                                  (intmax_t) rLen
                                  );
-                tpos =+ snprintf(temp+tpos, sizeof(temp) - tpos,
+                tpos += snprintf(temp+tpos, sizeof(temp) - tpos,
                                  "Content-Range: bytes %ju-%ju/%ju\r\n",
                                  (intmax_t) rStart,
                                  (intmax_t) rStop,
