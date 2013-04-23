@@ -256,6 +256,9 @@ public class Component implements ComponentProvider {
 			// all dots
 			result.append("...");
 		}
+        // components starting in either %00 (segments) or %FD (\375, versions) should
+        // be displayed as hex encoded regardless of whether the next byte is
+        // a printable character.  Should match the corresponding code in the C library.
         if (escape == URIEscape.MIXED && (bs[0] == (byte)'\000' || bs[0] == (byte)'\375')) {
             hexEncoding = true;
             result.append("=");

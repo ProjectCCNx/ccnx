@@ -94,13 +94,14 @@ ccn_uri_append_mixedescaped(struct ccn_charbuf *c,
     /* For a component that consists solely of zero or more dots, add 3 more */
     if (i == size)
         ccn_charbuf_append(c, "...", 3);
-    /* mixed escaping rules:
-     * If the character following the unprintable character being processed
-     * is printable use %xx.  If the character being processed is %00 or %FD
-     * immediately shift into hex mode
-     */
     if (size == 0)
         return;
+    /* mixed escaping rules:
+     * If the character following the unprintable character being processed
+     * is printable use %xx.  If the first character being processed is %00 (segment)
+     * or %FD (version) immediately shift into hex mode regardless of whether the
+     * the next character is printable.
+     */
     if (data[0] == '\0' || data[0] == (unsigned char)'\xFD') {
         hexmode = 1;
         ccn_charbuf_append(c, "=", 1);
