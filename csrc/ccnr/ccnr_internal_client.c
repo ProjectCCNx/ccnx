@@ -108,8 +108,6 @@ ccnr_answer_req(struct ccn_closure *selfp,
     struct ccn_charbuf *reply_body = NULL;
     struct ccnr_handle *ccnr = NULL;
     int res = 0;
-    int start = 0;
-    int end = 0;
     int morecomps = 0;
     const unsigned char *final_comp = NULL;
     size_t final_size = 0;
