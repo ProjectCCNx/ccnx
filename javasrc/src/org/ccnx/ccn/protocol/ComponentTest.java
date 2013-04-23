@@ -161,7 +161,7 @@ public class ComponentTest {
     public void testPrintURIByteArrayIntInt_simpleHex() {
         byte[] bytes = { (byte) '\375' };
         String actual = Component.printURI(bytes, 0, 0);
-        Assert.assertEquals("%FD", actual);
+        Assert.assertEquals("=FD", actual);
     }
 
     @Test

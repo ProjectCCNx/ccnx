@@ -256,8 +256,7 @@ public class Component implements ComponentProvider {
 			// all dots
 			result.append("...");
 		}
-		// XXX Comparison of the signed byte to the magic number \375 will not work.
-        if (escape == URIEscape.MIXED && (bs[0] == '\000' || bs[0] == '\375')) {
+        if (escape == URIEscape.MIXED && (bs[0] == (byte)'\000' || bs[0] == (byte)'\375')) {
             hexEncoding = true;
             result.append("=");
         }
