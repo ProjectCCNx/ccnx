@@ -4,7 +4,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010, 2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -95,7 +95,7 @@ static void
 usage(const char *progname)
 {
         fprintf(stderr,
-                "%s [-h] [-x freshness_seconds] [-b blocksize] URI\n"
+                "%s [-h] [-x freshness_seconds] [-b blocksize] [-s digest] [-p password] URI\n"
                 " Chops stdin into blocks (1K by default) and sends them "
                 "as consecutively numbered ContentObjects "
                 "under the given uri\n", progname);
@@ -119,10 +119,12 @@ main(int argc, char **argv)
     int res;
     ssize_t read_res;
     unsigned char *buf = NULL;
+    char *symmetric_suffix = NULL;
+    const char *password = NULL;
     struct mydata mydata = { 0 };
     struct ccn_closure in_content = {.p=&incoming_content, .data=&mydata};
     struct ccn_closure in_interest = {.p=&incoming_interest, .data=&mydata};
-    while ((res = getopt(argc, argv, "hx:b:")) != -1) {
+    while ((res = getopt(argc, argv, "hx:b:s:p:")) != -1) {
         switch (res) {
             case 'x':
                 expire = atol(optarg);
@@ -131,6 +133,12 @@ main(int argc, char **argv)
                 break;
             case 'b':
                 blocksize = atol(optarg);
+                break;
+            case 's':
+                symmetric_suffix = optarg;
+                break;
+            case 'p':
+                password = optarg;
                 break;
             default:
             case 'h':
@@ -152,6 +160,29 @@ main(int argc, char **argv)
     if (ccn_connect(ccn, NULL) == -1) {
         perror("Could not connect to ccnd");
         exit(1);
+    }
+
+    if (symmetric_suffix != NULL) {
+        struct ccn_charbuf *path;
+        struct ccn_charbuf *key_digest= ccn_charbuf_create();
+        int len = sizeof(sp.pubid);
+
+        if (ccn_create_keystore_path(ccn, &path)) {
+            perror("Could not access keystore");
+            exit(1);
+        }
+
+        if (password == NULL)
+            password = ccn_get_password();
+    	ccn_charbuf_append_string(path, "-");
+    	ccn_charbuf_append_string(path, symmetric_suffix);
+        if (ccn_load_signing_key(ccn, ccn_charbuf_as_string(path), password, key_digest)) {
+            perror("Could not load keystore");
+            exit(1);
+        }
+        if (key_digest->length < len)
+            len = key_digest->length;
+	memcpy(sp.pubid, key_digest->buf, len);
     }
     
     buf = calloc(1, blocksize);

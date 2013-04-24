@@ -864,6 +864,12 @@ int ccn_chk_signing_params(struct ccn *h,
                            struct ccn_charbuf **pkeylocator,
                            struct ccn_charbuf **pextopt);
 
+/* Create a default keystore path */
+int ccn_create_keystore_path(struct ccn *h, struct ccn_charbuf **path);
+
+/* Get a default for the keystore password */
+const char *ccn_get_password(void);
+
 /* low-level content-object signing */
 
 #define CCN_SIGNING_DEFAULT_DIGEST_ALGORITHM "SHA256"

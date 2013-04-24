@@ -1297,7 +1297,7 @@ finalize_pkey(struct hashtb_enumerator *e)
         ccn_pubkey_free(*entry);
 }
 
-static const char *get_password(void) 
+const char *ccn_get_password(void) 
 {
     const char *password;
 
@@ -1307,7 +1307,7 @@ static const char *get_password(void)
     return password;
 }
 
-static int
+int
 ccn_create_keystore_path(struct ccn *h, struct ccn_charbuf **path)
 {
     const char *s = NULL;
@@ -1413,7 +1413,7 @@ ccn_locate_key(struct ccn *h,
 	    keystore = ccn_aes_keystore_create();
 	    create_filename_with_digest_suffix(path, pkeyid, pkeyid_size);
 	    res = ccn_aes_keystore_init(keystore, ccn_charbuf_as_string(path), 
-				(char *)get_password());
+				(char *)ccn_get_password());
 	    if (res == 0) {
 		*key = ccn_keystore_key(keystore);
 		res = add_key_to_hashtb(h, *key, pkeyid, pkeyid_size);
@@ -1443,6 +1443,8 @@ ccn_locate_key(struct ccn *h,
                                   pco->offset[CCN_PCO_E_Key_Certificate_KeyName],
                                   &dkey, &dkey_size);
         *key = ccn_d2i_pubkey(dkey, dkey_size);
+        if (*key == NULL)
+             return (1);
         digest = ccn_digest_create(CCN_DIGEST_SHA256);
         ccn_digest_init(digest);
         key_digest_size = ccn_digest_size(digest);
@@ -2595,6 +2597,8 @@ ccn_load_default_key(struct ccn *h,
     default_pubid = ccn_charbuf_create();
     if (default_pubid == NULL)
         return(NOTE_ERRNO(h));
+    if (keystore_passphrase == NULL)
+        keystore_passphrase = ccn_get_password();
     res = ccn_load_signing_key(h,
                                keystore_path,
                                keystore_passphrase,
@@ -2675,7 +2679,7 @@ ccn_load_or_create_key(struct ccn *h,
                        const char *keystore,
                        struct ccn_charbuf *pubid)
 {
-    const char *password = get_password();;
+    const char *password = ccn_get_password();;
     int res;
     
     res = ccn_load_signing_key(h, keystore, password, pubid);

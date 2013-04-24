@@ -29,9 +29,6 @@
 
 #include <openssl/engine.h>
 
-
-#define CCN_KEYSTORE_PASS "Th1s1sn0t8g00dp8ssw0rd."
-
 static void
 usage(const char *progname)
 {
@@ -58,7 +55,7 @@ main(int argc, char **argv)
     char *dir = NULL;
     struct ccn_charbuf *filename = NULL;
     int force = 0;
-    char *password = CCN_KEYSTORE_PASS;
+    char *password = NULL;
     char *name = ".ccnx_keystore";
     char *username;
     int fullname = 0;
@@ -124,6 +121,10 @@ main(int argc, char **argv)
             exit(1);
         }
     }
+    
+    if (password == NULL)
+        password = ccn_get_password();
+
     ccn_charbuf_append_string(filename, "/");
     ccn_charbuf_append_string(filename, name);
 
