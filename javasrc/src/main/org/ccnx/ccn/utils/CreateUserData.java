@@ -38,7 +38,7 @@ import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.test.Flosser;
+import org.ccnx.ccn.utils.Flosser;
 
 
 

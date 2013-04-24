@@ -25,7 +25,7 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.impl.support.Daemon;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.test.BitBucketRepository;
+import org.ccnx.ccn.impl.repo.BitBucketRepository;
 
 /**
  * Daemon for stand-alone repository on persistent storage in the filesystem.
