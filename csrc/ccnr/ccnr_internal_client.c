@@ -111,7 +111,6 @@ ccnr_answer_req(struct ccn_closure *selfp,
     int morecomps = 0;
     const unsigned char *final_comp = NULL;
     size_t final_size = 0;
-    struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     
     switch (kind) {
         case CCN_UPCALL_FINAL:
@@ -160,7 +159,6 @@ ccnr_answer_req(struct ccn_closure *selfp,
             goto Bail;
         }
     }
-    sp.freshness = 10;
     switch (selfp->intdata & OPER_MASK) {
         case OP_SERVICE:
             if (ccnr->service_ccnb == NULL)
@@ -310,7 +308,6 @@ ccnr_init_repo_keystore(struct ccnr_handle *ccnr, struct ccn *h)
     struct ccn_charbuf *culprit = NULL;
     struct stat statbuf;
     int res = -1;
-    size_t save;
     char *keystore_path = NULL;
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     
@@ -325,7 +322,6 @@ ccnr_init_repo_keystore(struct ccnr_handle *ccnr, struct ccn *h)
         errno = ENOTDIR;
         goto Finish;
     }
-    save = temp->length;
     ccn_charbuf_putf(temp, "ccnx_repository_keystore");
     keystore_path = strdup(ccn_charbuf_as_string(temp));
     res = stat(keystore_path, &statbuf);
