@@ -34,7 +34,7 @@
     " -d - debug mode - no input editing"                                "\n" \
     " -i n - print n bytes of signer's public key digest in hex"         "\n" \
     " -n - no echo of own output"                                        "\n" \
-    " -q - no automatic greeting or farwell"                             "\n" \
+    " -q - no automatic greeting or farewell"                            "\n" \
     " -r command - hook up to input and output of responder command"     "\n" \
     " -v - verbose trace of what is happening"                           "\n" \
     " -x sec - set freshness"
@@ -86,7 +86,7 @@ struct ccnxchat_state {
     int prefer_newest;          /* for saner startup */
     int echo;                   /* to see own output */
     int freshness;              /* to set FreshnessSeconds */
-    int quiet;                  /* no automatic greeting or farwell */
+    int quiet;                  /* no automatic greeting or farewell */
     int robotname;              /* print n bytes of robot name */
     int verbose;                /* to turn on debugging output */
 };
