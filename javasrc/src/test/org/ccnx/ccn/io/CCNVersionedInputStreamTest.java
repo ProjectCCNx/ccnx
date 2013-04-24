@@ -15,7 +15,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-package org.ccnx.ccn.test.io;
+package org.ccnx.ccn.io;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -36,8 +36,8 @@ import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
-import org.ccnx.ccn.test.CCNTestHelper;
-import org.ccnx.ccn.test.Flosser;
+import org.ccnx.ccn.CCNTestHelper;
+import org.ccnx.ccn.utils.Flosser;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;

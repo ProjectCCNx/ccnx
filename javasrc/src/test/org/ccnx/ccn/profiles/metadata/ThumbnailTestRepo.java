@@ -15,7 +15,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-package org.ccnx.ccn.test.profiles.metadata;
+package org.ccnx.ccn.profiles.metadata;
 
 import java.io.IOException;
 

@@ -18,7 +18,7 @@
 /**
  * PD org.ccnx.ccn.test
  */
-package org.ccnx.ccn.test;
+package org.ccnx.ccn;
 
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.CCNTime;

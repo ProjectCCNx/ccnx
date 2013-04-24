@@ -14,7 +14,7 @@
  * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
-package org.ccnx.ccn.test.profiles.context;
+package org.ccnx.ccn.profiles.context;
 
 
 import junit.framework.Assert;

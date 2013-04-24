@@ -15,7 +15,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-package org.ccnx.ccn.test.protocol;
+package org.ccnx.ccn.protocol;
 
 import static org.ccnx.ccn.protocol.ContentName.ROOT;
 import static org.ccnx.ccn.protocol.ContentName.SEPARATOR;

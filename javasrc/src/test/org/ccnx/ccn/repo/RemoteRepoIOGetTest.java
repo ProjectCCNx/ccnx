@@ -15,7 +15,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-package org.ccnx.ccn.test.repo;
+package org.ccnx.ccn.repo;
 
 import java.util.Arrays;
 

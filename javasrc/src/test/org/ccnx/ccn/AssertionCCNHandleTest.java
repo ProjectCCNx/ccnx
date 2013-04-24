@@ -14,7 +14,7 @@
  * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
-package org.ccnx.ccn.test;
+package org.ccnx.ccn;
 
 import junit.framework.Assert;
 import junit.framework.AssertionFailedError;

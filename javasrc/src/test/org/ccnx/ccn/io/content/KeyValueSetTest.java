@@ -15,7 +15,7 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package org.ccnx.ccn.test.io.content;
+package org.ccnx.ccn.io.content;
 
 import java.util.Collection;
 import java.util.TreeMap;

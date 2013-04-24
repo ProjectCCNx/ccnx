@@ -15,7 +15,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-package org.ccnx.ccn.test.security.crypto;
+package org.ccnx.ccn.security.crypto;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;

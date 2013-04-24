@@ -15,7 +15,7 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package org.ccnx.ccn.test.profiles.versioning;
+package org.ccnx.ccn.profiles.versioning;
 
 import java.util.ArrayList;
 import java.util.Arrays;

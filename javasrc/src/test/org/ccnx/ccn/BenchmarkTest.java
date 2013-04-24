@@ -15,7 +15,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-package org.ccnx.ccn.test;
+package org.ccnx.ccn;
 
 import java.security.DigestOutputStream;
 import java.security.KeyPair;
@@ -43,6 +43,7 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.Signature;
+import org.ccnx.ccn.utils.Flosser;
 import org.junit.BeforeClass;
 import org.junit.Test;
 

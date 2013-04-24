@@ -15,7 +15,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-package org.ccnx.ccn.test.endtoend;
+package org.ccnx.ccn.endtoend;
 
 
 import java.util.ArrayList;

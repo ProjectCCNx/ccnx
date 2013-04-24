@@ -18,7 +18,7 @@
 /**
  * PD org.ccnx.ccn.test.repo
  */
-package org.ccnx.ccn.test.repo;
+package org.ccnx.ccn.repo;
 
 import java.io.File;
 

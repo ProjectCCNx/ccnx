@@ -15,7 +15,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-package org.ccnx.ccn.test;
+package org.ccnx.ccn;
 
 import org.ccnx.ccn.config.PlatformConfiguration;
 import org.junit.Test;

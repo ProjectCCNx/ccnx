@@ -1,4 +1,4 @@
-package org.ccnx.ccn.test.impl.encoding;
+package org.ccnx.ccn.impl.encoding;
 
 import java.io.ByteArrayInputStream;
 import java.util.Random;

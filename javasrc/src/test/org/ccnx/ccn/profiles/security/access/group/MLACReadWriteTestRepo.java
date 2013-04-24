@@ -16,7 +16,7 @@
  */
 
 
-package org.ccnx.ccn.test.profiles.security.access.group;
+package org.ccnx.ccn.profiles.security.access.group;
 
 import java.util.ArrayList;
 import java.util.Random;

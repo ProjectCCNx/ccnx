@@ -15,7 +15,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-package org.ccnx.ccn.test.profiles;
+package org.ccnx.ccn.profiles;
 
 import static org.junit.Assert.fail;
 import junit.framework.Assert;

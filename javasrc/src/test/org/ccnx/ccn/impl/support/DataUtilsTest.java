@@ -15,7 +15,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-package org.ccnx.ccn.test.impl.support;
+package org.ccnx.ccn.impl.support;
 
 import java.math.BigInteger;
 import java.util.Random;

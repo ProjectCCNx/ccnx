@@ -14,7 +14,7 @@
  * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
-package org.ccnx.ccn.test.impl.security.keys;
+package org.ccnx.ccn.impl.security.keys;
 
 import java.util.Random;
 

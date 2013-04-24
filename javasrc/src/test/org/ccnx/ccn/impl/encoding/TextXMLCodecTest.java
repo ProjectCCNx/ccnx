@@ -15,7 +15,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-package org.ccnx.ccn.test.impl.encoding;
+package org.ccnx.ccn.impl.encoding;
 
 import java.text.ParseException;
 

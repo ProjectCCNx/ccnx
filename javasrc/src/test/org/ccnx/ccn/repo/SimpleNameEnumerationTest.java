@@ -1,4 +1,4 @@
-package org.ccnx.ccn.test.repo;
+package org.ccnx.ccn.repo;
 
 import static org.ccnx.ccn.profiles.CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION;
 import static org.ccnx.ccn.protocol.Component.NONCE;
