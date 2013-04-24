@@ -196,11 +196,11 @@ public class Component implements ComponentProvider {
 
 
 	public static String printURI(byte [] bs) {
-		return printURI(bs, 0, bs.length, URIEscape.MIXED);
+		return printURI(bs, 0, bs.length, URIEscape.PERCENT);
 	}
 
 	public static String printURI(byte [] bs, int offset, int length) {
-		return printURI(bs, offset, length, URIEscape.MIXED);
+		return printURI(bs, offset, length, URIEscape.PERCENT);
 	}
 
 	/**
