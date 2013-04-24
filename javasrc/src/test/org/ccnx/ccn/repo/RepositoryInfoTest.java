@@ -23,7 +23,7 @@ import org.ccnx.ccn.impl.repo.LogStructRepoStore;
 import org.ccnx.ccn.impl.repo.RepositoryInfo;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
+import org.ccnx.ccn.impl.encoding.XMLEncodableTester;
 import org.junit.BeforeClass;
 import org.junit.Test;
 

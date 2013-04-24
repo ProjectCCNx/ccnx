@@ -38,7 +38,7 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.versioning.VersionNumber;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
-import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
+import org.ccnx.ccn.impl.encoding.XMLEncodableTester;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;

@@ -34,7 +34,7 @@ import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
-import org.ccnx.ccn.test.AssertionCCNHandle;
+import org.ccnx.ccn.AssertionCCNHandle;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

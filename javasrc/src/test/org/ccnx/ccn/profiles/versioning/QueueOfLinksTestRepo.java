@@ -29,8 +29,8 @@ import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.profiles.versioning.VersioningInterest;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
-import org.ccnx.ccn.test.profiles.versioning.VersioningHelper.ReceivedData;
-import org.ccnx.ccn.test.profiles.versioning.VersioningHelper.TestListener;
+import org.ccnx.ccn.profiles.versioning.VersioningHelper.ReceivedData;
+import org.ccnx.ccn.profiles.versioning.VersioningHelper.TestListener;
 import org.junit.Test;
 
 public class QueueOfLinksTestRepo {

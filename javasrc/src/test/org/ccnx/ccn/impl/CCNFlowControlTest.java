@@ -27,7 +27,7 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
-import org.ccnx.ccn.test.ThreadAssertionRunner;
+import org.ccnx.ccn.ThreadAssertionRunner;
 import org.junit.Before;
 import org.junit.Test;
 

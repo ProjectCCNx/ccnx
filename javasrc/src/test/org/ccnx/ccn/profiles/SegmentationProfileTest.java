@@ -30,7 +30,7 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
-import org.ccnx.ccn.test.LibraryTestBase;
+import org.ccnx.ccn.LibraryTestBase;
 import org.junit.Test;
 
 public class SegmentationProfileTest extends LibraryTestBase implements CCNInterestHandler{

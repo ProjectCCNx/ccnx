@@ -31,7 +31,7 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherID;
-import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
+import org.ccnx.ccn.impl.encoding.XMLEncodableTester;
 import org.junit.BeforeClass;
 import org.junit.Test;
 

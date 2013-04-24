@@ -27,7 +27,7 @@ import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.context.ServiceDiscoveryProfile;
 import org.ccnx.ccn.protocol.ContentObject;
-import org.ccnx.ccn.test.CCNTestBase;
+import org.ccnx.ccn.CCNTestBase;
 import org.ccnx.ccn.utils.CreateUserData;
 import org.junit.BeforeClass;
 import org.junit.Test;

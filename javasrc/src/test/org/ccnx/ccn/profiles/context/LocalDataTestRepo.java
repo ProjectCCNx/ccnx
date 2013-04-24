@@ -26,7 +26,7 @@ import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.profiles.context.ServiceDiscoveryProfile;
 import org.ccnx.ccn.profiles.repo.RepositoryControl;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.test.CCNTestHelper;
+import org.ccnx.ccn.CCNTestHelper;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;

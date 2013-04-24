@@ -30,8 +30,8 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
-import org.ccnx.ccn.test.CCNTestBase;
-import org.ccnx.ccn.test.CCNTestHelper;
+import org.ccnx.ccn.CCNTestBase;
+import org.ccnx.ccn.CCNTestHelper;
 import org.junit.Test;
 
 /**

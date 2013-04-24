@@ -24,7 +24,7 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.KeyValueSet;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
-import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
+import org.ccnx.ccn.impl.encoding.XMLEncodableTester;
 import org.junit.Assert;
 import org.junit.Test;
 

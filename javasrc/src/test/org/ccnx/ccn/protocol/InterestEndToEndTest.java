@@ -29,7 +29,7 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
-import org.ccnx.ccn.test.LibraryTestBase;
+import org.ccnx.ccn.LibraryTestBase;
 import org.junit.Assert;
 import org.junit.Test;
 

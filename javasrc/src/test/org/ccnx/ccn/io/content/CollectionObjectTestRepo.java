@@ -31,9 +31,9 @@ import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.test.CCNTestBase;
-import org.ccnx.ccn.test.CCNTestHelper;
-import org.ccnx.ccn.test.TestUtils;
+import org.ccnx.ccn.CCNTestBase;
+import org.ccnx.ccn.CCNTestHelper;
+import org.ccnx.ccn.TestUtils;
 import org.junit.Test;
 
 

@@ -30,8 +30,8 @@ import org.ccnx.ccn.io.content.LinkAuthenticator;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
-import org.ccnx.ccn.test.CCNTestBase;
-import org.ccnx.ccn.test.Flosser;
+import org.ccnx.ccn.CCNTestBase;
+import org.ccnx.ccn.utils.Flosser;
 
 /**
  * Common code between CCNObjectTests

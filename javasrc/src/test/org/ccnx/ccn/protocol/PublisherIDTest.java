@@ -27,7 +27,7 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.PublisherID.PublisherType;
-import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
+import org.ccnx.ccn.impl.encoding.XMLEncodableTester;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;

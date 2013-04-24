@@ -28,7 +28,7 @@ import org.ccnx.ccn.profiles.nameenum.BasicNameEnumeratorListener;
 import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
-import org.ccnx.ccn.test.CCNTestBase;
+import org.ccnx.ccn.CCNTestBase;
 import org.junit.Test;
 
 /**

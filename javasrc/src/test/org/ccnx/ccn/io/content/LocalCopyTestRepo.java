@@ -46,7 +46,7 @@ import org.ccnx.ccn.profiles.repo.RepositoryOperations;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
-import org.ccnx.ccn.test.AssertionCCNHandle;
+import org.ccnx.ccn.AssertionCCNHandle;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;

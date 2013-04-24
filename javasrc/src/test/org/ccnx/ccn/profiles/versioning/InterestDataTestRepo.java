@@ -35,7 +35,7 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
-import org.ccnx.ccn.test.profiles.versioning.VersioningHelper.TestListener;
+import org.ccnx.ccn.profiles.versioning.VersioningHelper.TestListener;
 import org.junit.Assert;
 import org.junit.Test;
 

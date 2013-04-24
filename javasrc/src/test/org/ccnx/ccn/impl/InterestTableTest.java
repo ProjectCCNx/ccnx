@@ -41,7 +41,7 @@ import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo;
 import org.ccnx.ccn.protocol.PublisherID.PublisherType;
-import org.ccnx.ccn.test.CCNTestBase;
+import org.ccnx.ccn.CCNTestBase;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;

@@ -32,9 +32,9 @@ import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
-import org.ccnx.ccn.test.CCNTestBase;
-import org.ccnx.ccn.test.CCNTestHelper;
-import org.ccnx.ccn.test.TestUtils;
+import org.ccnx.ccn.CCNTestBase;
+import org.ccnx.ccn.CCNTestHelper;
+import org.ccnx.ccn.TestUtils;
 import org.junit.Test;
 
 /**

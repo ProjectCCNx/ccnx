@@ -36,8 +36,8 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
-import org.ccnx.ccn.test.CCNLibraryTestHarness;
-import org.ccnx.ccn.test.CCNTestBase;
+import org.ccnx.ccn.CCNLibraryTestHarness;
+import org.ccnx.ccn.CCNTestBase;
 import org.junit.BeforeClass;
 import org.junit.Test;
 

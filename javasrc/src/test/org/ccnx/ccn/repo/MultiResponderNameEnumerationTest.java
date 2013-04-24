@@ -27,7 +27,7 @@ import org.ccnx.ccn.io.RepositoryOutputStream;
 import org.ccnx.ccn.profiles.nameenum.BasicNameEnumeratorListener;
 import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.test.CCNTestHelper;
+import org.ccnx.ccn.CCNTestHelper;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
