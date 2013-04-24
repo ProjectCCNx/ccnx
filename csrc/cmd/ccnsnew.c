@@ -47,18 +47,13 @@ main(int argc, char **argv)
     int opt;
     int res;
     const char *arg = NULL;
-    const char *portstr = NULL;
     struct ccn_charbuf *regprefix = NULL;
     struct ccn_closure in_interest = {0};
     
     setscope = 0;
     progname = argv[0];
-    while ((opt = getopt(argc, argv, "0123shp:")) != -1) {
+    while ((opt = getopt(argc, argv, "0123sh")) != -1) {
         switch (opt) {
-            case 'p':
-                fprintf(stderr, "-p port: not yet implemented\n");
-                portstr = optarg;
-                break;
             case '0':
             case '1':
             case '2':
