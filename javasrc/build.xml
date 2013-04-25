@@ -307,7 +307,7 @@
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/repo/RepoInitializationTest.class"/>
+					<include name="org/ccnx/ccn/repo/RepoInitializationTest.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -373,7 +373,7 @@
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/protocol/*Test.class"/>
+					<include name="org/ccnx/ccn/protocol/*Test.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -394,7 +394,7 @@
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/protocol/*TestRepo.class"/>
+					<include name="org/ccnx/ccn/protocol/*TestRepo.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -417,12 +417,12 @@
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/impl/**/*Test.class"/>
+					<include name="org/ccnx/ccn/impl/**/*Test.class"/>
 					<!-- should be profiles/**/*Test.class, but don't want to include access control yet -->
-					<include name="org/ccnx/ccn/test/profiles/ccnd/*Test.class"/>
-				    <include name="org/ccnx/ccn/test/profiles/nameenum/*Test.class"/>
-					<include name="org/ccnx/ccn/test/profiles/*Test.class"/>
-				    <include name="org/ccnx/ccn/test/profiles/search/*Test.class"/>
+					<include name="org/ccnx/ccn/profiles/ccnd/*Test.class"/>
+				    <include name="org/ccnx/ccn/profiles/nameenum/*Test.class"/>
+					<include name="org/ccnx/ccn/profiles/*Test.class"/>
+				    <include name="org/ccnx/ccn/profiles/search/*Test.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -442,12 +442,12 @@
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/impl/**/*TestRepo.class"/>
+					<include name="org/ccnx/ccn/impl/**/*TestRepo.class"/>
 					<!-- should be profiles/**/*TestRepo.class, but don't want to include access control yet -->
-	                <include name="org/ccnx/ccn/test/profiles/nameenum/*TestRepo.class"/>
-				    <include name="org/ccnx/ccn/test/profiles/metadata/*TestRepo.class"/>
-				    <include name="org/ccnx/ccn/test/profiles/search/*TestRepo.class"/>
-                    <include name="org/ccnx/ccn/test/profiles/context/*TestRepo.class"/>
+	                <include name="org/ccnx/ccn/profiles/nameenum/*TestRepo.class"/>
+				    <include name="org/ccnx/ccn/profiles/metadata/*TestRepo.class"/>
+				    <include name="org/ccnx/ccn/profiles/search/*TestRepo.class"/>
+                    <include name="org/ccnx/ccn/profiles/context/*TestRepo.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -472,7 +472,7 @@
 				<env key="PATH" value="${env.PATH}:${cmddir}"/>
 				<batchtest todir="${testout}">
 					<fileset dir="${build}">
-	                    <include name="org/ccnx/ccn/test/profiles/sync/*TestRepo.class"/>
+	                    <include name="org/ccnx/ccn/profiles/sync/*TestRepo.class"/>
 					</fileset>
 				</batchtest>
 			</junit>
@@ -493,7 +493,7 @@
 	            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 	            <batchtest todir="${testout}">
 	                <fileset dir="${build}">
-	                    <include name="org/ccnx/ccn/test/impl/**/CCNFlowControlTestRepoExtra.class"/>
+	                    <include name="org/ccnx/ccn/impl/**/CCNFlowControlTestRepoExtra.class"/>
 	                </fileset>
 	            </batchtest>
 	        </junit>
@@ -518,7 +518,7 @@
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/io/**/*Test.class"/>
+					<include name="org/ccnx/ccn/io/**/*Test.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -539,7 +539,7 @@
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/io/**/*TestRepo.class"/>
+					<include name="org/ccnx/ccn//io/**/*TestRepo.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -560,7 +560,7 @@
 
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/ReadTest.class"/>
+					<include name="org/ccnx/ccn/ReadTest.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -581,7 +581,7 @@
 
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/BlockReadWriteTest.class"/>
+					<include name="org/ccnx/ccn/BlockReadWriteTest.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -601,7 +601,7 @@
 
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/BenchmarkTest.class"/>
+					<include name="org/ccnx/ccn/BenchmarkTest.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -635,7 +635,7 @@
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/profiles/nameenum/*TestRepo.class"/>
+					<include name="org/ccnx/ccn/profiles/nameenum/*TestRepo.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -659,8 +659,8 @@
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/repo/RFSTest.class"/>
-					<include name="org/ccnx/ccn/test/repo/RepositoryInfoTest.class"/>
+					<include name="org/ccnx/ccn/repo/RFSTest.class"/>
+					<include name="org/ccnx/ccn/repo/RepositoryInfoTest.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -681,7 +681,7 @@
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
             <batchtest todir="${testout}">
                 <fileset dir="${build}">
-                    <include name="org/ccnx/ccn/test/repo/RepoInitialPolicyTest.class"/>
+                    <include name="org/ccnx/ccn/repo/RepoInitialPolicyTest.class"/>
                 </fileset>
             </batchtest>
         </junit>
@@ -702,7 +702,7 @@
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/repo/RepoInitialReadTest.class"/>
+					<include name="org/ccnx/ccn/repo/RepoInitialReadTest.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -724,7 +724,7 @@
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/repo/CheckedWriteTest.class"/>
+					<include name="org/ccnx/ccn/repo/CheckedWriteTest.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -746,7 +746,7 @@
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/repo/SimpleNameEnumerationTest.class"/>
+					<include name="org/ccnx/ccn/repo/SimpleNameEnumerationTest.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -768,8 +768,8 @@
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/repo/RepoIOTest.class"/>
-					<include name="org/ccnx/ccn/test/repo/RepoBulkImportTest.class" unless="${repo2}"/>
+					<include name="org/ccnx/ccn/repo/RepoIOTest.class"/>
+					<include name="org/ccnx/ccn/repo/RepoBulkImportTest.class" unless="${repo2}"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -812,7 +812,7 @@
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/repo/RemoteRepoIOPutTest.class"/>
+					<include name="org/ccnx/ccn/repo/RemoteRepoIOPutTest.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -831,7 +831,7 @@
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/repo/RemoteRepoIOGetTest.class"/>
+					<include name="org/ccnx/ccn/repo/RemoteRepoIOGetTest.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -852,8 +852,8 @@
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/repo/RepoNameEnumeratorTest.class"/>
-					<include name="org/ccnx/ccn/test/repo/MultiResponderNameEnumerationTest.class"/>
+					<include name="org/ccnx/ccn/repo/RepoNameEnumeratorTest.class"/>
+					<include name="org/ccnx/ccn/repo/MultiResponderNameEnumerationTest.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -944,8 +944,8 @@
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/security/crypto/*Test.class"/>
-					<include name="org/ccnx/ccn/test/security/keys/*Test.class"/>
+					<include name="org/ccnx/ccn/security/crypto/*Test.class"/>
+					<include name="org/ccnx/ccn/security/keys/*Test.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -968,8 +968,8 @@
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/security/crypto/*TestRepo.class"/>
-					<include name="org/ccnx/ccn/test/security/keys/*TestRepo.class"/>
+					<include name="org/ccnx/ccn/security/crypto/*TestRepo.class"/>
+					<include name="org/ccnx/ccn/security/keys/*TestRepo.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -995,7 +995,7 @@
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/profiles/security/access/**/*Test.class"/>
+					<include name="org/ccnx/ccn/profiles/security/access/**/*Test.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -1018,7 +1018,7 @@
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/profiles/security/access/**/*TestRepo.class"/>
+					<include name="org/ccnx/ccn/profiles/security/access/**/*TestRepo.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -1042,9 +1042,9 @@
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/profiles/versioning/**/*Test.class"/>
-					<include name="org/ccnx/ccn/test/profiles/versioning/**/*TestRepo.class"/>
-					<include name="org/ccnx/ccn/test/profiles/versioning/**/XVersioningInterestTestRepo.class"/>
+					<include name="org/ccnx/ccn/profiles/versioning/**/*Test.class"/>
+					<include name="org/ccnx/ccn/profiles/versioning/**/*TestRepo.class"/>
+					<include name="org/ccnx/ccn/profiles/versioning/**/XVersioningInterestTestRepo.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
