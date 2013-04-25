@@ -910,8 +910,7 @@
 				<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 				<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 	            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
-				<!--  test todir="${testout}"  name="org.ccnx.ccn.test.endtoend.EndToEndTestSource"/ -->
-        <test todir="${testout}"  name="org.ccnx.ccn.endtoend.EndToEndTestSource"/>
+        			<test todir="${testout}"  name="org.ccnx.ccn.endtoend.EndToEndTestSource"/>
 			</junit>
 			<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" timeout="200000" dir="${testout}" showoutput="${showoutput}">
 				<classpath>
