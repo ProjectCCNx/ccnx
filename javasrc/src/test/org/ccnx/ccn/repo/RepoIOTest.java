@@ -164,10 +164,10 @@ public class RepoIOTest extends RepoTestBase {
 		Log.info(Log.FAC_TEST, "Starting testPolicyViaCCN");
 
 		checkNameSpace("/repoTest/data2", true);
-		changePolicy("/org/ccnx/ccn/test/repo/policyTest.xml");
+		changePolicy("/org/ccnx/ccn/repo/policyTest.xml");
 		checkNameSpace("/repoTest/data3", false);
 		checkNameSpace("/testNameSpace/data1", true);
-		changePolicy("/org/ccnx/ccn/test/repo/origPolicy.xml");
+		changePolicy("/org/ccnx/ccn/repo/origPolicy.xml");
 		checkNameSpace("/repoTest/data4", true);
 		
 		Log.info(Log.FAC_TEST, "Completed testPolicyViaCCN");

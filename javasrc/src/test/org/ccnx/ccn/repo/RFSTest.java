@@ -134,16 +134,16 @@ public class RFSTest extends RepoTestBase {
 
 		RepositoryStore repo = new LogStructRepoStore();
 		try {	// Test no version
-			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest1.xml"), null, null, null, null);
+			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/repo/badPolicyTest1.xml"), null, null, null, null);
 			Assert.fail("Bad policy file succeeded");
 		} catch (RepositoryException re) {}
 		try {	// Test bad version
-			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest2.xml"), null, null, null, null);
+			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/repo/badPolicyTest2.xml"), null, null, null, null);
 			Assert.fail("Bad policy file succeeded");
 		} catch (RepositoryException re) {}
 		// Make repository using repo's keystore, not user's
 		repo.initialize(_fileTestDir,  
-					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix, null, null);
+					new File(_topdir + "/org/ccnx/ccn/repo/policyTest.xml"), _repoName, _globalPrefix, null, null);
 		repo.shutDown();
 		
 		Log.info(Log.FAC_TEST, "Completed testPolicy");

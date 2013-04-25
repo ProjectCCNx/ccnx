@@ -33,7 +33,7 @@ public class RepoInitialPolicyTest extends RepoTestBase {
 		Log.info(Log.FAC_TEST, "Starting testPolicyInitialization");
 
 		RepoDaemonTest rdt = new RepoDaemonTest(new String[]{"-root", _fileTestDir2, 
-						"-policy", _topdir + "/org/ccnx/ccn/test/repo/policyTest.xml",
+						"-policy", _topdir + "/org/ccnx/ccn/repo/policyTest.xml",
 						"-global", "/parc.com/csl/ccn/repositories/TestRepository"}, this);
 		startAndStopRepo(rdt);
 		File testFile = new File(_fileTestDir2 + "/" + LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + "1");
