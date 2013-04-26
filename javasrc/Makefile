@@ -53,6 +53,7 @@ jar test: _always
 clean: _always 
 	$(ANT) -k clean
 	rm -f _always $(JAR)
+	rm -rf target
 
 test: test-alone
 test-alone: _always
