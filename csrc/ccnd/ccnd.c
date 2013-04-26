@@ -4380,13 +4380,10 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
         }
         if (h->debug & 16) {
             /* Only print details that are not already presented */
-            // ZZZZ - should do nifty Exclude presentation here
             ccnd_msg(h,
                      "version: %d, "
-                     "excl: %d bytes, "
                      "etc: %d bytes",
                      pi->magic,
-                     pi->offset[CCN_PI_E_Exclude] - pi->offset[CCN_PI_B_Exclude],
                      pi->offset[CCN_PI_E_OTHER] - pi->offset[CCN_PI_B_OTHER]);
         }
         s_ok = (pi->answerfrom & CCN_AOK_STALE) != 0;
