@@ -331,7 +331,7 @@ main(int argc, char *argv[])
     res = ccn_aes_keystore_init(aes_keystore, aes_keystore_name, keystore_password);
     if (res != 0) {
         printf ("Initializing AES keystore in %s\n", aes_keystore_name);
-        generate_symmetric_key(keybuf, 256);
+        ccn_generate_symmetric_key(keybuf, 256);
         res = ccn_aes_keystore_file_init(aes_keystore_name, keystore_password, keybuf, 256);
         if (res != 0) {
             fprintf (stderr, "Cannot create keystore [%s]", keystore_name);

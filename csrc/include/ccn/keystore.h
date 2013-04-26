@@ -70,10 +70,12 @@ int ccn_keystore_file_init(char *filename, char *password, char *subject, int ke
 struct ccn_keystore *ccn_aes_keystore_create(void);
 int ccn_aes_keystore_init(struct ccn_keystore *p, char *filename, const char *password);
 int ccn_aes_keystore_file_init(char *filename, const char *password, unsigned char *key, int keylength);
-void create_filename_with_digest_suffix(struct ccn_charbuf *filename, const unsigned char *key, int keylength);
-void create_aes_filename_from_digest(struct ccn_charbuf *filename, const unsigned char *digest, int digest_len);
-int create_aes_filename_from_key(struct ccn_charbuf *filename, unsigned char *key, int keylength);
-void generate_symmetric_key(unsigned char *keybuf, int keylength);
+int ccn_aes_keystore_file_init(char *filename, const char *password, unsigned char *key, int keylength);
+void ccn_create_filename_with_digest_suffix(struct ccn_charbuf *filename, const unsigned char *key, int keylength);
+void ccn_create_aes_filename_from_digest(struct ccn_charbuf *filename, const unsigned char *digest, int digest_len);
+int ccn_create_aes_filename_from_key(struct ccn_charbuf *filename, unsigned char *key, int keylength);
+void ccn_generate_symmetric_key(unsigned char *keybuf, int keylength);
+struct ccn_charbuf *ccn_get_aes_keystore_path(struct ccn *h, char *suffix);
 
 /* Deprecated functions after 0.7.1 */
 const struct ccn_pkey *ccn_keystore_private_key(struct ccn_keystore *p) DEPRECATED;

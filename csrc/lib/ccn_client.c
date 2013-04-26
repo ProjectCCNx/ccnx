@@ -1340,6 +1340,27 @@ ccn_create_keystore_path(struct ccn *h, struct ccn_charbuf **path)
     return res;
 }
 
+int
+ccn_get_key_digest_from_suffix(struct ccn *h, char *suffix, const char *password,
+		struct ccn_charbuf *key_digest)
+{
+    struct ccn_charbuf *path;
+    int res;
+
+    if (ccn_create_keystore_path(h, &path)) {
+        return (-1);
+    }
+
+    ccn_charbuf_append_string(path, "-");
+    ccn_charbuf_append_string(path, suffix);
+
+    if (password == NULL)
+         password = ccn_get_password();
+    res = ccn_load_signing_key(h, ccn_charbuf_as_string(path), password, key_digest);
+    ccn_charbuf_destroy(&path);
+    return(res);
+}
+    
 static int
 add_key_to_hashtb(struct ccn *h, const struct ccn_pkey *key, const unsigned char *keyid, 
                  unsigned int size)
@@ -1411,7 +1432,7 @@ ccn_locate_key(struct ccn *h,
 	res = ccn_create_keystore_path(h, &path);
 	if (res == 0) {
 	    keystore = ccn_aes_keystore_create();
-	    create_filename_with_digest_suffix(path, pkeyid, pkeyid_size);
+	    ccn_create_filename_with_digest_suffix(path, pkeyid, pkeyid_size);
 	    res = ccn_aes_keystore_init(keystore, ccn_charbuf_as_string(path), 
 				(char *)ccn_get_password());
 	    if (res == 0) {

@@ -4,7 +4,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2010-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -30,7 +30,7 @@ static void
 usage(const char *progname)
 {
         fprintf(stderr,
-                "%s [-h] [-b 0<blocksize<=4096] [-r] ccnx:/some/uri\n"
+                "%s [-h] [-b 0<blocksize<=4096] [-r] [-d digest] [-p password] ccnx:/some/uri\n"
                 "    Reads stdin, sending data under the given URI"
                 " using ccn versioning and segmentation.\n"
                 "    -h generate this help message.\n"
@@ -39,7 +39,9 @@ usage(const char *progname)
                 " store the content.\n"
                 "    -s n set scope of start-write interest.\n"
                 "       n = 1(local), 2(neighborhood), 3(everywhere) Default 1.\n"
-                "    -x specify the freshness for content objects.\n",
+                "    -x specify the freshness for content objects.\n"
+                "    -d specify a symmetric digest to use a symmetric key.\n"
+                "    -p specify a password for a symmetric keystore.\n",
                 progname);
         exit(1);
 }
@@ -80,8 +82,10 @@ main(int argc, char **argv)
     size_t blockread;
     unsigned char *buf = NULL;
     struct ccn_charbuf *templ;
+    char *symmetric_suffix = NULL;
+    const char *password = NULL;
     
-    while ((res = getopt(argc, argv, "hrb:s:x:")) != -1) {
+    while ((res = getopt(argc, argv, "hrb:s:x:d:p:")) != -1) {
         switch (res) {
             case 'b':
                 blocksize = atoi(optarg);
@@ -100,6 +104,12 @@ main(int argc, char **argv)
                 freshness = atoi(optarg);
                 if (freshness < 0)
                     usage(progname);
+                break;
+            case 'd':
+                symmetric_suffix = optarg;
+                break;
+            case 'p':
+                password = optarg;
                 break;
             default:
             case 'h':
@@ -130,6 +140,17 @@ main(int argc, char **argv)
         fprintf(stderr, "ccn_seqw_create failed\n");
         exit(1);
     }
+
+    if (symmetric_suffix != NULL) {
+        struct ccn_charbuf *key_digest = ccn_charbuf_create();
+
+        if (ccn_get_key_digest_from_suffix(ccn, symmetric_suffix, password, key_digest)) {
+            perror("Can't access keystore");
+            exit(1);
+        }
+        ccn_seqw_set_key(w, key_digest->buf, key_digest->length);
+    }
+    
     ccn_seqw_set_block_limits(w, blocksize, blocksize);
     if (freshness > -1)
         ccn_seqw_set_freshness(w, freshness);

@@ -271,7 +271,7 @@ cleanup:
 }
 
 void
-generate_symmetric_key(unsigned char *keybuf, int keylength) 
+ccn_generate_symmetric_key(unsigned char *keybuf, int keylength) 
 {
     RAND_bytes(keybuf, keylength/8);
 }
@@ -281,7 +281,7 @@ generate_symmetric_key(unsigned char *keybuf, int keylength)
  * keylength is bit length
  */
 int 
-create_aes_filename_from_key(struct ccn_charbuf *filename, unsigned char *key, int keylength) 
+ccn_create_aes_filename_from_key(struct ccn_charbuf *filename, unsigned char *key, int keylength) 
 {
     unsigned char md_value[keylength/8];
     int res = 0;
@@ -289,12 +289,12 @@ create_aes_filename_from_key(struct ccn_charbuf *filename, unsigned char *key, i
     res = ccn_aes_digest(key, keylength, md_value);
     if (res < 0) 
         return 0;
-    create_filename_with_digest_suffix(filename, md_value, keylength/8);
+    ccn_create_filename_with_digest_suffix(filename, md_value, keylength/8);
     return 1;
 }
 
 void
-create_filename_with_digest_suffix(struct ccn_charbuf *filename, const unsigned char *digest, int digest_len)
+ccn_create_filename_with_digest_suffix(struct ccn_charbuf *filename, const unsigned char *digest, int digest_len)
 {
     int i;
 
@@ -304,7 +304,8 @@ create_filename_with_digest_suffix(struct ccn_charbuf *filename, const unsigned 
     }
 }
 
-static unsigned char *create_derived_key(const char *key, unsigned int keylength, unsigned char *salt, 
+static unsigned char *
+create_derived_key(const char *key, unsigned int keylength, unsigned char *salt, 
 			unsigned int saltlen) 
 {
     unsigned char *ans = malloc(SHA256_DIGEST_LENGTH);

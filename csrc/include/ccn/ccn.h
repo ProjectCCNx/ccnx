@@ -870,6 +870,10 @@ int ccn_create_keystore_path(struct ccn *h, struct ccn_charbuf **path);
 /* Get a default for the keystore password */
 const char *ccn_get_password(void);
 
+/* Get a key digest from an ASCII suffix */
+int ccn_get_key_digest_from_suffix(struct ccn *h, char *suffix, const char *password, 
+		struct ccn_charbuf *key_digest);
+
 /* low-level content-object signing */
 
 #define CCN_SIGNING_DEFAULT_DIGEST_ALGORITHM "SHA256"

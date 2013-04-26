@@ -95,7 +95,7 @@ static void
 usage(const char *progname)
 {
         fprintf(stderr,
-                "%s [-h] [-x freshness_seconds] [-b blocksize] [-s digest] [-p password] URI\n"
+                "%s [-h] [-x freshness_seconds] [-b blocksize] [-d digest] [-p password] URI\n"
                 " Chops stdin into blocks (1K by default) and sends them "
                 "as consecutively numbered ContentObjects "
                 "under the given uri\n", progname);
@@ -124,7 +124,7 @@ main(int argc, char **argv)
     struct mydata mydata = { 0 };
     struct ccn_closure in_content = {.p=&incoming_content, .data=&mydata};
     struct ccn_closure in_interest = {.p=&incoming_interest, .data=&mydata};
-    while ((res = getopt(argc, argv, "hx:b:s:p:")) != -1) {
+    while ((res = getopt(argc, argv, "hx:b:d:p:")) != -1) {
         switch (res) {
             case 'x':
                 expire = atol(optarg);
@@ -134,7 +134,7 @@ main(int argc, char **argv)
             case 'b':
                 blocksize = atol(optarg);
                 break;
-            case 's':
+            case 'd':
                 symmetric_suffix = optarg;
                 break;
             case 'p':
@@ -163,21 +163,11 @@ main(int argc, char **argv)
     }
 
     if (symmetric_suffix != NULL) {
-        struct ccn_charbuf *path;
-        struct ccn_charbuf *key_digest= ccn_charbuf_create();
         int len = sizeof(sp.pubid);
+        struct ccn_charbuf *key_digest = ccn_charbuf_create();
 
-        if (ccn_create_keystore_path(ccn, &path)) {
-            perror("Could not access keystore");
-            exit(1);
-        }
-
-        if (password == NULL)
-            password = ccn_get_password();
-    	ccn_charbuf_append_string(path, "-");
-    	ccn_charbuf_append_string(path, symmetric_suffix);
-        if (ccn_load_signing_key(ccn, ccn_charbuf_as_string(path), password, key_digest)) {
-            perror("Could not load keystore");
+        if (ccn_get_key_digest_from_suffix(ccn, symmetric_suffix, password, key_digest)) {
+            perror("Can't access keystore");
             exit(1);
         }
         if (key_digest->length < len)

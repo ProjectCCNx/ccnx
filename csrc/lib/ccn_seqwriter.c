@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2010-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010-2011, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -41,6 +41,8 @@ struct ccn_seqwriter {
     int freshness;
     unsigned char interests_possibly_pending;
     unsigned char closed;
+    unsigned char *key;
+    unsigned int keylen;
 };
 
 static struct ccn_charbuf *
@@ -55,6 +57,10 @@ seqw_next_cob(struct ccn_seqwriter *w)
         sp.sp_flags |= CCN_SP_FINAL_BLOCK;
     if (w->freshness > -1)
         sp.freshness = w->freshness;
+    if (w->key != NULL) {
+        int len = (sizeof(sp.pubid) > w->keylen) ? w->keylen : sizeof(sp.pubid);
+        memcpy(sp.pubid, w->key, len);
+    }
     ccn_charbuf_append(name, w->nv->buf, w->nv->length);
     ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, w->seqnum);
     res = ccn_sign_content(w->h, cob, name, &sp, w->buffer->buf, w->buffer->length);
@@ -165,6 +171,7 @@ ccn_seqw_create(struct ccn *h, struct ccn_charbuf *name)
     w->blockminsize = 0;
     w->blockmaxsize = MAX_DATA_SIZE;
     w->freshness = -1;
+    w->key = NULL;
     res = ccn_set_interest_filter(h, nb, &(w->cl));
     if (res < 0) {
         ccn_charbuf_destroy(&w->nb);
@@ -295,6 +302,19 @@ ccn_seqw_set_freshness(struct ccn_seqwriter *w, int freshness)
     w->freshness = freshness;
     return(0);
 }
+
+int
+ccn_seqw_set_key(struct ccn_seqwriter *w, unsigned char *key, int keylen)
+{
+    if (w == NULL || w->cl.data != w || w->closed)
+        return(-1);
+    if (keylen < 1 || key == NULL)
+        return(-1);
+    w->key = key;
+    w->keylen = keylen;
+    return(0);
+}
+
 /**
  * Assert that an interest has possibly been expressed that matches
  * the seqwriter's data.  This is useful, for example, if the seqwriter

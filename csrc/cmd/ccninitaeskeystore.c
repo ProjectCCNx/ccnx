@@ -55,7 +55,7 @@ main(int argc, char **argv)
     char *dir = NULL;
     struct ccn_charbuf *filename = NULL;
     int force = 0;
-    char *password = NULL;
+    const char *password = NULL;
     char *name = ".ccnx_keystore";
     char *username;
     int fullname = 0;
@@ -129,7 +129,7 @@ main(int argc, char **argv)
     ccn_charbuf_append_string(filename, name);
 
     if (key == NULL) {
-	generate_symmetric_key(keybuf, CCN_SECRET_KEY_LENGTH);
+	ccn_generate_symmetric_key(keybuf, CCN_SECRET_KEY_LENGTH);
     }
     if (!fullname) {
 	if (read_mode) {
@@ -142,7 +142,7 @@ main(int argc, char **argv)
                     copylen = strlen(key);
                 memcpy(keybuf, key, copylen);
             }
-	    create_aes_filename_from_key(filename, keybuf, CCN_SECRET_KEY_LENGTH);
+	    ccn_create_aes_filename_from_key(filename, keybuf, CCN_SECRET_KEY_LENGTH);
 	}
     }
 
@@ -174,6 +174,8 @@ main(int argc, char **argv)
 	sk = (EVP_PKEY *) ccn_keystore_key(keystore);
         // I'm sure this isn't the right way to do this but this is just for testing anyway...
 	printf("The key is %s\n", (char *)sk->pkey.ptr);
+    } else {
+        printf("Created keystore: %s\n", ccn_charbuf_as_string(filename));
     }
 	
     return(0);
