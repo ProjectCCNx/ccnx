@@ -108,7 +108,7 @@ WARN_LOGFILE           =
 #---------------------------------------------------------------------------
 # configuration options related to the input files
 #---------------------------------------------------------------------------
-INPUT                  = src/org/ccnx/ccn/
+INPUT                  = src/main/org/ccnx/ccn/
 INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = *.java ANNOTATIONS
 RECURSIVE              = YES
