@@ -175,6 +175,7 @@ ccnd_debug_ccnb(struct ccnd_handle *h,
     const unsigned char *pubkey = NULL;
     size_t pubkey_size = 0;
     size_t i;
+    size_t sim_hash = 0;
     struct interest_entry *ie = NULL;
     int default_lifetime = CCN_INTEREST_LIFETIME_SEC << 12;
     intmax_t lifetime = default_lifetime;
@@ -192,6 +193,7 @@ ccnd_debug_ccnb(struct ccnd_handle *h,
                   &nonce,
                   &nonce_size);
         ie = hashtb_lookup(h->interest_tab, ccnb, pi.offset[CCN_PI_B_Nonce]);
+        sim_hash = hashtb_hash(ccnb, pi.offset[CCN_PI_B_InterestLifetime]);
     }
     else {
         pi.min_suffix_comps = 0;
@@ -230,6 +232,8 @@ ccnd_debug_ccnb(struct ccnd_handle *h,
     }
     if (ie != NULL)
         ccn_charbuf_putf(c, ",i=%u", ie->serial);
+    if (sim_hash != 0)
+        ccn_charbuf_putf(c, ",sim=%08X", (unsigned)sim_hash);
     if (pi.offset[CCN_PI_E_Exclude] - pi.offset[CCN_PI_B_Exclude] > 0) {
         ccn_charbuf_putf(c, ",e=[");
         ccnd_append_excludes(c, ccnb, &pi, h->debug & 16 ? -1 : 7);
