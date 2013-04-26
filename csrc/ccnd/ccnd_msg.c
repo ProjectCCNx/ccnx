@@ -123,7 +123,7 @@ ccnd_append_excludes(struct ccn_charbuf *c,
     while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
         if (sep) ccn_charbuf_append_string(c, ",");
         if (0 == limit--) {
-            ccn_charbuf_append_string(c, "...");
+            ccn_charbuf_append_string(c, " ..");
             return;
         }
         ccn_buf_advance(d);
