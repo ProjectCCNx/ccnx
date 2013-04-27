@@ -17,9 +17,9 @@ import org.ccnx.ccn.protocol.ContentName.ComponentProvider;
 public class Component implements ComponentProvider {
 
 	byte[] component;
-	
+
 	protected Component(byte[] comp) {
-		component = comp;
+		this.component = comp;
 	}
 
 	/**
@@ -27,11 +27,12 @@ public class Component implements ComponentProvider {
 	 * @param text native text string.
 	 */
 	public Component(String text) {
-		component = parseNative(text);
+		this.component = parseNative(text);
 	}
 
-	public byte[] getComponent() {
-		return component;
+	@Override
+    public byte[] getComponent() {
+		return this.component;
 	}
 
 	/**
@@ -55,19 +56,28 @@ public class Component implements ComponentProvider {
 		private static final long serialVersionUID = 4667513234636853164L;
 	}
 
+    private static final boolean uriReserved(char ch) {
+        if (('a' <= ch && ch <= 'z') ||
+            ('A' <= ch && ch <= 'Z') ||
+            ('0' <= ch && ch <= '9') ||
+            ch == '-' || ch == '.' || ch == '_' || ch == '~')
+            return false;
+        return true;
+    }
+
 	/**
 	 * Parse the URI Generic Syntax of RFC 3986.
 	 * Including handling percent encoding of sequences that are not legal character
-	 * encodings in any character set.  This method is the inverse of 
+	 * encodings in any character set.  This method is the inverse of
 	 * printComponent() and for any input sequence of bytes it must be the case
 	 * that parseComponent(printComponent(input)) == input.  Note that the inverse
 	 * is NOT true printComponent(parseComponent(input)) != input in general.
-	 *  
+	 *
 	 * @see fromURI(String)
-	 * 
+	 *
 	 * Note in particular that this method interprets sequences of more than
 	 * two dots ('.') as representing an empty component or dot component value
-	 * as encoded by componentPrint.  That is, the component value will be 
+	 * as encoded by componentPrint.  That is, the component value will be
 	 * the value obtained by removing three dots.
 	 * @param name a single component of a name, URI encoded
 	 * @return a name component
@@ -76,50 +86,62 @@ public class Component implements ComponentProvider {
 		byte[] decodedName = null;
 		boolean alldots = true; // does this component contain only dots after unescaping?
 		boolean quitEarly = false;
-	
+		boolean hexEncoding = false;
+		int b1, b2;
+
 		ByteBuffer result = ByteBuffer.allocate(name.length());
 		for (int i = 0; i < name.length() && !quitEarly; i++) {
 			char ch = name.charAt(i);
 			switch (ch) {
-			case '%': 
+			case '%':
 				// This is a byte string %xy where xy are hex digits
 				// Since the input string must be compatible with the output
 				// of componentPrint(), we may convert the character values directly.
 				if (name.length()-1 < i+2) {
 					throw new URISyntaxException(name, "malformed %xy byte representation: too short", i);
 				}
-				int b1 = Character.digit(name.charAt(++i), 16); // consume x
-				int b2 = Character.digit(name.charAt(++i), 16); // consume y
+				b1 = Character.digit(name.charAt(++i), 16); // consume x
+				b2 = Character.digit(name.charAt(++i), 16); // consume y
 				if (b1 < 0 || b2 < 0)
 					throw new URISyntaxException(name, "malformed %xy byte representation: not legal hex number: " + name.substring(i-2, i+1), i-2);
 				result.put((byte)((b1 * 16) + b2));
 				break;
-				// Note in C lib case 0 is handled like the two general delimiters below that terminate processing 
+				// Note in C lib case 0 is handled like the two general delimiters below that terminate processing
 				// but that case should never arise in Java which uses real unicode characters.
 			case '/':
 			case '?':
 			case '#':
 				quitEarly = true; // early exit from containing loop
 				break;
+			case '=':
+				if (name.length()-1 < i+2 || ((name.length() - i) & 1) == 0) {
+					throw new URISyntaxException(name, "malformed =xy byte representation: too short", i);
+				}
+				hexEncoding = true;
+				break;
 			case ':': case '[': case ']': case '@':
 			case '!': case '$': case '&': case '\'': case '(': case ')':
-			case '*': case '+': case ',': case ';': case '=':
+			case '*': case '+': case ',': case ';':
 				// Permit unescaped reserved characters
 				result.put((byte)ch);
 				break;
-			default: 
-				if (('a' <= ch && ch <= 'z') ||
-						('A' <= ch && ch <= 'Z') ||
-						('0' <= ch && ch <= '9') ||
-						ch == '-' || ch == '.' || ch == '_' || ch == '~') {
+			default:
+				if (uriReserved(ch))
+					throw new URISyntaxException(name, "Illegal characters in URI", i);
+
+				if (hexEncoding) {
+					b1 = Character.digit(ch, 16); // consume x
+					b2 = Character.digit(name.charAt(++i), 16); // consume y
+					if (b1 < 0 || b2 < 0)
+						throw new URISyntaxException(name, "malformed =xy byte representation: not legal hex number: " + name.substring(i-1, i), i-1);
+					result.put((byte)((b1 * 16) + b2));
+				} else {
 					// This character remains the same
 					result.put((byte)ch);
-				} else {
-					throw new URISyntaxException(name, "Illegal characters in URI", i);
 				}
 				break;
 			}
-			if (!quitEarly && result.get(result.position()-1) != '.') {
+			if (!quitEarly && result.position() > 0 && result.get(result.position()-1) != '.') {
 				alldots = false;
 			}
 		}
@@ -142,64 +164,85 @@ public class Component implements ComponentProvider {
 	public static String hexPrint(byte [] bs) {
 		if (null == bs)
 			return new String();
-	
+
 		BigInteger bi = new BigInteger(1,bs);
 		return bi.toString(16);
 	}
 
 	public static String printNative(byte[] bs) {
 		// Native string print is the one place where we can just use
-		// Java native platform decoding.  Note that this is not 
-		// necessarily invertible, since there may be byte sequences 
+		// Java native platform decoding.  Note that this is not
+		// necessarily invertible, since there may be byte sequences
 		// that do not correspond to any legal native character encoding
 		// that may be converted to e.g. Unicode "Replacement Character" U+FFFD.
 		return new String(bs);
 	}
 
-	public static String printURI(byte [] bs) {
-		return printURI(bs, 0, bs.length);
-	}
+	/**
+	 * Internal flag signalling the use of the old-style percent-encoding,
+	 * or the new mixed-style using percent-encoding and strings of hexadecimal digits.
+	 *
+	 */
+    static enum URIEscape {
+        /** Use RFC-3986 S2.1 percent-encoding for unprintable characters in the component name. */
+        PERCENT,
+        /** Use mixed-form of percent-encoding and '='{digits} encoding for unprintable characters in the component name. */
+        MIXED
+    }
 
 	static final char HEX_DIGITS[] = {
 		'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
 	};
 
+
+	public static String printURI(byte [] bs) {
+		return printURI(bs, 0, bs.length, URIEscape.PERCENT);
+	}
+
+	public static String printURI(byte [] bs, int offset, int length) {
+		return printURI(bs, offset, length, URIEscape.PERCENT);
+	}
+
 	/**
-	 * Print bytes in the URI Generic Syntax of RFC 3986 
+	 * Print bytes in the URI Generic Syntax of RFC 3986
 	 * including byte sequences that are not legal character
-	 * encodings in any character set and byte sequences that have special 
+	 * encodings in any character set and byte sequences that have special
 	 * meaning for URI resolution per RFC 3986.  This is designed to match
 	 * the C library URI encoding.
-	 * 
-	 * This method must be invertible by parseComponent() so 
+	 * <p>
+	 * This method must be invertible by parseComponent() so
 	 * for any input sequence of bytes it must be the case
 	 * that parseComponent(printComponent(input)) == input.
-	 * 
+	 * </p>
+	 * <p>
 	 * All bytes that are unreserved characters per RFC 3986 are left unescaped.
 	 * Other bytes are percent encoded.
-	 * 
-	 * Empty path components and path components "." and ".." have special 
-	 * meaning for relative URI resolution per RFC 3986.  To guarantee 
+	 * </p>
+	 * <p>
+	 * Empty path components and path components "." and ".." have special
+	 * meaning for relative URI resolution per RFC 3986.  To guarantee
 	 * these component variations are preserved and recovered exactly when
-	 * the URI is parsed by parseComponent() we use a convention that 
-	 * components that are empty or consist entirely of '.' characters will 
-	 * have "..." appended.  This is intended to be consistent with the CCN C 
+	 * the URI is parsed by parseComponent() we use a convention that
+	 * components that are empty or consist entirely of '.' characters will
+	 * have "..." appended.  This is intended to be consistent with the CCN C
 	 * library handling of URI representation of names.
+	 * </p>
 	 * @param bs input byte array.
 	 * @return
 	 */
-	public static String printURI(byte[] bs, int offset, int length) {
+	private static String printURI(byte[] bs, int offset, int length, URIEscape escape) {
 		int i;
+        boolean hexEncoding = false;
 		if (null == bs || bs.length == 0) {
 			// Empty component represented by three '.'
 			return "...";
 		}
-		// To get enough control over the encoding, we use 
+		// To get enough control over the encoding, we use
 		// our own loop and NOT simply new String(bs) (or java.net.URLEncoder) because
 		// the String constructor will decode illegal UTF-8 sub-sequences
 		// with Unicode "Replacement Character" U+FFFD.  We could use a CharsetDecoder
 		// to detect the illegal UTF-8 sub-sequences and handle them separately,
-		// except that this is almost certainly less efficient and some versions of Java 
+		// except that this is almost certainly less efficient and some versions of Java
 		// have bugs that prevent flagging illegal overlong UTF-8 encodings (CVE-2008-2938).
 		// Also, it is much easier to verify what this is doing and compare to the C library implementation.
 		//
@@ -213,20 +256,48 @@ public class Component implements ComponentProvider {
 			// all dots
 			result.append("...");
 		}
-		for (i = 0; i < bs.length; i++) {
-			char ch = (char) bs[i];
-			if (('a' <= ch && ch <= 'z') ||
-					('A' <= ch && ch <= 'Z') ||
-					('0' <= ch && ch <= '9') ||
-					ch == '-' || ch == '.' || ch == '_' || ch == '~')
-				result.append(ch);
-			else {
-				result.append('%');
-				result.append(HEX_DIGITS[(ch >> 4) & 0xF]);
-				result.append(HEX_DIGITS[ch & 0xF]);
-			}
-		}
-		return result.toString();
+        // components starting in either %00 (segments) or %FD (\375, versions) should
+        // be displayed as hex encoded regardless of whether the next byte is
+        // a printable character.  Should match the corresponding code in the C library.
+        if (escape == URIEscape.MIXED && (bs[0] == (byte)'\000' || bs[0] == (byte)'\375')) {
+            hexEncoding = true;
+            result.append("=");
+        }
+        // If the option of limiting escaping to percent disappears this
+        // branch of the if can also disappear.
+        if (escape == URIEscape.PERCENT) {
+        	for (i = 0; i < bs.length; i++) {
+        		char ch = (char) bs[i];
+        		if (!uriReserved(ch)) {
+        			result.append(ch);
+        		} else {
+        			result.append('%');
+        			result.append(HEX_DIGITS[(ch >> 4) & 0xF]);
+        			result.append(HEX_DIGITS[ch & 0xF]);
+        		}
+        	}
+
+        } else {
+        	for (i = 0; i < bs.length; i++) {
+        		char ch = (char) bs[i];
+        		if (hexEncoding) {
+        			result.append(HEX_DIGITS[(ch >> 4) & 0xF]);
+        			result.append(HEX_DIGITS[ch & 0xF]);
+        		} else if (!uriReserved(ch))
+        			result.append(ch);
+        		else {
+        			if (bs.length == (i + 1) || !uriReserved((char)bs[i + 1]))
+        				result.append('%');
+        			else {
+        				result.append('=');
+        				hexEncoding = true;
+        			}
+        			result.append(HEX_DIGITS[(ch >> 4) & 0xF]);
+        			result.append(HEX_DIGITS[ch & 0xF]);
+        		}
+        	}
+        }
+        return result.toString();
 	}
 
 	private static Random random = new Random();
@@ -237,7 +308,8 @@ public class Component implements ComponentProvider {
 	 * is used.
 	 */
 	public static final ComponentProvider NONCE = new ComponentProvider() {
-		public byte[] getComponent() {
+		@Override
+        public byte[] getComponent() {
 			byte [] nonce = new byte[8];
 			random.nextBytes(nonce);
 			return COMMAND_MARKER_NONCE.addBinaryData(nonce);
@@ -249,7 +321,8 @@ public class Component implements ComponentProvider {
 	 * This object generates an empty component (length = 0).
 	 */
 	public static final ComponentProvider EMPTY = new ComponentProvider() {
-		public byte[] getComponent() {
+		@Override
+        public byte[] getComponent() {
 			return emptyComponent;
 		}
 	};
@@ -257,21 +330,21 @@ public class Component implements ComponentProvider {
 	@Override
 	public boolean equals(Object obj) {
 		if (obj instanceof byte[])
-			return Arrays.areEqual( (byte[])obj, getComponent() );
+			return Arrays.areEqual( (byte[])obj, this.getComponent() );
 		if (obj instanceof ComponentProvider)
-			return Arrays.areEqual( ((ComponentProvider)obj).getComponent(), getComponent() );
+			return Arrays.areEqual( ((ComponentProvider)obj).getComponent(), this.getComponent() );
 		if (obj instanceof String)
-			return Arrays.areEqual( ((String)obj).getBytes(), getComponent() );
+			return Arrays.areEqual( ((String)obj).getBytes(), this.getComponent() );
 		return super.equals(obj);
 	}
 
 	@Override
 	public int hashCode() {
-		return Arrays.hashCode(getComponent());
+		return Arrays.hashCode(this.getComponent());
 	}
 
 	@Override
 	public String toString() {
-		return printURI(component);
+		return printURI(this.component);
 	}
 }
