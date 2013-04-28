@@ -22,6 +22,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <openssl/evp.h>
+#include <openssl/err.h>
 
 #include "ccnd_private.h"
 
@@ -48,5 +50,7 @@ main(int argc, char **argv)
     ccnd_run(h);
     ccnd_msg(h, "exiting.");
     ccnd_destroy(&h);
+    ERR_remove_state(0);
+    EVP_cleanup();
     exit(0);
 }

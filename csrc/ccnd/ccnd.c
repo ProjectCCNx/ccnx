@@ -645,6 +645,8 @@ finalize_face(struct hashtb_enumerator *e)
         }
         for (c = 0; c < CCN_CQ_N; c++)
             content_queue_destroy(h, &(face->q[c]));
+        ccn_charbuf_destroy(&face->inbuf);
+        ccn_charbuf_destroy(&face->outbuf);
         ccnd_msg(h, "%s face id %u (slot %u)",
             recycle ? "recycling" : "releasing",
             face->faceid, face->faceid & MAXFACES);
@@ -5992,8 +5994,13 @@ ccnd_destroy(struct ccnd_handle **pccnd)
     ccn_indexbuf_destroy(&h->scratch_indexbuf);
     ccn_indexbuf_destroy(&h->unsol);
     if (h->face0 != NULL) {
+        int i;
         ccn_charbuf_destroy(&h->face0->inbuf);
         ccn_charbuf_destroy(&h->face0->outbuf);
+        for (i = 0; i < CCN_CQ_N; i++)
+            content_queue_destroy(h, &(h->face0->q[i]));
+        for (i = 0; i < CCND_FACE_METER_N; i++)
+            ccnd_meter_destroy(&h->face0->meter[i]);
         free(h->face0);
         h->face0 = NULL;
     }
