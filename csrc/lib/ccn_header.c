@@ -1,5 +1,5 @@
 /**
- * @file ccn_file_header.c
+ * @file ccn_header.c
  * @brief Support for parsing and creating file headers
  * 
  * Part of the CCNx C Library.

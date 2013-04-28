@@ -853,7 +853,7 @@ Leave:
 /**
  * should probably return a new cob, rather than reusing one.
  * should publish link as:
- *    CCNRID_POLICY_URI("ccnx:/%C1.M.S.localhost/%C1.M.SRV/repository/POLICY)/%C1.M.K<pubid>/<version>/%00
+ *    CCNRID_POLICY_URI("ccnx:/%C1.M.S.localhost/%C1.M.SRV/repository/POLICY)/%C1.M.K--pubid--/--version--/%00
  * should have key locator which is the key name of the repository
  */
 PUBLIC struct ccn_charbuf *
