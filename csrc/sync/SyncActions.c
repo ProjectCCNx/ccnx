@@ -3144,7 +3144,6 @@ TryNodeSplit(struct SyncUpdateData *ud) {
         return 0;
     struct SyncRootStruct *root = ud->root;
     int debug = root->base->debug;
-    struct ccn_charbuf *prev = NULL;
     int accLim = nodeSplitTrigger - nodeSplitTrigger/8;
     int accMin = nodeSplitTrigger/2;
     int res = 0;
@@ -3165,7 +3164,6 @@ TryNodeSplit(struct SyncUpdateData *ud) {
         int nameLen = name->length + 8;
         if (nameLen > maxLen) maxLen = nameLen;
         accLen = accLen + nameLen + (maxLen - nameLen) * 2;
-        prev = name;
         if (split+1 < lim) {
             if (splitMethod & 1) {
                 // use level shift to split

@@ -228,7 +228,6 @@ r_sync_enumerate_action(struct ccn_schedule *sched,
     struct content_entry *content = NULL;
     struct ccn_btree_node *leaf = NULL;
     struct ccn_charbuf *interest = NULL;
-    struct ccn_indexbuf *comps = NULL;
     struct ccn_parsed_interest *pi = NULL;
     struct ccn_charbuf *scratch = NULL;
     struct ccn_charbuf *flat = NULL;
@@ -245,7 +244,6 @@ r_sync_enumerate_action(struct ccn_schedule *sched,
     }
     pi = &md->parsed_interest;
     interest = md->interest;
-    comps = md->comps;
     /*
      * Recover starting point from either cookie or accession.
      *

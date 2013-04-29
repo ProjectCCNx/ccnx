@@ -146,7 +146,6 @@ chat_main(int argc, char **argv)
 {
     struct ccn *h = NULL;
     struct ccn_charbuf *name = NULL;
-    struct ccn_charbuf *cob = NULL;
     struct ccn_closure in_interest = {0};
     struct ccn_closure in_content = {0};
     struct ccnxchat_state state = {0};
@@ -157,7 +156,6 @@ chat_main(int argc, char **argv)
     st = &state;
     name = ccn_charbuf_create();
     initialize(st, name);
-    cob = ccn_charbuf_create();
     /* Connect to ccnd */
     h = ccn_create();
     if (ccn_connect(h, NULL) == -1)

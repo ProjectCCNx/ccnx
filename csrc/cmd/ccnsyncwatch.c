@@ -4,7 +4,7 @@
  *
  * A CCNx program.
  *
- * Copyright (C) 2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2012-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -45,9 +45,10 @@ hex_string(unsigned char *s, size_t l)
 
 int hex_value(char c)
 {
-    if (0 == isxdigit(c)) return (-1);
+    int ch = (unsigned char)c;
+    if (0 == isxdigit(ch)) return (-1);
     if (c >= '0' && c <= '9') return (c - '0');
-    return (10+tolower(c) - 'a');
+    return (10+tolower(ch) - 'a');
 }
 
 void
