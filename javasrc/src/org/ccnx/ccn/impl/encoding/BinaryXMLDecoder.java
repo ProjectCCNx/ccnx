@@ -337,7 +337,8 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 			_elements_type[index]  = typ;
 		} catch (ArrayIndexOutOfBoundsException aiobe) {
             int prevElements = _currentElements;
-			_currentElements += _currentElements / ELEM_INCR_FRAC;
+            while (_currentElements <= index)
+            	_currentElements += _currentElements / ELEM_INCR_FRAC;
 			byte[] newTypes = new byte[_currentElements];
 			System.arraycopy(_elements_type, 0, newTypes, 0, prevElements);
 			_elements_type = newTypes;
@@ -392,8 +393,8 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 
 		// This seems a little bogus but it emulates what the original code did...
 		if (type == BinaryXMLCodec.XML_BLOB) {
-			for (int i = _parsingElement; i < _elementCount; i++) {
-				setElement(i + 1, _elements_type[i], _elements_value[i], _elements_blob[i]);
+			for (int i = _elementCount; i > _parsingElement; i--) {
+				setElement(i, _elements_type[i - 1], _elements_value[i - 1], _elements_blob[i - 1]);
 			}
 			_elementCount++;
 			_elements_blob[_parsingElement] = new byte[0];
