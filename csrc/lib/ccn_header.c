@@ -144,7 +144,7 @@ ccn_get_header(struct ccn *h, struct ccn_charbuf *name, int timeout)
     ccn_charbuf_append_charbuf(hn, name);
     /*
      * Requires consistency with metadata profile in
-     * javasrc/src/org/ccnx/ccn/profiles/metadata/MetadataProfile.java
+     * javasrc/src/main/org/ccnx/ccn/profiles/metadata/MetadataProfile.java
      */
     ccn_name_append(hn, meta, sizeof(meta));
     ccn_name_append_str(hn, ".header");
