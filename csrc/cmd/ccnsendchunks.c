@@ -120,11 +120,12 @@ main(int argc, char **argv)
     ssize_t read_res;
     unsigned char *buf = NULL;
     char *symmetric_suffix = NULL;
+    char *dir = NULL;
     const char *password = NULL;
     struct mydata mydata = { 0 };
     struct ccn_closure in_content = {.p=&incoming_content, .data=&mydata};
     struct ccn_closure in_interest = {.p=&incoming_interest, .data=&mydata};
-    while ((res = getopt(argc, argv, "hx:b:d:p:")) != -1) {
+    while ((res = getopt(argc, argv, "hx:b:d:p:f:")) != -1) {
         switch (res) {
             case 'x':
                 expire = atol(optarg);
@@ -139,6 +140,9 @@ main(int argc, char **argv)
                 break;
             case 'p':
                 password = optarg;
+                break;
+            case 'f':
+                dir = optarg;
                 break;
             default:
             case 'h':
@@ -166,7 +170,7 @@ main(int argc, char **argv)
         int len = sizeof(sp.pubid);
         struct ccn_charbuf *key_digest = ccn_charbuf_create();
 
-        if (ccn_get_key_digest_from_suffix(ccn, symmetric_suffix, password, key_digest)) {
+        if (ccn_get_key_digest_from_suffix(ccn, dir, symmetric_suffix, password, key_digest)) {
             perror("Can't access keystore");
             exit(1);
         }

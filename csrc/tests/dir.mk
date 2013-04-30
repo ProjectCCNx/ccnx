@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -47,7 +47,8 @@ ALLTESTS = \
   test_stale \
   test_twohop_ccnd \
   test_twohop_ccnd_teardown \
-  test_unreg
+  test_unreg \
+  test_symmetric
 
 default all: $(SCRIPTSRC) testdriver
 

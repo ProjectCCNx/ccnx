@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <memory.h>
 #include <ccn/ccn.h>
 #include <ccn/uri.h>
 #include <ccn/seqwriter.h>
@@ -40,6 +41,7 @@ usage(const char *progname)
                 "    -s n set scope of start-write interest.\n"
                 "       n = 1(local), 2(neighborhood), 3(everywhere) Default 1.\n"
                 "    -x specify the freshness for content objects.\n"
+                "    -o specify a directory for symmetric keystore\n"
                 "    -d specify a symmetric digest to use a symmetric key.\n"
                 "    -p specify a password for a symmetric keystore.\n",
                 progname);
@@ -84,8 +86,9 @@ main(int argc, char **argv)
     struct ccn_charbuf *templ;
     char *symmetric_suffix = NULL;
     const char *password = NULL;
+    char *dir = NULL;
     
-    while ((res = getopt(argc, argv, "hrb:s:x:d:p:")) != -1) {
+    while ((res = getopt(argc, argv, "hrb:s:x:d:p:o:")) != -1) {
         switch (res) {
             case 'b':
                 blocksize = atoi(optarg);
@@ -111,7 +114,9 @@ main(int argc, char **argv)
             case 'p':
                 password = optarg;
                 break;
-            default:
+            case 'o':
+                dir = optarg;
+                break;
             case 'h':
                 usage(progname);
                 break;
@@ -144,7 +149,7 @@ main(int argc, char **argv)
     if (symmetric_suffix != NULL) {
         struct ccn_charbuf *key_digest = ccn_charbuf_create();
 
-        if (ccn_get_key_digest_from_suffix(ccn, symmetric_suffix, password, key_digest)) {
+        if (ccn_get_key_digest_from_suffix(ccn, dir, symmetric_suffix, password, key_digest)) {
             perror("Can't access keystore");
             exit(1);
         }

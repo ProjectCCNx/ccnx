@@ -26,6 +26,7 @@ INSTALLED_PROGRAMS = \
     ccnfilewatch \
     ccnguestprefix \
     ccninitkeystore \
+    ccninitaeskeystore \
     ccnlibtest \
     ccnsyncwatch ccnsyncslice \
     $(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)

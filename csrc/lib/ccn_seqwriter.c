@@ -60,6 +60,7 @@ seqw_next_cob(struct ccn_seqwriter *w)
     if (w->key != NULL) {
         int len = (sizeof(sp.pubid) > w->keylen) ? w->keylen : sizeof(sp.pubid);
         memcpy(sp.pubid, w->key, len);
+        sp.sp_flags |= CCN_SP_OMIT_KEY_LOCATOR;
     }
     ccn_charbuf_append(name, w->nv->buf, w->nv->length);
     ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, w->seqnum);

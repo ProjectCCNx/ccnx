@@ -1308,7 +1308,7 @@ const char *ccn_get_password(void)
 }
 
 int
-ccn_create_keystore_path(struct ccn *h, struct ccn_charbuf **path)
+ccn_create_keystore_path(struct ccn *h, char *dir, struct ccn_charbuf **path)
 {
     const char *s = NULL;
     int res = 0;
@@ -1318,36 +1318,41 @@ ccn_create_keystore_path(struct ccn *h, struct ccn_charbuf **path)
 	NOTE_ERRNO(h);
 	return -1;
     }
-    s = getenv("CCNX_DIR");
-    if (s != NULL && s[0] != 0)
-        ccn_charbuf_putf((*path), "%s", s);
-    else {
-        s = getenv("HOME");
-        if (s != NULL && s[0] != 0) {
-            ccn_charbuf_putf((*path), "%s/.ccnx", s);
-            res = mkdir(ccn_charbuf_as_string(*path), S_IRWXU);
-            if (res == -1) {
-                if (errno == EEXIST)
-                    res = 0;
-                else
-                    res = NOTE_ERRNO(h);
+    if (dir == NULL) {
+        s = getenv("CCNX_DIR");
+        if (s != NULL && s[0] != 0)
+            ccn_charbuf_putf((*path), "%s", s);
+        else {
+            s = getenv("HOME");
+            if (s != NULL && s[0] != 0) {
+                ccn_charbuf_putf((*path), "%s/.ccnx", s);
+                res = mkdir(ccn_charbuf_as_string(*path), S_IRWXU);
+                if (res == -1) {
+                    if (errno == EEXIST)
+                        res = 0;
+                    else
+                        res = NOTE_ERRNO(h);
+                }
             }
+            else
+                res = NOTE_ERR(h, -1);
         }
-        else
-            res = NOTE_ERR(h, -1);
+    } else {
+        ccn_charbuf_append_string((*path), dir);
     }
     ccn_charbuf_putf((*path), "/%s", ".ccnx_keystore");
+    
     return res;
 }
 
 int
-ccn_get_key_digest_from_suffix(struct ccn *h, char *suffix, const char *password,
+ccn_get_key_digest_from_suffix(struct ccn *h, char *dir, char *suffix, const char *password,
 		struct ccn_charbuf *key_digest)
 {
     struct ccn_charbuf *path;
     int res;
 
-    if (ccn_create_keystore_path(h, &path)) {
+    if (ccn_create_keystore_path(h, dir, &path)) {
         return (-1);
     }
 
@@ -1429,7 +1434,7 @@ ccn_locate_key(struct ccn *h,
     /* Is a key locator present? */
     if (pco->offset[CCN_PCO_B_KeyLocator] == pco->offset[CCN_PCO_E_KeyLocator]) {
 	/* No - assume symmetric */
-	res = ccn_create_keystore_path(h, &path);
+	res = ccn_create_keystore_path(h, NULL, &path);
 	if (res == 0) {
 	    keystore = ccn_aes_keystore_create();
 	    ccn_create_filename_with_digest_suffix(path, pkeyid, pkeyid_size);
@@ -2567,6 +2572,7 @@ ccn_load_signing_key(struct ccn *h,
                            (char *)keystore_path,
                            (char *)keystore_passphrase);
         if (res != 0) {
+            errno = EACCES;
             res = NOTE_ERRNO(h);
             goto Cleanup;
         }
@@ -2739,7 +2745,7 @@ ccn_load_or_create_default_key(struct ccn *h)
     if (h->default_pubid != NULL)
         return(0);
    
-    res = ccn_create_keystore_path(h, &path); 
+    res = ccn_create_keystore_path(h, NULL, &path); 
     default_pubid = ccn_charbuf_create();
     if (res == 0 && default_pubid != NULL && path != NULL) {
     	res = ccn_load_or_create_key(h,

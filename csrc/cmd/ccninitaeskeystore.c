@@ -40,9 +40,9 @@ usage(const char *progname)
             "   -f 	     Force overwriting an existing keystore. Default no overwrite permitted.\n" 
             "   -k key 	     Key data for this key.\n"
             "   -p password  Password for this keystore.  Default default CCN password.\n"
-            "   -d directory Directory in which to create .ccnx/.ccnx_keystore. Default $HOME.\n"
+            "   -o directory Directory in which to create .ccnx/.ccnx_keystore. Default $HOME.\n"
 	    "   -r 	     Read & decrpyt key from existing file and print if ASCII. \n"
-	    "   -s digest    Suffix (digest) of file \n"
+	    "   -d digest    Suffix (digest) of file \n"
             "   name         Name of keystore file.  Default .ccnx-keystore-[keyhash]. \n"
             );
 }
@@ -64,11 +64,12 @@ main(int argc, char **argv)
     int copylen = CCN_SECRET_KEY_LENGTH/8;
     struct stat statbuf;
     char *digest = NULL;
+    int dirset = 0;
     int read_mode = 0;
     struct ccn_keystore *keystore = ccn_aes_keystore_create();
     EVP_PKEY *sk;
     
-    while ((opt = getopt(argc, argv, "hfk:p:d:rs:")) != -1) {
+    while ((opt = getopt(argc, argv, "hfk:p:d:ro:")) != -1) {
         switch (opt) {
             case 'f':
                 force = 1;
@@ -79,10 +80,11 @@ main(int argc, char **argv)
             case 'p':
                 password = optarg;
                 break;
-            case 'd':
+            case 'o':
                 dir = optarg;
+                dirset = 1;
                 break;
-            case 's':
+            case 'd':
 		digest = optarg;
                 break;
 	    case 'r':
@@ -112,15 +114,18 @@ main(int argc, char **argv)
         exit(1);
     }
     filename = ccn_charbuf_create();
-    ccn_charbuf_putf(filename, "%s/.ccnx", dir);
-    res = stat(ccn_charbuf_as_string(filename), &statbuf);
-    if (res == -1) {
-        res = mkdir(ccn_charbuf_as_string(filename), 0700);
-        if (res != 0) {
-            perror(ccn_charbuf_as_string(filename));
-            exit(1);
+    if (!dirset) {
+        ccn_charbuf_putf(filename, "%s/.ccnx", dir);
+        res = stat(ccn_charbuf_as_string(filename), &statbuf);
+        if (res == -1) {
+            res = mkdir(ccn_charbuf_as_string(filename), 0700);
+            if (res != 0) {
+                perror(ccn_charbuf_as_string(filename));
+                exit(1);
+            }
         }
-    }
+    } else
+        ccn_charbuf_append_string(filename, dir);
     
     if (password == NULL)
         password = ccn_get_password();

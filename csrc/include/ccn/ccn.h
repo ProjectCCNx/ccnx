@@ -865,14 +865,14 @@ int ccn_chk_signing_params(struct ccn *h,
                            struct ccn_charbuf **pextopt);
 
 /* Create a default keystore path */
-int ccn_create_keystore_path(struct ccn *h, struct ccn_charbuf **path);
+int ccn_create_keystore_path(struct ccn *h, char *dir, struct ccn_charbuf **path);
 
 /* Get a default for the keystore password */
 const char *ccn_get_password(void);
 
 /* Get a key digest from an ASCII suffix */
-int ccn_get_key_digest_from_suffix(struct ccn *h, char *suffix, const char *password, 
-		struct ccn_charbuf *key_digest);
+int ccn_get_key_digest_from_suffix(struct ccn *h, char *dir, char *suffix, 
+                const char *password, struct ccn_charbuf *key_digest);
 
 /* low-level content-object signing */
 
