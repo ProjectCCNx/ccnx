@@ -1,5 +1,5 @@
 /**
- * @file ccn/IndexSorter.h
+ * @file IndexSorter.h
  * 
  * Part of the CCNx C Library.
  *

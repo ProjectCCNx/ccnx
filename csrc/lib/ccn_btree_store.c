@@ -51,6 +51,7 @@ struct bts_data {
  * If msgs is not NULL, diagnostics may be recorded there.
  *
  * @param path is the name of the directory, which must exist.
+ * @param msgs charbuf into which diagnostic messages will be recorded, if not NULL.
  * @returns the new ccn_btree_io handle, or sets errno and returns NULL.
  */
 struct ccn_btree_io *

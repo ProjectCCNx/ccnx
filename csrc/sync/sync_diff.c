@@ -1,5 +1,5 @@
 /**
- * @file csrc/sync_diff.c
+ * @file sync/sync_diff.c
  *
  * Part of CCNx Sync.
  *
