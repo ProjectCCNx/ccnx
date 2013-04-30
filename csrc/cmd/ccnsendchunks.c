@@ -95,7 +95,7 @@ static void
 usage(const char *progname)
 {
         fprintf(stderr,
-                "%s [-h] [-x freshness_seconds] [-b blocksize] [-d digest] [-p password] URI\n"
+                "%s [-h] [-x freshness_seconds] [-b blocksize] [-o keydir] [-d digest] [-p password] URI\n"
                 " Chops stdin into blocks (1K by default) and sends them "
                 "as consecutively numbered ContentObjects "
                 "under the given uri\n", progname);
@@ -125,7 +125,7 @@ main(int argc, char **argv)
     struct mydata mydata = { 0 };
     struct ccn_closure in_content = {.p=&incoming_content, .data=&mydata};
     struct ccn_closure in_interest = {.p=&incoming_interest, .data=&mydata};
-    while ((res = getopt(argc, argv, "hx:b:d:p:f:")) != -1) {
+    while ((res = getopt(argc, argv, "hx:b:d:p:o:")) != -1) {
         switch (res) {
             case 'x':
                 expire = atol(optarg);
@@ -141,7 +141,7 @@ main(int argc, char **argv)
             case 'p':
                 password = optarg;
                 break;
-            case 'f':
+            case 'o':
                 dir = optarg;
                 break;
             default:
