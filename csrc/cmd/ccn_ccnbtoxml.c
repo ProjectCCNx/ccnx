@@ -219,11 +219,14 @@ print_percent_escaped(const unsigned char *data, size_t size)
         /*
          * Leave unescaped only the generic URI unreserved characters.
          * See RFC 3986. Here we assume the compiler uses ASCII.
+         * Note: "--" is not legal in an XML comment, we'll percent-escape
+         * any after the first without an intervening non-hyphen.
          */
         if (('a' <= ch && ch <= 'z') ||
             ('A' <= ch && ch <= 'Z') ||
             ('0' <= ch && ch <= '9') ||
-            ch == '-' || ch == '.' || ch == '_' || ch == '~')
+            (ch == '-' && ! (i > 0 && data[i - 1] == '-'))||
+            ch == '.' || ch == '_' || ch == '~')
             printf("%c", ch);
         else
             printf("%%%02X", (unsigned)ch);
