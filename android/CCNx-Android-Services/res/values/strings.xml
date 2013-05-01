@@ -35,7 +35,7 @@
  *
  * CCNx Android Services\m
  *\m
- * Copyright (C) 2010-2012 Palo Alto Research Center, Inc.\n
+ * Copyright (C) 2010-2013 Palo Alto Research Center, Inc.\n
  *\n
  * This work is free software; you can redistribute it and/or modify it under\n
  * the terms of the GNU General Public License version 2 as published by the\n
