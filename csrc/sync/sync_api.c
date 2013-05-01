@@ -1295,6 +1295,7 @@ ccns_close(struct ccns_handle **sh,
                 free(diff_data->get_closure);
                 diff_data->get_closure = NULL;
                 sync_diff_stop(diff_data);
+                free(diff_data);
             }
             // stop any updating
             struct sync_update_data *ud = ch->update_data;
@@ -1303,6 +1304,7 @@ ccns_close(struct ccns_handle **sh,
                 free(ud->done_closure);
                 ud->done_closure = NULL;
                 sync_update_stop(ud);
+                free(ud);
             }
             // stop any fetching
             while (ch->fetch_data != NULL) {
@@ -1315,7 +1317,6 @@ ccns_close(struct ccns_handle **sh,
                 if (root->currentHash != NULL)
                     ccn_charbuf_append_charbuf(rhash, root->currentHash);
             }
-            
             // get rid of the root
             ch->root = NULL;
             SyncRemRoot(root);
@@ -1328,7 +1329,7 @@ ccns_close(struct ccns_handle **sh,
                     sm->sync_stop(ch->sync_plumbing, NULL); 
                 }
             }
-
+            free(ch->sync_plumbing);
             free(ch);
             
         }
