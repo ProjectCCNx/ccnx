@@ -492,7 +492,9 @@ r_io_send(struct ccnr_handle *h,
     if ((fdholder->flags & CCNR_FACE_REPODATA) != 0) {
         // need to truncate back to last known good object then exit.
         ccnr_msg(h, "Unrecoverable write error writing to repository. Content NOT stored.");
-        ftruncate(fdholder->filedesc, offset);
+        if (ftruncate(fdholder->filedesc, offset) < 0) {
+            ccnr_msg(h, "ftruncate: %s", strerror(errno));
+        }
         h->running = 0;
         return;
     }

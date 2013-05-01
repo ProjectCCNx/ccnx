@@ -127,6 +127,7 @@ seqw_incoming_interest(
 /**
  * Create a seqwriter for writing data to a versioned, segmented stream.
  *
+ * @param h is the ccn handle - must not be NULL.
  * @param name is a ccnb-encoded Name.  It will be provided with a version
  *        based on the current time unless it already ends in a version
  *        component.

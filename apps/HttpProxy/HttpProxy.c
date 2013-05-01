@@ -1443,7 +1443,6 @@ CheckHttpHeader(RequestBase rb) {
 	int pos = 0;
 	int line = 0;
 	int lineLen = 0;
-	int lineStart = 0;
 	int verPos = 0;
 	char lag = 0;
 	int reportBinary = 0;
@@ -1469,7 +1468,6 @@ CheckHttpHeader(RequestBase rb) {
             }
 			line++;
 			lineLen = 0;
-			lineStart = pos;
 		} else if (c == '\r') {
 			// skip over CR for now
 		} else if (c == ' ') {
@@ -2609,11 +2607,11 @@ AdjustForRanges(RequestBase rb) {
                     h->rangeList->rangeStop = rStop;
                     rLen = rStop - rStart + 1;
                 }
-                tpos =+ snprintf(temp+tpos, sizeof(temp) - tpos,
+                tpos += snprintf(temp+tpos, sizeof(temp) - tpos,
                                  "Content-Length: %jd\r\n",
                                  (intmax_t) rLen
                                  );
-                tpos =+ snprintf(temp+tpos, sizeof(temp) - tpos,
+                tpos += snprintf(temp+tpos, sizeof(temp) - tpos,
                                  "Content-Range: bytes %ju-%ju/%ju\r\n",
                                  (intmax_t) rStart,
                                  (intmax_t) rStop,

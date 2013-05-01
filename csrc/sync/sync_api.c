@@ -476,7 +476,7 @@ Cleanup:
  * Write a ccns_slice object to a repository.
  * @param h is the ccn_handle on which to write.
  * @param slice is a pointer to a ccns_slice object to be written.
- * @param name, if non-NULL, is a pointer to a charbuf which will be filled
+ * @param name if non-NULL, is a pointer to a charbuf which will be filled
  *  in with the name of the slice that was written.
  * @returns 0 on success, -1 otherwise.
  */

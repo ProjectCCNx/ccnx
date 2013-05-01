@@ -78,6 +78,77 @@ ccnd_msg(struct ccnd_handle *h, const char *fmt, ...)
 }
 
 /**
+ *  Construct a printable representation of an Interest's excludes,
+ *  and append it to the supplied ccn_charbuf.
+ *  @param      c   pointer to the charbuf to append to
+ *  @param      ccnb    pointer to ccnb-encoded Interest
+ *  @param      pi  pointer to the parsed interest data
+ *  @param      limit   number of components to print before ending with "..."
+ */
+void
+ccnd_append_excludes(struct ccn_charbuf *c,
+                     const unsigned char *ccnb,
+                     struct ccn_parsed_interest *pi,
+                     int limit)
+{
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
+    const unsigned char *bloom;
+    size_t bloom_size = 0;
+    const unsigned char *comp;
+    size_t comp_size;
+    int sep = 0;
+    int l = pi->offset[CCN_PI_E_Exclude] - pi->offset[CCN_PI_B_Exclude];
+    
+    if (l <= 0) return;
+    
+    d = ccn_buf_decoder_start(&decoder, ccnb + pi->offset[CCN_PI_B_Exclude], l);
+    if (!ccn_buf_match_dtag(d, CCN_DTAG_Exclude)) return;
+
+    ccn_buf_advance(d);
+    if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
+        ccn_buf_advance(d);
+        ccn_charbuf_append_string(c, "*");
+        ccn_buf_check_close(d);
+        sep = 1;
+    }
+    else if (ccn_buf_match_dtag(d, CCN_DTAG_Bloom)) {
+        ccn_buf_advance(d);
+        if (ccn_buf_match_blob(d, &bloom, &bloom_size))
+            ccn_buf_advance(d);
+        ccn_charbuf_append_string(c, "?");
+        ccn_buf_check_close(d);
+        sep = 1;
+    }
+    while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
+        if (sep) ccn_charbuf_append_string(c, ",");
+        if (0 == limit--) {
+            ccn_charbuf_append_string(c, " ..");
+            return;
+        }
+        ccn_buf_advance(d);
+        comp_size = 0;
+        if (ccn_buf_match_blob(d, &comp, &comp_size))
+            ccn_buf_advance(d);
+        ccn_uri_append_percentescaped(c, comp, comp_size);
+        ccn_buf_check_close(d);
+        if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
+            ccn_buf_advance(d);
+            ccn_charbuf_append_string(c, ",*");
+            ccn_buf_check_close(d);
+        }
+        else if (ccn_buf_match_dtag(d, CCN_DTAG_Bloom)) {
+            ccn_buf_advance(d);
+            if (ccn_buf_match_blob(d, &bloom, &bloom_size))
+                ccn_buf_advance(d);
+            ccn_charbuf_append_string(c, ",?");
+            ccn_buf_check_close(d);
+        }
+        sep = 1;
+    }
+}
+
+/**
  *  Produce a ccnd debug trace entry.
  *  Output is produced by calling ccnd_msg.
  *  @param      h  the ccnd handle
@@ -96,12 +167,15 @@ ccnd_debug_ccnb(struct ccnd_handle *h,
                 size_t ccnb_size)
 {
     struct ccn_charbuf *c;
-    struct ccn_parsed_interest pi;
+    struct ccn_parsed_interest pi = {
+        0
+    };
     const unsigned char *nonce = NULL;
     size_t nonce_size = 0;
     const unsigned char *pubkey = NULL;
     size_t pubkey_size = 0;
     size_t i;
+    size_t sim_hash = 0;
     struct interest_entry *ie = NULL;
     int default_lifetime = CCN_INTEREST_LIFETIME_SEC << 12;
     intmax_t lifetime = default_lifetime;
@@ -119,6 +193,7 @@ ccnd_debug_ccnb(struct ccnd_handle *h,
                   &nonce,
                   &nonce_size);
         ie = hashtb_lookup(h->interest_tab, ccnb, pi.offset[CCN_PI_B_Nonce]);
+        sim_hash = hashtb_hash(ccnb, pi.offset[CCN_PI_B_InterestLifetime]);
     }
     else {
         pi.min_suffix_comps = 0;
@@ -157,6 +232,13 @@ ccnd_debug_ccnb(struct ccnd_handle *h,
     }
     if (ie != NULL)
         ccn_charbuf_putf(c, ",i=%u", ie->serial);
+    if (sim_hash != 0)
+        ccn_charbuf_putf(c, ",sim=%08X", (unsigned)sim_hash);
+    if (pi.offset[CCN_PI_E_Exclude] - pi.offset[CCN_PI_B_Exclude] > 0) {
+        ccn_charbuf_putf(c, ",e=[");
+        ccnd_append_excludes(c, ccnb, &pi, h->debug & 16 ? -1 : 7);
+        ccn_charbuf_putf(c, "]");
+    }
     ccn_charbuf_putf(c, ")");
     if (nonce_size > 0) {
         const char *p = "";

@@ -326,6 +326,7 @@ ccn_create(void)
  *
  * This call is available beginning with CCN_API_VERSION 4004.
  *
+ * @param h is the ccn handle
  * @param defer is 0 to verify, 1 to defer, -1 to leave unchanged.
  * @returns previous value, or -1 in case of error.
  */
@@ -2435,7 +2436,7 @@ ccn_verify_content(struct ccn *h,
  * @param h is the ccn handle
  * @param keystore_path is the pathname of the keystore file
  * @param keystore_passphrase is the passphase needed to unlock the keystore
- * @param pubid_out, if not NULL, is loaded with the digest of the public key
+ * @param pubid_out if not NULL, is loaded with the digest of the public key
  * @result is 0 for success, negative for error.
  */
 int
@@ -2991,7 +2992,7 @@ ccn_guest_prefix(struct ccn *h, struct ccn_charbuf *result, int ms)
     const unsigned char *p = NULL;
     unsigned char me[] = "\xC1.M.K\x00XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
     size_t p_size;
-    int res;
+    int res = -1;
     
     if (h->ccndid == NULL) {
         ccn_initiate_ccndid_fetch(h);

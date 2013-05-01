@@ -98,6 +98,7 @@ ccnr_msg(struct ccnr_handle *h, const char *fmt, ...)
  *  Caller should not supply newlines.
  *  @param      h  the ccnr handle
  *  @param      fmt  printf-like format string
+ *  @param      ap varargs argument pointer
  */
 void
 ccnr_vmsg(struct ccnr_handle *h, const char *fmt, va_list ap)

@@ -88,7 +88,7 @@ WARN_LOGFILE           =
 INPUT                  = NOTES include/ccn lib ccnd libexec cmd ccnr sync
 INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = *.c *.h NOTES
-RECURSIVE              = ON
+RECURSIVE              = YES
 
 EXCLUDE                = 
 EXCLUDE_SYMLINKS       = YES

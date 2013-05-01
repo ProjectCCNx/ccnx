@@ -34,6 +34,12 @@ struct hashtb_param {
 }; 
 
 /*
+ * hashtb_hash: Calculate a hash for the given key.
+ */
+size_t
+hashtb_hash(const unsigned char *key, size_t key_size);
+
+/*
  * hashtb_create: Create a new hash table.
  * The param may be NULL to use the defaults, otherwise
  * a copy of *param is made.

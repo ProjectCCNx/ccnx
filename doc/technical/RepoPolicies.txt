@@ -3,7 +3,7 @@ CCNx Repository Policy Handling
 
 A Policy specifies the namespaces (name prefixes) for which the Repository accepts and holds content. The initial Policy is specified when the Repository is created; after that, the Policy may be updated using the link:RepoProtocol.html[CCNx Repository Protocol].
 
-On initial startup, when there is no existing Policy, a default Policy is created using the value of the CCNR_GLOBAL_PREFIX configuration variable as described in the link:../manpages/ccnr.html[CCNR(1)] man page. If CCNR_GLOBAL_PREFIX is not specified, the default is "ccnx:/parc.com/csl/ccn/Repos". The default namespace served at initial startup is "/".
+On initial startup, when there is no existing Policy, a default Policy is created using the value of the CCNR_GLOBAL_PREFIX configuration variable as described in the link:../manpages/ccnr.1.html[CCNR(1)] man page. If CCNR_GLOBAL_PREFIX is not specified, the default is "ccnx:/parc.com/csl/ccn/Repos". The default namespace served at initial startup is "/".
 
 If used, CCNR_GLOBAL_PREFIX must be set to exactly one pathname: the prefix under which `data/policy.xml` is stored. This does not have any relationship to the namespace that the Repository serves, except that it always listens for a Policy file in that namespace. The Repository loads the Policy during startup, and then registers the prefixes (along with the global prefix) with ccnd. From then on, ccnd only forwards Interests for names in these namespaces to the Repository.
 

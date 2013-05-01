@@ -892,10 +892,8 @@ storeHandler(struct ccn_closure *selfp,
                 if (res >= 0) {
                     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
                     const void *cp = NULL;
-                    size_t cs = 0;
                     sp.type = CCN_CONTENT_DATA;
                     cp = (const void *) cb->buf;
-                    cs = cb->length;
                     sp.template_ccnb = sfd->template;
                     
                     if (seg+1 == sfd->nSegs) sp.sp_flags |= CCN_SP_FINAL_BLOCK;

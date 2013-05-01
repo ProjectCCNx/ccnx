@@ -175,6 +175,7 @@ Cleanup:
 
 /**
  * @brief Process configuration file
+ * @param ccndc a pointer to the structure holding internal ccndc data, from ccndc_initialize_data()
  * @param filename
  *
  * Processing configuration file in two rounds. First round performs a dry run
