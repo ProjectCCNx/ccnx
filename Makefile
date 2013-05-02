@@ -127,6 +127,8 @@ pkgbin: default
 	cp -r doc/technical ccnx-pkg-$(VERSION)/doc
 	cp -r doc/android ccnx-pkg-$(VERSION)/doc
 	cp doc/index.html ccnx-pkg-$(VERSION)/doc
+	cp LICENSE ccnx-pkg-$(VERSION)
+	cp NEWS ccnx-pkg-$(VERSION)
 	mv ccnx-pkg-$(VERSION)/doc/manpages/*.1 ccnx-pkg-$(VERSION)/man
 	$(MAKE) install INSTALL_BASE= DESTDIR=`pwd`/ccnx-pkg-$(VERSION)
 	tar cf ccnx-pkg-$(VERSION).tar ccnx-pkg-$(VERSION)
