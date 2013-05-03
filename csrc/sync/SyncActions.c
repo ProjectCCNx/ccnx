@@ -1758,6 +1758,7 @@ newNodeCommon(struct SyncRootStruct *root,
             SyncNodeDecRC(nc);
             return NULL;
         }
+        SyncNodeIncRC(nc);
         ce->ncL = nc;
         if (ce->state & SyncHashState_remote)
             setCovered(ce);
@@ -1782,7 +1783,6 @@ newNodeCommon(struct SyncRootStruct *root,
                          (int) nc->cb->length, (int) nodeSplitTrigger);
         }
     }
-    SyncNodeIncRC(nc);
     SyncAccumNode(nodes, nc);
     return ce;
 }
@@ -3096,7 +3096,6 @@ MakeNodeFromNames(struct SyncUpdateData *ud, int split) {
     if (ce != NULL && ce->ncL != NULL) {
         // node already exists
         struct SyncNodeComposite *nc = ce->ncL;
-        SyncNodeIncRC(nc);
         SyncAccumNode(ud->nodes, nc);
         root->priv->stats->nodesShared++;
         if (debug >= CCNL_FINE) {
