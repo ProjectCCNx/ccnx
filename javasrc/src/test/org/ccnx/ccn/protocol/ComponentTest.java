@@ -99,44 +99,9 @@ public class ComponentTest {
     }
 
     @Test
-    public void testComponentByteArray() {
-        fail("Not yet implemented");
-    }
-
-    @Test
-    public void testComponentString() {
-        fail("Not yet implemented");
-    }
-
-    @Test
-    public void testGetComponent() {
-        fail("Not yet implemented");
-    }
-
-    @Test
-    public void testParseNative() {
-        fail("Not yet implemented");
-    }
-
-    @Test
     public void testParseURI() throws DotDot, URISyntaxException {
         byte[] bytes = Component.parseURI(COMPONENT_HEXIFIED);
         Assert.assertTrue(Arrays.equals(COMPONENT_NAME_BYTES,  bytes));
-    }
-
-    @Test
-    public void testHexPrint() {
-        fail("Not yet implemented");
-    }
-
-    @Test
-    public void testPrintNative() {
-        fail("Not yet implemented");
-    }
-
-    @Test
-    public void testPrintURIByteArray() {
-        fail("Not yet implemented");
     }
 
     @Test
@@ -178,11 +143,6 @@ public class ComponentTest {
         byte[] bytes = { (byte) '\375' };
         String actual = Component.printURI(bytes, 0, 0);
         Assert.assertEquals("=FD", actual);
-    }
-
-    @Test
-    public void testEqualsObject() {
-        fail("Not yet implemented");
     }
 
     @Test
