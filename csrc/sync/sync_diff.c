@@ -1124,11 +1124,14 @@ node_from_names(struct sync_update_data *ud, int split) {
         for (i = 0; i < split; i++) {
             struct ccn_charbuf *name = na->ents[i].name;
             SyncNodeAddName(nc, name);
-            ccn_charbuf_destroy(&name);
-            na->ents[i].name = NULL;
         }
         SyncEndComposite(nc);
         newNodeCommon(root, ud->nodes, nc);
+    }
+    // names 0..split - 1 must be freed as they are either represented by
+    // an existing node or have been copied to a new node
+    for (i = 0; i < split; i++) {
+        ccn_charbuf_destroy(&na->ents[i].name);
     }
     // shift remaining elements down in the name accum
     ud->nameLenAccum = 0;
@@ -1603,9 +1606,8 @@ sync_diff_note_node(struct sync_diff_data *sdd,
 int
 sync_diff_stop(struct sync_diff_data *sdd) {
     struct SyncRootStruct *root = sdd->root;
-    if (sdd == NULL
-        || sdd->state == sync_diff_state_done
-        || sdd->state == sync_diff_state_init) return 0;
+    if (sdd == NULL)
+        return 0;
     struct ccn_scheduled_event *ev = sdd->ev;
     if (ev != NULL && ev->evdata == sdd) {
         // no more callbacks
@@ -1653,26 +1655,23 @@ sync_update_start(struct sync_update_data *ud, struct SyncNameAccum *acc) {
         default:
             return 0;
             // don't restart a busy updater
+            return -1;
     }
 }
 
 int
 sync_update_stop(struct sync_update_data *ud) {
     char *here = "Sync.sync_update_stop";
-    struct SyncRootStruct *root = ud->root;
+    struct SyncRootStruct *root;
+    if (ud == NULL)
+        return 0;
+    root = ud->root;
     int debug = root->base->debug;
-    switch (ud->state) {
-        case sync_update_state_init:
-        case sync_update_state_done:
-            return 0;
-        default: {
-            if (debug >= CCNL_FINE) {
-                SyncNoteSimple(root, here, "stopping");
-            }
-            resetUpdateData(ud);
-            ud->state = sync_update_state_done;
-            return 1;
-        }
+    if (debug >= CCNL_FINE) {
+        SyncNoteSimple(root, here, "stopping");
     }
+    resetUpdateData(ud);
+    ud->state = sync_update_state_done;
+    return 1;
 }
 
