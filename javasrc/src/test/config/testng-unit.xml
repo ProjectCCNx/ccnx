@@ -1,0 +1,14 @@
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+<!-- You can review the DTD at: http://testng.org/testng-1.0.dtd.php -->
+<suite name="JUnits1" verbose="10">
+    <test name="JU1" junit="true">
+        <classes>
+            <class name="org.ccnx.ccn.protocol.CCNTimeTest" />
+        </classes>
+    <!-- 
+        <packages>
+            <package name="org.ccnx.ccn.*" />
+        </packages>
+    -->
+    </test>
+</suite>
