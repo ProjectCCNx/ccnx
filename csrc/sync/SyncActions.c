@@ -629,19 +629,16 @@ extractNode(struct SyncRootStruct *root, struct ccn_upcall_info *info) {
 static int
 noteHash(struct SyncRootStruct *root, struct SyncHashCacheEntry *ce,
                int add, int remote) {
-    char *here = "Sync.noteRemoteHash";
+    char *here = remote ? "Sync.noteRemoteHash" : "Sync.noteLocalHash";
     int debug = root->base->debug;
     struct ccn_charbuf *hash = NULL;
     int hl = 0;
-    struct SyncHashInfoList *head = root->priv->remoteSeen;
-    struct SyncHashInfoList *each = head;
+    struct SyncHashInfoList *head = NULL;
+    struct SyncHashInfoList *each = NULL;
     struct SyncHashInfoList *lag = NULL;
     int64_t mark = SyncCurrentTime();
     int res = 0;
-    if (remote == 0) {
-        head = root->priv->localMade;
-        here = "Sync.noteLocalHash";
-    }
+
     if (ce != NULL) {
         ce->lastUsed = mark;
         if (ce->state & SyncHashState_local)
@@ -649,7 +646,9 @@ noteHash(struct SyncRootStruct *root, struct SyncHashCacheEntry *ce,
         hash = ce->hash;
         hl = hash->length;
     }
-    while (each != NULL) {
+    // pick the appropriate (remote or local) list to work with
+    head = remote ? root->priv->remoteSeen : root->priv->localMade;
+    for (each = head; each != NULL; each = each->next) {
         if (ce == each->ce) {
             if (lag != NULL) {
                 // move it to the front
@@ -661,7 +660,6 @@ noteHash(struct SyncRootStruct *root, struct SyncHashCacheEntry *ce,
             break;
         }
         lag = each;
-        each = each->next;
     }
     if (each == NULL && add) {
         // need a new entry
@@ -675,8 +673,10 @@ noteHash(struct SyncRootStruct *root, struct SyncHashCacheEntry *ce,
         each->lastSeen = mark;
         each->lastReplied = 0;
     }
-    if (remote == 0) root->priv->localMade = head;
-    else root->priv->remoteSeen = head;
+    if (remote)
+        root->priv->remoteSeen = head;
+    else
+        root->priv->localMade = head;
 
     if (debug >= CCNL_FINE) {
         char *hex = "empty";
