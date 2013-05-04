@@ -264,7 +264,8 @@ top-level:
 
 will produce a library, javadocs, and sources in separate jar files
 under javasrc/target.  This is provided as a convenience for users of
-the Maven ecosystem of tools.
+the Maven ecosystem of tools.  The Maven build does not support the
+full suite of tests yet.
 
 __TESTING__
 
