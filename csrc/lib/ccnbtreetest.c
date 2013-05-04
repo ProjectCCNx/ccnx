@@ -5,7 +5,7 @@
  *
  */
 /*
- * Copyright (C) 2011-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -37,18 +37,17 @@
 #include <ccn/hashtb.h>
 #include <ccn/uri.h>
 
-#define FAILIF(cond) do {} while ((cond) && fatal(__func__, __LINE__))
+#define FAILIF(cond) do if (cond) fatal(__func__, __LINE__); while (0)
 #define CHKSYS(res) FAILIF((res) == -1)
 #define CHKPTR(p)   FAILIF((p) == NULL)
 
-static int
+static void
 fatal(const char *fn, int lineno)
 {
     char buf[80] = {0};
     snprintf(buf, sizeof(buf)-1, "OOPS - function %s, line %d", fn, lineno);
     perror(buf);
     exit(1);
-    return(0);
 }
 
 /**
