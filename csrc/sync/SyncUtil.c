@@ -1056,9 +1056,12 @@ SyncFreeNodeAccum(struct SyncNodeAccum *na) {
     int i;
     if (na != NULL) {
         if (na->ents != NULL) {
-            for (i = 0; i < na->len; i++)
-                if (na->ents[i]) SyncNodeDecRC(na->ents[i]);
-            na->ents[i] = NULL;
+            for (i = 0; i < na->len; i++) {
+                if (na->ents[i]) {
+                    SyncNodeDecRC(na->ents[i]);
+                    na->ents[i] = NULL;
+                }
+            }
             free(na->ents);
         }
         free(na);
