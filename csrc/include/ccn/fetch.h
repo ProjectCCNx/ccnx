@@ -98,6 +98,18 @@ struct ccn_fetch_stream *
 ccn_fetch_next(struct ccn_fetch *f, struct ccn_fetch_stream *fs);
 
 /**
+ * Sets caller's context for the stream.
+ */
+void 
+ccn_fetch_set_context(struct ccn_fetch_stream *fs, void *context);
+
+/**
+ * @returns caller's context, as previously set for the stream.
+ */
+void *
+ccn_fetch_get_context(struct ccn_fetch_stream *fs);
+
+/**
  * @returns the underlying ccn connection.
  */
 struct ccn *
