@@ -263,6 +263,9 @@ SyncFreeBase(struct SyncBaseStruct **bp) {
                     free(nal);
                 }
             }
+            if (priv->saveMethods != NULL) {
+                free(priv->saveMethods);
+            }
             ccn_charbuf_destroy(&priv->sliceCmdPrefix);
             ccn_charbuf_destroy(&priv->localHostPrefix);
             free(priv);

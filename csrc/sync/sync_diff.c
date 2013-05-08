@@ -407,6 +407,7 @@ start_node_fetch(struct sync_diff_data *sdd,
                 nc = SyncNodeFromParsedObject(root, content->buf, pco);
                 if (nc != NULL) {
                     // found it!
+                    SyncNodeIncRC(nc);
                     ce->ncL = nc;
                     ce->state |= SyncHashState_local;
                     if (ce->state & SyncHashState_remote)
@@ -984,6 +985,7 @@ newNodeCommon(struct SyncRootStruct *root,
             SyncNodeDecRC(nc);
             return NULL;
         }
+        SyncNodeIncRC(nc);
         ce->ncL = nc;
         if (ce->state & SyncHashState_remote)
             setCovered(ce);
@@ -1008,7 +1010,6 @@ newNodeCommon(struct SyncRootStruct *root,
                          (int) nc->cb->length, (int) nodeSplitTrigger);
         }
     }
-    SyncNodeIncRC(nc);
     SyncAccumNode(nodes, nc);
     return ce;
 }
@@ -1106,7 +1107,6 @@ node_from_names(struct sync_update_data *ud, int split) {
     if (ce != NULL && ce->ncL != NULL) {
         // node already exists
         struct SyncNodeComposite *nc = ce->ncL;
-        SyncNodeIncRC(nc);
         SyncAccumNode(ud->nodes, nc);
         if (debug >= CCNL_FINE) {
             char *hex = SyncHexStr(hp, hs);
