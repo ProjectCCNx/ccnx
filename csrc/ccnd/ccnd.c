@@ -3422,13 +3422,13 @@ ie_next_usec(struct ccnd_handle *h, struct interest_entry *ie,
     ccn_wrappedtime mn;
     int ans;
     int debug = (h->debug & 32) != 0;
-    const int horizon = 3 * WTHZ; /* complain if we get behind by too much */
+    const int horizon = 6 * WTHZ; /* complain if we get behind by too much */
     
     base = h->wtnow - horizon;
     mn = 600 * WTHZ + horizon;
     for (p = ie->pfl; p != NULL; p = p->next) {
         delta = p->expiry - base;
-        if (delta >= 0x80000000)
+        if (delta >= 0x80000000 && (h->debug & 2) != 0)
             debug = 1;
         if (debug) {
             static const char fmt_ie_next_usec[] = 
