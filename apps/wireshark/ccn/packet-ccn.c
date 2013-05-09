@@ -229,11 +229,11 @@ proto_reg_handoff_ccn(void)
         initialized = TRUE;
     }
     if (current_ccn_port != -1) {
-        dissector_delete("udp.port", current_ccn_port, ccn_handle);
-        dissector_delete("tcp.port", current_ccn_port, ccn_handle);
+        dissector_delete_uint("udp.port", current_ccn_port, ccn_handle);
+        dissector_delete_uint("tcp.port", current_ccn_port, ccn_handle);
     }
-    dissector_add("udp.port", global_ccn_port, ccn_handle);
-    dissector_add("tcp.port", global_ccn_port, ccn_handle);
+    dissector_add_uint("udp.port", global_ccn_port, ccn_handle);
+    dissector_add_uint("tcp.port", global_ccn_port, ccn_handle);
     current_ccn_port = global_ccn_port;
 }
 
