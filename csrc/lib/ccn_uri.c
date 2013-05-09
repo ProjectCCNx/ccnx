@@ -117,7 +117,7 @@ ccn_uri_append_mixedescaped(struct ccn_charbuf *c,
         else if (!is_uri_reserved(ch))
             ccn_charbuf_append(c, &ch, 1);
         else {  /* reserved character -- check for following character */
-            if (i + 1 == size || !is_uri_reserved(data[i + 1]))
+            if (ch > 0 && (i + 1 == size || !is_uri_reserved(data[i + 1])))
                 ccn_charbuf_putf(c, "%%%02X", (unsigned)ch);
             else {
                 hexmode = 1;
