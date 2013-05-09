@@ -687,7 +687,7 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
                               &blob, &blob_size);
     titem = proto_tree_add_text(tree, tvb,
                                 pco->offset[CCN_PCO_B_Content], l,
-                                "Content: %d bytes", blob_size);
+                                "Content: %zd bytes", blob_size);
     if (blob_size > 0) {
         content_tree = proto_item_add_subtree(titem, ett_content);
         titem = proto_tree_add_item(content_tree, hf_ccn_contentdata, tvb, blob - ccnb, blob_size, ENC_NA);
