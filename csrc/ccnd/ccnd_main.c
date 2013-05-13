@@ -3,7 +3,7 @@
  *
  * A CCNx program.
  *
- * Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2011, 2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -22,6 +22,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <openssl/evp.h>
+#include <openssl/err.h>
 
 #include "ccnd_private.h"
 
@@ -48,5 +50,7 @@ main(int argc, char **argv)
     ccnd_run(h);
     ccnd_msg(h, "exiting.");
     ccnd_destroy(&h);
+    ERR_remove_state(0);
+    EVP_cleanup();
     exit(0);
 }

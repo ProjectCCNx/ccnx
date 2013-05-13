@@ -157,6 +157,7 @@ ccndc_destroy(struct ccndc_data *self,
 
 /**
  * brief Add (and if exists recreated) FIB entry based on guess from SRV records for a specified domain
+ * @param self          data pointer to "this"
  * @param domain        domain name
  * @param domain_size   size of the "domain" variable
  *

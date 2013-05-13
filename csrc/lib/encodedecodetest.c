@@ -224,6 +224,7 @@ expected_res(int res, char code)
 }
 
 static char all_chars_percent_encoded[256 * 3 + 1]; /* Computed */
+static char all_chars_mixed_encoded[256 * 2 + 2]; /* Computed */
 
 static void init_all_chars_percent_encoded(void) {
     struct ccn_charbuf *c;
@@ -235,6 +236,20 @@ static void init_all_chars_percent_encoded(void) {
     if (c->length >= sizeof(all_chars_percent_encoded))
         c->length = sizeof(all_chars_percent_encoded) - 1;
     memcpy(all_chars_percent_encoded, c->buf, c->length);
+    ccn_charbuf_destroy(&c);
+}
+
+static void init_all_chars_mixed_encoded(void) {
+    struct ccn_charbuf *c;
+    int i;
+    c = ccn_charbuf_create();
+    ccn_charbuf_append(c, "=", 1);
+    for (i = 0; i < 256; i+=2) {
+        ccn_charbuf_putf(c, "%02x%02X", i, i+1);
+    }
+    if (c->length >= sizeof(all_chars_mixed_encoded))
+        c->length = sizeof(all_chars_mixed_encoded) - 1;
+    memcpy(all_chars_mixed_encoded, c->buf, c->length);
     ccn_charbuf_destroy(&c);
 }
 
@@ -406,6 +421,7 @@ main(int argc, char *argv[])
     /* Test the uri encode / decode routines */
 
     init_all_chars_percent_encoded();
+    init_all_chars_mixed_encoded();
     const char *uri_tests[] = {
         "_+4", "ccnx:/this/is/a/test",       "",     "ccnx:/this/is/a/test",
         ".+4", "../test2?x=2",              "?x=2", "ccnx:/this/is/a/test2",
@@ -443,7 +459,8 @@ main(int argc, char *argv[])
                 result = 1;
             }
             uri_out->length = 0;
-            res = ccn_uri_append(uri_out, buffer->buf, buffer->length, 1);
+            res = ccn_uri_append(uri_out, buffer->buf, buffer->length,
+                                 CCN_URI_PERCENTESCAPE | CCN_URI_INCLUDESCHEME);
             if (!expected_res(res, u[0][2])) {
                 printf("Failed: ccn_uri_append wrong res %d\n", (int)res);
                 result = 1;
@@ -483,7 +500,8 @@ main(int argc, char *argv[])
         res |= ccn_name_append_numeric(buffer, CCN_MARKER_NONE, 0x0102030405060708ULL);
         res |= ccn_name_append_numeric(buffer, CCN_MARKER_VERSION, 0x101010101FFFULL);
         res |= ccn_name_append_numeric(buffer, CCN_MARKER_SEQNUM, 129);
-        res |= ccn_uri_append(uri_out, buffer->buf, buffer->length, 1);
+        res |= ccn_uri_append(uri_out, buffer->buf, buffer->length,
+                              CCN_URI_PERCENTESCAPE | CCN_URI_INCLUDESCHEME);
         if (res < 0) {
             printf("Failed: name marker tests had negative res\n");
             result = 1;
@@ -505,7 +523,7 @@ main(int argc, char *argv[])
             result = 1;
         }
         uri_out->length = 0;
-        ccn_uri_append(uri_out, buffer->buf, buffer->length, 1);
+        ccn_uri_append(uri_out, buffer->buf, buffer->length, CCN_URI_INCLUDESCHEME);
         if (0 != strcmp(ccn_charbuf_as_string(uri_out), expected_chopped_uri)) {
             printf("Failed: ccn_name_chop botch\n");
             printf("Expected: %s\n", expected_chopped_uri);
@@ -518,7 +536,7 @@ main(int argc, char *argv[])
             result = 1;
         }
         uri_out->length = 0;
-        ccn_uri_append(uri_out, buffer->buf, buffer->length, 1);
+        ccn_uri_append(uri_out, buffer->buf, buffer->length, CCN_URI_INCLUDESCHEME);
         if (0 != strcmp(ccn_charbuf_as_string(uri_out), expected_bumped_uri)) {
             printf("Failed: ccn_name_next_sibling botch\n");
             printf("Expected: %s\n", expected_bumped_uri);
@@ -527,7 +545,8 @@ main(int argc, char *argv[])
         }
         ccn_name_next_sibling(buffer);
         uri_out->length = 0;
-        ccn_uri_append(uri_out, buffer->buf, buffer->length, 1);
+        ccn_uri_append(uri_out, buffer->buf, buffer->length, 
+                       CCN_URI_PERCENTESCAPE | CCN_URI_INCLUDESCHEME);
         if (0 != strcmp(ccn_charbuf_as_string(uri_out), expected_bumped2_uri)) {
             printf("Failed: ccn_name_next_sibling botch\n");
             printf("Expected: %s\n", expected_bumped2_uri);
@@ -536,6 +555,67 @@ main(int argc, char *argv[])
         }
         ccn_charbuf_destroy(&buffer);
         ccn_charbuf_destroy(&uri_out);
+    } while (0);
+
+    do {
+        const char *expected_uri_mixed = "ccnx:/example.com/.../%01/%FE/=0102030405060708/=FD101010101FFF/=0081";
+        
+        printf("Unit test case %d\n", i++);
+        buffer = ccn_charbuf_create();
+        uri_out = ccn_charbuf_create();
+        res = ccn_name_init(buffer);
+        res |= ccn_name_append_str(buffer, "example.com");
+        res |= ccn_name_append_numeric(buffer, CCN_MARKER_NONE, 0);
+        res |= ccn_name_append_numeric(buffer, CCN_MARKER_NONE, 1);
+        res |= ccn_name_append_numeric(buffer, 0xFE, 0);
+        res |= ccn_name_append_numeric(buffer, CCN_MARKER_NONE, 0x0102030405060708ULL);
+        res |= ccn_name_append_numeric(buffer, CCN_MARKER_VERSION, 0x101010101FFFULL);
+        res |= ccn_name_append_numeric(buffer, CCN_MARKER_SEQNUM, 129);
+        res |= ccn_uri_append(uri_out, buffer->buf, buffer->length,
+                              CCN_URI_MIXEDESCAPE | CCN_URI_INCLUDESCHEME);
+        if (res < 0) {
+            printf("Failed: name marker tests had negative res\n");
+            result = 1;
+        }
+        if (0 != strcmp(ccn_charbuf_as_string(uri_out), expected_uri_mixed)) {
+            printf("Failed: name marker tests produced wrong output\n");
+            printf("Expected: %s\n", expected_uri_mixed);
+            printf("  Actual: %s\n", (const char *)uri_out->buf);
+            result = 1;
+        }
+        ccn_charbuf_destroy(&buffer);
+        ccn_charbuf_destroy(&uri_out);
+    } while (0);
+
+    printf("Timestamp tests\n");
+    do {
+        intmax_t sec;
+        int nsec;
+        int r;
+        int f;
+        struct ccn_charbuf *a[2];
+        int t0 = 1363899678;
+        
+        printf("Unit test case %d\n", i++);
+        /* Run many increasing inputs and make sure the output is in order. */
+        a[0] = ccn_charbuf_create();
+        a[1] = ccn_charbuf_create();
+        ccnb_append_timestamp_blob(a[1], CCN_MARKER_NONE, t0 - 1, 0);
+        for (f = 0, nsec = 0, sec = t0; sec < t0 + 20; nsec += 122099) {
+            while (nsec >= 1000000000) {
+                sec++;
+                nsec -= 1000000000;
+            }
+            ccn_charbuf_reset(a[f]);
+            r = ccnb_append_timestamp_blob(a[f], CCN_MARKER_NONE, sec, nsec);
+            if (r != 0 || a[f]->length != 7 || memcmp(a[1-f]->buf, a[f]->buf, 6) > 0) {
+                printf("Failed ccnb_append_timestamp_blob(...,%jd,%d)\n", sec, nsec);
+                result = 1;
+            }
+            f = 1 - f;
+        }
+        ccn_charbuf_destroy(&a[0]);
+        ccn_charbuf_destroy(&a[1]);
     } while (0);
     printf("Message digest tests\n");
     do {

@@ -257,6 +257,16 @@ The top-level build will compile both C and Java code, but
 not Android code.  The above is sufficient to run programs
 locally out of `bin/` and build apps referencing `lib/` and `include/`.
 
+For users of Maven, it is now possible to build the javasrc.  From the
+top-level:
+
+    mvn clean package
+
+will produce a library, javadocs, and sources in separate jar files
+under javasrc/target.  This is provided as a convenience for users of
+the Maven ecosystem of tools.  The Maven build does not support the
+full suite of tests yet.
+
 __TESTING__
 
 To run the complete test suite (both C and Java):

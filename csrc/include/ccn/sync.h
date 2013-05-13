@@ -1,5 +1,5 @@
 /**
- * @file sync/sync.h
+ * @file sync.h
  * 
  * Sync library interface.
  * Defines a library interface to the Sync protocol facilities implemented
@@ -62,7 +62,7 @@ struct ccns_slice *ccns_slice_create(void);
 
 /**
  * Deallocate a ccns_slice structure
- * @param a pointer to a pointer to a ccns_slice structure.  The pointer will
+ * @param sp is a pointer to a pointer to a ccns_slice structure.  The pointer will
  *  be set to NULL on return.
  */
 void ccns_slice_destroy(struct ccns_slice **sp);
@@ -79,7 +79,7 @@ int ccns_slice_set_topo_prefix(struct ccns_slice *slice, struct ccn_charbuf *t,
 
 /**
  * Add a (filter) clause to a ccns_slice structure
- * @param slice is the slice to be modified
+ * @param s is the slice to be modified
  * @param f is a filter clause ccnb-encoded as a Name
  * @returns 0 on success, -1 otherwise.
  */
@@ -109,7 +109,7 @@ int ccns_read_slice(struct ccn *h, struct ccn_charbuf *name,
  * Write a ccns_slice object to a repository.
  * @param h is the ccn_handle on which to write.
  * @param slice is a pointer to a ccns_slice object to be written.
- * @param name, if non-NULL, is a pointer to a charbuf which will be filled
+ * @param name if non-NULL, is a pointer to a charbuf which will be filled
  *  in with the name of the slice that was written.
  * @returns 0 on success, -1 otherwise.
  */

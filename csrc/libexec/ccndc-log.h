@@ -42,7 +42,7 @@ ccndc_warn(int lineno, const char *format, ...);
  * @param format printf-style format line
  */
 void
-ccndc_fatal(int line, const char *format, ...);
+ccndc_fatal(int lineno, const char *format, ...);
 
 extern int verbose;
 #endif // CCNDC_LOG_H

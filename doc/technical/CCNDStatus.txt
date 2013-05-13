@@ -55,7 +55,7 @@ The *'<interests>'* element provides statistics related to Interest messages, an
 
 * *'<names>'* Number of Interest names
 * *'<pending>'* Number of pending Interests
-* *'<propogating>'* Number of propogating Interests
+* *'<propagating>'* Number of propagating Interests
 * *'<noted>'* Number of noted Interests
 * *'<accepted>'* Number of accepted Interests
 * *'<dropped>'* Number of dropped Interests

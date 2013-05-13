@@ -6,7 +6,7 @@
  */
 
 /*
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011, 2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -151,7 +151,7 @@ r_match_match_interests(struct ccnr_handle *h, struct content_entry *content,
     int new_matches;
     struct nameprefix_entry *npe = NULL;
     int ci = 0;
-    int cm = 0;
+//    int cm = 0;
     struct ccn_charbuf *name = NULL;
     struct ccn_indexbuf *namecomps = NULL;
     unsigned c0 = 0;
@@ -182,7 +182,7 @@ r_match_match_interests(struct ccnr_handle *h, struct content_entry *content,
 //        if (from_face != NULL && (new_matches != 0 || ci + 1 == cm))
 //            note_content_from(h, npe, from_face->filedesc, ci);
         if (new_matches != 0) {
-            cm = ci; /* update stats for this prefix and one shorter */
+//            cm = ci; /* update stats for this prefix and one shorter */
             n_matched += new_matches;
         }
     }

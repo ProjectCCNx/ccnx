@@ -31,6 +31,7 @@ ALLTESTS = \
   test_answered_interest_suppression \
   test_key_fetch \
   test_late \
+  test_local_tcp \
   test_long_consumer \
   test_long_consumer2 \
   test_long_producer \

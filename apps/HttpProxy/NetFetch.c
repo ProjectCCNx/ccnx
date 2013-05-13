@@ -3,7 +3,7 @@
  * 
  * A CCNx program.
  *
- * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2011, 2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -966,7 +966,6 @@ init_internal_keystore(MainData md) {
     struct stat statbuf;
     char *dir = NULL;
     int res = -1;
-    size_t save;
     char *keystore_path = NULL;
     
     temp = ccn_charbuf_create();
@@ -984,7 +983,6 @@ init_internal_keystore(MainData md) {
             goto Finish;
         }
     }
-    save = temp->length;
 	char *kPrefix = "ccnk";
     ccn_charbuf_putf(temp, ".%s_keystore", kPrefix);
     keystore_path = Concat(ccn_charbuf_as_string(temp), "");

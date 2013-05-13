@@ -6,7 +6,7 @@
  */
 
 /*
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011, 2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -102,7 +102,6 @@ r_store_fatal(struct ccnr_handle *h, const char *fn, int lineno)
                  fn, lineno, errno, strerror(errno));
     }
     abort();
-    return(0);
 }
 
 PUBLIC ccnr_accession

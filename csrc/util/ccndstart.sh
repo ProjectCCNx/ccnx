@@ -38,6 +38,7 @@ export CCN_LOCAL_PORT CCND_CAP CCND_DEBUG CCND_AUTOREG CCND_LISTEN_ON CCND_MTU
 # The following are rarely used, but include them for completeness
 export CCN_LOCAL_SOCKNAME CCND_DATA_PAUSE_MICROSEC CCND_KEYSTORE_DIRECTORY
 export CCND_DEFAULT_TIME_TO_STALE CCND_MAX_TIME_TO_STALE CCND_PREFIX
+export CCND_MAX_RTE_MICROSEC
 
 # If a ccnd is already running, try to shut it down cleanly.
 ccndsmoketest kill 2>/dev/null

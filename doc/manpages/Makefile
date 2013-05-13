@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2010, 2012 Palo Alto Research Center, Inc.
+# Copyright (C) 2010, 2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -54,7 +54,7 @@ PAGE_NAMES =        		\
 	ccntestloop 		\
 
 
-PROJECT_NUMBER = 0.7.1
+PROJECT_NUMBER = 0.7.2rc1
 SRC_TXT     = $(PAGE_NAMES:=.1.txt)
 DERIVED_HTML= $(PAGE_NAMES:=.1.html)
 DERIVED_PDF = $(PAGE_NAMES:=.1.pdf)

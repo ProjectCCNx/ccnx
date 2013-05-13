@@ -3,7 +3,7 @@
  * 
  * A CCNx program.
  *
- * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2011, 2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -1443,7 +1443,6 @@ CheckHttpHeader(RequestBase rb) {
 	int pos = 0;
 	int line = 0;
 	int lineLen = 0;
-	int lineStart = 0;
 	int verPos = 0;
 	char lag = 0;
 	int reportBinary = 0;
@@ -1469,7 +1468,6 @@ CheckHttpHeader(RequestBase rb) {
             }
 			line++;
 			lineLen = 0;
-			lineStart = pos;
 		} else if (c == '\r') {
 			// skip over CR for now
 		} else if (c == ' ') {
@@ -2609,11 +2607,11 @@ AdjustForRanges(RequestBase rb) {
                     h->rangeList->rangeStop = rStop;
                     rLen = rStop - rStart + 1;
                 }
-                tpos =+ snprintf(temp+tpos, sizeof(temp) - tpos,
+                tpos += snprintf(temp+tpos, sizeof(temp) - tpos,
                                  "Content-Length: %jd\r\n",
                                  (intmax_t) rLen
                                  );
-                tpos =+ snprintf(temp+tpos, sizeof(temp) - tpos,
+                tpos += snprintf(temp+tpos, sizeof(temp) - tpos,
                                  "Content-Range: bytes %ju-%ju/%ju\r\n",
                                  (intmax_t) rStart,
                                  (intmax_t) rStop,
@@ -3263,12 +3261,13 @@ ShowStats(MainBase mb) {
 	flushLog(f);
 }
 
+int ever = 1;
 static int
 DispatchLoop(MainBase mb) {
 	
 	int waitMillis = 1;
 	int res = 0;
-	for (;;) {
+	for (;ever;) {
 		uint64_t nChanges = mb->nChanges;
 		
 		TrySelect(mb);

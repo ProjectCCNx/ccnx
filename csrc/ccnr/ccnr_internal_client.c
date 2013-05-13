@@ -6,7 +6,7 @@
  */
 
 /*
- * Copyright (C) 2011-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -108,12 +108,9 @@ ccnr_answer_req(struct ccn_closure *selfp,
     struct ccn_charbuf *reply_body = NULL;
     struct ccnr_handle *ccnr = NULL;
     int res = 0;
-    int start = 0;
-    int end = 0;
     int morecomps = 0;
     const unsigned char *final_comp = NULL;
     size_t final_size = 0;
-    struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     
     switch (kind) {
         case CCN_UPCALL_FINAL:
@@ -132,14 +129,11 @@ ccnr_answer_req(struct ccn_closure *selfp,
                         info->interest_ccnb, info->pi->offset[CCN_PI_E]);
     morecomps = selfp->intdata & MORECOMPS_MASK;
     if ((info->pi->answerfrom & CCN_AOK_NEW) == 0 &&
-        selfp->intdata != OP_SERVICE &&
-        selfp->intdata != OP_NOTICE)
+        selfp->intdata != OP_SERVICE)
         return(CCN_UPCALL_RESULT_OK);
     if (info->matched_comps >= info->interest_comps->n)
         goto Bail;
-    if (selfp->intdata != OP_PING &&
-        selfp->intdata != OP_NOTICE &&
-        selfp->intdata != OP_SERVICE &&
+    if ((selfp->intdata & OPER_MASK) != OP_SERVICE &&
         info->pi->prefix_comps != info->matched_comps + morecomps)
         goto Bail;
     if (morecomps == 1) {
@@ -165,7 +159,6 @@ ccnr_answer_req(struct ccn_closure *selfp,
             goto Bail;
         }
     }
-    sp.freshness = 10;
     switch (selfp->intdata & OPER_MASK) {
         case OP_SERVICE:
             if (ccnr->service_ccnb == NULL)
@@ -218,30 +211,9 @@ ccnr_answer_req(struct ccn_closure *selfp,
             goto Bail;
             break;
         default:
+            // No other OP_xxx are supported here
             goto Bail;
     }
-    if (res < 0)
-        goto Bail;
-    if (res == CCN_CONTENT_NACK)
-        sp.type = res;
-    msg = ccn_charbuf_create();
-    name = ccn_charbuf_create();
-    start = info->pi->offset[CCN_PI_B_Name];
-    end = info->interest_comps->buf[info->pi->prefix_comps];
-    ccn_charbuf_append(name, info->interest_ccnb + start, end - start);
-    ccn_charbuf_append_closer(name);
-    res = ccn_sign_content(info->h, msg, name, &sp,
-                           reply_body->buf, reply_body->length);
-    if (res < 0)
-        goto Bail;
-    if (CCNSHOULDLOG(ccnr, LM_128, CCNL_FINE))
-        ccnr_debug_ccnb(ccnr, __LINE__, "ccnr_answer_req_response", NULL,
-                        msg->buf, msg->length);
-    res = ccn_put(info->h, msg->buf, msg->length);
-    if (res < 0)
-        goto Bail;
-    res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
-    goto Finish;
 Bail:
     res = CCN_UPCALL_RESULT_ERR;
 Finish:
@@ -336,7 +308,6 @@ ccnr_init_repo_keystore(struct ccnr_handle *ccnr, struct ccn *h)
     struct ccn_charbuf *culprit = NULL;
     struct stat statbuf;
     int res = -1;
-    size_t save;
     char *keystore_path = NULL;
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     
@@ -351,7 +322,6 @@ ccnr_init_repo_keystore(struct ccnr_handle *ccnr, struct ccn *h)
         errno = ENOTDIR;
         goto Finish;
     }
-    save = temp->length;
     ccn_charbuf_putf(temp, "ccnx_repository_keystore");
     keystore_path = strdup(ccn_charbuf_as_string(temp));
     res = stat(keystore_path, &statbuf);

@@ -4,7 +4,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010, 2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -354,41 +354,6 @@ fill_holes(struct ccn_schedule *sched, void *clienth,
     return(delay);
 }
 
-static int
-is_final(struct ccn_upcall_info *info)
-{
-        // XXX The test below should get refactored into the library
-    const unsigned char *ccnb;
-    size_t ccnb_size;
-    ccnb = info->content_ccnb;
-    if (ccnb == NULL || info->pco == NULL)
-        return(0);
-    ccnb_size = info->pco->offset[CCN_PCO_E];
-    if (info->pco->offset[CCN_PCO_B_FinalBlockID] !=
-        info->pco->offset[CCN_PCO_E_FinalBlockID]) {
-        const unsigned char *finalid = NULL;
-        size_t finalid_size = 0;
-        const unsigned char *nameid = NULL;
-        size_t nameid_size = 0;
-        struct ccn_indexbuf *cc = info->content_comps;
-        ccn_ref_tagged_BLOB(CCN_DTAG_FinalBlockID, ccnb,
-                            info->pco->offset[CCN_PCO_B_FinalBlockID],
-                            info->pco->offset[CCN_PCO_E_FinalBlockID],
-                            &finalid,
-                            &finalid_size);
-        if (cc->n < 2) abort();
-        ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb,
-                            cc->buf[cc->n - 2],
-                            cc->buf[cc->n - 1],
-                            &nameid,
-                            &nameid_size);
-        if (finalid_size == nameid_size &&
-              0 == memcmp(finalid, nameid, nameid_size))
-            return(1);
-    }
-    return(0);
-}
-
 enum ccn_upcall_res
 incoming_content(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
@@ -454,7 +419,7 @@ GOT_HERE();
     md->co_bytes_recvd += data_size;
     slot = ((uintptr_t)selfp->intdata) % PIPELIMIT;
     assert(selfp == &md->ooo[slot].closure);
-    if (is_final(info)) {
+    if (ccn_is_final_block(info)) {
         GOT_HERE();
         md->finalslot = slot;
     }

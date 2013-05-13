@@ -118,6 +118,10 @@ static int process_incoming_link_message(struct ccnd_handle *h,
                                          struct face *face, enum ccn_dtag dtag,
                                          unsigned char *msg, size_t size);
 static void process_internal_client_buffer(struct ccnd_handle *h);
+static int nonce_ok(struct ccnd_handle *h, struct face *face,
+                    const unsigned char *interest_msg,
+                    struct ccn_parsed_interest *pi,
+                    const unsigned char *nonce, size_t noncesize);
 static void
 pfi_destroy(struct ccnd_handle *h, struct interest_entry *ie,
             struct pit_face_item *p);
@@ -583,7 +587,7 @@ ccnd_generate_face_guid(struct ccnd_handle *h, struct face *face, int size,
             range = ~0;
         else {
             range = 0;
-            for (i = i; i < size; i++)
+            for (; i < size; i++)
                 range = (range << 8) + hi[i] - lo[i];
         }
         if (range < 2)
@@ -641,6 +645,8 @@ finalize_face(struct hashtb_enumerator *e)
         }
         for (c = 0; c < CCN_CQ_N; c++)
             content_queue_destroy(h, &(face->q[c]));
+        ccn_charbuf_destroy(&face->inbuf);
+        ccn_charbuf_destroy(&face->outbuf);
         ccnd_msg(h, "%s face id %u (slot %u)",
             recycle ? "recycling" : "releasing",
             face->faceid, face->faceid & MAXFACES);
@@ -1108,6 +1114,104 @@ finalize_interest(struct hashtb_enumerator *e)
     }
     ie->pfl = NULL;
     ie->interest_msg = NULL; /* part of hashtb, don't free this */
+}
+
+/**
+ *  Look for duplication of interest nonces
+ *
+ * If nonce is NULL and the interest message has a nonce, the latter will
+ * be used.
+ *
+ * The nonce will be added to the nonce table if it is not already there.
+ * Some expired entries may be trimmed.
+ *
+ * @returns 0 if a duplicate, unexpired nonce exists, 1 if nonce is new,
+ *          2 if duplicate is from originating face, or 3 if the interest
+ *          does not have a nonce.  Negative means error.
+ */
+static int
+nonce_ok(struct ccnd_handle *h, struct face *face,
+         const unsigned char *interest_msg, struct ccn_parsed_interest *pi,
+         const unsigned char *nonce, size_t noncesize)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct nonce_entry *nce = NULL;
+    int res;
+    int i;
+    
+    if (nonce == NULL) {
+        nonce = interest_msg + pi->offset[CCN_PI_B_Nonce];
+        noncesize = pi->offset[CCN_PI_E_Nonce] - pi->offset[CCN_PI_B_Nonce];
+        if (noncesize == 0)
+            return(3);
+        ccn_ref_tagged_BLOB(CCN_DTAG_Nonce, interest_msg,
+                            pi->offset[CCN_PI_B_Nonce],
+                            pi->offset[CCN_PI_E_Nonce],
+                            &nonce, &noncesize);
+    }
+    hashtb_start(h->nonce_tab, e);
+    /* Remove a few expired nonces */
+    for (i = 0; i < 10; i++) {
+        if (h->ncehead.next == &h->ncehead)
+            break;
+        nce = (void *)h->ncehead.next;
+        if (wt_compare(nce->expiry, h->wtnow) >= 0)
+            break;
+        res = hashtb_seek(e, nce->key, nce->size, 0);
+        if (res != HT_OLD_ENTRY) abort();
+        hashtb_delete(e);
+    }
+    /* Look up or add the given nonce */
+    res = hashtb_seek(e, nonce, noncesize, 0);
+    if (res < 0)
+        return(res);
+    nce = e->data;
+    if (res == HT_NEW_ENTRY) {
+        nce->ll.next = NULL;
+        nce->faceid = (face != NULL) ? face->faceid : CCN_NO_FACEID;
+        nce->key = e->key;
+        nce->size = e->keysize;
+        res = 1;
+    }
+    else if (face != NULL && face->faceid == nce->faceid) {
+        /* From same face as before, count as a refresh */
+        res = 2;
+    }
+    else {
+        if (wt_compare(nce->expiry, h->wtnow) < 0)
+            res = 1; /* nonce's expiry has passed, count as new */
+        else
+            res = 0; /* nonce is duplicate */
+    }
+    /* Re-insert it at the end of the expiry queue */
+    if (nce->ll.next != NULL) {
+        nce->ll.next->prev = nce->ll.prev;
+        nce->ll.prev->next = nce->ll.next;
+        nce->ll.next = nce->ll.prev = NULL;
+    }
+    nce->ll.next = &h->ncehead;
+    nce->ll.prev = h->ncehead.prev;
+    nce->ll.next->prev = nce->ll.prev->next = &nce->ll;
+    nce->expiry = h->wtnow + 6 * WTHZ; // XXX hardcoded 6 seconds
+    hashtb_end(e);
+    return(res);
+}
+
+/**
+ * Clean up a nonce_entry when it is removed from its hash table.
+ */
+static void
+finalize_nonce(struct hashtb_enumerator *e)
+{
+    struct nonce_entry *nce = e->data;
+    
+    /* If this entry is in the expiry queue, remove it. */
+    if (nce->ll.next != NULL) {
+        nce->ll.next->prev = nce->ll.prev;
+        nce->ll.prev->next = nce->ll.next;
+        nce->ll.next = nce->ll.prev = NULL;
+    }
 }
 
 /**
@@ -1793,8 +1897,8 @@ adjust_npe_predicted_response(struct ccnd_handle *h,
         t = t - (t >> 7);
     if (t < 127)
         t = 127;
-    else if (t > 160000)
-        t = 160000;
+    else if (t > h->predicted_response_limit)
+        t = h->predicted_response_limit;
     npe->usec = t;
 }
 
@@ -3318,13 +3422,13 @@ ie_next_usec(struct ccnd_handle *h, struct interest_entry *ie,
     ccn_wrappedtime mn;
     int ans;
     int debug = (h->debug & 32) != 0;
-    const int horizon = 3 * WTHZ; /* complain if we get behind by too much */
+    const int horizon = 6 * WTHZ; /* complain if we get behind by too much */
     
     base = h->wtnow - horizon;
     mn = 600 * WTHZ + horizon;
     for (p = ie->pfl; p != NULL; p = p->next) {
         delta = p->expiry - base;
-        if (delta >= 0x80000000)
+        if (delta >= 0x80000000 && (h->debug & 2) != 0)
             debug = 1;
         if (debug) {
             static const char fmt_ie_next_usec[] = 
@@ -3469,7 +3573,6 @@ strategy_callout(struct ccnd_handle *h,
     unsigned nleft;
     unsigned amt;
     int usec;
-    int usefirst;
     
     switch (op) {
         case CCNST_NOP:
@@ -3492,14 +3595,14 @@ strategy_callout(struct ccnd_handle *h,
                                 ie->interest_msg, ie->size);
                 break;
             }
-            if (best == CCN_NOFACEID || npe->usec > 150000) {
-                usefirst = 1;
+            if (best == CCN_NOFACEID) {
                 randlow = 4000;
                 randrange = 75000;
             }
             else {
-                usefirst = 0;
                 randlow = npe->usec;
+                if (randlow < 2000)
+                    randlow = 100 + nrand48(h->seed) % 4096U;
                 randrange = (randlow + 1) / 2;
             }
             nleft = 0;
@@ -3511,10 +3614,6 @@ strategy_callout(struct ccnd_handle *h,
                     }
                     else if (ccn_indexbuf_member(tap, p->faceid) >= 0)
                         p = send_interest(h, ie, x, p);
-                    else if (usefirst) {
-                        usefirst = 0;
-                        pfi_set_expiry_from_micros(h, ie, p, 0);
-                    }
                     else if (p->faceid == npe->osrc)
                         pfi_set_expiry_from_micros(h, ie, p, randlow);
                     else {
@@ -3578,6 +3677,7 @@ do_propagate(struct ccn_schedule *sched,
     
     if (ie->ev == ev)
         ie->ev = NULL;
+    else if (ie->ev != NULL) abort();
     if (flags & CCN_SCHEDULE_CANCEL)
         return(0);
     now = h->wtnow;  /* capture our reference */
@@ -3643,6 +3743,8 @@ do_propagate(struct ccn_schedule *sched,
                 break;
         if (i < n) {
             p = send_interest(h, ie, d[i], p);
+            if (ie->ev != NULL)
+                ccn_schedule_cancel(h->sched, ie->ev);
             upstreams++;
             rem = p->expiry - now;
             if (rem < mn)
@@ -3662,6 +3764,7 @@ do_propagate(struct ccn_schedule *sched,
     if (mn == 0) abort();
     next_delay = mn * (1000000 / WTHZ);
     ev->evint = h->wtnow + mn;
+    if (ie->ev != NULL) abort();
     ie->ev = ev;
     return(next_delay);
 }
@@ -3991,6 +4094,7 @@ propagate_interest(struct ccnd_handle *h,
         /* This interest has no nonce; generate one before going on */
         noncesize = (h->noncegen)(h, face, cb);
         nonce = cb;
+        nonce_ok(h, face, msg, pi, nonce, noncesize);
     }
     p = pfi_seek(h, ie, faceid, CCND_PFI_DNSTREAM);
     p = pfi_set_nonce(h, ie, p, nonce, noncesize);
@@ -4256,6 +4360,14 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
         }
         namesize = comps->buf[pi->prefix_comps] - comps->buf[0];
         h->interests_accepted += 1;
+        res = nonce_ok(h, face, msg, pi, NULL, 0);
+        if (res == 0) {
+            if (h->debug & 2)
+                ccnd_debug_ccnb(h, __LINE__, "interest_dupnonce", face, msg, size);
+            h->interests_dropped += 1;
+            indexbuf_release(h, comps);
+            return;
+        }
         ie = hashtb_lookup(h->interest_tab, msg,
                            pi->offset[CCN_PI_B_InterestLifetime]);
         if (ie != NULL) {
@@ -4270,13 +4382,10 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
         }
         if (h->debug & 16) {
             /* Only print details that are not already presented */
-            // ZZZZ - should do nifty Exclude presentation here
             ccnd_msg(h,
                      "version: %d, "
-                     "excl: %d bytes, "
                      "etc: %d bytes",
                      pi->magic,
-                     pi->offset[CCN_PI_E_Exclude] - pi->offset[CCN_PI_B_Exclude],
                      pi->offset[CCN_PI_E_OTHER] - pi->offset[CCN_PI_B_OTHER]);
         }
         s_ok = (pi->answerfrom & CCN_AOK_STALE) != 0;
@@ -5663,6 +5772,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     const char *data_pause;
     const char *tts_default;
     const char *tts_limit;
+    const char *predicted_response_limit;
     const char *autoreg;
     const char *listen_on;
     int fd;
@@ -5686,6 +5796,9 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     param.finalize = &finalize_face;
     h->faces_by_fd = hashtb_create(sizeof(struct face), &param);
     h->dgram_faces = hashtb_create(sizeof(struct face), &param);
+    param.finalize = &finalize_nonce;
+    h->nonce_tab = hashtb_create(sizeof(struct nonce_entry), &param);
+    h->ncehead.next = h->ncehead.prev = &h->ncehead;
     param.finalize = 0;
     h->faceid_by_guid = hashtb_create(sizeof(unsigned), &param);
     param.finalize = &finalize_content;
@@ -5770,6 +5883,16 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
             h->tts_limit = (1U<<31) / 1000000;
         ccnd_msg(h, "CCND_MAX_TIME_TO_STALE=%d", h->tts_limit);
     }
+    h->predicted_response_limit = 160000;
+    predicted_response_limit = getenv("CCND_MAX_RTE_MICROSEC");
+    if (predicted_response_limit != NULL && predicted_response_limit[0] != 0) {
+        h->predicted_response_limit = atoi(predicted_response_limit);
+        if (h->predicted_response_limit <= 2000)
+            h->predicted_response_limit = 2000;
+        else if (h->predicted_response_limit > 60000000)
+            h->predicted_response_limit = 60000000;
+        ccnd_msg(h, "CCND_MAX_RTE_MICROSEC=%d", h->predicted_response_limit);
+    }
     listen_on = getenv("CCND_LISTEN_ON");
     autoreg = getenv("CCND_AUTOREG");
     
@@ -5840,6 +5963,7 @@ ccnd_destroy(struct ccnd_handle **pccnd)
     ccnd_shutdown_listeners(h);
     ccnd_internal_client_stop(h);
     ccn_schedule_destroy(&h->sched);
+    hashtb_destroy(&h->nonce_tab);
     hashtb_destroy(&h->dgram_faces);
     hashtb_destroy(&h->faces_by_fd);
     hashtb_destroy(&h->faceid_by_guid);
@@ -5870,8 +5994,13 @@ ccnd_destroy(struct ccnd_handle **pccnd)
     ccn_indexbuf_destroy(&h->scratch_indexbuf);
     ccn_indexbuf_destroy(&h->unsol);
     if (h->face0 != NULL) {
+        int i;
         ccn_charbuf_destroy(&h->face0->inbuf);
         ccn_charbuf_destroy(&h->face0->outbuf);
+        for (i = 0; i < CCN_CQ_N; i++)
+            content_queue_destroy(h, &(h->face0->q[i]));
+        for (i = 0; i < CCND_FACE_METER_N; i++)
+            ccnd_meter_destroy(&h->face0->meter[i]);
         free(h->face0);
         h->face0 = NULL;
     }

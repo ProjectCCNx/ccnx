@@ -51,13 +51,13 @@ ccndc_warn(int lineno, const char *format, ...)
 }
 
 void
-ccndc_fatal(int line, const char *format, ...)
+ccndc_fatal(int lineno, const char *format, ...)
 {
     struct timeval t;
     va_list ap;
     va_start(ap, format);
     gettimeofday(&t, NULL);
-    fprintf(stderr, "%d.%06d ccndc[%d]:%d: ", (int)t.tv_sec, (unsigned)t.tv_usec, (int)getpid(), line);
+    fprintf(stderr, "%d.%06d ccndc[%d]:%d: ", (int)t.tv_sec, (unsigned)t.tv_usec, (int)getpid(), lineno);
     vfprintf(stderr, format, ap);
     va_end(ap);
     exit(1);

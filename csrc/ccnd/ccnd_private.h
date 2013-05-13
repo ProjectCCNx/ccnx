@@ -72,11 +72,18 @@ typedef uint32_t ccn_wrappedtime;
 
 typedef int (*ccnd_logger)(void *loggerdata, const char *format, va_list ap);
 
+/* see nonce_entry */
+struct ncelinks {
+    struct ncelinks *next;           /**< next in list */
+    struct ncelinks *prev;           /**< previous in list */
+};
+
 /**
  * We pass this handle almost everywhere within ccnd
  */
 struct ccnd_handle {
     unsigned char ccnd_id[32];      /**< sha256 digest of our public key */
+    struct hashtb *nonce_tab;       /**< keyed by interest Nonce */
     struct hashtb *faces_by_fd;     /**< keyed by fd */
     struct hashtb *dgram_faces;     /**< keyed by sockaddr */
     struct hashtb *faceid_by_guid;  /**< keyed by guid */
@@ -90,6 +97,7 @@ struct ccnd_handle {
     unsigned face_rover;            /**< for faceid allocation */
     unsigned face_limit;            /**< current number of face slots */
     struct face **faces_by_faceid;  /**< array with face_limit elements */
+    struct ncelinks ncehead;        /**< list head for expiry-sorted nonces */
     struct ccn_scheduled_event *reaper;
     struct ccn_scheduled_event *age;
     struct ccn_scheduled_event *clean;
@@ -161,6 +169,7 @@ struct ccnd_handle {
                                     /**< pluggable nonce generation */
     int tts_default;                /**< CCND_DEFAULT_TIME_TO_STALE (seconds) */
     int tts_limit;                  /**< CCND_MAX_TIME_TO_STALE (seconds) */
+    int predicted_response_limit;   /**< CCND_MAX_RTE_MICROSEC */
 };
 
 /**
@@ -331,6 +340,17 @@ struct interest_entry {
 };
 
 /**
+ * The nonce hash table is keyed by the interest nonce
+ */
+struct nonce_entry {
+    struct ncelinks ll;             /** doubly-linked */
+    const unsigned char *key;       /** owned by hashtb */
+    unsigned size;                  /** size of key */
+    unsigned faceid;                /** originating face */
+    ccn_wrappedtime expiry;         /** when this should expire */
+};
+
+/**
  * The guest hash table is keyed by the faceid of the requestor
  *
  * The cob is an answer for the request.
@@ -413,14 +433,14 @@ uintmax_t ccnd_meter_total(struct ccnd_meter *m);
 /**
  * Refer to doc/technical/Registration.txt for the meaning of these flags.
  *
- * @def CCN_FORW_ACTIVE         1
- * @def CCN_FORW_CHILD_INHERIT  2
- * @def CCN_FORW_ADVERTISE      4
- * @def CCN_FORW_LAST           8
- * @def CCN_FORW_CAPTURE       16
- * @def CCN_FORW_LOCAL         32
- * @def CCN_FORW_TAP           64
- * @def CCN_FORW_CAPTURE_OK   128
+ *  CCN_FORW_ACTIVE         1
+ *  CCN_FORW_CHILD_INHERIT  2
+ *  CCN_FORW_ADVERTISE      4
+ *  CCN_FORW_LAST           8
+ *  CCN_FORW_CAPTURE       16
+ *  CCN_FORW_LOCAL         32
+ *  CCN_FORW_TAP           64
+ *  CCN_FORW_CAPTURE_OK   128
  */
 #define CCN_FORW_PFXO (CCN_FORW_ADVERTISE | CCN_FORW_CAPTURE | CCN_FORW_LOCAL)
 #define CCN_FORW_REFRESHED      (1 << 16) /**< private to ccnd */

@@ -126,8 +126,8 @@ these steps:
   This wraps the ccnd and Repo services.  Because ccnd is C code,
   it is included as JNI code, along with OpenSSL.
 
-  Doing a "make clean" will not erase the C object code.  Only
-  a "make distclean" will get rid of it.
+  Doing a "make clean" will erase the C object code for CCNx-Android-Services and CCNx.  Only
+  a "make distclean" will remove external object files, for OpenSSL for example.
 
   The CCNx csrc/ folder now has Android.mk files in it already, so
   the CCNx-Android-Services/jni folder has a link to csrc/.  We have

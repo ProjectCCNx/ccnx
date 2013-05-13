@@ -37,7 +37,7 @@
  * Thus CCN_API_VERSION=1000 would have corresponded to the first public
  * release (0.1.0), but that version did not have this macro defined.
  */
-#define CCN_API_VERSION 7001
+#define CCN_API_VERSION 7002
 
 #if !defined(DEPRECATED)
 /*
@@ -106,7 +106,7 @@ enum ccn_upcall_res {
 };
 
 /**
- * @type ccn_handler
+ * @typedef ccn_handler
  * This is the procedure type for the closure's implementation.
  */
 typedef enum ccn_upcall_res (*ccn_handler)(

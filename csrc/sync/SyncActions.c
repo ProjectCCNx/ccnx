@@ -629,19 +629,16 @@ extractNode(struct SyncRootStruct *root, struct ccn_upcall_info *info) {
 static int
 noteHash(struct SyncRootStruct *root, struct SyncHashCacheEntry *ce,
                int add, int remote) {
-    char *here = "Sync.noteRemoteHash";
+    char *here = remote ? "Sync.noteRemoteHash" : "Sync.noteLocalHash";
     int debug = root->base->debug;
     struct ccn_charbuf *hash = NULL;
     int hl = 0;
-    struct SyncHashInfoList *head = root->priv->remoteSeen;
-    struct SyncHashInfoList *each = head;
+    struct SyncHashInfoList *head = NULL;
+    struct SyncHashInfoList *each = NULL;
     struct SyncHashInfoList *lag = NULL;
     int64_t mark = SyncCurrentTime();
     int res = 0;
-    if (remote == 0) {
-        head = root->priv->localMade;
-        here = "Sync.noteLocalHash";
-    }
+
     if (ce != NULL) {
         ce->lastUsed = mark;
         if (ce->state & SyncHashState_local)
@@ -649,7 +646,9 @@ noteHash(struct SyncRootStruct *root, struct SyncHashCacheEntry *ce,
         hash = ce->hash;
         hl = hash->length;
     }
-    while (each != NULL) {
+    // pick the appropriate (remote or local) list to work with
+    head = remote ? root->priv->remoteSeen : root->priv->localMade;
+    for (each = head; each != NULL; each = each->next) {
         if (ce == each->ce) {
             if (lag != NULL) {
                 // move it to the front
@@ -661,7 +660,6 @@ noteHash(struct SyncRootStruct *root, struct SyncHashCacheEntry *ce,
             break;
         }
         lag = each;
-        each = each->next;
     }
     if (each == NULL && add) {
         // need a new entry
@@ -675,8 +673,10 @@ noteHash(struct SyncRootStruct *root, struct SyncHashCacheEntry *ce,
         each->lastSeen = mark;
         each->lastReplied = 0;
     }
-    if (remote == 0) root->priv->localMade = head;
-    else root->priv->remoteSeen = head;
+    if (remote)
+        root->priv->remoteSeen = head;
+    else
+        root->priv->localMade = head;
 
     if (debug >= CCNL_FINE) {
         char *hex = "empty";
@@ -1758,6 +1758,7 @@ newNodeCommon(struct SyncRootStruct *root,
             SyncNodeDecRC(nc);
             return NULL;
         }
+        SyncNodeIncRC(nc);
         ce->ncL = nc;
         if (ce->state & SyncHashState_remote)
             setCovered(ce);
@@ -1782,7 +1783,6 @@ newNodeCommon(struct SyncRootStruct *root,
                          (int) nc->cb->length, (int) nodeSplitTrigger);
         }
     }
-    SyncNodeIncRC(nc);
     SyncAccumNode(nodes, nc);
     return ce;
 }
@@ -3096,7 +3096,6 @@ MakeNodeFromNames(struct SyncUpdateData *ud, int split) {
     if (ce != NULL && ce->ncL != NULL) {
         // node already exists
         struct SyncNodeComposite *nc = ce->ncL;
-        SyncNodeIncRC(nc);
         SyncAccumNode(ud->nodes, nc);
         root->priv->stats->nodesShared++;
         if (debug >= CCNL_FINE) {
@@ -3144,7 +3143,6 @@ TryNodeSplit(struct SyncUpdateData *ud) {
         return 0;
     struct SyncRootStruct *root = ud->root;
     int debug = root->base->debug;
-    struct ccn_charbuf *prev = NULL;
     int accLim = nodeSplitTrigger - nodeSplitTrigger/8;
     int accMin = nodeSplitTrigger/2;
     int res = 0;
@@ -3165,7 +3163,6 @@ TryNodeSplit(struct SyncUpdateData *ud) {
         int nameLen = name->length + 8;
         if (nameLen > maxLen) maxLen = nameLen;
         accLen = accLen + nameLen + (maxLen - nameLen) * 2;
-        prev = name;
         if (split+1 < lim) {
             if (splitMethod & 1) {
                 // use level shift to split

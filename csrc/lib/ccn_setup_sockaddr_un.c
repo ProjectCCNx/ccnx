@@ -49,6 +49,7 @@
  * checked. If the portstr specifies something other than the ccnx registered
  * port number, the socket name is modified accordingly. 
  * @param portstr - numeric port; use NULL for default.
+ * @param result - the returned unix domain sockaddr
  */
 void
 ccn_setup_sockaddr_un(const char *portstr, struct sockaddr_un *result)

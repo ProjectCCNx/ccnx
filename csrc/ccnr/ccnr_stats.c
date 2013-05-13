@@ -8,7 +8,7 @@
  */
 
 /*
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011, 2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -228,7 +228,6 @@ collect_faces_html(struct ccnr_handle *h, struct ccn_charbuf *b)
 {
     int i;
     struct ccn_charbuf *nodebuf;
-    int port;
     
     nodebuf = ccn_charbuf_create();
     ccn_charbuf_putf(b, "<h4>Faces</h4>" NL);
@@ -245,10 +244,10 @@ collect_faces_html(struct ccnr_handle *h, struct ccn_charbuf *b)
                 ccn_charbuf_putf(b, " <b>activity:</b> %d",
                                  fdholder->recvcount);
             nodebuf->length = 0;
-            port = 0;
 #if 0
+            port = 0;
 // XXX - fix for fdholder->name
-            port = ccn_charbuf_append_sockaddr(nodebuf, fdholder->addr);
+            int port = ccn_charbuf_append_sockaddr(nodebuf, fdholder->addr);
             if (port > 0) {
                 const char *node = ccn_charbuf_as_string(nodebuf);
                 if ((fdholder->flags & CCNR_FACE_PASSIVE) == 0)
@@ -448,7 +447,6 @@ collect_faces_xml(struct ccnr_handle *h, struct ccn_charbuf *b)
 {
     int i;
     int m;
-    int port;
     struct ccn_charbuf *nodebuf;
     
     nodebuf = ccn_charbuf_create();
@@ -466,10 +464,10 @@ collect_faces_xml(struct ccnr_handle *h, struct ccn_charbuf *b)
             ccn_charbuf_putf(b, "<recvcount>%d</recvcount>",
                              fdholder->recvcount);
             nodebuf->length = 0;
-            port = 0;
 #if 0
+            port = 0;
 // XXX - fix this to know about fdholder->name
-            port = ccn_charbuf_append_sockaddr(nodebuf, fdholder->addr);
+            int port = ccn_charbuf_append_sockaddr(nodebuf, fdholder->addr);
             if (port > 0) {
                 const char *node = ccn_charbuf_as_string(nodebuf);
                 ccn_charbuf_putf(b, "<ip>%s:%d</ip>", node, port);
@@ -653,7 +651,7 @@ ccnr_meter_init(struct ccnr_handle *h, struct ccnr_meter *m, const char *what)
 {
     if (m == NULL)
         return;
-    memset(m, 0, sizeof(m));
+    memset(m, 0, sizeof(*m));
     if (what != NULL)
         strncpy(m->what, what, sizeof(m->what)-1);
     ccnr_meter_bump(h, m, 0);

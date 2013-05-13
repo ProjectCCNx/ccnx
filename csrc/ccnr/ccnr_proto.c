@@ -6,7 +6,7 @@
  */
 
 /*
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011, 2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -597,7 +597,7 @@ Bail:
     
 }    
 
-static int
+static enum ccn_upcall_res
 r_proto_policy_complete(struct ccn_closure *selfp,
                         enum ccn_upcall_kind kind,
                         struct ccn_upcall_info *info)
@@ -610,7 +610,6 @@ r_proto_policy_complete(struct ccn_closure *selfp,
     size_t vers_size = 0;
     struct ccn_indexbuf *cc;
     struct ccn_charbuf *name;
-    int res;
     
     // the version of the new policy must be greater than the exist one
     // or we will not activate it and update the link to point to it.
@@ -620,22 +619,26 @@ r_proto_policy_complete(struct ccn_closure *selfp,
     cc = info->content_comps;
     ccn_name_comp_get(ccnb, cc, cc->n - 3, &vers, &vers_size);
     if (vers_size != 7 || vers[0] != CCN_MARKER_VERSION)
-        return(-1);
+        return(CCN_UPCALL_RESULT_ERR);
     if (memcmp(vers, ccnr->parsed_policy->version, sizeof(ccnr->parsed_policy->version)) <= 0) {
         if (CCNSHOULDLOG(ccnr, LM_128, CCNL_INFO))
             ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_policy_complete older policy ignored", NULL,
                             ccnb, ccnb_size);        
-        return (-1);
+        return (CCN_UPCALL_RESULT_ERR);
     }
     // all components not including segment
     name = ccn_charbuf_create();
-    res = ccn_name_init(name);
+    if (name == NULL || ccn_name_init(name) < 0) {
+        ccnr_msg(ccnr,"r_proto_policy_complete no memory to update policy");
+        ccn_charbuf_destroy(&name);
+        return (CCN_UPCALL_RESULT_ERR);
+    }
     ccn_name_append_components(name, ccnb, cc->buf[0], cc->buf[cc->n - 2]);
     ccn_schedule_event(ccnr->sched, 500, r_proto_policy_update, name, 0);
     if (CCNSHOULDLOG(ccnr, LM_128, CCNL_FINEST))
         ccnr_msg(ccnr,"r_proto_policy_complete update scheduled");        
     
-    return (0);
+    return (CCN_UPCALL_RESULT_OK);
 }
 
 static enum ccn_upcall_res
@@ -871,7 +874,6 @@ r_proto_check_exclude(struct ccnr_handle *ccnr,
     size_t name_comp_size;
     struct ccn_indexbuf *name_comps = NULL;
     const unsigned char *name_string = NULL;
-    int nc;
     int ci;
     int res;
     int ans = 0;
@@ -890,7 +892,8 @@ r_proto_check_exclude(struct ccnr_handle *ccnr,
             goto Bail;
         // there may be something to check, so get the components of the name
         name_comps = ccn_indexbuf_create();
-        nc = ccn_name_split(name, name_comps);
+        if (ccn_name_split(name, name_comps) < 0)
+            goto Bail;
         // the component in the name we are matching is last plus one of the interest
         // but ci includes an extra value for the end of the last component
         ci = info->interest_comps->n;

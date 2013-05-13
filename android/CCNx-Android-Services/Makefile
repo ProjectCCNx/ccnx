@@ -17,6 +17,7 @@
 APK_NAME = CCNx-Android-Services-debug.apk
 BIN = bin
 GEN = gen
+GENERATED_SOURCE_FILES = obj
 
 ############
 # Nothing tweekable down here
@@ -92,18 +93,25 @@ environment:
 		echo "Please set ANDROID_NDK path to point to an r7 or later" && exit 1; \
 	fi
 
-clean: simpleclean
+clean: simpleclean objclean
 
-# Does not remove NDK object files
+# Does not remove external NDK object files
+# But does remove project OBJ files 
 simpleclean:
 	rm -rf $(BIN) $(GEN)
 	rm -rf libs/*
 	rm -f project.properties
 	rm -f local.properties
 
+objclean:
+	rm -f obj/local/**/*/controller/*.o
+	rm -f obj/local/**/*/ccnr/*.o
+	rm -f obj/local/**/*/ccnd/*.o
+	rm -f obj/local/**/*/ccnx/*.o
+	rm -f obj/local/**/*/sync/*.o
+
 distclean: environment simpleclean
-	$(ANDROID_NDK)/ndk-build clean
-	rm -f $(GENERATED_SOURCE_FILES)
+	rm -rf $(GENERATED_SOURCE_FILES)
 
 test:
 	@echo "No automated tests for services"
