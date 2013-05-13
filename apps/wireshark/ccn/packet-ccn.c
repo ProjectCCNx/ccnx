@@ -229,11 +229,11 @@ proto_reg_handoff_ccn(void)
         initialized = TRUE;
     }
     if (current_ccn_port != -1) {
-        dissector_delete("udp.port", current_ccn_port, ccn_handle);
-        dissector_delete("tcp.port", current_ccn_port, ccn_handle);
+        dissector_delete_uint("udp.port", current_ccn_port, ccn_handle);
+        dissector_delete_uint("tcp.port", current_ccn_port, ccn_handle);
     }
-    dissector_add("udp.port", global_ccn_port, ccn_handle);
-    dissector_add("tcp.port", global_ccn_port, ccn_handle);
+    dissector_add_uint("udp.port", global_ccn_port, ccn_handle);
+    dissector_add_uint("tcp.port", global_ccn_port, ccn_handle);
     current_ccn_port = global_ccn_port;
 }
 
@@ -511,7 +511,7 @@ dissect_ccn_interest(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t *tvb,
             col_append_str(pinfo->cinfo, COL_INFO, ">");
         }
         titem = proto_tree_add_item(tree, hf_ccn_nonce, tvb,
-                                    blob - ccnb, blob_size, FALSE);
+                                    blob - ccnb, blob_size, ENC_NA);
     }
     
     return (1);
@@ -546,7 +546,7 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
     
     /* Signature */
     l = pco->offset[CCN_PCO_E_Signature] - pco->offset[CCN_PCO_B_Signature];
-    titem = proto_tree_add_item(tree, hf_ccn_signature, tvb, pco->offset[CCN_PCO_B_Signature], l, FALSE);
+    titem = proto_tree_add_item(tree, hf_ccn_signature, tvb, pco->offset[CCN_PCO_B_Signature], l, ENC_NA);
     signature_tree = proto_item_add_subtree(titem, ett_signature);
     
     /* DigestAlgorithm */
@@ -557,7 +557,7 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
                                   pco->offset[CCN_PCO_E_DigestAlgorithm],
                                   &blob, &blob_size);
         titem = proto_tree_add_item(signature_tree, hf_ccn_signaturedigestalg, tvb,
-                                    blob - ccnb, blob_size, FALSE);
+                                    blob - ccnb, blob_size, ENC_NA);
     }
     /* Witness */
     l = pco->offset[CCN_PCO_E_Witness] - pco->offset[CCN_PCO_B_Witness];
@@ -665,7 +665,7 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
                                   pco->offset[CCN_PCO_E_FinalBlockID],
                                   &blob, &blob_size);
         
-        titem = proto_tree_add_item(signedinfo_tree, hf_ccn_finalblockid, tvb, blob - ccnb, blob_size, FALSE);
+        titem = proto_tree_add_item(signedinfo_tree, hf_ccn_finalblockid, tvb, blob - ccnb, blob_size, ENC_NA);
     }
     /* TODO: KeyLocator */
     l = pco->offset[CCN_PCO_E_ExtOpt] - pco->offset[CCN_PCO_B_ExtOpt];
@@ -675,7 +675,7 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
                                   pco->offset[CCN_PCO_E_ExtOpt],
                                   &blob, &blob_size);
         
-        titem = proto_tree_add_item(signedinfo_tree, hf_ccn_extopt, tvb, blob - ccnb, blob_size, FALSE);
+        titem = proto_tree_add_item(signedinfo_tree, hf_ccn_extopt, tvb, blob - ccnb, blob_size, ENC_NA);
     }
     /* /SignedInfo */
     
@@ -687,10 +687,10 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
                               &blob, &blob_size);
     titem = proto_tree_add_text(tree, tvb,
                                 pco->offset[CCN_PCO_B_Content], l,
-                                "Content: %d bytes", blob_size);
+                                "Content: %zd bytes", blob_size);
     if (blob_size > 0) {
         content_tree = proto_item_add_subtree(titem, ett_content);
-        titem = proto_tree_add_item(content_tree, hf_ccn_contentdata, tvb, blob - ccnb, blob_size, FALSE);
+        titem = proto_tree_add_item(content_tree, hf_ccn_contentdata, tvb, blob - ccnb, blob_size, ENC_NA);
     }
     
     return (ccnb_size);
