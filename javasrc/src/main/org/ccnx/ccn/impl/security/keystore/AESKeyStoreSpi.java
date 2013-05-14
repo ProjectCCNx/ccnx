@@ -80,6 +80,7 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 	public static final int VERSION = 1;
 	public static final String TYPE = "CCN_AES";
 	public static final String MAC_ALGORITHM = "HMAC-SHA256";	// XXX Should these be settable?
+	public static final String AES_ALGORITHM = "HMAC-SHA256";	// XXX Should these be settable?
 	public static final String AES_CRYPTO_ALGORITHM = "AES/CBC/PKCS5Padding";
 	
 	public static final int IV_SIZE = 16;
@@ -323,7 +324,7 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 			_mac.init(passK);
 			little[0] = 0;
 			byte[] aesKBytes = _mac.doFinal(little);
-			SecretKeySpec aesK = new SecretKeySpec(aesKBytes, MAC_ALGORITHM);
+			SecretKeySpec aesK = new SecretKeySpec(aesKBytes, AES_ALGORITHM);
 			_mac.init(passK);
 			little[0] = 1;
 			byte [] macKBytes = _mac.doFinal(little);
