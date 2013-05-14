@@ -729,7 +729,6 @@ public class SliceComparator implements Runnable {
 		boolean newHasNodes = false;
 		boolean redo = false;
 		SyncTreeEntry ste = getHead(_current);
-		ste.setPos(0);
 		push(ste, updateStack);
 		SyncTreeEntry origSte = ste;
 		SyncTreeEntry newHead = null;
