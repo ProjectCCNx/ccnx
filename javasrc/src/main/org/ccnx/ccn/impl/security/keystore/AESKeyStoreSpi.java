@@ -49,6 +49,7 @@ import org.bouncycastle.asn1.DERObjectIdentifier;
 import org.bouncycastle.asn1.DEROctetString;
 import org.bouncycastle.asn1.DERSequence;
 import org.ccnx.ccn.impl.security.crypto.util.OIDLookup;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.Tuple;
 
 /**
@@ -80,14 +81,16 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 	public static final int VERSION = 1;
 	public static final String TYPE = "CCN_AES";
 	public static final String MAC_ALGORITHM = "HMAC-SHA256";	// XXX Should these be settable?
-	public static final String AES_ALGORITHM = "HMAC-SHA256";	// XXX Should these be settable?
+	public static final String AES_ALGORITHM = "AES";
 	public static final String AES_CRYPTO_ALGORITHM = "AES/CBC/PKCS5Padding";
 	
 	public static final int IV_SIZE = 16;
 
 	public static final Random _random = new SecureRandom();
 	
-	public static Mac _mac;
+	public static Mac _macKeyMac;
+	public static Mac _AESKeyMac;
+	public static String _AESKeyAlgorithm = MAC_ALGORITHM;
 	
 	protected static DERInteger _version = new DERInteger(VERSION);
 	
@@ -104,10 +107,15 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 	static {
 		_k2Size.put("SHA256", 48);
 		try {
-			_mac = Mac.getInstance(MAC_ALGORITHM);
+			_macKeyMac = Mac.getInstance(MAC_ALGORITHM);
+			int maxKeyLen = Cipher.getMaxAllowedKeyLength(AES_ALGORITHM);
+			if (maxKeyLen < 160)
+				_AESKeyAlgorithm = "HMACMD5";
+			else if (maxKeyLen < 256)
+				_AESKeyAlgorithm = /* "HMACSHA1"; */ "HMACMD5"; // HMACSHA1 doesn't seem to work for some reason...
+			_AESKeyMac = Mac.getInstance(_AESKeyAlgorithm);
 		} catch (NoSuchAlgorithmException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			Log.severe("Couldn't initialize for keystore due to: {0}", e.getMessage());
 		}
 	}
 	
@@ -228,8 +236,8 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 			System.arraycopy(cryptBytes, 0, checkbuf, IV_SIZE, cryptBytes.length);
 			byte[] check = new byte[checkLength];
 			System.arraycopy(cryptoData, IV_SIZE + aeslen, check, 0, checkLength);
-			_mac.init(keys.second());
-			byte[] hmac = _mac.doFinal(checkbuf);
+			_macKeyMac.init(keys.second());
+			byte[] hmac = _macKeyMac.doFinal(checkbuf);
 			if (!Arrays.equals(hmac, check))
 				throw new IOException("Bad signature in AES keystore");
 		} catch (Exception e) {
@@ -283,11 +291,11 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 			IvParameterSpec ivspec = new IvParameterSpec(iv);
 			cipher.init(Cipher.ENCRYPT_MODE, keys.first(), ivspec);
 			aesCBC = cipher.doFinal(_id);
-			_mac.init(keys.second());
+			_macKeyMac.init(keys.second());
 			byte[] checkbuf = new byte[iv.length + aesCBC.length];
 			System.arraycopy(iv, 0, checkbuf, 0, iv.length);
 			System.arraycopy(aesCBC, 0, checkbuf, iv.length, aesCBC.length);
-			byte[] part3 = _mac.doFinal(checkbuf);
+			byte[] part3 = _macKeyMac.doFinal(checkbuf);
 			// TODO might be a better way to do this but am not sure how
 			// (and its not really that important anyway)
 			byte[] asn1buf = new byte[iv.length + aesCBC.length + part3.length];
@@ -319,15 +327,15 @@ public class AESKeyStoreSpi extends KeyStoreSpi {
 		
 		byte[] passwordAsBytes = charToByteArray(password);
 		byte[] little = new byte[1];
-		SecretKeySpec passK = new SecretKeySpec(passwordAsBytes, MAC_ALGORITHM);
+		SecretKeySpec passK = new SecretKeySpec(passwordAsBytes, _AESKeyAlgorithm);
 		try {
-			_mac.init(passK);
+			_AESKeyMac.init(passK);
 			little[0] = 0;
-			byte[] aesKBytes = _mac.doFinal(little);
+			byte[] aesKBytes = _AESKeyMac.doFinal(little);
 			SecretKeySpec aesK = new SecretKeySpec(aesKBytes, AES_ALGORITHM);
-			_mac.init(passK);
+			_macKeyMac.init(passK);
 			little[0] = 1;
-			byte [] macKBytes = _mac.doFinal(little);
+			byte [] macKBytes = _macKeyMac.doFinal(little);
 			SecretKeySpec macK = new SecretKeySpec(macKBytes, MAC_ALGORITHM);
 			result = new Tuple<SecretKeySpec, SecretKeySpec>(aesK, macK);
 		} catch (Exception e) {
