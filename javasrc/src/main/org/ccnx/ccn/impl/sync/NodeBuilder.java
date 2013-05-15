@@ -142,6 +142,7 @@ public class NodeBuilder {
 		if (null != theNode) {
 			theNode.setLeafCount(theNode.getRefs().size());
 		}
+		shc.addHash(ste.getHash(), cache);
 		return ste;
 	}
 	

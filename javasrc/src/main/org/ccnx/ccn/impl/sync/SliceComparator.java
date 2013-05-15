@@ -343,6 +343,10 @@ public class SliceComparator implements Runnable {
 		}
 	}
 	
+	public synchronized boolean comparing() {
+		return _comparing || _needToCompare;
+	}
+	
 	/**
 	 * Request nodes that we will need for the compare. By requesting multiple nodes
 	 * simultaneously we can speed up the process.
@@ -816,7 +820,8 @@ public class SliceComparator implements Runnable {
 							for (SyncNodeElement tsne: snc.getRefs()) {
 								neededNames.add(tsne.getName());
 							}
-							ste = pop(updateStack);
+							pop(updateStack);
+							ste = getHead(updateStack);
 							break;
 						} else if (comp == 0) {
 							found = true;
