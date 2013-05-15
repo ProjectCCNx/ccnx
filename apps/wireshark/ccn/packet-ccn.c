@@ -63,14 +63,27 @@ static int dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size
 static gboolean dissect_ccn_heur(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree);
 
 static int proto_ccn = -1;
+/*
+ * The ett_ variables identify particular type of subtree so that if you expand
+ * one of them, Wireshark keeps track of that and, when you click on
+ * another packet, it automatically opens all subtrees of that type.
+ * If you close one of them, all subtrees of that type will be closed when
+ * you move to another packet.
+ */
+ 
 static gint ett_ccn = -1;
 static gint ett_signature = -1;
 static gint ett_name = -1;
 static gint ett_signedinfo = -1;
+static gint ett_finalblockid = -1;
+static gint ett_keylocator = -1;
+static gint ett_keylocator_name = -1;
 static gint ett_content = -1;
-
 static gint ett_exclude = -1;
 
+/*
+ * Header field variables
+ */
 static gint hf_ccn_type = -1;
 static gint hf_ccn_name = -1;
 static gint hf_ccn_name_components = -1;
@@ -83,6 +96,12 @@ static gint hf_ccn_contentdata = -1;
 static gint hf_ccn_contenttype = -1;
 static gint hf_ccn_freshnessseconds = -1;
 static gint hf_ccn_finalblockid = -1;
+static gint hf_ccn_finalblockid_final = -1;
+static gint hf_ccn_keylocator_name = -1;
+static gint hf_ccn_keylocator_name_components = -1;
+static gint hf_ccn_keylocator_publisherpublickeydigest = -1;
+static gint hf_ccn_keylocator_key = -1;
+static gint hf_ccn_keylocator_certificate = -1;
 static gint hf_ccn_extopt = -1;
 
 static gint hf_ccn_minsuffixcomponents = -1;
@@ -124,6 +143,9 @@ proto_register_ccn(void)
         &ett_signature,
         &ett_name,
         &ett_signedinfo,
+        &ett_finalblockid,
+        &ett_keylocator,
+        &ett_keylocator_name,
         &ett_content,
         &ett_exclude,
     };
@@ -169,6 +191,24 @@ proto_register_ccn(void)
         {&hf_ccn_finalblockid,
             {"FinalBlockID", "ccn.finalblockid", FT_BYTES, BASE_NONE, NULL,
                 0x0, "Indicates the identifier of the final block in a sequence of fragments", HFILL}},
+        {&hf_ccn_finalblockid_final,
+            {"IsFinal", "ccn.finalblockid.isfinal", FT_BOOLEAN, BASE_NONE, NULL,
+                0x0, "True: this block is the final block; False: this block is not the final block", HFILL}},
+        {&hf_ccn_keylocator_name,
+            {"KeyName", "ccn.keylocator.name", FT_STRING, BASE_NONE, NULL,
+                0x0, "The name of the key present in the KeyLocator", HFILL}},
+        {&hf_ccn_keylocator_name_components,
+            {"Component", "ccn.keylocator.name.component", FT_STRING, BASE_NONE, NULL,
+                0x0, "The individual components of the name of the key", HFILL}},
+        {&hf_ccn_keylocator_publisherpublickeydigest,
+            {"PublisherPublicKeyDigest", "ccn.keylocator.publisherpublickeydigest", FT_BYTES, BASE_NONE, NULL,
+                0x0, "The digest of the key's publisher's public key", HFILL}},
+        {&hf_ccn_keylocator_key,
+            {"Key", "ccn.keylocator.key", FT_BYTES, BASE_NONE, NULL,
+                0x0, "The key present in the KeyLocator", HFILL}},
+        {&hf_ccn_keylocator_certificate,
+            {"Certificate", "ccn.keylocator.certificate", FT_BYTES, BASE_NONE, NULL,
+                0x0, "The certificate present in the KeyLocator", HFILL}},
         {&hf_ccn_extopt,
             {"ExtOpt", "ccn.extopt", FT_BYTES, BASE_NONE, NULL,
                 0x0, "Extension/Options field", HFILL}},
@@ -229,11 +269,11 @@ proto_reg_handoff_ccn(void)
         initialized = TRUE;
     }
     if (current_ccn_port != -1) {
-        dissector_delete("udp.port", current_ccn_port, ccn_handle);
-        dissector_delete("tcp.port", current_ccn_port, ccn_handle);
+        dissector_delete_uint("udp.port", current_ccn_port, ccn_handle);
+        dissector_delete_uint("tcp.port", current_ccn_port, ccn_handle);
     }
-    dissector_add("udp.port", global_ccn_port, ccn_handle);
-    dissector_add("tcp.port", global_ccn_port, ccn_handle);
+    dissector_add_uint("udp.port", global_ccn_port, ccn_handle);
+    dissector_add_uint("tcp.port", global_ccn_port, ccn_handle);
     current_ccn_port = global_ccn_port;
 }
 
@@ -511,7 +551,7 @@ dissect_ccn_interest(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t *tvb,
             col_append_str(pinfo->cinfo, COL_INFO, ">");
         }
         titem = proto_tree_add_item(tree, hf_ccn_nonce, tvb,
-                                    blob - ccnb, blob_size, FALSE);
+                                    blob - ccnb, blob_size, ENC_NA);
     }
     
     return (1);
@@ -524,16 +564,22 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
     proto_tree *signature_tree;
     proto_tree *name_tree;
     proto_tree *signedinfo_tree;
+    proto_tree *finalblockid_tree;
+    proto_tree *keylocator_tree;
+    proto_tree *keylocatorname_tree;
     proto_tree *content_tree;
     proto_item *titem;
     struct ccn_parsed_ContentObject co;
     struct ccn_parsed_ContentObject *pco = &co;
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
     struct ccn_charbuf *c;
     struct ccn_indexbuf *comps;
     const unsigned char *comp;
     size_t comp_size;
     size_t blob_size;
     const unsigned char *blob;
+    const unsigned char *ccnb_item;
     int l;
     unsigned int i;
     double dt;
@@ -546,7 +592,7 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
     
     /* Signature */
     l = pco->offset[CCN_PCO_E_Signature] - pco->offset[CCN_PCO_B_Signature];
-    titem = proto_tree_add_item(tree, hf_ccn_signature, tvb, pco->offset[CCN_PCO_B_Signature], l, FALSE);
+    titem = proto_tree_add_item(tree, hf_ccn_signature, tvb, pco->offset[CCN_PCO_B_Signature], l, ENC_NA);
     signature_tree = proto_item_add_subtree(titem, ett_signature);
     
     /* DigestAlgorithm */
@@ -557,7 +603,7 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
                                   pco->offset[CCN_PCO_E_DigestAlgorithm],
                                   &blob, &blob_size);
         titem = proto_tree_add_item(signature_tree, hf_ccn_signaturedigestalg, tvb,
-                                    blob - ccnb, blob_size, FALSE);
+                                    blob - ccnb, blob_size, ENC_NA);
     }
     /* Witness */
     l = pco->offset[CCN_PCO_E_Witness] - pco->offset[CCN_PCO_B_Witness];
@@ -664,10 +710,76 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
                                   pco->offset[CCN_PCO_B_FinalBlockID],
                                   pco->offset[CCN_PCO_E_FinalBlockID],
                                   &blob, &blob_size);
-        
-        titem = proto_tree_add_item(signedinfo_tree, hf_ccn_finalblockid, tvb, blob - ccnb, blob_size, FALSE);
+        titem = proto_tree_add_item(signedinfo_tree, hf_ccn_finalblockid, tvb, blob - ccnb, blob_size, ENC_NA);
+        finalblockid_tree = proto_item_add_subtree(titem, ett_finalblockid);
+        titem = proto_tree_add_boolean(finalblockid_tree, hf_ccn_finalblockid_final, tvb, blob - ccnb, blob_size,
+                                       ccn_is_final_pco(ccnb, pco, comps) ? TRUE : FALSE);
+        PROTO_ITEM_SET_GENERATED(titem);
     }
     /* TODO: KeyLocator */
+    //   The Key or Certificate or KeyName fields all end at the CCN_PCO_E_Key_Certificate_KeyName offset,
+    //   and start at CCN_PCO_B_Key_Certificate_KeyName.   The Key and Certificate cases are blobs.
+    //   If it's a KeyName then CCN_PCO_B_KeyName_Name/CCN_PCO_E_KeyName_Name locate the name,
+    //      and there is an optional PublisherID located by CCN_PCO_B_KeyName_Pub/CCN_PCO_E_KeyName_Pub
+    
+    l = pco->offset[CCN_PCO_E_KeyLocator] - pco->offset[CCN_PCO_B_KeyLocator];
+    if (l > 0) {
+        titem = proto_tree_add_text(signedinfo_tree, tvb,
+                                    pco->offset[CCN_PCO_B_KeyLocator], l,
+                                    "KeyLocator");
+        keylocator_tree = proto_item_add_subtree(titem, ett_keylocator);
+        /* A KeyName with optional PublisherID*/
+        if ((l = pco->offset[CCN_PCO_E_KeyName_Name] - pco->offset[CCN_PCO_B_KeyName_Name]) > 0) {
+            /* Name */
+            proto_item_append_text(titem, " [Name]");
+            ccnb_item = ccnb + pco->offset[CCN_PCO_B_KeyName_Name];
+            d = ccn_buf_decoder_start(&decoder, ccnb_item, l);
+            ccn_parse_Name(d, comps);
+            c = ccn_charbuf_create();
+            ccn_uri_append(c, ccnb_item, l, 1);
+            titem = proto_tree_add_string(keylocator_tree, hf_ccn_keylocator_name, tvb,
+                                          pco->offset[CCN_PCO_B_KeyName_Name], l,
+                                          ccn_charbuf_as_string(c));
+            keylocatorname_tree = proto_item_add_subtree(titem, ett_keylocator_name);
+            
+            /* Name Components */
+            for (i = 0; i < comps->n - 1; i++) {
+                ccn_charbuf_reset(c);
+                res = ccn_name_comp_get(ccnb_item, comps, i, &comp, &comp_size);
+                ccn_uri_append_percentescaped(c, comp, comp_size);
+                titem = proto_tree_add_string(keylocatorname_tree, hf_ccn_keylocator_name_components, tvb, comp - ccnb, comp_size, ccn_charbuf_as_string(c));
+            }
+            ccn_charbuf_destroy(&c);
+            /* / Name */
+            /* optional PublisherID */
+            if ((l = pco->offset[CCN_PCO_E_KeyName_Pub] - pco->offset[CCN_PCO_B_KeyName_Pub]) > 0) {
+                res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest, ccnb,
+                                          pco->offset[CCN_PCO_B_KeyName_Pub],
+                                          pco->offset[CCN_PCO_E_KeyName_Pub],
+                                          &blob, &blob_size);
+                titem = proto_tree_add_bytes(signedinfo_tree, hf_ccn_keylocator_publisherpublickeydigest, tvb, blob - ccnb, blob_size, blob);
+            }
+            /* /PublisherID */
+        } else {
+            /* Either a Key or a Certificate - see which blob parses: CCN_DTAG_Key or CCN_DTAG_Certificate */
+            if (0 == ccn_ref_tagged_BLOB(CCN_DTAG_Key, ccnb,
+                                         pco->offset[CCN_PCO_B_Key_Certificate_KeyName],
+                                         pco->offset[CCN_PCO_E_Key_Certificate_KeyName],
+                                         &blob, &blob_size)) {
+                /* Key */
+                proto_item_append_text(titem, " [Key]");
+                titem = proto_tree_add_item(keylocator_tree, hf_ccn_keylocator_key, tvb, blob - ccnb, blob_size, ENC_NA);
+            } else if (0 == ccn_ref_tagged_BLOB(CCN_DTAG_Certificate, ccnb,
+                                                pco->offset[CCN_PCO_B_Key_Certificate_KeyName],
+                                                pco->offset[CCN_PCO_E_Key_Certificate_KeyName],
+                                                &blob, &blob_size)) {
+                /* Certificate */
+                proto_item_append_text(titem, " [Certificate]");
+                titem = proto_tree_add_item(keylocator_tree, hf_ccn_keylocator_certificate, tvb, blob - ccnb, blob_size, ENC_NA);
+            }
+        }
+    }
+    /* ExtOpt */
     l = pco->offset[CCN_PCO_E_ExtOpt] - pco->offset[CCN_PCO_B_ExtOpt];
     if (l > 0) {
         res = ccn_ref_tagged_BLOB(CCN_DTAG_ExtOpt, ccnb,
@@ -675,7 +787,7 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
                                   pco->offset[CCN_PCO_E_ExtOpt],
                                   &blob, &blob_size);
         
-        titem = proto_tree_add_item(signedinfo_tree, hf_ccn_extopt, tvb, blob - ccnb, blob_size, FALSE);
+        titem = proto_tree_add_item(signedinfo_tree, hf_ccn_extopt, tvb, blob - ccnb, blob_size, ENC_NA);
     }
     /* /SignedInfo */
     
@@ -687,10 +799,10 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
                               &blob, &blob_size);
     titem = proto_tree_add_text(tree, tvb,
                                 pco->offset[CCN_PCO_B_Content], l,
-                                "Content: %d bytes", blob_size);
+                                "Content: %zd bytes", blob_size);
     if (blob_size > 0) {
         content_tree = proto_item_add_subtree(titem, ett_content);
-        titem = proto_tree_add_item(content_tree, hf_ccn_contentdata, tvb, blob - ccnb, blob_size, FALSE);
+        titem = proto_tree_add_item(content_tree, hf_ccn_contentdata, tvb, blob - ccnb, blob_size, ENC_NA);
     }
     
     return (ccnb_size);
