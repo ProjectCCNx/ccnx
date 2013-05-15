@@ -1,9 +1,7 @@
-package org.ccnx.ccn.impl.sync;
-
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -16,6 +14,7 @@ package org.ccnx.ccn.impl.sync;
  * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
+package org.ccnx.ccn.impl.sync;
 
 import java.util.HashMap;
 
