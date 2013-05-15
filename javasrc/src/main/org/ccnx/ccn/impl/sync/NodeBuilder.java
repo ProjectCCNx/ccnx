@@ -39,6 +39,18 @@ public class NodeBuilder {
 	
 	public abstract class NodeCommon<X> {
 		
+		/**
+		 * Creates a new SyncNodeComposite referenced by the returned SyncTreeEntry from the input objects (which will be either
+		 * nodes or leafs). The new node starts with the first node entered and ends when there are no more objecs or there is no 
+		 * more room based on various criteria depending on whether its a node of leaves or of nodes. Objects which have been 
+		 * included in the new node are removed from the input object.
+		 * 
+		 * @param objects collection of objects for building the node
+		 * @param depth depth of new node
+		 * @param shc the associated hash cache
+		 * @param cache the associated node cache
+		 * @return new SyncTreeEntry referencing the new node
+		 */
 		public SyncTreeEntry createNodeCommon(Collection<X> objects, int depth, SyncHashCache shc, SyncNodeCache cache) {
 			ArrayList<SyncNodeComposite.SyncNodeElement> refs = new ArrayList<SyncNodeComposite.SyncNodeElement>();
 			int total = 0;
@@ -65,7 +77,7 @@ public class NodeBuilder {
 						break;
 				}
 				tobj = ne;
-				split = split + 1;
+				split++;
 			}
 			int i = 0;
 			ArrayList<X> removes = new ArrayList<X>();
@@ -89,8 +101,32 @@ public class NodeBuilder {
 			return ste;
 		}
 		
-		public abstract int extraSplit(X ne, X te, int total, int minLen, int prevTotal);
+		/**
+		 * Allows use of special case rules to end the node creation early - i.e. before we
+		 * just run out of the maximum space.
+		 * 
+		 * @param co  current object
+		 * @param po  previous object
+		 * @param total current total 
+		 * @param minLen minimum length before we can split
+		 * @param prev input from prev call
+		 * @return -1 if we should end, input for next call otherwise
+		 */
+		public abstract int extraSplit(X co, X po, int total, int minLen, int prev);
+		
+		/**
+		 * Create a new element based on input object
+		 * @param xe
+		 * @return
+		 */
 		public abstract SyncNodeElement newElement(X xe);
+		
+		/**
+		 * Create a new node based on input elements
+		 * @param refs the list of elements
+		 * @param depth depth of new node
+		 * @return
+		 */
 		public abstract SyncNodeComposite newNode(ArrayList<SyncNodeComposite.SyncNodeElement> refs, int depth);
 	}
 	
@@ -105,17 +141,17 @@ public class NodeBuilder {
 	public SyncTreeEntry newLeafNode(TreeSet<ContentName> names, SyncHashCache shc, SyncNodeCache cache) {
 		SyncTreeEntry ste = new NodeCommon<ContentName>() {
 			
-			public int extraSplit(ContentName nextName, ContentName tname, int total, int minLen, int prevMatch) {
-				int match = tname.matchLength(nextName);
+			public int extraSplit(ContentName currentName, ContentName prevName, int total, int minLen, int prevMatch) {
+				int match = prevName.matchLength(currentName);
 				if (total > minLen) {
-					if (match < prevMatch || match >  + 1) {
+					if (match < prevMatch || match >  prevMatch + 1) {
 						if (Log.isLoggable(Log.FAC_SYNC, Level.FINE)) {
 							Log.fine(Log.FAC_SYNC, "Node split due to level change - nbytes {0}, match {1}, prev {2}", 
 									total, match, prevMatch);
 						}
 						return -1;
 					}
-					byte[] lc = tname.lastComponent();
+					byte[] lc = prevName.lastComponent();
 					if (lc.length > 8) {
 						int c = (int)(lc[lc.length - 7] & 255);
 						if (c < CCNSync.HASH_SPLIT_TRIGGER) {
@@ -142,6 +178,7 @@ public class NodeBuilder {
 		if (null != theNode) {
 			theNode.setLeafCount(theNode.getRefs().size());
 		}
+		shc.addHash(ste.getHash(), cache);
 		return ste;
 	}
 	
@@ -154,7 +191,7 @@ public class NodeBuilder {
 	 */
 	public SyncTreeEntry newNodeOfNodes(Collection<SyncNodeElement> nodes, final SyncHashCache shc, SyncNodeCache cache, int depth) {
 		SyncTreeEntry ste = new NodeCommon<SyncNodeElement>() {		
-			public int extraSplit(SyncNodeElement n, SyncNodeElement tname, int total, int minLen, int prevMatch) {
+			public int extraSplit(SyncNodeElement c, SyncNodeElement n, int total, int minLen, int prevMatch) {
 				return 0;
 			}
 
