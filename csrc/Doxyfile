@@ -18,7 +18,7 @@
 #---------------------------------------------------------------------------
 DOXYFILE_ENCODING      = UTF-8
 PROJECT_NAME           = "Content-Centric Networking in C"
-PROJECT_NUMBER         = 0.7.2rc1
+PROJECT_NUMBER         = 0.7.2
 OUTPUT_DIRECTORY       = ../doc/ccode
 CREATE_SUBDIRS         = NO
 OUTPUT_LANGUAGE        = English
