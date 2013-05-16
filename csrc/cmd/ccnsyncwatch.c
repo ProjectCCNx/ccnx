@@ -27,7 +27,7 @@
 #include <ccn/ccn.h>
 #include <ccn/sync.h>
 #include <ccn/uri.h>
-
+#include <openssl/evp.h>
 
 char *
 hex_string(unsigned char *s, size_t l)
@@ -163,5 +163,6 @@ main(int argc, char **argv)
     ccns_close(&ccns, NULL, NULL);
     ccns_slice_destroy(&slice);
     ccn_destroy(&h);
+    EVP_cleanup();
     exit(res);
 }

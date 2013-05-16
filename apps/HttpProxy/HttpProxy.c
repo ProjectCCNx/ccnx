@@ -3261,12 +3261,13 @@ ShowStats(MainBase mb) {
 	flushLog(f);
 }
 
+int ever = 1;
 static int
 DispatchLoop(MainBase mb) {
 	
 	int waitMillis = 1;
 	int res = 0;
-	for (;;) {
+	for (;ever;) {
 		uint64_t nChanges = mb->nChanges;
 		
 		TrySelect(mb);

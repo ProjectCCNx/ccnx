@@ -147,9 +147,6 @@ signbenchtest.o:
 signbenchtest: signbenchtest.o
 	$(CC) $(CFLAGS) -o $@ signbenchtest.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto 
 
-ccndumppcap: ccndumppcap.o
-	$(CC) $(CFLAGS) -o $@ ccndumppcap.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto -lpcap
-
 ccnbtreetest.o:
 	$(CC) $(CFLAGS) -Dccnbtreetest_main=main -c ccnbtreetest.c
 

@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -117,7 +117,7 @@ ccn_uri_append_mixedescaped(struct ccn_charbuf *c,
         else if (!is_uri_reserved(ch))
             ccn_charbuf_append(c, &ch, 1);
         else {  /* reserved character -- check for following character */
-            if (i + 1 == size || !is_uri_reserved(data[i + 1]))
+            if (ch > 0 && (i + 1 == size || !is_uri_reserved(data[i + 1])))
                 ccn_charbuf_putf(c, "%%%02X", (unsigned)ch);
             else {
                 hexmode = 1;
@@ -234,13 +234,13 @@ ccn_append_uri_component(struct ccn_charbuf *c, const char *s, size_t limit, siz
                 limit = i;
                 break;
             case '=':
-                if (i + 3 <= limit && ((limit - i) & 1) == 1) {
-                    hex = 1;
-                } else
+                if (hex || i + 3 > limit) {
                     return(-3);
+                }
+                hex = 1;
                 break;
             case '%':
-                if (i + 3 > limit || (d1 = hexit(s[i+1])) < 0 ||
+                if (hex || i + 3 > limit || (d1 = hexit(s[i+1])) < 0 ||
                     (d2 = hexit(s[i+2])) < 0   ) {
                     return(-3);
                 }

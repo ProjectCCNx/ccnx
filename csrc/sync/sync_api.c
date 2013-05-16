@@ -1317,10 +1317,11 @@ ccns_close(struct ccns_handle **sh,
                 if (root->currentHash != NULL)
                     ccn_charbuf_append_charbuf(rhash, root->currentHash);
             }
+            SyncFreeNameAccumAndNames(ch->namesToAdd);
             // get rid of the root
             ch->root = NULL;
             SyncRemRoot(root);
-
+            // XXX: what about the ch->hashSeen?
             // get rid of the base
             if (ch->base != NULL) {
                 struct sync_plumbing_sync_methods *sm = ch->sync_plumbing->sync_methods;

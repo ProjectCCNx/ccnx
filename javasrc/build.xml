@@ -400,7 +400,7 @@
 		</junit>
 	</target>
 
-	<target name="test-impl" depends="test-impl-without-repo, test-impl-with-repo, test-impl-with-sync">
+	<target name="test-impl" depends="test-impl-without-repo, test-impl-with-repo, test-sync-without-repo, test-sync-with-repo">
 	</target>
 	
 	<target name="test-impl-without-repo" depends="jar, ccnd">
@@ -453,7 +453,32 @@
 		</junit>
 	</target>
 	
-	<target name="test-impl-with-sync" depends="jar, ccnd, repo" if="${repo2}">
+	<target name="test-sync-without-repo" depends="jar, ccnd">
+		<mkdir dir="${testout}"/>
+		
+		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}" maxmemory="1g">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="xml" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
+            <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel.Sync" value="${SYNC_NOISY}"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel.Test" value="${SYNC_NOISY}"/>
+            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
+			<env key="CCNR_DIRECTORY" value="${REPO_ROOT}"/>
+			<env key="PATH" value="${env.PATH}:${cmddir}"/>
+			<batchtest todir="${testout}">
+				<fileset dir="${build}">
+                    <include name="org/ccnx/ccn/profiles/sync/*Test.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+	</target>
+	
+	<target name="test-sync-with-repo" depends="jar, ccnd, repo" if="${repo2}">
 			<mkdir dir="${testout}"/>
 			
 			<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}" maxmemory="1g">

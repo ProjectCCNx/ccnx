@@ -1053,8 +1053,17 @@ SyncAllocNodeAccum(int lim) {
 
 extern struct SyncNodeAccum *
 SyncFreeNodeAccum(struct SyncNodeAccum *na) {
+    int i;
     if (na != NULL) {
-        if (na->ents != NULL) free(na->ents);
+        if (na->ents != NULL) {
+            for (i = 0; i < na->len; i++) {
+                if (na->ents[i]) {
+                    SyncNodeDecRC(na->ents[i]);
+                    na->ents[i] = NULL;
+                }
+            }
+            free(na->ents);
+        }
         free(na);
     }
     return NULL;
@@ -1077,6 +1086,7 @@ SyncAccumNode(struct SyncNodeAccum *na, struct SyncNodeComposite *nc) {
     }
     ents[len] = nc;
     na->len = len + 1;
+    SyncNodeIncRC(nc);
 }
 
 extern int
