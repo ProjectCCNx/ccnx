@@ -117,7 +117,7 @@ pkgbin: default
 	mkdir -p ccnx-pkg-$(VERSION)/lib
 	mkdir -p ccnx-pkg-$(VERSION)/include
 	mkdir -p ccnx-pkg-$(VERSION)/bin
-	mkdir -p ccnx-pkg-$(VERSION)/man
+	mkdir -p ccnx-pkg-$(VERSION)/man/man1
 	mkdir -p ccnx-pkg-$(VERSION)/etc
 	mkdir -p ccnx-pkg-$(VERSION)/doc
 	$(MAKE) dist-docs
@@ -129,7 +129,7 @@ pkgbin: default
 	cp doc/index.html ccnx-pkg-$(VERSION)/doc
 	cp LICENSE ccnx-pkg-$(VERSION)
 	cp NEWS ccnx-pkg-$(VERSION)
-	mv ccnx-pkg-$(VERSION)/doc/manpages/*.1 ccnx-pkg-$(VERSION)/man
+	mv ccnx-pkg-$(VERSION)/doc/manpages/*.1 ccnx-pkg-$(VERSION)/man/man1
 	$(MAKE) install INSTALL_BASE= DESTDIR=`pwd`/ccnx-pkg-$(VERSION)
 	tar cf ccnx-pkg-$(VERSION).tar ccnx-pkg-$(VERSION)
 	gzip -9 ccnx-pkg-$(VERSION).tar

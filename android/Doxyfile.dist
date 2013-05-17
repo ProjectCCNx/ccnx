@@ -20,7 +20,7 @@
 #---------------------------------------------------------------------------
 DOXYFILE_ENCODING      = UTF-8
 PROJECT_NAME           = "CCNx for Android"
-PROJECT_NUMBER         = 0.7.2rc1
+PROJECT_NUMBER         = 0.7.2
 OUTPUT_DIRECTORY       = ../doc/android
 CREATE_SUBDIRS         = NO
 OUTPUT_LANGUAGE        = English
