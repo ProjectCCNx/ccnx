@@ -48,6 +48,7 @@ CCNx 0.7.2.
 	* Bug #100973: ccndc can ccn_charbuf_destroy() an uninitialized charbuf
 	* Bug #100974: HttpProxy's NetFetch doesn't create the keystore it tries to use in place of
 	user's default keystore.
+	* Bug #100975: ccnx logo for Android is too big
 	* Feature #100915: Junit tests and System Tests should be moved to a separate directory, yet
 	retain the same package structure.
 	* Feature #100919: RFE: an easier to read encoding for multiple escaped characters in ccnx URIs
