@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2010, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -73,15 +73,6 @@ static const EVP_MD sha256ec_md=
 /*
  * In theory this should allow us to "seamlessly integrate" with OpenSSL 1.0.X (and eventually remove this) 
  */
-EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *e,
-                                const unsigned char *key, int keylen) 
-{
-    EVP_PKEY *pkey = EVP_PKEY_new();
-    EVP_PKEY_assign(pkey, type, (char *)key);
-    pkey->type = type;		// Doesn't work in assign because OpenSSL tries to type check it
-    return pkey;
-}
-
 void *EVP_PKEY_get0(EVP_PKEY *pkey)
 {
     return pkey->pkey.ptr;
@@ -90,8 +81,8 @@ void *EVP_PKEY_get0(EVP_PKEY *pkey)
 #endif
 
 int ccn_hmac_init(void *ctx, const void *key, int len, const EVP_MD *md) 
-{
-    HMAC_Init((HMAC_CTX *)ctx, key, len, md);
+{ 
+    HMAC_Init((HMAC_CTX *)ctx, ASN1_STRING_data((ASN1_STRING *)key), len, md);
     return (1);
 }
 
@@ -161,8 +152,8 @@ sigc_from_digest_and_pkey(struct ccn_sigc *sigc, const char *digest, const struc
     pkey_type = EVP_PKEY_type(((EVP_PKEY *)pkey)->type);
 #endif
     if (md_nid == NID_hmac || pkey_type == NID_hmac) {
-    	sigc->init_func = (int (*)(void *ctx, const void *, int, const EVP_MD *))HMAC_Init;
-    	sigc->verify_init_func = (int (*)(void *ctx, const void *, int, const EVP_MD *))HMAC_Init;
+    	sigc->init_func = (int (*)(void *ctx, const void *, int, const EVP_MD *))ccn_hmac_init;
+    	sigc->verify_init_func = (int (*)(void *ctx, const void *, int, const EVP_MD *))ccn_hmac_init;
     	sigc->update_func = (int (*)(void *, const void *, size_t))HMAC_Update;
     	sigc->final_func = ccn_hmac_final;
     	sigc->verify_final_func = ccn_hmac_verify_final;

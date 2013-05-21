@@ -129,6 +129,8 @@ ccn_aes_keystore_init(struct ccn_keystore *keystore, char *filename, const char 
     EVP_CIPHER_CTX ctx;
     int length = 0;
     int final_length = 0;
+    int ret;
+    ASN1_STRING *key_octet;
 
     OpenSSL_add_all_algorithms();
 
@@ -157,9 +159,6 @@ ccn_aes_keystore_init(struct ccn_keystore *keystore, char *filename, const char 
     if (memcmp(&ki->encrypted_key->data[check_start], check, SHA256_DIGEST_LENGTH))
 	goto Bail;
     keybuf = malloc(SHA256_DIGEST_LENGTH + AES_BLOCK_SIZE);
-    keystore->symmetric_key = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, keybuf, -1);
-    if (!keystore->symmetric_key)
-	goto Bail;
     EVP_CIPHER_CTX_init(&ctx);
     if (!EVP_DecryptInit(&ctx, EVP_aes_256_cbc(), aes_key, ki->encrypted_key->data))
 	goto Bail;
@@ -171,6 +170,14 @@ ccn_aes_keystore_init(struct ccn_keystore *keystore, char *filename, const char 
 	goto Bail;
     if (ccn_aes_digest(keybuf, length * 8, keystore->key_digest))
         goto Bail;
+    keystore->symmetric_key = EVP_PKEY_new();
+    if (keystore->symmetric_key == NULL)
+        goto out;
+    key_octet = ASN1_STRING_new();
+    ASN1_STRING_set(key_octet, keybuf, SHA256_DIGEST_LENGTH + AES_BLOCK_SIZE);
+    ret = EVP_PKEY_assign(keystore->symmetric_key, EVP_PKEY_HMAC, (char *)key_octet);
+    if (ret == 0)
+        goto Bail;
     ans = 0;
     keystore->header.initialized = 1;
     keystore->key_digest_length = length;
@@ -178,7 +185,9 @@ ccn_aes_keystore_init(struct ccn_keystore *keystore, char *filename, const char 
 
 Bail:
     ans = -1;
-    EVP_PKEY_free(keystore->symmetric_key);
+    free(keybuf);
+    if (keystore->symmetric_key != NULL)
+        EVP_PKEY_free(keystore->symmetric_key);
 out:
     return (ans);
 }
