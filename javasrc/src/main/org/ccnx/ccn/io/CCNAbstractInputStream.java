@@ -34,6 +34,7 @@ import javax.crypto.IllegalBlockSizeException;
 import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.QueuedContentHandler;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
@@ -174,6 +175,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	private long processingSegment = -1;
 
 	private final int processingDefer = 0;
+	
+	private VerifyHandler _verifyHandler = new VerifyHandler();
 
 	/**
 	 * Set up an input stream to read segmented CCN content under a given name.
@@ -1165,7 +1168,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 
 			if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 				Log.info(Log.FAC_PIPELINE, "PIPELINE: in handleContent after reading {0} avgResponseTime {1}", result.name(), avgResponseTime);
-			is = new IncomingSegment(result, interest);
+			is = new IncomingSegment(result, interest, starttime);
 
 			processingSegment = SegmentationProfile.getSegmentNumber(is.content.name());
 		}
@@ -1207,32 +1210,15 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 					}
 				}
 			}
+		}
 
-			if (is != null) {
-				// verify the content object
-				if (_handle.defaultVerifier().verify(is.content)) {
-					// this content verified
-					receivePipelineContent(is.content);
-				} else {
-					// content didn't verify, don't hand it up...
-					// TODO content that fails verification needs to be handled better.  need to express a new interest
-					if (Log.isLoggable(Log.FAC_PIPELINE, Level.WARNING))
-						Log.warning(Log.FAC_PIPELINE, "Dropping content object due to failed verification: {0} Need to add interest re-expression with exclude", is.content.name());
-					_sentInterests.remove(is.interest);
-				}
-			}
-
-			advancePipeline();
-		}//try holding lock more consistently to control how notify is done
-		attemptHoleFilling();
-
+		if (is != null) {
+			_verifyHandler.add(is);
+		}
 		if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 			Log.info(Log.FAC_PIPELINE, "PIPELINE: {0} done with handleContent after reading {1}", (System.currentTimeMillis() - starttime),  result.name());
-
 		return null;
 	}
-
-
 
 	/**
 	 * Set the timeout that will be used for all content retrievals on this stream.
@@ -2145,11 +2131,42 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	static private class IncomingSegment {
 		public ContentObject content;
 		public Interest interest;
+		public long starttime;
 
-		private IncomingSegment(ContentObject co, Interest i) {
+		private IncomingSegment(ContentObject co, Interest i, long st) {
 			content = co;
 			interest = i;
+			starttime = st;
 		}
 	}
+	
+	/**
+	 * Creates a separate thread to do verification. We need this because we can't do
+	 * verification on the netmanager thread because we may need to retrieve a key which
+	 * requires the netmanager thread to complete.
+	 */
+	protected class VerifyHandler extends QueuedContentHandler<IncomingSegment> {
 
+		@Override
+		protected void process(IncomingSegment is) {
+			synchronized (inOrderSegments) {
+				// verify the content object
+				if (_handle.defaultVerifier().verify(is.content)) {
+					// this content verified
+					receivePipelineContent(is.content);
+				} else {
+					// content didn't verify, don't hand it up...
+					// TODO content that fails verification needs to be handled better.  need to express a new interest
+					if (Log.isLoggable(Log.FAC_PIPELINE, Level.WARNING))
+						Log.warning(Log.FAC_PIPELINE, "Dropping content object due to failed verification: {0} Need to add interest re-expression with exclude", is.content.name());
+					_sentInterests.remove(is.interest);
+				}
+				advancePipeline();
+			}
+			attemptHoleFilling();
+	
+			if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: {0} done with verification for {1}", (System.currentTimeMillis() - is.starttime),  is.content.name());
+		}
+	}
 }
