@@ -663,7 +663,7 @@ content_from_accession(struct ccnd_handle *h, ccn_cookie accession)
     
     y = ccny_from_cookie(h->content_tree, accession);
     if (y != NULL)
-        ans = y->payload;
+        ans = ccny_payload(y);
     return(ans);
 }
 
@@ -715,7 +715,7 @@ find_first_match_candidate(struct ccnd_handle *h,
     charbuf_release(h, namebuf);
     if (y == NULL)
         return(NULL);
-    return(y->payload);
+    return(ccny_payload(y));
 }
 
 /**
@@ -730,7 +730,8 @@ content_matches_prefix(struct ccnd_handle *h,
     int res;
     
     y = ccny_from_cookie(h->content_tree, content->accession);
-    res = ccn_flatname_compare(flat->buf, flat->length, y->key, y->keylen);
+    res = ccn_flatname_compare(flat->buf, flat->length,
+                               ccny_key(y), ccny_keylen(y));
     return (res == CCN_STRICT_PREFIX || res == 0);
 }
 
@@ -746,10 +747,10 @@ content_next(struct ccnd_handle *h, struct content_entry *content)
     y = ccny_from_cookie(h->content_tree, content->accession);
     if (y == NULL)
         return(NULL);
-    y = y->skiplinks[0];
+    y = ccny_next(y);
     if (y == NULL)
         return(NULL);
-    return(y->payload);
+    return(ccny_payload(y));
 }
 
 static int
@@ -785,14 +786,14 @@ update_ex_index(struct ccnd_handle *h, int staletime, ccn_cookie c)
     else {
         if (y == NULL) {
             y = ccny_create(nrand48(h->seed), 0);
-            y->key = NULL; /* Our compare action expects this. */
-            y->keylen = staletime;
+            /* Our compare action only uses keylen */
+            ccny_set_key_fields(y, NULL, staletime);
             if (e->n >= e->limit)
                 ccn_nametree_grow(e);
             ccny_enroll(e, y);
-            if (y->cookie == 0) abort();
+            if (ccny_cookie(y) == 0) abort();
         }
-        y->info = c;
+        ccny_set_info(y, c);
     }
 }
 
@@ -815,7 +816,7 @@ content_enqueuex(struct ccnd_handle *h, struct content_entry *content)
         if (y == NULL)
             prev = h->headx;
         else
-            prev = content_from_accession(h, y->info);
+            prev = content_from_accession(h, ccny_info(y));
         // if prev is NULL, we forgot to remove an entry
     }
     if (prev->nextx->staletime <= tts && prev->nextx != h->headx) abort();
@@ -904,9 +905,11 @@ ccnd_n_stale(struct ccnd_handle *h)
 static void
 content_preremove(struct ccn_nametree *ntree, struct ccny *y)
 {
-    struct ccnd_handle *h = ntree->data;
-    struct content_entry *content = y->payload;
+    struct ccnd_handle *h = NULL;
+    struct content_entry *content = NULL;
     
+    h = ntree->data;
+    content = ccny_payload(y);
     if (content == NULL)
         return;
     if (content->nextx != NULL)
@@ -1757,7 +1760,7 @@ match_interests(struct ccnd_handle *h, struct content_entry *content,
     if (y == NULL) abort();
     name = charbuf_obtain(h);
     ccn_name_init(name);
-    ccn_name_append_flatname(name, y->key, y->keylen, 0, -1);
+    ccn_name_append_flatname(name, ccny_key(y), ccny_keylen(y), 0, -1);
     namecomps = indexbuf_obtain(h);
     ccn_name_split(name, namecomps);
     c0 = namecomps->buf[0];
@@ -3938,7 +3941,7 @@ next_child_at_level(struct ccnd_handle *h,
     name = charbuf_obtain(h);
     ccn_name_init(name);
     y = ccny_from_cookie(h->content_tree, content->accession);
-    res = ccn_name_append_flatname(name, y->key, y->keylen, 0, level + 1);
+    res = ccn_name_append_flatname(name, ccny_key(y), ccny_keylen(y), 0, level + 1);
     if (res < level)
         goto Bail;
 //    ccnd_debug_ccnb(h, __LINE__, "ccn_name_next_sibling_is_next", NULL,
@@ -3957,7 +3960,7 @@ next_child_at_level(struct ccnd_handle *h,
     y = ccn_nametree_look_ge(h->content_tree,
                              flatname->buf, flatname->length);
     if (y != NULL)
-        next = y->payload;
+        next = ccny_payload(y);
 Bail:
     charbuf_release(h, name);
     ccn_charbuf_destroy(&flatname);
@@ -4273,12 +4276,12 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         if (content != h->headx)
             remove_content(h, content);
     }
-    content = y->payload; /* Allocated by ccny_create */
+    content = ccny_payload(y); /* Allocated by ccny_create */
     ocookie = ccny_enroll(h->content_tree, y);
     if (ocookie != 0) {
         /* An entry was already present */
         ccny_destroy(h->content_tree, &y);
-        content = ccny_from_cookie(h->content_tree, ocookie)->payload;
+        content = ccny_payload(ccny_from_cookie(h->content_tree, ocookie));
         if (is_stale(h, content)) {
             /* When old content arrives after it has gone stale, freshen it */
             // XXX - ought to do mischief checks before this
@@ -4295,13 +4298,13 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         }
         res = 0;
     }
-    else if (y->cookie == 0) {
+    else if (ccny_cookie(y) == 0) {
         /* Reporting and cleanup happens below */
         res = -__LINE__;
     }
     else {
         res = -__LINE__;
-        content->accession = y->cookie;
+        content->accession = ccny_cookie(y);
         content->arrival_faceid = face->faceid;
         content->ncomps = comps->n + 1;
         content->ccnb = malloc(size);
