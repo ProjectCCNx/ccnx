@@ -54,7 +54,6 @@ test_inserts_from_stdin(void)
 {
     struct ccn_charbuf *c = NULL;
     struct ccn_charbuf *f = NULL;
-    int res;
     int delete;      /* Lines ending with a '!' are to be deleted instead */
     int i;
     int item = 0;
@@ -96,7 +95,7 @@ test_inserts_from_stdin(void)
         }
         f->length = 2 * c->length;
         node = ccn_nametree_lookup(ntree, f->buf, f->length);
-        cookie = (node != NULL) ? node->cookie : 0;
+        cookie = ccny_cookie(node);
         if (0) ccn_nametree_check(ntree);
         if (delete) {
             if (cookie != 0) {
@@ -113,7 +112,7 @@ test_inserts_from_stdin(void)
         node = ccny_create(lrand48(), 0);
         ccny_set_key(node, f->buf, f->length);
         if (ntree->n >= ntree->limit) {
-            res = ccn_nametree_grow(ntree);
+            int res = ccn_nametree_grow(ntree);
             FAILIF(res != 0);
             fprintf(stderr, "n=%d, limit=%d\n", ntree->n, ntree->limit);
         }
@@ -125,8 +124,7 @@ test_inserts_from_stdin(void)
             dups++;
         }
         else {
-            FAILIF(res != 0);
-            FAILIF(node->cookie == 0);
+            FAILIF(ccny_cookie(node) == 0);
             unique++;
         }
     }
@@ -134,18 +132,18 @@ test_inserts_from_stdin(void)
     printf("%d unique, %d duplicate, %d deleted, %d missing\n",
                unique,    dups,         deleted,    missing);
     printf("Nametree nodes:");
-    for (node = ntree->head->skiplinks[0]; node != NULL; node = node->skiplinks[0])
-        printf(" %u", node->cookie);
+    for (node = ccn_nametree_first(ntree); node != NULL; node = ccny_next(node))
+        printf(" %u", ccny_cookie(node));
     printf("\n");
     printf("Reversed nodes:");
-    for (node = ntree->head->prev; node != NULL; node = node->prev)
-        printf(" %u", node->cookie);
+    for (node = ccn_nametree_last(ntree); node != NULL; node = ccny_prev(node))
+        printf(" %u", ccny_cookie(node));
     printf("\n");
     FAILIF(unique - deleted != ntree->n);
     ccn_nametree_destroy(&ntree);
     ccn_charbuf_destroy(&c);
     ccn_charbuf_destroy(&f);
-    return(res);
+    return(0);
 }
 
 int

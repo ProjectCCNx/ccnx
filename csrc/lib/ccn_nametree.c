@@ -23,6 +23,35 @@
 #include <ccn/flatname.h>
 #include <ccn/nametree.h>
 
+/**
+ *  A nametree entry
+ *
+ * Each entry is capable of representing a name prefix, a
+ * content object, or both.  A name prefix is useful for keeping
+ * track of PIT entries, FIB entries, statistics used by
+ * the strategy layer, name enumeration, and creation/deletion
+ * notifications.
+ *
+ * To accomplish this, the nametree nodes are linked into several
+ * data structures.  One of these is a skiplist, so that we can
+ * quickly access the first node that has a given prefix.  Use of the base
+ * layer of the skiplist links also allows for rapid forward traversal.
+ * There is a linked list of the nodes in reverse order, so backward
+ * traversal is fast as well.
+ *
+ */
+struct ccny {
+    struct ccny *prev;      /**< link to previous, in name order */
+    unsigned char *key;     /**< for skiplist, et. al. */
+    unsigned keylen;        /**< size of key, in bytes */
+    ccn_cookie cookie;      /**< cookie for this entry */
+    void *payload;          /**< client payload */
+    unsigned info;          /**< for client use */
+    unsigned short prv;     /**< not for client use */
+    short skipdim;          /**< dimension of skiplinks array */
+    struct ccny *skiplinks[1]; /**< skiplist links (flex array) */
+};
+
 #define CCN_SKIPLIST_MAX_DEPTH 16
 #define NAMETREE_PVT_PAYLOAD_OWNED 0x40
 
@@ -561,4 +590,98 @@ ccn_nametree_check(struct ccn_nametree *h)
         for (y = h->head->skiplinks[0]; y != NULL; y = y->skiplinks[0])
             (h->check)(h, y);
     }
+}
+
+/** Access the number of entries */
+int
+ccn_nametree_n(struct ccn_nametree *h)
+{
+    return(h->n);
+}
+
+/** Access the current limit on the number of entries */
+int
+ccn_nametree_limit(struct ccn_nametree *h)
+{
+    return(h->limit);
+}
+
+/** Access the cookie */
+ccn_cookie
+ccny_cookie(struct ccny *y)
+{
+    if (y == NULL)
+        return(0);
+    return(y->cookie);
+}
+
+/** Access the payload */
+void *
+ccny_payload(struct ccny *y)
+{
+    return(y->payload);
+}
+
+/** Set the payload */
+void
+ccny_set_payload(struct ccny *y, void *payload)
+{
+    y->payload = payload;
+}
+
+
+/** Access the key */
+const unsigned char *
+ccny_key(struct ccny *y)
+{
+    return(y->key);
+}
+
+/** Access the key size */
+unsigned
+ccny_keylen(struct ccny *y)
+{
+    return(y->keylen);
+}
+
+/** Get the client info */
+unsigned
+ccny_info(struct ccny *y)
+{
+    return(y->info);
+}
+
+/** Set the client info */
+void
+ccny_set_info(struct ccny *y, unsigned info)
+{
+    y->info = info;
+}
+
+/** Get the first entry */
+struct ccny *
+ccn_nametree_first(struct ccn_nametree *h)
+{
+    return(h->head->skiplinks[0]);
+}
+
+/** Get the next entry */
+struct ccny *
+ccny_next(struct ccny *y)
+{
+    return(y->skiplinks[0]);
+}
+
+/** Get the previous entry */
+struct ccny *
+ccny_prev(struct ccny *y)
+{
+    return(y->prev);
+}
+
+/** Get the last entry */
+struct ccny *
+ccn_nametree_last(struct ccn_nametree *h)
+{
+    return(h->head->prev);
 }
