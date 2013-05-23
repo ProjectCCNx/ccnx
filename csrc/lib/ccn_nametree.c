@@ -177,6 +177,19 @@ ccny_set_key(struct ccny *y, const unsigned char *key, size_t size)
 }
 
 /**
+ *  Directly assign the key and keylen in a nametree entry
+ *
+ *  This is for clients that are handling their own memory management.
+ */
+
+void
+ccny_set_key_fields(struct ccny *y, unsigned char *key, unsigned size)
+{
+    y->key = key;
+    y->keylen = size;
+}
+
+/**
  *  Look up an entry, given a cookie.
  */
 struct ccny *

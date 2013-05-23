@@ -72,7 +72,9 @@ struct ccn_nametree *ccn_nametree_create(int initial_limit);
 /* reasonably good random bits must be provided, crypto quality not needed */
 struct ccny *ccny_create(unsigned randombits, size_t payload_size);
 
+/* Consult the documentation about the difference between the next two */
 int ccny_set_key(struct ccny *y, const unsigned char *key, size_t size);
+void ccny_set_key_fields(struct ccny *y, unsigned char *key, unsigned size);
 
 struct ccny *ccny_from_cookie(struct ccn_nametree *h, ccn_cookie cookie);
 
@@ -105,7 +107,6 @@ void ccn_nametree_destroy(struct ccn_nametree **ph);
 void ccn_nametree_check(struct ccn_nametree *h);
 
 /* Accessors */
-/** Access the number of entries */
 int ccn_nametree_n(struct ccn_nametree *h);
 int ccn_nametree_limit(struct ccn_nametree *h);
 ccn_cookie ccny_cookie(struct ccny *y);
