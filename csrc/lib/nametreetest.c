@@ -95,7 +95,7 @@ test_inserts_from_stdin(void)
         }
         f->length = 2 * c->length;
         node = ccn_nametree_lookup(ntree, f->buf, f->length);
-        cookie = (node != NULL) ? node->cookie : 0;
+        cookie = ccny_cookie(node);
         if (0) ccn_nametree_check(ntree);
         if (delete) {
             if (cookie != 0) {
@@ -124,7 +124,7 @@ test_inserts_from_stdin(void)
             dups++;
         }
         else {
-            FAILIF(node->cookie == 0);
+            FAILIF(ccny_cookie(node) == 0);
             unique++;
         }
     }
@@ -132,12 +132,12 @@ test_inserts_from_stdin(void)
     printf("%d unique, %d duplicate, %d deleted, %d missing\n",
                unique,    dups,         deleted,    missing);
     printf("Nametree nodes:");
-    for (node = ntree->head->skiplinks[0]; node != NULL; node = node->skiplinks[0])
-        printf(" %u", node->cookie);
+    for (node = ccn_nametree_first(ntree); node != NULL; node = ccny_next(node))
+        printf(" %u", ccny_cookie(node));
     printf("\n");
     printf("Reversed nodes:");
-    for (node = ntree->head->prev; node != NULL; node = node->prev)
-        printf(" %u", node->cookie);
+    for (node = ccn_nametree_last(ntree); node != NULL; node = ccny_prev(node))
+        printf(" %u", ccny_cookie(node));
     printf("\n");
     FAILIF(unique - deleted != ntree->n);
     ccn_nametree_destroy(&ntree);

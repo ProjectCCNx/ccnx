@@ -67,37 +67,6 @@ struct ccn_nametree {
     ccn_nametree_action finalize; /**< called from destroy */
 };
 
-/**
- *  A nametree entry
- *
- * Each entry is capable of representing a name prefix, a
- * content object, or both.  A name prefix is useful for keeping
- * track of PIT entries, FIB entries, statistics used by
- * the strategy layer, name enumeration, and creation/deletion
- * notifications.
- *
- * To accomplish this, the nametree nodes are linked into several
- * data structures.  One of these is a skiplist, so that we can
- * quickly access the first node that has a given prefix.  Use of the base
- * layer of the skiplist links also allows for rapid forward traversal.
- * There is a linked list of the nodes in reverse order, so backward
- * traversal is fast as well.
- *
- * The ordering used is that of ccn_flatname_compare().
- */
-
-struct ccny {
-    struct ccny *prev;      /**< link to previous, in name order */
-    unsigned char *key;     /**< for skiplist, et. al. */
-    unsigned keylen;        /**< size of key, in bytes */
-    ccn_cookie cookie;      /**< cookie for this entry */
-    void *payload;          /**< client payload */
-    unsigned info;          /**< for client use */
-    unsigned short prv;     /**< not for client use */
-    short skipdim;          /**< dimension of skiplinks array */
-    struct ccny *skiplinks[1]; /**< skiplist links (flex array) */
-};
-
 struct ccn_nametree *ccn_nametree_create(int initial_limit);
 
 /* reasonably good random bits must be provided, crypto quality not needed */
@@ -134,5 +103,21 @@ void ccny_destroy(struct ccn_nametree *h, struct ccny **py);
 void ccn_nametree_destroy(struct ccn_nametree **ph);
 
 void ccn_nametree_check(struct ccn_nametree *h);
+
+/* Accessors */
+/** Access the number of entries */
+int ccn_nametree_n(struct ccn_nametree *h);
+int ccn_nametree_limit(struct ccn_nametree *h);
+ccn_cookie ccny_cookie(struct ccny *y);
+void *ccny_payload(struct ccny *y);
+void ccny_set_payload(struct ccny *y, void *payload);
+const unsigned char *ccny_key(struct ccny *y);
+unsigned ccny_keylen(struct ccny *y);
+unsigned ccny_info(struct ccny *y);
+void ccny_set_info(struct ccny *y, unsigned info);
+struct ccny *ccn_nametree_first(struct ccn_nametree *h);
+struct ccny *ccny_next(struct ccny *y);
+struct ccny *ccny_prev(struct ccny *y);
+struct ccny *ccn_nametree_last(struct ccn_nametree *h);
 
 #endif
