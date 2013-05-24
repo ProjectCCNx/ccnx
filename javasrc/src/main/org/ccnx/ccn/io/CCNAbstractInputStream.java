@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -124,7 +124,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	/**
 	 * The timeout to use for segment retrieval.
 	 */
-	protected int _timeout = SystemConfiguration.getDefaultTimeout();
+	protected long _timeout = SystemConfiguration.getDefaultTimeout();
 
 	/**
 	 *  Encryption/decryption handler.
@@ -1239,7 +1239,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	 * Default is 5 seconds.
 	 * @param timeout Milliseconds
 	 */
-	public void setTimeout(int timeout) {
+	public void setTimeout(long timeout) {
 		_timeout = timeout;
 	}
 
@@ -1762,7 +1762,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 		if (null != _firstSegment) {
 			return _firstSegment;
 		} else if (null != _startingSegmentNumber) {
-			int oldTimeout = _timeout;
+			long oldTimeout = _timeout;
 			if (hasFlag(FlagTypes.BLOCKING))
 				setTimeout(SystemConfiguration.NO_TIMEOUT);
 			ContentObject firstSegment = getSegment(_startingSegmentNumber);

@@ -21,7 +21,7 @@ import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.protocol.ContentName;
 
 public class CommonParameters {
-	public static Integer timeout = SystemConfiguration.MAX_TIMEOUT;
+	public static Long timeout = SystemConfiguration.MAX_TIMEOUT;
 	public static int BLOCK_SIZE = 8192;
 	public static boolean rawMode = false;
 	public static boolean unversioned = false;

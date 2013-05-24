@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -43,7 +43,7 @@ public class LatestVersionPathfinder extends ObjectPathfinder {
 
 	public LatestVersionPathfinder(ContentName startingPoint, ContentName stoppingPoint, ContentName desiredPostfix, 
 			  boolean closestOnPath, boolean goneOK,
-			  int timeout, 
+			  long timeout, 
 			  Set<ContentName> searchedPathCache,
 			  CCNHandle handle) throws IOException {
 		super(startingPoint, stoppingPoint, desiredPostfix, closestOnPath, goneOK, timeout, searchedPathCache, handle);

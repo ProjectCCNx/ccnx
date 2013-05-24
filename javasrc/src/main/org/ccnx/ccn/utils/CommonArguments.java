@@ -1,7 +1,7 @@
 /*
  * A CCNx command line utility.
  *
- * Copyright (C) 2011, 2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -58,7 +58,7 @@ public abstract class CommonArguments {
 					u.usage(_extraUsage);
 				}
 				try {
-					CommonParameters.timeout = Integer.parseInt(args[++i]);
+					CommonParameters.timeout = Long.parseLong(args[++i]);
 				} catch (NumberFormatException nfe) {
 					u.usage(_extraUsage);
 				}

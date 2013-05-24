@@ -158,7 +158,7 @@ public class CCNDescriptor {
 	 * Sets the timeout for the underlying stream.
 	 * @param timeout in msec
 	 */
-	public void setTimeout(int timeout) {
+	public void setTimeout(long timeout) {
 		if (null != _input)
 			_input.setTimeout(timeout);
 		else

@@ -49,8 +49,8 @@ import org.ccnx.ccn.impl.support.Log;
  */
 public class CCNNetworkChannel extends InputStream {
 	public static final int HEARTBEAT_PERIOD = 3500;
-	public static final int SOCKET_TIMEOUT = SystemConfiguration.MEDIUM_TIMEOUT; // period to wait in ms.
-//	public static final int DOWN_DELAY = SystemConfiguration.MEDIUM_TIMEOUT;	// Wait period for retry when ccnd is down
+	public static final long SOCKET_TIMEOUT = SystemConfiguration.MEDIUM_TIMEOUT; // period to wait in ms.
+//	public static final long DOWN_DELAY = SystemConfiguration.MEDIUM_TIMEOUT;	// Wait period for retry when ccnd is down
 	public static final int LINGER_TIME = 10;	// In seconds
 
 	// This is to make log messages intelligible

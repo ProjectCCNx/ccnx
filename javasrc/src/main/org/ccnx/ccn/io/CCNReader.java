@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -94,7 +94,7 @@ public class CCNReader {
 	 * into a single buffer. Equivalent to CCNWriter's put. Does not do anything about
 	 * versioning.
 	 */
-	public byte [] getVersionedData(ContentName name, PublisherPublicKeyDigest publisher, int timeout) throws IOException {
+	public byte [] getVersionedData(ContentName name, PublisherPublicKeyDigest publisher, long timeout) throws IOException {
 		
 		CCNInputStream inputStream = new CCNVersionedInputStream(name, publisher, _handle);
 		inputStream.setTimeout(timeout);

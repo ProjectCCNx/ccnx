@@ -389,7 +389,7 @@ public class CCNWriter {
 	 * Default is 10 seconds
 	 * @param timeout in msec.
 	 */
-	public void setTimeout(int timeout) {
+	public void setTimeout(long timeout) {
 		getFlowControl().setTimeout(timeout);
 	}
 }
