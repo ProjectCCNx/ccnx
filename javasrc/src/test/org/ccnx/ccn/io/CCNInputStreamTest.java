@@ -18,7 +18,6 @@
 package org.ccnx.ccn.io;
 
 import java.io.IOException;
-import java.util.logging.Level;
 
 import junit.framework.Assert;
 
