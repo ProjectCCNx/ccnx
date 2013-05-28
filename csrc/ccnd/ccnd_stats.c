@@ -39,6 +39,7 @@
 #include <ccn/schedule.h>
 #include <ccn/sockaddrutil.h>
 #include <ccn/hashtb.h>
+#include <ccn/nametree.h>
 #include <ccn/uri.h>
 
 #include "ccnd_private.h"
@@ -389,7 +390,7 @@ collect_stats_html(struct ccnd_handle *h)
         "<body bgcolor='#%06X'>"
         "<p class='header'>%s ccnd[%d] local port %s api %d start %ld.%06u now %ld.%06u</p>" NL
         "<div><b>Content items:</b> %llu accessioned,"
-        " %d stored, %lu stale, %d sparse, %lu duplicate, %lu sent</div>" NL
+        " %d stored, %d stale, %d sparse, %lu duplicate, %lu sent</div>" NL
         "<div><b>Interests:</b> %d names,"
         " %ld pending, %d propagating, %d noted</div>" NL
         "<div><b>Interest totals:</b> %lu accepted,"
@@ -404,10 +405,10 @@ collect_stats_html(struct ccnd_handle *h)
         h->starttime, h->starttime_usec,
         h->sec,
         h->usec,
-        (unsigned long long)h->accession,
-        hashtb_n(h->content_tab),
-        h->n_stale,
-        hashtb_n(h->sparse_straggler_tab),
+        (unsigned long long)h->accessioned,
+        (int)h->content_tree->n,
+        (int)ccnd_n_stale(h),
+        0,
         h->content_dups_recvd,
         h->content_items_sent,
         hashtb_n(h->nameprefix_tab), stats.total_interest_counts,
@@ -560,7 +561,7 @@ collect_stats_xml(struct ccnd_handle *h)
         "<cobs>"
         "<accessioned>%llu</accessioned>"
         "<stored>%d</stored>"
-        "<stale>%lu</stale>"
+        "<stale>%d</stale>"
         "<sparse>%d</sparse>"
         "<duplicate>%lu</duplicate>"
         "<sent>%lu</sent>"
@@ -575,10 +576,10 @@ collect_stats_xml(struct ccnd_handle *h)
         "<sent>%lu</sent>"
         "<stuffed>%lu</stuffed>"
         "</interests>",
-        (unsigned long long)h->accession,
-        hashtb_n(h->content_tab),
-        h->n_stale,
-        hashtb_n(h->sparse_straggler_tab),
+        (unsigned long long)h->accessioned,
+        (int)h->content_tree->n,
+        (int)ccnd_n_stale(h),
+        0,
         h->content_dups_recvd,
         h->content_items_sent,
         hashtb_n(h->nameprefix_tab), stats.total_interest_counts,

@@ -33,6 +33,7 @@
 #include <ccn/btree_content.h>
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
+#include <ccn/flatname.h>
 #include <ccn/indexbuf.h>
 #include <ccn/hashtb.h>
 #include <ccn/uri.h>
@@ -835,7 +836,7 @@ testhelp_count_matches(struct ccn_btree *btree,
     n = ccn_btree_node_nent(leaf);
     for (i = CCN_BT_SRCH_INDEX(res); i < n; i++) {
         cmp = ccn_btree_compare(flat->buf, flat->length, leaf, i);
-        if (cmp == 0 || cmp == -9999) {
+        if (cmp == 0 || cmp == CCN_STRICT_PREFIX) {
             /* The prefix matches; check the rest. */
             if (pi == NULL)
                 res = 0;
