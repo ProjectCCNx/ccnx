@@ -34,6 +34,7 @@
 #include <signal.h>
 #include <string.h>
 #include <strings.h>
+#include <sys/uio.h>
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/uri.h>
