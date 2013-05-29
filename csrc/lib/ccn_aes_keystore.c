@@ -175,7 +175,7 @@ ccn_aes_keystore_init(struct ccn_keystore *keystore, char *filename, const char 
         goto out;
     key_octet = ASN1_STRING_new();
     ASN1_STRING_set(key_octet, keybuf, SHA256_DIGEST_LENGTH + AES_BLOCK_SIZE);
-    ret = EVP_PKEY_assign(keystore->symmetric_key, EVP_PKEY_HMAC, (char *)key_octet);
+    ret = ccn_PKEY_assign(keystore->symmetric_key, EVP_PKEY_HMAC, (char *)key_octet);
     if (ret == 0)
         goto Bail;
     ans = 0;

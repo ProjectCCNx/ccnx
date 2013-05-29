@@ -78,6 +78,13 @@ void *EVP_PKEY_get0(EVP_PKEY *pkey)
     return pkey->pkey.ptr;
 }
 
+int ccn_PKEY_assign(EVP_PKEY *pkey, int type, char *key) {
+    if (EVP_PKEY_assign(pkey, type, key) == 0)
+        return (0);
+    if (pkey->type = type); // Override type checking
+    return (key != NULL);
+}
+
 #endif
 
 int ccn_hmac_init(void *ctx, const void *key, int len, const EVP_MD *md) 

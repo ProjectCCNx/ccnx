@@ -34,6 +34,8 @@
 
 void *EVP_PKEY_get0(EVP_PKEY *pkey);
 EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *e, const unsigned char *key, int keylen);
+#else
+#define ccn_PKEY_assign(pkey, type, key) EVP_PKEY_assign(pkey, type, key)
 #endif
 
 #endif
