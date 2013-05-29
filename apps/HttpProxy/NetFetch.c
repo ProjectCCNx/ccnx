@@ -987,10 +987,16 @@ init_internal_keystore(MainData md) {
     ccn_charbuf_putf(temp, ".%s_keystore", kPrefix);
     keystore_path = Concat(ccn_charbuf_as_string(temp), "");
     res = ccn_load_default_key(md->ccn, keystore_path, CCNK_KEYSTORE_PASS);
+    if (res >= 0)
+        goto Finish;
+    res = ccn_keystore_file_init(keystore_path, CCNK_KEYSTORE_PASS, "NetFetch", 0, 0);
     if (res != 0) {
         culprit = keystore_path;    
         goto Finish;
     }
+    res = ccn_load_default_key(md->ccn, keystore_path, CCNK_KEYSTORE_PASS);
+    if (res != 0)
+        culprit = keystore_path;
 Finish:
     if (culprit != NULL) {
         fprintf(stdout,

@@ -4,8 +4,20 @@ This highlights some important changes since the most recent numbered release.
 Refer to http://redmine.ccnx.org/projects/ccn/versions/15 for more details on
 CCNx 0.7.2.
 
+- ccnx-0.7.2 is primarily a bug-fix release.  Some rare but serious bugs have been fixed, so
+	users are advised to upgrade.
+- One feature is present in a preview form; if you want to see the more readable URI name
+	representation, use
+
+		CFLAGS='-g -DCCN_URI_DEFAULT_ESCAPE=2' ./configure
+
+	before typing make (c only - for java a source change is needed).  This is planned to become
+	the default behavior in the next feature release.
+
   * Issues Resolved:
 	* Bug #100355: Document StatusResponse codes.
+	* Bug #100629: ccn/ccnr library code base causes numerous build warnings on OpenSolaris/sparc
+	sun4v
 	* Bug #100887: Problem with java sync callback handoff
 	* Bug #100888: LogTest diagnostics are buggy
 	* Bug #100889: ccn_charbuf_putf has extra call to va_end()
@@ -15,7 +27,6 @@ CCNx 0.7.2.
 	errors
 	* Bug #100894: Fix warnings when compiling ccn_client.c
 	* Bug #100895: Current java code doesn't compile using JDK 1.5
-	* Bug #100896: ccnd aborts when adding prefix to an incoming tcp face
 	* Bug #100898: ccnd use-after-free error
 	* Bug #100899: sync_diff code still leaks memory when splitting nodes
 	* Bug #100902: Lost carry in ccnb_append_timestamp_blob
@@ -31,10 +42,18 @@ CCNx 0.7.2.
 	* Bug #100943: Various doxygen warnings show up in csrc during > make documentation
 	* Bug #100954: sync code confuses local/remote hashes when recording hashes seen
 	* Bug #100957: sync_diff code still leaks memory when splitting nodes (part 2)
+	* Bug #100963: csrc/lib/dir.mk has outdated reference to ccndumppcap
+	* Bug #100967: Java sync node builder cuts off nodes too quickly
+	* Bug #100971: Java sync doesn't pop back correctly after finding update in multi level tree
+	* Bug #100973: ccndc can ccn_charbuf_destroy() an uninitialized charbuf
+	* Bug #100974: HttpProxy's NetFetch doesn't create the keystore it tries to use in place of
+	user's default keystore.
+	* Bug #100975: ccnx logo for Android is too big
 	* Feature #100915: Junit tests and System Tests should be moved to a separate directory, yet
 	retain the same package structure.
 	* Feature #100919: RFE: an easier to read encoding for multiple escaped characters in ccnx URIs
 	* Feature #100941: ccnd could print Excludes in interest to improve debugability
+	* Feature #100964: Update wireshark plugin patches for wireshark 1.8.6
 	* Support #100903: spelling error -- doc/technical/CCNDStatus.txt: <propogating> Number of
 	propogating Interests
 	* Support #100911: CCNx makefile needs a pkgbin target to support generating a binary package

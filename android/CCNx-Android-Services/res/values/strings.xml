@@ -31,7 +31,7 @@
     <string name="label_ok">OK</string>
     <string name="label_ccndstatus">CCND Status</string>
     <string name="service_started1_msg">CCNx Service Control started</string>
-    <string name="about_text">CCNx 0.7.2rc1\n/*
+    <string name="about_text">CCNx 0.7.2\n/*
  *
  * CCNx Android Services\m
  *\m
