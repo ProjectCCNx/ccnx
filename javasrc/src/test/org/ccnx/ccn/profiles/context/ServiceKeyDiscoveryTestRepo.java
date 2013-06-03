@@ -47,7 +47,7 @@ public class ServiceKeyDiscoveryTestRepo {
 	public static final String [] SERVICE_PROVIDERS = new String[]{
 		"PoodleServer", "KittenServer", "Repository", "Server"};
 
-	public static final int TEST_TIMEOUT = SystemConfiguration.MEDIUM_TIMEOUT;
+	public static final long TEST_TIMEOUT = SystemConfiguration.MEDIUM_TIMEOUT;
 	
 	public static String _testDir = "./";
 	

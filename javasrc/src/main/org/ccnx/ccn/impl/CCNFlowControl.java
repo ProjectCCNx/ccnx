@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -91,8 +91,8 @@ public class CCNFlowControl implements CCNInterestHandler {
 
 	// Temporarily default to very high timeout so that puts have a good
 	// chance of going through.  We actually may want to keep this.
-	protected int _timeout = SystemConfiguration.FC_TIMEOUT;
-	protected int _timeoutToUse = SystemConfiguration.FC_TIMEOUT;
+	protected long _timeout = SystemConfiguration.FC_TIMEOUT;
+	protected long _timeoutToUse = SystemConfiguration.FC_TIMEOUT;
 
 	protected int _capacity = DEFAULT_CAPACITY;
 
@@ -674,7 +674,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 	 * Set the time to wait for buffer to drain on close
 	 * @param timeout timeout in milliseconds
 	 */
-	public void setTimeout(int timeout) {
+	public void setTimeout(long timeout) {
 		_timeout = timeout;
 		if (timeout != SystemConfiguration.NO_TIMEOUT)
 			_timeoutToUse = timeout;
@@ -684,7 +684,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 	 * Get the current waiting time for the buffer to drain
 	 * @return 	timeout in milliseconds
 	 */
-	public int getTimeout() {
+	public long getTimeout() {
 		return _timeout;
 	}
 

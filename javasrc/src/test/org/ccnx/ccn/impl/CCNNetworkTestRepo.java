@@ -39,7 +39,7 @@ import org.junit.Test;
 
 public class CCNNetworkTestRepo extends CCNTestBase {
 	
-	protected static final int TEST_TIMEOUT = SystemConfiguration.MEDIUM_TIMEOUT;
+	protected static final long TEST_TIMEOUT = SystemConfiguration.MEDIUM_TIMEOUT;
 	
 	protected static Random _rnd = new Random();
 	static CCNTestHelper testHelper = new CCNTestHelper(CCNNetworkTestRepo.class);

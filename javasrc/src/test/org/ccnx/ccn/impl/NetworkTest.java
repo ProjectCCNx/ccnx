@@ -52,7 +52,7 @@ public class NetworkTest extends CCNTestBase {
 	protected static final int WAIT_MILLIS = 8000;
 	protected static final int FLOOD_ITERATIONS = 1000;
 
-	protected static final int TEST_TIMEOUT = SystemConfiguration.MEDIUM_TIMEOUT;
+	protected static final long TEST_TIMEOUT = SystemConfiguration.MEDIUM_TIMEOUT;
 	protected static final int CANCEL_TEST_TIMEOUT = 100;
 
 	private final Semaphore sema = new Semaphore(0);
@@ -380,7 +380,7 @@ public class NetworkTest extends CCNTestBase {
 		public Interest handleContent(ContentObject data, Interest interest) {
 			gotData = true;
 			cancelSema.release();
-			int timeToWait = TEST_TIMEOUT;
+			long timeToWait = TEST_TIMEOUT;
 			while (!cancelWait && timeToWait > 0) {
 				try {
 					Thread.sleep(50);

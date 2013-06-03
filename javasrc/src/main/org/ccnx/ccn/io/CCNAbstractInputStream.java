@@ -126,7 +126,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	/**
 	 * The timeout to use for segment retrieval.
 	 */
-	protected int _timeout = SystemConfiguration.getDefaultTimeout();
+	protected long _timeout = SystemConfiguration.getDefaultTimeout();
 
 	/**
 	 *  Encryption/decryption handler.
@@ -1152,7 +1152,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	 * Default is 5 seconds.
 	 * @param timeout Milliseconds
 	 */
-	public void setTimeout(int timeout) {
+	public void setTimeout(long timeout) {
 		_timeout = timeout;
 	}
 
@@ -1675,7 +1675,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 		if (null != _firstSegment) {
 			return _firstSegment;
 		} else if (null != _startingSegmentNumber) {
-			int oldTimeout = _timeout;
+			long oldTimeout = _timeout;
 			if (hasFlag(FlagTypes.BLOCKING))
 				setTimeout(SystemConfiguration.NO_TIMEOUT);
 			ContentObject firstSegment = getSegment(_startingSegmentNumber);

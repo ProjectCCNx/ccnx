@@ -159,7 +159,7 @@ public class CCNInputStreamTest extends CCNTestBase {
 	protected class BackgroundStreamer implements Runnable {
 		CCNInputStream _stream = null;
 
-		public BackgroundStreamer(CCNInputStream stream, boolean useTimeout, int timeout) {
+		public BackgroundStreamer(CCNInputStream stream, boolean useTimeout, long timeout) {
 			_stream = stream;
 			if (useTimeout)
 				_stream.setTimeout(timeout);
