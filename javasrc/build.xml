@@ -56,7 +56,6 @@
 	<property name="repo2" value="true"/>
 	<property name="USE_KEY_CONFIG_KEY" value="org.ccnx.config.UseKeyConfiguration"/>
 	<property name="USE_KEY_CONFIG_VAL" value="false"/>
-    <property name="CHATTY" value="INFO"/>
 	<!-- to allow extra noisy logging for sync while we test it better -->
     <property name="SYNC_NOISY" value="FINEST"/>
 	<!-- To enable remote debugging, the incantation is 
@@ -369,7 +368,6 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
-            <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
@@ -390,7 +388,6 @@
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINEST"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
-	        <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
@@ -413,7 +410,6 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
-	        <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
@@ -438,7 +434,6 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
-            <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
@@ -464,7 +459,6 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
-            <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="org.ccnx.ccn.LogLevel.Sync" value="${SYNC_NOISY}"/>
 			<sysproperty key="org.ccnx.ccn.LogLevel.Test" value="${SYNC_NOISY}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
@@ -489,7 +483,6 @@
 				<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 				<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 				<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
-	            <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 				<sysproperty key="org.ccnx.ccn.LogLevel.Sync" value="${SYNC_NOISY}"/>
 				<sysproperty key="org.ccnx.ccn.LogLevel.Test" value="${SYNC_NOISY}"/>
 	            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
@@ -514,7 +507,6 @@
 	            <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 	            <sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 	            <sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
-	            <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 	            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 	            <batchtest todir="${testout}">
 	                <fileset dir="${build}">
@@ -539,7 +531,6 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
-            <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
@@ -560,7 +551,6 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
-            <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
@@ -722,7 +712,6 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
@@ -744,7 +733,6 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
@@ -767,7 +755,6 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
@@ -787,7 +774,6 @@
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
@@ -811,7 +797,6 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
@@ -872,7 +857,6 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
@@ -964,7 +948,6 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
@@ -988,7 +971,6 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
@@ -1015,7 +997,6 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
@@ -1038,7 +1019,6 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
