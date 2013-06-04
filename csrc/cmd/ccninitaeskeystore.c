@@ -26,8 +26,10 @@
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/keystore.h>
+#include <ccn/openssl_ex.h>
 
 #include <openssl/engine.h>
+#include <openssl/aes.h>
 
 static void
 usage(const char *progname)
@@ -176,9 +178,14 @@ main(int argc, char **argv)
     }
 
     if (read_mode) {
+        unsigned char *key_data;
+        int i;
 	sk = (EVP_PKEY *) ccn_keystore_key(keystore);
-        // I'm sure this isn't the right way to do this but this is just for testing anyway...
-	printf("The key is %s\n", (char *)sk->pkey.ptr);
+	key_data = ASN1_STRING_data(EVP_PKEY_get0(sk));
+        printf("Retrieved key: 0x");
+        for (i = 0; i < ccn_keystore_key_digest_length(keystore); i++)
+            printf("%x", key_data[i]);
+        printf("\n");
     } else {
         printf("Created keystore: %s\n", ccn_charbuf_as_string(filename));
     }

@@ -26,6 +26,7 @@ CSRC = ccn_bloom.c \
        ccn_buf_decoder.c ccn_buf_encoder.c ccn_bulkdata.c \
        ccn_charbuf.c ccn_client.c ccn_coding.c ccn_digest.c ccn_extend_dict.c \
        ccn_dtag_table.c ccn_indexbuf.c ccn_interest.c ccn_keystore.c ccn_aes_keystore.c \
+       ccn_aes_keystore_asn1.c \
        ccn_match.c ccn_reg_mgmt.c ccn_face_mgmt.c \
        ccn_merkle_path_asn1.c ccn_name_util.c ccn_schedule.c \
        ccn_seqwriter.c ccn_signing.c \

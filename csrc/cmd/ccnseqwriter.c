@@ -153,7 +153,7 @@ main(int argc, char **argv)
             perror("Can't access keystore");
             exit(1);
         }
-        ccn_seqw_set_key(w, key_digest->buf, key_digest->length);
+        ccn_seqw_set_key_digest(w, key_digest->buf, key_digest->length);
     }
     
     ccn_seqw_set_block_limits(w, blocksize, blocksize);

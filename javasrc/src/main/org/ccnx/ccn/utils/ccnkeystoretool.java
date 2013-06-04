@@ -30,6 +30,7 @@ import javax.crypto.spec.SecretKeySpec;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.security.keystore.AESKeyStoreSpi;
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
@@ -86,7 +87,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 				if (null == key)
 					System.out.println("Couldn't get the key for: " + digest);
 				else {
-					System.out.println("Retrieved key: " +  new String(((SecretKey)key).getEncoded()));
+					System.out.println("Retrieved key: 0x" +  DataUtils.printHexBytes(((SecretKey)key).getEncoded()));
 				}
 			} catch (FileNotFoundException fnfe) {
 				System.out.println("Can't find key file for digest: " + digest);

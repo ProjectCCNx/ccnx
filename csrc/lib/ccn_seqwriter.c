@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <memory.h>
 #include <ccn/ccn.h>
 #include <ccn/seqwriter.h>
 
@@ -41,8 +42,8 @@ struct ccn_seqwriter {
     int freshness;
     unsigned char interests_possibly_pending;
     unsigned char closed;
-    unsigned char *key;
-    unsigned int keylen;
+    unsigned char *key_digest;
+    unsigned int digestlen;
 };
 
 static struct ccn_charbuf *
@@ -57,9 +58,9 @@ seqw_next_cob(struct ccn_seqwriter *w)
         sp.sp_flags |= CCN_SP_FINAL_BLOCK;
     if (w->freshness > -1)
         sp.freshness = w->freshness;
-    if (w->key != NULL) {
-        int len = (sizeof(sp.pubid) > w->keylen) ? w->keylen : sizeof(sp.pubid);
-        memcpy(sp.pubid, w->key, len);
+    if (w->key_digest != NULL) {
+        int len = (sizeof(sp.pubid) > w->digestlen) ? w->digestlen : sizeof(sp.pubid);
+        memcpy(sp.pubid, w->key_digest, len);
         sp.sp_flags |= CCN_SP_OMIT_KEY_LOCATOR;
     }
     ccn_charbuf_append(name, w->nv->buf, w->nv->length);
@@ -173,7 +174,7 @@ ccn_seqw_create(struct ccn *h, struct ccn_charbuf *name)
     w->blockminsize = 0;
     w->blockmaxsize = MAX_DATA_SIZE;
     w->freshness = -1;
-    w->key = NULL;
+    w->key_digest = NULL;
     res = ccn_set_interest_filter(h, nb, &(w->cl));
     if (res < 0) {
         ccn_charbuf_destroy(&w->nb);
@@ -305,15 +306,22 @@ ccn_seqw_set_freshness(struct ccn_seqwriter *w, int freshness)
     return(0);
 }
 
+/**
+ * Set a digest of a key so that it can be searched for 
+ *
+ * @param w is the seqwriter handle.
+ * @param key_digest is the digest t set
+ * @param digestlen is the length of key_digest
+ */
 int
-ccn_seqw_set_key(struct ccn_seqwriter *w, unsigned char *key, int keylen)
+ccn_seqw_set_key_digest(struct ccn_seqwriter *w, unsigned char *key_digest, int digestlen)
 {
     if (w == NULL || w->cl.data != w || w->closed)
         return(-1);
-    if (keylen < 1 || key == NULL)
+    if (digestlen < 1 || key_digest == NULL)
         return(-1);
-    w->key = key;
-    w->keylen = keylen;
+    w->key_digest = key_digest;
+    w->digestlen = digestlen;
     return(0);
 }
 
