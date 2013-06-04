@@ -31,7 +31,7 @@ static void
 usage(const char *progname)
 {
         fprintf(stderr,
-                "%s [-h] [-b 0<blocksize<=4096] [-r] [-d digest] [-p password] ccnx:/some/uri\n"
+                "%s [-h] [-b 0<blocksize<=4096] [-r] [-d digest] [-p password] [-o keystore-directory] [-d digest] [-p password] ccnx:/some/uri\n"
                 "    Reads stdin, sending data under the given URI"
                 " using ccn versioning and segmentation.\n"
                 "    -h generate this help message.\n"

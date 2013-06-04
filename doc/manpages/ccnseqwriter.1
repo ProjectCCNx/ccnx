@@ -1,13 +1,13 @@
 '\" t
 .\"     Title: ccnseqwriter
 .\"    Author: [see the "AUTHOR" section]
-.\" Generator: DocBook XSL Stylesheets v1.76.0 <http://docbook.sf.net/>
-.\"      Date: 05/16/2013
+.\" Generator: DocBook XSL Stylesheets v1.78.1 <http://docbook.sf.net/>
+.\"      Date: 06/04/2013
 .\"    Manual: \ \&
 .\"    Source: \ \& 0.7.2
 .\"  Language: English
 .\"
-.TH "CCNSEQWRITER" "1" "05/16/2013" "\ \& 0\&.7\&.2" "\ \&"
+.TH "CCNSEQWRITER" "1" "06/04/2013" "\ \& 0\&.7\&.2" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -31,7 +31,7 @@
 ccnseqwriter \- Send data from stdin using ccn versioning and segmentation\&.
 .SH "SYNOPSIS"
 .sp
-\fBccnseqwriter\fR [\-h] [\-b \fIblocksize\fR] [\-r] [\-s \fIscope\fR] [\-x \fIfreshness\fR] \fIccnx:/some/uri\fR
+\fBccnseqwriter\fR [\-h] [\-b \fIblocksize\fR] [\-r] [\-s \fIscope\fR] [\-x \fIfreshness\fR] [\-o \fIkeystore\-directory\fR] [\-d \fIdigest\fR] [\-p \fIpassword\fR] \fIccnx:/some/uri\fR
 .SH "DESCRIPTION"
 .sp
 The \fBccnseqwriter\fR utility creates new ccn content using stdin as the source of data\&. The argument is a CCNx URI to be used for the newly signed data; appropriate versioning and segmentation will be added\&.
@@ -64,6 +64,21 @@ can be 1 (local), 2 (neighborhood), or 3 (unlimited)\&. Note that a scope of 3 i
 \fB\-x\fR \fIfreshness\fR
 .RS 4
 Use the given freshness on all objects written\&.
+.RE
+.PP
+\fB\-o\fR \fIkeystore\-directory\fR
+.RS 4
+Look for keystores in the given directory\&.
+.RE
+.PP
+\fB\-d\fR \fIdigest\fR
+.RS 4
+Use a key with the given digest\&.
+.RE
+.PP
+\fB\-p\fR \fIpassword\fR
+.RS 4
+Provide a password for the keystore\&.
 .RE
 .SH "EXIT STATUS"
 .PP

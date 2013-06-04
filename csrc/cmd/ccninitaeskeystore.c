@@ -35,7 +35,7 @@ static void
 usage(const char *progname)
 {
     fprintf(stderr,
-            "%s [-h] [-f] [-k keydata] [-p password] [-d directory] [name]\n"
+            "%s [-h] [-f] [-k key] [-p password] [-o keystore-directory] [-r] [-d digest] [name]\n"
             "   Initialize a CCNx AES keystore with given parameters\n", progname);
     fprintf(stderr,
             "   -h           Display this help message.\n"
@@ -43,8 +43,8 @@ usage(const char *progname)
             "   -k key 	     Key data for this key.\n"
             "   -p password  Password for this keystore.  Default default CCN password.\n"
             "   -o directory Directory in which to create .ccnx/.ccnx_keystore. Default $HOME.\n"
-	    "   -r 	     Read & decrpyt key from existing file and print if ASCII. \n"
-	    "   -d digest    Suffix (digest) of file \n"
+	    "   -r 	     Read & decrpyt key from existing file and print its hex value. \n"
+	    "   -d digest    Suffix (digest) of keystore file \n"
             "   name         Name of keystore file.  Default .ccnx-keystore-[keyhash]. \n"
             );
 }
