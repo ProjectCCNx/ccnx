@@ -33,6 +33,7 @@
 	<property name="build" location="build"/>
 	<property name="src.dir" location="src/main" />
 	<property name="src.test.dir" location="src/test" />
+	<property name="src.systemtest.dir" location="src/systemtest" />
 	<property name="jarfile-base" value="ccn.jar"/>
 	<property name="jarfile" location="${jarfile-base}"/>
 	<property name="testout" location="testout"/>
@@ -111,7 +112,7 @@
 		</copy>
 	</target -->
 
-  <target name="compile" depends="compile-main, compile-test" description="Compile the main and test classes." />
+  <target name="compile" depends="compile-main, compile-test, compile-systemtest" description="Compile the main and test classes." />
 
   <target name="compile-main" depends="init" description="Compile the main classes">
     <mkdir dir="${build}"/>
@@ -139,6 +140,20 @@
     </javac>
     <copy todir="${build}">
       <fileset dir="${src.test.dir}" excludes="${build-excludes}, **/*.java"/>
+    </copy>
+  </target>
+
+  <target name="compile-systemtest" depends="init" description="Compile the system test classes">
+    <mkdir dir="${build}"/>
+    <depend srcdir="${src.systemtest.dir}" destdir="${build}" closure="yes"/>
+    <javac destdir="${build}"
+              srcdir="${src.systemtest.dir}" excludes="${build-excludes}" debug="on">
+      <classpath>
+        <path refid="classpath"/>
+      </classpath>
+    </javac>
+    <copy todir="${build}">
+      <fileset dir="${src.systemtest.dir}" excludes="${build-excludes}, **/*.java"/>
     </copy>
   </target>
 
