@@ -408,7 +408,7 @@ public class CCNHandle implements CCNBase {
 			}
 		}
 
-		getNetworkManager().cancelInterestFilter(this, filter, callbackHandler);		
+		getNetworkManager().cancelInterestFilter(filter, callbackHandler);		
 	}
 	
 	@Deprecated
@@ -424,7 +424,7 @@ public class CCNHandle implements CCNBase {
 			}
 		}
 
-		getNetworkManager().cancelInterestFilter(this, filter, callbackListener);		
+		getNetworkManager().cancelInterestFilter(filter, callbackListener);		
 	}
 	
 	/**

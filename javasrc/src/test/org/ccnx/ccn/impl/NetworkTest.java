@@ -119,7 +119,7 @@ public class NetworkTest extends CCNTestBase {
 
 		// Test that an "in-between" prefix gets registered properly
 		gotInterest = false;
-		putHandle.getNetworkManager().cancelInterestFilter(this, testName2, tfl);
+		putHandle.getNetworkManager().cancelInterestFilter(testName2, tfl);
 		putHandle.registerFilter(testName3, tfl);
 		putHandle.registerFilter(testName4, tfl);
 		putHandle.registerFilter(testName5, tfl);
