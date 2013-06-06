@@ -104,6 +104,7 @@
     <depend srcdir="${src.dir}" destdir="${build}" closure="yes"/>
     <javac destdir="${build}"
               srcdir="${src.dir}" excludes="${build-excludes}"
+              includeantruntime="false"
               debug="on">
       <classpath>
         <path refid="classpath"/>
@@ -118,7 +119,9 @@
     <mkdir dir="${build}"/>
     <depend srcdir="${src.test.dir}" destdir="${build}" closure="yes"/>
     <javac destdir="${build}"
-              srcdir="${src.test.dir}" excludes="${build-excludes}" debug="on">
+        srcdir="${src.test.dir}" 
+        includeantruntime="false"
+        excludes="${build-excludes}" debug="on">
       <classpath>
         <path refid="classpath"/>
       </classpath>
@@ -132,7 +135,9 @@
     <mkdir dir="${build}"/>
     <depend srcdir="${src.systemtest.dir}" destdir="${build}" closure="yes"/>
     <javac destdir="${build}"
-              srcdir="${src.systemtest.dir}" excludes="${build-excludes}" debug="on">
+        srcdir="${src.systemtest.dir}"
+        includeantruntime="false"
+        excludes="${build-excludes}" debug="on">
       <classpath>
         <path refid="classpath"/>
       </classpath>
@@ -388,7 +393,7 @@
 		<mkdir dir="${testout}"/>
         <junit printsummary="yes" fork="yes" haltonfailure="no">
 			<classpath>
-				<path refid="classpath-run"/>
+				<path refid="classpath"/>
 			</classpath>
 			<formatter type="xml" usefile="true"/>
             <formatter type="plain" usefile="false"/>
