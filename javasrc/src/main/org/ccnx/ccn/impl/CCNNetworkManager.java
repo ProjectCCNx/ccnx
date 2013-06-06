@@ -423,7 +423,6 @@ public class CCNNetworkManager implements Runnable {
 	protected class CallbackHandlerRegistration {
 		protected Object handler;
 		public Semaphore sema = null;	//used to block thread waiting for data or null if none
-		public Object owner = null;
 		public boolean cancelled = false;
 
 		/** Equality based on handler if present, so multiple objects can
@@ -431,30 +430,18 @@ public class CCNNetworkManager implements Runnable {
 		 */
 		@Override
 		public boolean equals(Object obj) {
-			if (obj instanceof CallbackHandlerRegistration) {
-				CallbackHandlerRegistration other = (CallbackHandlerRegistration)obj;
-				if (this.owner == other.owner) {
-					if (null == this.handler && null == other.handler){
-						return super.equals(obj);
-					} else if (null != this.handler && null != other.handler) {
-						return this.handler.equals(other.handler);
-					}
-				}
-			}
-			return false;
+			if (this == obj)
+				return true;
+			CallbackHandlerRegistration other = (CallbackHandlerRegistration)obj;
+			return this.handler == other.handler;
 		}
 
 		@Override
 		public int hashCode() {
 			if (null != this.handler) {
-				if (null != owner) {
-					return owner.hashCode() + this.handler.hashCode();
-				} else {
-					return this.handler.hashCode();
-				}
-			} else {
-				return super.hashCode();
+				return hashCode() + this.handler.hashCode();
 			}
+			return hashCode();
 		}
 	}
 
@@ -474,10 +461,9 @@ public class CCNNetworkManager implements Runnable {
 		protected ContentObject content;
 
 		// All internal client interests must have an owner
-		public InterestRegistration(Interest i, Object h, Object owner) {
+		public InterestRegistration(Interest i, Object h) {
 			interest = i;
 			handler = h;
-			this.owner = owner;
 			if (null == handler) {
 				sema = new Semaphore(0);
 			}
@@ -509,7 +495,7 @@ public class CCNNetworkManager implements Runnable {
 							Log.finer(Log.FAC_NETMANAGER, "Interest callback: updated interest to express: {0}", updatedInterest.name());
 						// if we want to cancel this one before we get any data, we need to remember the
 						// updated interest in the handler
-						expressInterest(this.owner, updatedInterest, handler);
+						expressInterest(updatedInterest, handler);
 					}
 				} else {
 					// This is the "get" case
@@ -555,8 +541,8 @@ public class CCNNetworkManager implements Runnable {
 		// extra interests to be delivered: separating these allows avoidance of ArrayList obj in many cases
 		protected ContentName prefix = null;
 
-		public Filter(ContentName n, Object h, Object o) {
-			prefix = n; handler = h; owner = o;
+		public Filter(ContentName n, Object h) {
+			prefix = n; handler = h;
 		}
 
 		/**
@@ -839,7 +825,7 @@ public class CCNNetworkManager implements Runnable {
 
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
 			Log.fine(Log.FAC_NETMANAGER, formatMessage("get: {0} with timeout: {1}"), interest, timeout);
-		InterestRegistration reg = new InterestRegistration(interest, null, null);
+		InterestRegistration reg = new InterestRegistration(interest, null);
 		expressInterest(reg);
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST) )
 			Log.finest(Log.FAC_NETMANAGER, formatMessage("blocking for {0} on {1}"), interest.name(), reg.sema);
@@ -868,13 +854,11 @@ public class CCNNetworkManager implements Runnable {
 	/**
 	 * We express interests to the ccnd and register them within the network manager
 	 *
-	 * @param caller 	must not be null
 	 * @param interest 	the interest
 	 * @param handler	handler to callback on receipt of data
 	 * @throws IOException on incorrect interest
 	 */
 	public void expressInterest(
-			Object caller,
 			Interest interest,
 			Object handler) throws IOException {
 		// TODO - use of "caller" should be reviewed - don't believe this is currently serving
@@ -885,7 +869,7 @@ public class CCNNetworkManager implements Runnable {
 
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
 			Log.fine(Log.FAC_NETMANAGER, formatMessage("expressInterest: {0}"), interest);
-		InterestRegistration reg = new InterestRegistration(interest, handler, caller);
+		InterestRegistration reg = new InterestRegistration(interest, handler);
 		expressInterest(reg);
 	}
 	
@@ -898,7 +882,6 @@ public class CCNNetworkManager implements Runnable {
 	 * @throws IOException on incorrect interest
 	 */
 	public void registerInterest(
-			Object caller,
 			Interest interest,
 			Object handler) throws IOException {
 		// TODO - use of "caller" should be reviewed - don't believe this is currently serving
@@ -909,7 +892,7 @@ public class CCNNetworkManager implements Runnable {
 
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
 			Log.fine(Log.FAC_NETMANAGER, formatMessage("registerInterest: {0}"), interest);
-		InterestRegistration reg = new InterestRegistration(interest, handler, caller);
+		InterestRegistration reg = new InterestRegistration(interest, handler);
 		registerInterest(reg);
 	}
 
@@ -931,10 +914,8 @@ public class CCNNetworkManager implements Runnable {
 	 * @param interest
 	 * @param handler
 	 */
-	public void cancelInterest(Object caller, Interest interest, Object handler) {
+	public void cancelInterest(Interest interest, Object handler) {
 		if (null == handler) {
-			// TODO - use of "caller" should be reviewed - don't believe this is currently serving
-			// serving any useful purpose.
 			throw new NullPointerException(formatMessage("cancelInterest: handler cannot be null"));
 		}
 		_stats.increment(StatsEnum.CancelInterest);
@@ -942,7 +923,7 @@ public class CCNNetworkManager implements Runnable {
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
 			Log.fine(Log.FAC_NETMANAGER, formatMessage("cancelInterest: {0}"), interest.name());
 		// Remove interest from repeated presentation to the network.
-		InterestRegistration reg = unregisterInterest(caller, interest, handler);
+		InterestRegistration reg = unregisterInterest(interest, handler);
 
 		// Make sure potential remnants of cancelled interest are also cancelled
 		synchronized (_beingDeliveredLock) {
@@ -962,8 +943,8 @@ public class CCNNetworkManager implements Runnable {
 	 * @param handler 	a CCNInterestHandler
 	 * @throws IOException
 	 */
-	public void setInterestFilter(Object caller, ContentName filter, Object handler) throws IOException {
-		setInterestFilter(caller, filter, handler, null);
+	public void setInterestFilter(ContentName filter, Object handler) throws IOException {
+		setInterestFilter(filter, handler, null);
 	}
 
 	/**
@@ -984,7 +965,7 @@ public class CCNNetworkManager implements Runnable {
 	 * TODO - use of "caller" should be reviewed - don't believe this is currently serving
 	 * serving any useful purpose.
 	 */
-	public void setInterestFilter(Object caller, ContentName filter, Object callbackHandler,
+	public void setInterestFilter(ContentName filter, Object callbackHandler,
 			Integer registrationFlags) throws IOException {
 
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
@@ -997,7 +978,7 @@ public class CCNNetworkManager implements Runnable {
 		setupTimers();
 		// set up filters before registering as registration may cause a pending interest
 		// to be delivered immediately.
-		Filter newOne = new Filter(filter, callbackHandler, caller);
+		Filter newOne = new Filter(filter, callbackHandler);
 		_myFilters.add(filter, newOne);
 		if (_usePrefixReg) {
 			RegisteredPrefix prefix = null;
@@ -1087,17 +1068,14 @@ public class CCNNetworkManager implements Runnable {
 	 * If we are the last user of a filter registered with ccnd, we request a deregistration with
 	 * ccnd but we don't need to wait for it to complete.
 	 *
-	 * @param caller 	must not be null
 	 * @param filter	currently registered filter
 	 * @param handler	the handler registered to it
 	 */
 	public void cancelInterestFilter(Object caller, ContentName filter, Object handler) {
-		// TODO - use of "caller" should be reviewed - don't believe this is currently serving
-		// serving any useful purpose.
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
 			Log.fine(Log.FAC_NETMANAGER, formatMessage("cancelInterestFilter: {0}"), filter);
 		Filter newOne;
-		newOne = new Filter(filter, handler, caller);
+		newOne = new Filter(filter, handler);
 		Entry<Filter> found = null;
 		found = _myFilters.remove(filter, newOne);
 		if (null != found) {
@@ -1253,8 +1231,8 @@ public class CCNNetworkManager implements Runnable {
 		return reg;
 	}
 
-	private InterestRegistration unregisterInterest(Object caller, Interest interest, Object handler) {
-		InterestRegistration reg = new InterestRegistration(interest, handler, caller);
+	private InterestRegistration unregisterInterest(Interest interest, Object handler) {
+		InterestRegistration reg = new InterestRegistration(interest, handler);
 		return unregisterInterest(reg);
 	}
 
@@ -1326,7 +1304,7 @@ public class CCNNetworkManager implements Runnable {
 					Interest interest = (Interest)	packet;
 					if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST) )
 						Log.finest(Log.FAC_NETMANAGER, formatMessage("Interest from net for port: " + _port + " {0}"), interest);
-					InterestRegistration oInterest = new InterestRegistration(interest, null, null);
+					InterestRegistration oInterest = new InterestRegistration(interest, null);
 					deliverInterest(oInterest, interest);
 				}  else { // for interests
 					_stats.increment(StatsEnum.ReceiveUnknown);
@@ -1356,16 +1334,14 @@ public class CCNNetworkManager implements Runnable {
 
 		// Call any handlers with matching filters
 		for (Filter filter : _myFilters.getValues(ireg.interest.name())) {
-			if (filter.owner != ireg.owner) {
-				if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
-					Log.finer(Log.FAC_NETMANAGER, formatMessage("Schedule delivery for interest: {0}"), interest);
-				_stats.increment(StatsEnum.DeliverInterestMatchingFilters);
-				long startTime = System.nanoTime();
-				boolean succeeded = filter.deliver(interest);
-				_stats.addSample(StatsEnum.InterestHandlerTime, System.nanoTime() - startTime);
-				if (succeeded)
-					break;	// We only run interest handlers until one succeeds
-			}
+			if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
+				Log.finer(Log.FAC_NETMANAGER, formatMessage("Schedule delivery for interest: {0}"), interest);
+			_stats.increment(StatsEnum.DeliverInterestMatchingFilters);
+			long startTime = System.nanoTime();
+			boolean succeeded = filter.deliver(interest);
+			_stats.addSample(StatsEnum.InterestHandlerTime, System.nanoTime() - startTime);
+			if (succeeded)
+				break;	// We only run interest handlers until one succeeds
 		}
 	}
 

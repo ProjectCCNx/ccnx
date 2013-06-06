@@ -335,7 +335,7 @@ public class RepositoryServer implements CCNStatistics {
 
 		if (null != needToAdd) {
 			for (ContentName newName : needToAdd) {
-				_handle.getNetworkManager().setInterestFilter(_handle, newName, _iHandler, REPO_PREFIX_FLAGS);
+				_handle.getNetworkManager().setInterestFilter(newName, _iHandler, REPO_PREFIX_FLAGS);
 				if( Log.isLoggable(Log.FAC_REPO, Level.INFO) )
 					Log.info(Log.FAC_REPO, "Adding repo namespace {0}", newName);
 			}
