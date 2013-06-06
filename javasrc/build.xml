@@ -383,7 +383,22 @@
 
 	<target name="test-protocol" depends="test-protocol-without-repo, test-protocol-with-repo">
 	</target>
-	
+
+    <target name="test-all-units" depends="compile-test">
+		<mkdir dir="${testout}"/>
+        <junit printsummary="yes" fork="yes" haltonfailure="no">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="xml" usefile="true"/>
+            <formatter type="plain" usefile="false"/>
+			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
+            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
+            <test name="org.ccnx.ccn.CCNUnitTestSuite"/>
+        </junit>
+    </target>	
+
 	<target name="test-protocol-without-repo" depends="jar, ccnd">
 		<mkdir dir="${testout}"/>
 		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" showoutput="${showoutput}" dir="${testout}">
