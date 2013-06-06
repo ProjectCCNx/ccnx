@@ -394,6 +394,7 @@
         <junit printsummary="yes" fork="yes" haltonfailure="no">
 			<classpath>
 				<path refid="classpath"/>
+		        <pathelement location="${build}"/>
 			</classpath>
 			<formatter type="xml" usefile="true"/>
             <formatter type="plain" usefile="false"/>
