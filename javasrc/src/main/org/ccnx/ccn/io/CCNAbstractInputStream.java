@@ -1675,10 +1675,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	 */
 	public ContentObject getFirstSegment() throws IOException {
 		ContentObject segment = null;
-		long oldTimeout = _timeout;
 		if (null != _firstSegment) {
 			segment = _firstSegment;
 		} else if (null != _startingSegmentNumber) {
+			long oldTimeout = _timeout;
 			if (hasFlag(FlagTypes.BLOCKING))
 				setTimeout(SystemConfiguration.NO_TIMEOUT);
 			segment = getSegment(_startingSegmentNumber);
@@ -1686,6 +1686,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 				Log.fine(Log.FAC_IO, "getFirstSegment: segment number: " + _startingSegmentNumber + " got segment? " +
 						((null == segment) ? "no " : segment.name()));
 			}
+			setTimeout(oldTimeout);
 			// Do not call setFirstSegment() here because that should only be done when
 			// we are initializing since it does one-time processing including changing the
 			// current segment.  Callers to this method may be simply needing the first segment
@@ -1693,10 +1694,6 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 		} else {
 			throw new IOException("Stream does not have a valid starting segment number.");
 		}
-		if (hasFlag(FlagTypes.BLOCK_AFTER_FIRST_SEGMENT))
-			setTimeout(SystemConfiguration.NO_TIMEOUT);
-		else
-			setTimeout(oldTimeout);
 		return segment;
 	}
 
