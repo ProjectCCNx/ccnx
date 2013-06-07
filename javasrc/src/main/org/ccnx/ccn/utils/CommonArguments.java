@@ -19,6 +19,8 @@ package org.ccnx.ccn.utils;
 
 import java.util.logging.Level;
 
+import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 
 /**
@@ -27,7 +29,7 @@ import org.ccnx.ccn.impl.support.Log;
 public abstract class CommonArguments {
 
 	protected static String _extraUsage = "";
-	public static String[] defaultOkArgs = {"-unversioned", "-timeout", "-log", "-v", "-as", "-ac"};
+	public static String[] defaultOkArgs = {"-unversioned", "-timeout", "-log", "-v", "-as", "-ac", "-sk"};
 
 	public static boolean parseArguments(String[] args, int i, Usage u) {
 		return parseArguments(args, i, u, null);
@@ -82,6 +84,12 @@ public abstract class CommonArguments {
 				CommonSecurity.setUser(args[++i]);
 			} else if (args[i].equals("-ac")) {
 				CommonSecurity.setAccessControl();
+			} else if (args[i].equals("-sk")) {
+				if (args.length < (i + 2)) {
+					u.usage(_extraUsage);
+				}
+				CommonParameters.publisher = KeyManager.keyStoreToDigest(SystemConfiguration.KEYSTORE_NAMING_VERSION, 
+							args[++i]);
 			}
 			CommonParameters.startArg = i;
 			return true;

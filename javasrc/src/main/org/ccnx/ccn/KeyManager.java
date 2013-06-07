@@ -27,6 +27,8 @@ import java.security.PublicKey;
 import java.security.Security;
 import java.util.logging.Level;
 
+import javax.xml.bind.DatatypeConverter;
+
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -53,6 +55,7 @@ import org.ccnx.ccn.protocol.ContentObject.SimpleVerifier;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.KeyLocator.KeyLocatorType;
 import org.ccnx.ccn.protocol.KeyName;
+import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
@@ -405,8 +408,8 @@ public abstract class KeyManager {
 	 * @throws IOException if we run into an error attempting to read the key
 	 */
 	public abstract Key getVerificationKey(
-			PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator, 
-			long timeout) throws IOException;
+			PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator, String type, String fileName,
+			String password, long timeout) throws IOException;
 
 	/**
 	 * Get the verification key for a given publisher, going to the network to retrieve it if necessary.
@@ -418,7 +421,59 @@ public abstract class KeyManager {
 	 */
 	public Key getVerificationKey(
 			PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator) throws IOException {
-		return getVerificationKey(publisherKeyID, keyLocator, SystemConfiguration.EXTRA_LONG_TIMEOUT);
+		return getVerificationKey(publisherKeyID, keyLocator, null, null, null, SystemConfiguration.EXTRA_LONG_TIMEOUT);
+	}
+	
+	/**
+	 * Save the input key in a keystore
+	 * @param key the key
+	 * @param name name for the key or null if none
+	 * @param type the type of keystore
+	 * @param fileName filename for keystore
+	 * @param password password for keystore
+	 * @throws ConfigurationException
+	 */
+	public abstract void saveVerificationKey(Key key, ContentName name, String type, String fileName, String password) throws IOException;
+	
+	/**
+	 * Remove a key and its backing keystore
+	 * @param key the key
+	 * @param type keystore type
+	 * @param fileName filename for key
+	 * @throws IOException
+	 */
+	public abstract void removeVerificationKey(Key key, String type, String fileName) throws IOException;
+	
+	/**
+	 * Translate the digest portion of a key filename to a PublisherPublicKeyDigest using the specified keynaming
+	 * version (currently this is always version "1").
+	 * @param version
+	 * @param fileDigest
+	 * @return
+	 */
+	public static PublisherPublicKeyDigest keyStoreToDigest(int version, String fileDigest) {
+		return new PublisherPublicKeyDigest(DatatypeConverter.parseHexBinary(fileDigest));
+	}
+	
+	/**
+	 * Translate a PublisherPublicKeyDigest into the digest portion of a keystore filename
+	 * 
+	 * @param version
+	 * @param ppkd
+	 * @return
+	 */
+	public static String digestToKeyStoreSuffix(int version, PublisherPublicKeyDigest ppkd) {
+		return DatatypeConverter.printHexBinary(ppkd.digest());
+	}
+	
+	/**
+	 * Translate a key into the digest portion of a keystore filename
+	 * @param version
+	 * @param key
+	 * @return
+	 */
+	public static String keyToKeyStoreSuffix(int version, Key key) {
+		return DatatypeConverter.printHexBinary(PublisherID.generatePublicKeyDigest(key));
 	}
 	
 	/**

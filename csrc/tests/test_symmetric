@@ -1,0 +1,31 @@
+# tests/test_symmetric
+# 
+# Test symmetric keys
+#
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2013 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+
+export CCN_LOCAL_PORT=$((CCN_LOCAL_PORT_BASE + 8))
+CCND_DEBUG=0 ccnd &
+trap "ccndsmoketest kill" 0
+rm -rf keytest
+mkdir keytest
+export CCNX_DIR=`pwd`/keytest
+digest=`ccninitaeskeystore -o keytest` || Fail Cant init AES keystore
+digest=`echo $digest | sed -e "s/.*ccnx_keystore-//"`
+echo test | ccnseqwriter -o keytest -d $digest ccn:/test
+ccnls ccn:/test | fgrep '[unverified]' && Fail should have gotten verified data with symmetric key
+digest=`ccninitaeskeystore -o keytest -p test` || Fail Cant init AES keystore
+digest=`echo $digest | sed -e "s/.*ccnx_keystore-//"`
+echo test | ccnseqwriter -o keytest -d $digest -p test ccn:/unverified
+ccnls ccn:/unverified | fgrep '[unverified]' || Fail should have gotten unverified data with inaccessible symmetric key
+rm -rf keytest

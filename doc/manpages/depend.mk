@@ -35,6 +35,8 @@ ccnlink.1.html: ccnlink.1.txt
 ccnprintlink.1.html: ccnprintlink.1.txt
 ccnrepoimport.1.html: ccnrepoimport.1.txt
 ccntestloop.1.html: ccntestloop.1.txt
+ccninitkeystore.1.html: ccninitkeystore.1.txt
+ccninitaeskeystore.1.html: ccninitaeskeystore.1.txt
 ccn_ccnbtoxml.1.pdf: ccn_ccnbtoxml.1.txt
 ccn_xmltoccnb.1.pdf: ccn_xmltoccnb.1.txt
 ccnacl.1.pdf: ccnacl.1.txt
@@ -72,6 +74,8 @@ ccnlink.1.pdf: ccnlink.1.txt
 ccnprintlink.1.pdf: ccnprintlink.1.txt
 ccnrepoimport.1.pdf: ccnrepoimport.1.txt
 ccntestloop.1.pdf: ccntestloop.1.txt
+ccninitkeystore.1.pdf: ccninitkeystore.1.txt
+ccninitaeskeystore.1.pdf: ccninitaeskeystore.1.txt
 ccn_ccnbtoxml.1: ccn_ccnbtoxml.1.txt
 ccn_xmltoccnb.1: ccn_xmltoccnb.1.txt
 ccnacl.1: ccnacl.1.txt
@@ -109,3 +113,5 @@ ccnlink.1: ccnlink.1.txt
 ccnprintlink.1: ccnprintlink.1.txt
 ccnrepoimport.1: ccnrepoimport.1.txt
 ccntestloop.1: ccntestloop.1.txt
+ccninitkeystore.1: ccninitkeystore.1.txt
+ccninitaeskeystore.1: ccninitaeskeystore.1.txt

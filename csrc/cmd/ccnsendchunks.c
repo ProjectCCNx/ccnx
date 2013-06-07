@@ -4,7 +4,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010, 2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -95,7 +95,7 @@ static void
 usage(const char *progname)
 {
         fprintf(stderr,
-                "%s [-h] [-x freshness_seconds] [-b blocksize] URI\n"
+                "%s [-h] [-x freshness_seconds] [-b blocksize] [-o keydir] [-d digest] [-p password] URI\n"
                 " Chops stdin into blocks (1K by default) and sends them "
                 "as consecutively numbered ContentObjects "
                 "under the given uri\n", progname);
@@ -119,10 +119,13 @@ main(int argc, char **argv)
     int res;
     ssize_t read_res;
     unsigned char *buf = NULL;
+    char *symmetric_suffix = NULL;
+    char *dir = NULL;
+    const char *password = NULL;
     struct mydata mydata = { 0 };
     struct ccn_closure in_content = {.p=&incoming_content, .data=&mydata};
     struct ccn_closure in_interest = {.p=&incoming_interest, .data=&mydata};
-    while ((res = getopt(argc, argv, "hx:b:")) != -1) {
+    while ((res = getopt(argc, argv, "hx:b:d:p:o:")) != -1) {
         switch (res) {
             case 'x':
                 expire = atol(optarg);
@@ -131,6 +134,15 @@ main(int argc, char **argv)
                 break;
             case 'b':
                 blocksize = atol(optarg);
+                break;
+            case 'd':
+                symmetric_suffix = optarg;
+                break;
+            case 'p':
+                password = optarg;
+                break;
+            case 'o':
+                dir = optarg;
                 break;
             default:
             case 'h':
@@ -152,6 +164,19 @@ main(int argc, char **argv)
     if (ccn_connect(ccn, NULL) == -1) {
         perror("Could not connect to ccnd");
         exit(1);
+    }
+
+    if (symmetric_suffix != NULL) {
+        int len = sizeof(sp.pubid);
+        struct ccn_charbuf *key_digest = ccn_charbuf_create();
+
+        if (ccn_get_key_digest_from_suffix(ccn, dir, symmetric_suffix, password, key_digest)) {
+            perror("Can't access keystore");
+            exit(1);
+        }
+        if (key_digest->length < len)
+            len = key_digest->length;
+	memcpy(sp.pubid, key_digest->buf, len);
     }
     
     buf = calloc(1, blocksize);
