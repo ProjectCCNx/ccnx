@@ -170,17 +170,14 @@ public class CCNInputStreamTest extends CCNTestBase {
 		}
 
 		public void run() {
-			int bytesRead = 0;
 			try {
 				int val;
 				do {
 					val = _stream.read();
-					bytesRead++;
 				} while (val != -1);
 			} catch (IOException e) {
 				Assert.fail("Input stream timed out or read failed: " + e.getMessage());
 			}
-			Log.warning("Read {0} bytes" , bytesRead);
 		}
 	}
 }
