@@ -14,7 +14,7 @@
  * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02
  */
-package org.ccnx.ccn;
+package org.ccnx.ccn.protocol;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -25,7 +25,7 @@ import org.junit.runners.Suite.SuiteClasses;
 @RunWith(Suite.class)
 
 @SuiteClasses({
-    org.ccnx.ccn.protocol.AllTests.class
+    CCNTimeTest.class
 })
 public class AllTests {
 }
