@@ -377,13 +377,13 @@
          * These rules apply to all contributions, by core team, or from
          community.
 	     -->
-	<target name="test" depends="init, test-all-units">
+	<target name="unittest" depends="init, test-all-units">
 	</target>
 
-	<!-- systemtest is for running all current automated tests to validate code 
+	<!-- test is for running all current system tests to validate code 
 	     IMPORTANT: test-repo must be run before any test that will start a repo because it
 	     requires that a repo *not* be running when it starts -->
-	<target name="systemtest" depends="init, test-repo, test-protocol, test-impl, test-io, test-endtoend">
+	<target name="test" depends="init, test-repo, test-protocol, test-impl, test-io, test-endtoend">
 	</target>
 
 	<target name="test-protocol" depends="test-protocol-without-repo, test-protocol-with-repo">
