@@ -26,17 +26,14 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Random;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.CCNTestHelper;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.CCNOutputStream;
-import org.ccnx.ccn.io.CCNReader;
-import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
-import org.ccnx.ccn.CCNTestHelper;
 import org.ccnx.ccn.utils.Flosser;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -353,5 +350,15 @@ public class CCNVersionedInputStreamTest {
 		}
 
 		Log.info(Log.FAC_TEST, "Completed testReadProblematicLengths");
+	}
+	
+	@Test
+	public void testBlockAfterFirstSegment() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testBlockAfterFirstSegment");
+		ContentName name = new ContentName(testHelper.getClassNamespace(), "blockTest");
+		CCNOutputStream os = new CCNVersionedOutputStream(name, outputHandle);
+		CCNVersionedInputStream vis = new CCNVersionedInputStream(name, inputHandle);
+		CCNInputStreamTestCommon.blockAfterFirstSegmentTest(name, vis, os);
+		Log.info(Log.FAC_TEST, "Completed testBlockAfterFirstSegment");
 	}
 }
