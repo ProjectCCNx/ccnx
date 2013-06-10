@@ -33,23 +33,28 @@
 #include <ccn/coding.h>
 #include <ccn/uri.h>
 
+struct options {
+    int no_output;
+};
+
 /* returns
  *  res >= 0    res characters remaining to be processed from data
  *  decoder state will be set appropriately   
  */
 static size_t
-process_data(struct ccn_skeleton_decoder *d, unsigned char *data, size_t n, struct ccn_charbuf *c)
+process_data(struct ccn_skeleton_decoder *d, unsigned char *data, size_t n, struct ccn_charbuf *c, const struct options *o)
 {
     size_t s;
-    
 retry:
     s = ccn_skeleton_decode(d, data, n);
     if (d->state < 0)
         return (0);
     if (CCN_FINAL_DSTATE(d->state)) {
-        c->length = 0;
-        ccn_uri_append(c, data, s, 1);
-        printf("%s\n", ccn_charbuf_as_string(c));
+        if (!o->no_output) {
+            c->length = 0;
+            ccn_uri_append(c, data, s, 1);
+            printf("%s\n", ccn_charbuf_as_string(c));                
+        }
         data += s;
         n -= s;
         if (n > 0) goto retry;
@@ -58,7 +63,7 @@ retry:
 }
 
 static int
-process_fd(int fd, struct ccn_charbuf *c)
+process_fd(int fd, struct ccn_charbuf *c, const struct options *o)
 {
     struct ccn_skeleton_decoder skel_decoder = {0};
     struct ccn_skeleton_decoder *d = &skel_decoder;
@@ -78,7 +83,7 @@ process_fd(int fd, struct ccn_charbuf *c)
         bufp = (unsigned char *)mmap((void *)NULL, res,
                                      PROT_READ, MAP_PRIVATE, fd, 0);
         if (bufp != (void *)-1) {
-            res = process_data(d, bufp, res, c);
+            res = process_data(d, bufp, res, c, o);
             if (!CCN_FINAL_DSTATE(d->state)) {
                 fprintf(stderr, "%s state %d after %lu bytes\n",
                         (d->state < 0) ? "error" : "incomplete",
@@ -89,13 +94,13 @@ process_fd(int fd, struct ccn_charbuf *c)
             return(0);
         }
     }
-    
+    fprintf(stderr, "Unable to mmap input.\n");
     /* either not a regular file amenable to mapping, or the map failed */
     bufp = &buf[0];
     res = 0;
     while ((len = read(fd, bufp + res, sizeof(buf) - res)) > 0) {
         len += res;
-        res = process_data(d, bufp, len, c);
+        res = process_data(d, bufp, len, c, o);
         if (d->state < 0) {
             fprintf(stderr, "error state %d\n", (int)d->state);
             return(1);
@@ -117,7 +122,7 @@ process_fd(int fd, struct ccn_charbuf *c)
 
 
 static int
-process_file(char *path, struct ccn_charbuf *c)
+process_file(char *path, struct ccn_charbuf *c, const struct options *o)
 {
     int fd = -1;
     int res = 0;
@@ -131,7 +136,7 @@ process_file(char *path, struct ccn_charbuf *c)
         }
         
     }
-    res = process_fd(fd, c);
+    res = process_fd(fd, c, o);
     close(fd);
     return(res);
 }
@@ -140,9 +145,10 @@ static void
 usage(const char *progname)
 {
     fprintf(stderr,
-            "%s [-h] [file1 ... fileN]\n"
+            "%s [-hn] [file1 ... fileN]\n"
             "   Produces a list of names from the ccnb encoded"
-            " objects in the given file(s), or from stdin if no files or \"-\"\n",
+            " objects in the given file(s), or from stdin if no files or \"-\"\n"
+            "  -n parse the objects but generate no output.\n",
             progname);
     exit(1);
 }
@@ -154,9 +160,13 @@ main(int argc, char *argv[])
     int res = 0;
     struct ccn_charbuf *c = ccn_charbuf_create();
     int opt;
+    struct options o = { 0 };
     
-    while ((opt = getopt(argc, argv, "h")) != -1) {
+    while ((opt = getopt(argc, argv, "hn")) != -1) {
         switch (opt) {
+            case 'n':
+                o.no_output = 1;
+                break;
             case 'h':
             default:
                 usage(argv[0]);
@@ -164,10 +174,10 @@ main(int argc, char *argv[])
     }
     
     if (argv[optind] == NULL)
-        return (process_fd(STDIN_FILENO, c));
+        return (process_fd(STDIN_FILENO, c, &o));
     
     for (i = optind; argv[i] != 0; i++) {
-        res |= process_file(argv[i], c);
+        res |= process_file(argv[i], c, &o);
     }
     return(res);
 }
