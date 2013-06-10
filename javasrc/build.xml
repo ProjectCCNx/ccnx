@@ -401,7 +401,7 @@
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
-            <test name="org.ccnx.ccn.CCNUnitTestSuite"/>
+            <test name="org.ccnx.ccn.AllTests"/>
         </junit>
     </target>	
 
