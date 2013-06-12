@@ -1343,6 +1343,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 			if (_keys == null) throw new AccessDeniedException("Cannot find keys to decrypt content.");
 		}
 		setCurrentSegment(newSegment);
+		if (hasFlag(FlagTypes.BLOCK_AFTER_FIRST_SEGMENT))
+			setTimeout(SystemConfiguration.NO_TIMEOUT);
 	}
 
 	/**
@@ -1672,29 +1674,27 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	 * @throws IOException If can't get a valid starting segment number
 	 */
 	public ContentObject getFirstSegment() throws IOException {
+		ContentObject segment = null;
 		if (null != _firstSegment) {
-			return _firstSegment;
+			segment = _firstSegment;
 		} else if (null != _startingSegmentNumber) {
 			long oldTimeout = _timeout;
 			if (hasFlag(FlagTypes.BLOCKING))
 				setTimeout(SystemConfiguration.NO_TIMEOUT);
-			ContentObject firstSegment = getSegment(_startingSegmentNumber);
-			if (hasFlag(FlagTypes.BLOCK_AFTER_FIRST_SEGMENT))
-				setTimeout(SystemConfiguration.NO_TIMEOUT);
-			else
-				setTimeout(oldTimeout);
+			segment = getSegment(_startingSegmentNumber);
 			if (Log.isLoggable(Log.FAC_IO, Level.FINE)) {
 				Log.fine(Log.FAC_IO, "getFirstSegment: segment number: " + _startingSegmentNumber + " got segment? " +
-						((null == firstSegment) ? "no " : firstSegment.name()));
+						((null == segment) ? "no " : segment.name()));
 			}
+			setTimeout(oldTimeout);
 			// Do not call setFirstSegment() here because that should only be done when
 			// we are initializing since it does one-time processing including changing the
 			// current segment.  Callers to this method may be simply needing the first segment
 			// without changing current.
-			return firstSegment;
 		} else {
 			throw new IOException("Stream does not have a valid starting segment number.");
 		}
+		return segment;
 	}
 
 	/**
