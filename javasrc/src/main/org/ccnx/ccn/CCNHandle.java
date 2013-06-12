@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2011, 2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -373,7 +373,7 @@ public class CCNHandle implements CCNBase {
 				throw new IOException(formatMessage("Handle is closed"));
 		}
 
-		getNetworkManager().setInterestFilter(this, filter, callbackHandler);
+		getNetworkManager().setInterestFilter(filter, callbackHandler);
 	}
 	
 	@Deprecated
@@ -387,7 +387,7 @@ public class CCNHandle implements CCNBase {
 				throw new IOException(formatMessage("Handle is closed"));
 		}
 
-		getNetworkManager().setInterestFilter(this, filter, callbackListener);
+		getNetworkManager().setInterestFilter(filter, callbackListener);
 	}
 	
 	/**
@@ -408,7 +408,7 @@ public class CCNHandle implements CCNBase {
 			}
 		}
 
-		getNetworkManager().cancelInterestFilter(this, filter, callbackHandler);		
+		getNetworkManager().cancelInterestFilter(filter, callbackHandler);		
 	}
 	
 	@Deprecated
@@ -424,7 +424,7 @@ public class CCNHandle implements CCNBase {
 			}
 		}
 
-		getNetworkManager().cancelInterestFilter(this, filter, callbackListener);		
+		getNetworkManager().cancelInterestFilter(filter, callbackListener);		
 	}
 	
 	/**
@@ -460,7 +460,7 @@ public class CCNHandle implements CCNBase {
 		}
 
 		// Will add the interest to the listener.
-		getNetworkManager().expressInterest(this, interest, handler);
+		getNetworkManager().expressInterest(interest, handler);
 	}
 	
 	public void registerInterest(
@@ -475,7 +475,7 @@ public class CCNHandle implements CCNBase {
 		}
 
 		// Will add the interest to the listener.
-		getNetworkManager().registerInterest(this, interest, handler);
+		getNetworkManager().registerInterest(interest, handler);
 	}
 	
 	@Deprecated
@@ -507,12 +507,12 @@ public class CCNHandle implements CCNBase {
 					return i;
 				}
 			};
-			getNetworkManager().expressInterest(this, interest, myListener);
+			getNetworkManager().expressInterest(interest, myListener);
 
 		} else {
 
 			// Will add the interest to the listener.
-			getNetworkManager().expressInterest(this, interest, listener);
+			getNetworkManager().expressInterest(interest, listener);
 		}
 	}
 
@@ -533,7 +533,7 @@ public class CCNHandle implements CCNBase {
 			}
 		}
 
-		getNetworkManager().cancelInterest(this, interest, handler);
+		getNetworkManager().cancelInterest(interest, handler);
 	}
 	
 	@Deprecated
@@ -548,7 +548,7 @@ public class CCNHandle implements CCNBase {
 			}
 		}
 
-		getNetworkManager().cancelInterest(this, interest, listener);
+		getNetworkManager().cancelInterest(interest, listener);
 	}
 
 	/**
