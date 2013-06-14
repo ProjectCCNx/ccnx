@@ -1,7 +1,7 @@
 /*
  * CCNx Android Services
  *
- * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -137,7 +137,6 @@ public final class CcndService extends CCNxService {
 
 		
 		try {
-			createKeystore(ccnd_keydir, KEYSTORE_NAME + ccnd_port);
 			for( Entry<String,String> entry : options.entrySet() ) {
 				setenv(entry.getKey(), entry.getValue(), 1);
 			}
@@ -159,7 +158,8 @@ public final class CcndService extends CCNxService {
 		}
 		serviceStopped();
 	}
-	
+
+	@Deprecated	
 	protected void createKeystore(String dir_name, String keystore_name) {
 		File dir = new File(dir_name);
 
@@ -180,7 +180,7 @@ public final class CcndService extends CCNxService {
 			// subsequent attempts to start up this service (manual or via intent), we should
 			CCNxLibraryCheck.checkBCP();	   
 			FileOutputStream stream = new FileOutputStream(try_keystore);
-			BasicKeyManager.createKeyStore(stream, null, "ccnd", KEYSTORE_PASS, "CCND");
+			BasicKeyManager.createKeyStore(stream, null, null, "ccnd", KEYSTORE_PASS, "CCND");
 			stream.close();
 		} catch(RuntimeException rte) {
 			// There are a few which can fail and this makes the service unstable since
