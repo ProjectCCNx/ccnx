@@ -25,19 +25,19 @@ import org.ccnx.ccn.protocol.ContentName;
 public class CCNInputStreamTestCommon {
 	
 	public static void blockAfterFirstSegmentTest(ContentName testName, CCNInputStream stream, CCNOutputStream ostream) throws Error, Exception {
+		byte[] bytes = new byte[800];
+		for (int i = 0; i < bytes.length; i++)
+			bytes[i] = (byte)i;
 		stream.addFlag(FlagTypes.BLOCK_AFTER_FIRST_SEGMENT);
-		BackgroundStreamer bas = new BackgroundStreamer(stream, false, 0);
+		BackgroundStreamer bas = new BackgroundStreamer(stream, bytes, false, 0);
 		ThreadAssertionRunner tar = new ThreadAssertionRunner(new Thread(bas));
 		tar.start();
 		ostream.setBlockSize(100);
 		ostream.setTimeout(SystemConfiguration.NO_TIMEOUT);
-		byte[] bytes = new byte[400];
-		for (int i = 0; i < bytes.length; i++)
-			bytes[i] = (byte)i;
-		ostream.write(bytes);
+		ostream.write(bytes, 0, 400);
 		ostream.flush();
 		Thread.sleep(SystemConfiguration.getDefaultTimeout() * 2);
-		ostream.write(bytes);
+		ostream.write(bytes, 400, 400);
 		ostream.close();
 		tar.join(SystemConfiguration.EXTRA_LONG_TIMEOUT * 2);
 		bas.close();

@@ -23,9 +23,11 @@ import junit.framework.Assert;
 
 public class BackgroundStreamer implements Runnable {
 	CCNInputStream _stream = null;
+	byte[] _expected = null;
 
-	public BackgroundStreamer(CCNInputStream stream, boolean useTimeout, long timeout) {
+	public BackgroundStreamer(CCNInputStream stream, byte[] expected, boolean useTimeout, long timeout) {
 		_stream = stream;
+		_expected = expected;
 		if (useTimeout)
 			_stream.setTimeout(timeout);
 	}
@@ -35,14 +37,21 @@ public class BackgroundStreamer implements Runnable {
 	}
 
 	public void run() {
+		int i = 0;
 		try {
 			int val;
 			do {
 				val = _stream.read();
+				if (val != -1) {
+					Assert.assertTrue("Read too much data - length should be: " + _expected.length, i < _expected.length);
+					Assert.assertEquals("Received incorrect data", _expected[i], (byte)val);
+					i++;
+				}
 			} while (val != -1);
 		} catch (IOException e) {
 			Assert.fail("Input stream timed out or read failed: " + e.getMessage());
 		}
+		Assert.assertFalse("Received too little data - length should be: " + _expected.length + " and length was: " + i, i < _expected.length);	
 	}
 }
 

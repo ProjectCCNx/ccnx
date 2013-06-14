@@ -58,7 +58,7 @@ public class CCNInputStreamTest extends CCNTestBase {
 
 		testName = testHelper.getTestNamespace("testInput/no/timeout");
 		CCNInputStream	stream = new CCNInputStream(testName, getHandle);
-		BackgroundStreamer bas = new BackgroundStreamer(stream, true, SystemConfiguration.NO_TIMEOUT);
+		BackgroundStreamer bas = new BackgroundStreamer(stream, new byte[0], true, SystemConfiguration.NO_TIMEOUT);
 		ThreadAssertionRunner tar = new ThreadAssertionRunner(new Thread(bas));
 		tar.start();
 		tar.join(SystemConfiguration.EXTRA_LONG_TIMEOUT * 2);
@@ -125,16 +125,16 @@ public class CCNInputStreamTest extends CCNTestBase {
 	}
 	
 	private void doStreaming(CCNInputStream stream, ContentName testName, CCNHandle handle, boolean sleepAtStart) throws Error, Exception {
-		BackgroundStreamer bas = new BackgroundStreamer(stream, false, 0);
+		byte[] bytes = new byte[400];
+		for (int i = 0; i < bytes.length; i++)
+			bytes[i] = (byte)i;
+		BackgroundStreamer bas = new BackgroundStreamer(stream, bytes, false, 0);
 		ThreadAssertionRunner tar = new ThreadAssertionRunner(new Thread(bas));
 		tar.start();
 		if (sleepAtStart)
 			Thread.sleep(SystemConfiguration.getDefaultTimeout() * 2);
 		CCNOutputStream ostream = new CCNOutputStream(testName, handle);
 		ostream.setBlockSize(100);
-		byte[] bytes = new byte[400];
-		for (int i = 0; i < bytes.length; i++)
-			bytes[i] = (byte)i;
 		ostream.write(bytes);
 		ostream.close();
 		tar.join(SystemConfiguration.EXTRA_LONG_TIMEOUT * 2);
