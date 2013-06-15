@@ -249,6 +249,9 @@ public class CCNInputStream extends CCNAbstractInputStream {
 					}
 					return -1; // no bytes read, at eof					
 				}
+				if (hasFlag(FlagTypes.BLOCK_AFTER_FIRST_SEGMENT) && lenRead > 0) {
+					break;
+				}
 				ContentObject nextSegment = getNextSegment();
 				if (null == nextSegment) {
 					if (Log.isLoggable(Log.FAC_IO, Level.FINE))
