@@ -26,6 +26,7 @@ import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.CCNSyncHandler;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ConfigSlice;
 import org.ccnx.ccn.profiles.sync.Sync;
@@ -52,7 +53,7 @@ import org.ccnx.ccn.protocol.Interest;
  * Note also that all comparators can share the same node data but must keep their own version of where they
  * are in the treewalk through the data. Node data is shared in _snc below.
  */
-public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentHandler, CCNInterestHandler {
+public final class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentHandler, CCNInterestHandler {
 	private class SliceData {
 		protected SyncNodeCache _snc = new SyncNodeCache();
 		SliceComparator _leadComparator;
@@ -66,8 +67,9 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 			_leadComparator = sc;
 		}
 	}
-	protected CCNHandle _handle;
-	protected HashMap<SyncHashEntry, SliceData> _sliceData = new HashMap<SyncHashEntry, SliceData>();
+	private CCNHandle _handle;
+	private HashMap<SyncHashEntry, SliceData> _sliceData = new HashMap<SyncHashEntry, SliceData>();
+	private long _timeout = SystemConfiguration.EXTRA_LONG_TIMEOUT;
 	
 	public ProtocolBasedSyncMonitor(CCNHandle handle) {
 		_handle = handle;
@@ -95,6 +97,7 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 					sd = new SliceData();
 				}
 				SliceComparator sc = new SliceComparator(newData ? null : sd._leadComparator, sd._snc, syncHandler, slice, startHash, startName, _handle);
+				sc.setTimeout(_timeout);
 				if (newData)
 					sd.setLeadComparator(sc);
 				sd._activeComparators.add(sc);
@@ -176,6 +179,26 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 			throw new SyncException(e.getMessage());
 		}
 		return ret;
+	}
+	
+	public void setTimeout(ConfigSlice slice, long timeout) {
+		if (timeout <= 0)
+			throw new IllegalArgumentException("Bogus timeout in sync: " + timeout);
+		if (null == slice)
+			throw new NullPointerException();
+		SyncHashEntry she = new SyncHashEntry(slice.getHash());
+		SliceData sd;
+		synchronized (this) {
+			_timeout = timeout;
+			sd = _sliceData.get(she);
+			if (null == sd)
+				return;
+		}
+		for (SliceComparator sc : sd._activeComparators) {
+			synchronized(sc) {
+				sc.setTimeout(timeout);
+			}
+		}
 	}
 	
 	/**

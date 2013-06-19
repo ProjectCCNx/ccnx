@@ -72,42 +72,43 @@ import org.ccnx.ccn.protocol.Interest;
  * routine or by internal methods called only by it so that synchronization is in fact unnecessary.
  *
  */
-public class SliceComparator implements Runnable {
+public final class SliceComparator implements Runnable {
 	public static final int DECODER_SIZE = 756;
 	public static enum SyncCompareState {INIT, PRELOAD, COMPARE, DONE, UPDATE};
 
 	public ScheduledThreadPoolExecutor _executor = (ScheduledThreadPoolExecutor) Executors.newScheduledThreadPool(1);
 	public final int COMPARE_INTERVAL = 100; // ms
-	protected BinaryXMLDecoder _decoder;
-	protected boolean _needToCompare = true;
-	protected boolean _comparing = false;
-	protected boolean _shutdown = false;
+	private BinaryXMLDecoder _decoder;
+	
+	private volatile boolean _needToCompare = true;
+	private volatile boolean _comparing = false;
+	private volatile boolean _shutdown = false;
 	
 	// Prevents the comparison task from being run more than once simultaneously
-	protected Semaphore _compareSemaphore = new Semaphore(1);
-	protected NodeFetchHandler _nfh = new NodeFetchHandler();
-	protected Object _compareLock = new Object();
+	private Semaphore _compareSemaphore = new Semaphore(1);
+	private NodeFetchHandler _nfh = new NodeFetchHandler();
 	
-	protected ConfigSlice _slice;
-	protected ArrayList<CCNSyncHandler> _callbacks = new ArrayList<CCNSyncHandler>();
-	protected ArrayList<CCNSyncHandler> _pendingCallbacks = new ArrayList<CCNSyncHandler>();
-	protected SliceComparator _leadComparator;
-	protected CCNHandle _handle;
-	protected SyncNodeCache _snc = null;
+	private ConfigSlice _slice;
+	private ArrayList<CCNSyncHandler> _callbacks = new ArrayList<CCNSyncHandler>();
+	private ArrayList<CCNSyncHandler> _pendingCallbacks = new ArrayList<CCNSyncHandler>();
+	private SliceComparator _leadComparator;
+	private CCNHandle _handle;
+	private SyncNodeCache _snc = null;
 
-	protected Stack<SyncTreeEntry> _current = new Stack<SyncTreeEntry>();
-	protected Stack<SyncTreeEntry> _next = new Stack<SyncTreeEntry>();
-	protected SyncCompareState _state = SyncCompareState.INIT;
-	protected ArrayList<SyncTreeEntry> _pendingEntries = new ArrayList<SyncTreeEntry>();
-	protected Queue<byte[]> _pendingContent = new ConcurrentLinkedQueue<byte[]>();
-	protected SyncTreeEntry _currentRoot = null;
-	protected SyncTreeEntry _startHash = null;
-	protected ContentName _startName = null;
-	protected boolean _doCallbacks = true;
-	protected TreeSet<ContentName> _updateNames = new TreeSet<ContentName>();
-	protected NodeBuilder _nBuilder = new NodeBuilder();
+	private Stack<SyncTreeEntry> _current = new Stack<SyncTreeEntry>();
+	private Stack<SyncTreeEntry> _next = new Stack<SyncTreeEntry>();
+	private SyncCompareState _state = SyncCompareState.INIT;
+	private ArrayList<SyncTreeEntry> _pendingEntries = new ArrayList<SyncTreeEntry>();
+	private Queue<byte[]> _pendingContent = new ConcurrentLinkedQueue<byte[]>();
+	private SyncTreeEntry _currentRoot = null;
+	private SyncTreeEntry _startHash = null;
+	private ContentName _startName = null;
+	private boolean _doCallbacks = true;
+	private TreeSet<ContentName> _updateNames = new TreeSet<ContentName>();
+	private NodeBuilder _nBuilder = new NodeBuilder();
 	
-	protected SyncHashCache _shc = new SyncHashCache();
+	private SyncHashCache _shc = new SyncHashCache();
+	private long _timeout = SystemConfiguration.EXTRA_LONG_TIMEOUT;
 	
 	/**
 	 * Start a comparison on a slice which will call back each registered "callback" each time
@@ -319,6 +320,10 @@ public class SliceComparator implements Runnable {
 		return _snc;
 	}
 	
+	public synchronized void setTimeout(long timeout) {
+		_timeout = timeout;
+	}
+	
 	/**
 	 * Must return a copy because the STE can be used in a different comparator
 	 * @return
@@ -389,11 +394,15 @@ public class SliceComparator implements Runnable {
 			return node;
 		Pending lock = _snc.pending(srt.getHash());
 		long ourTime = System.currentTimeMillis();
-		long endTime = ourTime + SystemConfiguration.LONG_TIMEOUT;
+		long timeout;
+		synchronized (this) {
+			timeout = _timeout;
+		}
+		long endTime = ourTime + timeout;
 		while (wait && lock.getPending()) {
 			try {
 				synchronized (lock) {
-					lock.wait(SystemConfiguration.LONG_TIMEOUT);
+					lock.wait(timeout);
 				}
 			} catch (InterruptedException e) {
 				return null;

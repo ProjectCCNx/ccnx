@@ -35,7 +35,7 @@ public class SyncNodeCache {
 	 * insure that we don't return without having retrieved the node when that is required.
 	 */
 	public class Pending {
-		boolean _pending = false;
+		volatile boolean _pending = false;
 		
 		public void setPending(boolean value) {
 			_pending = value;
