@@ -38,13 +38,14 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.sync.Sync;
 import org.ccnx.ccn.protocol.ContentName;
 
-public class ConfigSlice extends GenericXMLEncodable {
+public final class ConfigSlice extends GenericXMLEncodable implements Comparable<ConfigSlice> {
 	
 	public int version = Sync.SLICE_VERSION;
 	public ContentName topo;
 	public ContentName prefix;
 
-	protected LinkedList<Filter> filters = new LinkedList<Filter>();
+	private LinkedList<Filter> filters = new LinkedList<Filter>();
+	private byte[] _hash = null;
 	
 	/**
 	 * Config slice lists require a ConfigSliceOp written before the
@@ -153,12 +154,15 @@ public class ConfigSlice extends GenericXMLEncodable {
 	}
 	
 	public byte[] getHash() {
-		try {
-			return CCNDigestHelper.digest(encode());
-		} catch (ContentEncodingException e) {
-			// should never happen since we're encoding our own data
-			throw new RuntimeException(e);
-		}
+		if (null == _hash) {
+			try {
+				_hash = CCNDigestHelper.digest(encode());
+			} catch (ContentEncodingException e) {
+				// should never happen since we're encoding our own data
+				throw new RuntimeException(e);
+			}
+			}
+		return _hash;
 	}
 
 	@Override
@@ -213,5 +217,10 @@ public class ConfigSlice extends GenericXMLEncodable {
 			return false;
 		ConfigSlice otherSlice = (ConfigSlice)obj;
 		return Arrays.equals(this.getHash(), otherSlice.getHash());
+	}
+
+	@Override
+	public int compareTo(ConfigSlice o) {
+		return Arrays.hashCode(getHash()) - Arrays.hashCode(o.getHash());
 	}
 }

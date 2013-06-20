@@ -72,13 +72,16 @@ import org.ccnx.ccn.protocol.Interest;
  * routine or by internal methods called only by it so that synchronization is in fact unnecessary.
  *
  */
-public final class SliceComparator implements Runnable {
+public final class SliceComparator implements Runnable, Comparable<SliceComparator> {
 	public static final int DECODER_SIZE = 756;
 	public static enum SyncCompareState {INIT, PRELOAD, COMPARE, DONE, UPDATE};
 
 	public ScheduledThreadPoolExecutor _executor = (ScheduledThreadPoolExecutor) Executors.newScheduledThreadPool(1);
 	public final int COMPARE_INTERVAL = 100; // ms
 	private BinaryXMLDecoder _decoder;
+	
+	private static int _nextID = 1;
+	private int _id;
 	
 	private volatile boolean _needToCompare = true;
 	private volatile boolean _comparing = false;
@@ -127,12 +130,15 @@ public final class SliceComparator implements Runnable {
 	 * 				if contains a hash, report all names that are not in that hash.
 	 * @param startName report all names seen after we see this name
 	 * @param handle the CCNHandle to use
+	 * 
+	 * TODO for now we need to allow a null slice for testing. This should maybe be refactored somehow
 	 */
 	public SliceComparator(SliceComparator leadComparator, SyncNodeCache snc, CCNSyncHandler callback, ConfigSlice slice, 
 				byte[] startHash, ContentName startName, CCNHandle handle) {
 		if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
 			Log.info(Log.FAC_SYNC, "Beginning sync monitoring {0}", null == startHash ? "from start"
 					: "starting with: " + Component.printURI(startHash));
+		_id = _nextID++;
 		_leadComparator = leadComparator;
 		if (null == _leadComparator)
 			_leadComparator = this;
@@ -1127,5 +1133,12 @@ public final class SliceComparator implements Runnable {
 			kickCompare();
 			return null;
 		}
+	}
+
+	/**
+	 * To allow use in Concurrent maps which require Comparable
+	 */
+	public int compareTo(SliceComparator o) {
+		return _id - o._id;
 	}
 }

@@ -19,7 +19,10 @@ package org.ccnx.ccn.impl.sync;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNContentHandler;
@@ -57,10 +60,10 @@ public final class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNCo
 	private class SliceData {
 		protected SyncNodeCache _snc = new SyncNodeCache();
 		SliceComparator _leadComparator;
-		ArrayList<SliceComparator> _activeComparators;
+		Set<SliceComparator> _activeComparators;
 		
 		public SliceData() {
-			_activeComparators = new ArrayList<SliceComparator>();
+			_activeComparators = new ConcurrentSkipListSet<SliceComparator>();
 		}
 		
 		public void setLeadComparator(SliceComparator sc) {
@@ -68,7 +71,7 @@ public final class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNCo
 		}
 	}
 	private CCNHandle _handle;
-	private HashMap<SyncHashEntry, SliceData> _sliceData = new HashMap<SyncHashEntry, SliceData>();
+	private Map<SyncHashEntry, SliceData> _sliceData = new ConcurrentHashMap<SyncHashEntry, SliceData>();
 	private long _timeout = SystemConfiguration.EXTRA_LONG_TIMEOUT;
 	
 	public ProtocolBasedSyncMonitor(CCNHandle handle) {
@@ -82,28 +85,31 @@ public final class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNCo
 	 */
 	public void registerCallback(CCNSyncHandler syncHandler, ConfigSlice slice, byte[] startHash, ContentName startName) throws IOException {
 		boolean sendRootAdviseRequest = true;
-		synchronized (this) {
-			SyncHashEntry she = new SyncHashEntry(slice.getHash());
-			SliceData sd = _sliceData.get(she);
-			if (null != sd && null != startHash && startHash.length == 0) {
-				// For 0 length hash (== start with current hash) we can just add the handler to the leadComparator if there is one since it should
-				// already know the latest hash
-				sd._leadComparator.addCallback(syncHandler);
-				sendRootAdviseRequest = false;
-			} else {
-				boolean newData = false;
-				if (null == sd) {
-					newData = true;
-					sd = new SliceData();
-				}
-				SliceComparator sc = new SliceComparator(newData ? null : sd._leadComparator, sd._snc, syncHandler, slice, startHash, startName, _handle);
-				sc.setTimeout(_timeout);
-				if (newData)
-					sd.setLeadComparator(sc);
-				sd._activeComparators.add(sc);
-				_sliceData.put(she, sd);
+		SyncHashEntry she = new SyncHashEntry(slice.getHash());
+		SliceData sd = _sliceData.get(she);
+		if (null != sd && null != startHash && startHash.length == 0) {
+			// For 0 length hash (== start with current hash) we can just add the handler to the leadComparator if there is one since it should
+			// already know the latest hash
+			if (Log.isLoggable(Log.FAC_SYNC, Level.FINE))
+				Log.fine(Log.FAC_SYNC, "Adding our callback to the lead comparator");
+			sd._leadComparator.addCallback(syncHandler);
+			sendRootAdviseRequest = false;
+		} else {
+			boolean newData = false;
+			if (null == sd) {
+				newData = true;
+				sd = new SliceData();
 			}
+			SliceComparator sc = new SliceComparator(newData ? null : sd._leadComparator, sd._snc, syncHandler, slice, startHash, startName, _handle);
+			sc.setTimeout(_timeout);
+			if (Log.isLoggable(Log.FAC_SYNC, Level.FINE))
+				Log.fine(Log.FAC_SYNC, "Starting a new comparator - it {0} the lead.", newData ? "is" : "is not");
+			if (newData)
+				sd.setLeadComparator(sc);
+			sd._activeComparators.add(sc);
+			_sliceData.put(she, sd);
 		}
+		
 		if (sendRootAdviseRequest) {
 			ContentName rootAdvise = new ContentName(slice.topo, Sync.SYNC_ROOT_ADVISE_MARKER, slice.getHash());
 			Interest interest = new Interest(rootAdvise);
@@ -119,20 +125,20 @@ public final class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNCo
 	 * find the current hash. If someone wants to shutdown, they should explicitly ask for it.
 	 */
 	public void removeCallback(CCNSyncHandler syncHandler, ConfigSlice slice) {
+		if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
+			Log.info(Log.FAC_SYNC, "Removing callback on slice: {0}", slice.prefix);
 		ArrayList<SliceComparator> removes = new ArrayList<SliceComparator>();
 		SyncHashEntry she = new SyncHashEntry(slice.getHash());
-		synchronized (this) {
-			SliceData sd = _sliceData.get(she);
-			if (null != sd) {
-				for (SliceComparator sc : sd._activeComparators) {
-					sc.removeCallback(syncHandler);
-					if (sc != sd._leadComparator) {
-						if (sc.shutdownIfUseless())
-							removes.add(sc);
-					}
+		SliceData sd = _sliceData.get(she);
+		if (null != sd) {
+			for (SliceComparator sc : sd._activeComparators) {
+				sc.removeCallback(syncHandler);
+				if (sc != sd._leadComparator) {
+					if (sc.shutdownIfUseless())
+						removes.add(sc);
 				}
-				sd._activeComparators.removeAll(removes);
 			}
+			sd._activeComparators.removeAll(removes);
 		}
 	}
 	
@@ -140,22 +146,20 @@ public final class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNCo
 		if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
 			Log.info(Log.FAC_SYNC, "Shutting down sync on slice: {0}", slice.prefix);
 		SyncHashEntry she = new SyncHashEntry(slice.getHash());
-		synchronized (this) {
-			SliceData sd = _sliceData.get(she);
-			if (null != sd) {
-				// remove all callbacks - therefore shutting down all current comparators except
-				// the lead
-				for (SliceComparator sc : sd._activeComparators) {
-					ArrayList<CCNSyncHandler> callbacks = sc.getCallbacks();
-					ArrayList<CCNSyncHandler> shutdownCallbacks = new ArrayList<CCNSyncHandler>();
-					shutdownCallbacks.addAll(callbacks);
-					for (CCNSyncHandler syncHandler : shutdownCallbacks)
-						sc.removeCallback(syncHandler);
-				}
-				// Now shutdown the lead
-				sd._leadComparator.shutdownIfUseless();
-				_sliceData.remove(she);
+		SliceData sd = _sliceData.get(she);
+		if (null != sd) {
+			// remove all callbacks - therefore shutting down all current comparators except
+			// the lead
+			for (SliceComparator sc : sd._activeComparators) {
+				ArrayList<CCNSyncHandler> callbacks = sc.getCallbacks();
+				ArrayList<CCNSyncHandler> shutdownCallbacks = new ArrayList<CCNSyncHandler>();
+				shutdownCallbacks.addAll(callbacks);
+				for (CCNSyncHandler syncHandler : shutdownCallbacks)
+					sc.removeCallback(syncHandler);
 			}
+			// Now shutdown the lead
+			sd._leadComparator.shutdownIfUseless();
+			_sliceData.remove(she);
 		}
 	}
 	
@@ -181,21 +185,17 @@ public final class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNCo
 		return ret;
 	}
 	
-	public void setTimeout(ConfigSlice slice, long timeout) {
+	public void setTimeout(long timeout) {
 		if (timeout <= 0)
 			throw new IllegalArgumentException("Bogus timeout in sync: " + timeout);
-		if (null == slice)
-			throw new NullPointerException();
-		SyncHashEntry she = new SyncHashEntry(slice.getHash());
-		SliceData sd;
-		synchronized (this) {
-			_timeout = timeout;
-			sd = _sliceData.get(she);
+		_timeout = timeout;
+		
+		for (ConfigSlice slice : callbacks.keySet()) {
+			SyncHashEntry she = new SyncHashEntry(slice.getHash());
+			SliceData sd = _sliceData.get(she);
 			if (null == sd)
 				return;
-		}
-		for (SliceComparator sc : sd._activeComparators) {
-			synchronized(sc) {
+			for (SliceComparator sc : sd._activeComparators) {
 				sc.setTimeout(timeout);
 			}
 		}
@@ -215,17 +215,13 @@ public final class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNCo
 		}
 		if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
 			Log.info(Log.FAC_SYNC, "Saw new content from sync: {0}", name);
-		SliceData sd = null;
-		synchronized (this) {
-			sd = _sliceData.get(new SyncHashEntry(name.component(hashComponent + 1)));
-		}
+		
+		SliceData sd = _sliceData.get(new SyncHashEntry(name.component(hashComponent + 1)));
 		if (null != sd) {
 			for (SliceComparator sc : sd._activeComparators) {
-				synchronized (sc) {
-					sc.addPendingContent(data.content());
-					sc.checkNextRound();
-					sc.kickCompare();
-				}
+				sc.addPendingContent(data.content());
+				sc.checkNextRound();
+				sc.kickCompare();
 			}
 		}
 		return null;
@@ -245,19 +241,17 @@ public final class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNCo
 		byte[] hash = name.component(hashComponent + 2);
 		if (hash.length == 0)
 			return false;
-		SliceData cg = null;
-		synchronized (this) {
-			cg = _sliceData.get(new SyncHashEntry(name.component(hashComponent + 1)));
-			if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
-				Log.info(Log.FAC_SYNC, "Saw data from interest: hash: {0}", Component.printURI(hash));
-			if (null != cg) {
-				for (SliceComparator sc : cg._activeComparators) {
-					SyncTreeEntry ste = sc.getHashCache().addHash(hash, sc.getNodeCache());
-					if (sc == cg._leadComparator || !sc.shutdownIfUseless()) {
-						if (sc.addPending(ste)) {
-							sc.checkNextRound();
-							sc.kickCompare();
-						}
+		
+		SliceData cg  = _sliceData.get(new SyncHashEntry(name.component(hashComponent + 1)));
+		if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
+			Log.info(Log.FAC_SYNC, "Saw data from interest: hash: {0}", Component.printURI(hash));
+		if (null != cg) {
+			for (SliceComparator sc : cg._activeComparators) {
+				SyncTreeEntry ste = sc.getHashCache().addHash(hash, sc.getNodeCache());
+				if (sc == cg._leadComparator || !sc.shutdownIfUseless()) {
+					if (sc.addPending(ste)) {
+						sc.checkNextRound();
+						sc.kickCompare();
 					}
 				}
 			}
@@ -267,11 +261,9 @@ public final class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNCo
 
 	public SyncNodeCache getNodeCache(ConfigSlice slice) {
 		SyncHashEntry she = new SyncHashEntry(slice.getHash());
-		synchronized (this) {
-			SliceData sd = _sliceData.get(she);
-			if (null == sd)
-				return null;
-			return sd._snc;
-		}
+		SliceData sd = _sliceData.get(she);
+		if (null == sd)
+			return null;
+		return sd._snc;
 	}
 }
