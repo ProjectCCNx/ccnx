@@ -176,7 +176,11 @@ main(int argc, char **argv)
     blockread = 0;
     for (i = 0;; i++) {
         while (blockread < blocksize) {
-            ccn_run(ccn, 1);
+            if (ccn_run(ccn, 1) < 0) {
+                fprintf(stderr, "Lost connection to ccnd: %s\n",
+                        strerror(ccn_geterror(ccn)));
+                exit(1);
+            }
             read_res = read(0, buf + blockread, blocksize - blockread);
             if (read_res == 0)
                 goto cleanup;
@@ -189,7 +193,11 @@ main(int argc, char **argv)
         }
         res = ccn_seqw_write(w, buf, blockread);
         while (res == -1) {
-            ccn_run(ccn, 100);
+            if (ccn_run(ccn, 100) < 0) {
+                fprintf(stderr, "Lost connection to ccnd: %s\n",
+                        strerror(ccn_geterror(ccn)));
+                exit(1);
+            }
             res = ccn_seqw_write(w, buf, blockread);
         }
         if (res != blockread)
@@ -202,7 +210,11 @@ cleanup:
     if (blockread > 0) {
         res = ccn_seqw_write(w, buf, blockread);
         while (res == -1) {
-            ccn_run(ccn, 100);
+            if (ccn_run(ccn, 100) < 0) {
+                fprintf(stderr, "Lost connection to ccnd: %s\n",
+                        strerror(ccn_geterror(ccn)));
+                exit(1);
+            }
             res = ccn_seqw_write(w, buf, blockread);
         }
     }
