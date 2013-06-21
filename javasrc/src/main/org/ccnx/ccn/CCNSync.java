@@ -67,7 +67,7 @@ public final class CCNSync {
 			ConfigSlice slice = ConfigSlice.checkAndCreate(topo, prefix, f, handle);
 			if (_syncMon == null) {
 				_syncMon = new ProtocolBasedSyncMonitor(handle);
-				_syncMon.setTimeout(_timeout);
+				_syncMon.setTimeout(slice, _timeout);
 			}
 			_syncMon.registerCallback(syncCallback, slice, startHash, startName);
 			if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
@@ -91,8 +91,11 @@ public final class CCNSync {
 	
 	public void setTimeout(long timeout) {
 		_timeout = timeout;
+	}
+	
+	public void setTimeout(ConfigSlice slice, long timeout) {
 		if (null != _syncMon)
-			_syncMon.setTimeout(timeout);
+			_syncMon.setTimeout(slice, timeout);
 	}
 	
 	public void shutdown(ConfigSlice slice) {

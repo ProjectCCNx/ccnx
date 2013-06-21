@@ -499,6 +499,52 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		Log.info(Log.FAC_TEST,"Finished running testMultiSync");
 	}
 	
+	@Test
+	public void testSyncRecovery() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testSyncRecovery");
+		
+		ContentName prefix10;
+		callbackNames.clear();
+		prefix10 = prefix.append("slice10");
+		CCNSync sync10 = new CCNSync();
+		ConfigSlice slice10 = sync10.startSync(getHandle, topo, prefix10, this);
+		slices.add(slice10);
+		
+		//the slice should be written..  now save content and get a callback.
+		Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix10);
+		
+		int segments = SyncTestCommon.writeFile(prefix10, false, SystemConfiguration.BLOCK_SIZE, putHandle);
+		int segmentCheck = checkCallbacks(callbackNames, prefix10, segments, 0);
+		Assert.assertTrue("Did not receive all of the callbacks", segmentCheck == 0);
+		Log.fine(Log.FAC_TEST, "I got all the callbacks for part 1 of testSyncRecovery!");
+		
+		/**
+		 * I don't know how to generate a repeatable recovery situation but the following code seems
+		 * pretty sure to generate some errors
+		 */
+		sync10.setTimeout(slice10, 1);
+		ContentName nextPrefix = null;
+		int prefixId = 11;
+		for (int i = 0; i < 20; i++) {
+			nextPrefix = prefix10.append("round" + prefixId++);
+			callbackNames.clear();
+			segments = SyncTestCommon.writeFile(nextPrefix, false, SystemConfiguration.BLOCK_SIZE, putHandle);
+			segmentCheck = checkCallbacks(callbackNames, nextPrefix, segments, 0);
+			if (segmentCheck == segments)
+				break;
+		}
+		
+		sync10.setTimeout(slice10, SystemConfiguration.EXTRA_LONG_TIMEOUT);
+		nextPrefix = prefix10.append("round" + prefixId);
+		segments = SyncTestCommon.writeFile(nextPrefix, false, SystemConfiguration.BLOCK_SIZE, putHandle);
+		segmentCheck = checkCallbacks(callbackNames, nextPrefix, segments, 0);
+		Assert.assertTrue("Did not receive all of the callbacks after recovery", segmentCheck == 0);
+		
+		sync10.shutdown(slice10);
+
+		Log.info(Log.FAC_TEST,"Finished running testSyncRecovery");
+	}
+	
 	public void handleContentName(ConfigSlice syncSlice, ContentName syncedContent) {
 		doHandleContentName(1, syncSlice, syncedContent, callbackNames);
 	}

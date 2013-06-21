@@ -331,5 +331,5 @@ public class FileBasedSyncMonitor extends SyncMonitor implements Runnable{
 	}
 
 	@Override
-	public void setTimeout(long timeout) {}	// doesn't use timeouts
+	public void setTimeout(ConfigSlice slice, long timeout) {}	// doesn't use timeouts
 }

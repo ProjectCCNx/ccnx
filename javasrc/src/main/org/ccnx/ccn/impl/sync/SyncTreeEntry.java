@@ -41,6 +41,7 @@ public class SyncTreeEntry {
 	// Flags values
 	protected final static long COVERED = 1;	// Indicates that all names covered by these references have been seen
 	protected final static long LOCAL = 2;		// Indicates that the node associated with this entry was created locally
+	protected final static long MISSING = 4;	// Indicates that the node associated with this entry could not be retrieved
 
 	protected long _flags;
 	protected byte[] _hash = null;				// The hash associated with the node associated with this entry
@@ -176,7 +177,13 @@ public class SyncTreeEntry {
 	}
 	
 	public void setCovered(boolean flag) {
+		if (flag)
+			setFlag(false, MISSING);
 		setFlag(flag, COVERED);
+	}
+	
+	public void setMissing(boolean flag) {
+		setFlag(flag, MISSING);
 	}
 	
 	public void setLocal(boolean flag) {
@@ -184,11 +191,17 @@ public class SyncTreeEntry {
 			if (flag && (_node != null))
 				return;		// Switch to local not allowed
 		}
+		if (flag)
+			setFlag(false, MISSING);
 		setFlag(flag, LOCAL);
 	}
 	
 	public synchronized boolean isLocal() {
 		return (_flags & LOCAL) != 0;
+	}
+	
+	public synchronized boolean isMissing() {
+		return (_flags & MISSING) != 0;
 	}
 	
 	public boolean equals(Object other) {
@@ -232,10 +245,16 @@ public class SyncTreeEntry {
 		}
 	}
 	
+	/**
+	 * Side effect - clear MISSING if node available
+	 * @return
+	 */
 	private SyncNodeComposite getNodeIfPossible() {
 		SyncNodeComposite node = getNodeByReference();
 		if (null == node)
 			node = retrieveFromCache();
+		if (null != node)
+			setFlag(false, MISSING);
 		return node;
 	}
 }

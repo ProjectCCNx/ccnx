@@ -185,19 +185,17 @@ public final class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNCo
 		return ret;
 	}
 	
-	public void setTimeout(long timeout) {
+	public void setTimeout(ConfigSlice slice, long timeout) {
 		if (timeout <= 0)
 			throw new IllegalArgumentException("Bogus timeout in sync: " + timeout);
 		_timeout = timeout;
 		
-		for (ConfigSlice slice : callbacks.keySet()) {
-			SyncHashEntry she = new SyncHashEntry(slice.getHash());
-			SliceData sd = _sliceData.get(she);
-			if (null == sd)
-				return;
-			for (SliceComparator sc : sd._activeComparators) {
-				sc.setTimeout(timeout);
-			}
+		SyncHashEntry she = new SyncHashEntry(slice.getHash());
+		SliceData sd = _sliceData.get(she);
+		if (null == sd)
+			return;
+		for (SliceComparator sc : sd._activeComparators) {
+			sc.setTimeout(timeout);
 		}
 	}
 	

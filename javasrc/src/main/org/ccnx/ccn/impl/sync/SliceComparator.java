@@ -327,6 +327,8 @@ public final class SliceComparator implements Runnable, Comparable<SliceComparat
 	}
 	
 	public synchronized void setTimeout(long timeout) {
+		if (Log.isLoggable(Log.FAC_SYNC, Level.FINE))
+			Log.fine(Log.FAC_SYNC, "Sync timeout changed to {0}", timeout);
 		_timeout = timeout;
 	}
 	
@@ -411,7 +413,8 @@ public final class SliceComparator implements Runnable, Comparable<SliceComparat
 					lock.wait(timeout);
 				}
 			} catch (InterruptedException e) {
-				return null;
+				if (isShutdown())
+					return null;
 			}
 			node = srt.getNode(_decoder);
 			if (null != node)
@@ -478,10 +481,26 @@ public final class SliceComparator implements Runnable, Comparable<SliceComparat
 			if (null == srtY) {
 				break;  // we're done
 			}
-			sncY = getOrRequestNode(srtY, true);;
-			if (null == sncY) {
+			
+			try {
+				sncY = getOrRequestNode(srtY, true);
+			} catch (SyncException se) {
+				// Recovery strategy - don't compare against missing nodes, but don't include it in
+				// the X tree when we update
+				if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
+					Log.finest(Log.FAC_SYNC, "Couldn't get entry {0} setting it to missing", 
+							Component.printURI(srtY.getHash()));
+				}
+				srtY.setMissing(true);
+				pop(_next);
+				srtY = getHead(_next);
+				continue;
+			}
+			
+			if (null == sncY) {		// Here we're waiting to get the node
 				if (Log.isLoggable(Log.FAC_SYNC, Level.FINE))
-					Log.fine(Log.FAC_SYNC, "No data for Y: {0}, pos is {1}", Component.printURI(srtY.getHash()), srtY.getPos());
+					Log.fine(Log.FAC_SYNC, "No data for Y: {0}, pos is {1}", 
+							Component.printURI(srtY.getHash()), srtY.getPos());
 				return;
 			}
 			if (srtY.lastPos())
@@ -515,8 +534,13 @@ public final class SliceComparator implements Runnable, Comparable<SliceComparat
 					srtY.incPos();
 					break;
 				case HASH:
-					// The entry is a hash 
-					SyncTreeEntry entry = handleHashNode(sneY);
+					// The entry is a hash
+					SyncTreeEntry entry = null;
+					try {
+						entry = handleHashNode(sneY);
+					} catch (SyncException se) {
+						break;
+					}
 					if (null != entry) {
 						entry.setPos(0);
 						push(entry, _next);
@@ -546,7 +570,12 @@ public final class SliceComparator implements Runnable, Comparable<SliceComparat
 							Log.finest(Log.FAC_SYNC, "Compare NODE {0} to NODE {1}", Component.printURI(srtX.getHash()), Component.printURI(srtY.getHash()));
 							Log.finest(Log.FAC_SYNC, "pos X is {0}, pos Y is {1}", srtX.getPos(), srtY.getPos());
 						}
-						entryY = handleHashNode(sneY);
+						
+						try {
+							entryY = handleHashNode(sneY);
+						} catch (SyncException se) {
+							continue;
+						}
 						if (null != entryY) {
 							entryY.setPos(0);
 							SyncTreeEntry entryX = handleHashNode(sneX);
@@ -577,7 +606,12 @@ public final class SliceComparator implements Runnable, Comparable<SliceComparat
 						if (sneX.getName().compareTo(sncY.getMinName().getName()) < 0) {
 							srtX.incPos();
 						} else {
-							SyncTreeEntry entry = handleHashNode(sneY);
+							SyncTreeEntry entry = null;
+							try {
+								entry = handleHashNode(sneY);
+							} catch (SyncException se) {
+								continue;
+							}
 							if (null != entry) {
 								entry.setPos(0);
 								srtY.incPos();
@@ -672,8 +706,17 @@ public final class SliceComparator implements Runnable, Comparable<SliceComparat
 	 */
 	private SyncTreeEntry handleHashNode(SyncNodeElement sne) throws SyncException {
 		byte[] hash = sne.getData();
+		SyncNodeComposite node = null;
 		SyncTreeEntry entry = _shc.addHash(hash, _snc);
-		SyncNodeComposite node = getOrRequestNode(entry, true);
+		try {
+			node = getOrRequestNode(entry, true);
+		} catch (SyncException se) {
+			if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST))
+				Log.finest(Log.FAC_SYNC, "Couldn't get entry {0} setting it to missing", 
+						Component.printURI(entry.getHash()));
+			entry.setMissing(true);
+			throw(se);
+		}
 		if (null == node) {
 			changeState(SyncCompareState.PRELOAD);
 			return null;
@@ -763,6 +806,12 @@ public final class SliceComparator implements Runnable, Comparable<SliceComparat
 					ste = getHead(updateStack);
 				}
 				if (null != ste) {
+					if (ste.isMissing()) {
+						redo = true;
+						pop(updateStack);
+						ste = getHead(updateStack);
+						continue;
+					}
 					snc = getOrRequestNode(ste, true);
 					if (null == snc) {
 						if (Log.isLoggable(Log.FAC_SYNC, Level.FINE))

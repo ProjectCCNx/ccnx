@@ -89,7 +89,7 @@ public abstract class SyncMonitor {
 	 */
 	public abstract void removeCallback(CCNSyncHandler syncHandler, ConfigSlice slice) throws IOException;
 	
-	public abstract void setTimeout(long timeout);
+	public abstract void setTimeout(ConfigSlice slice, long timeout);
 	
 	/**
 	 * Shutdown all sync watching for this slice
