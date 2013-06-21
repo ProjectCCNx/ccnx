@@ -196,7 +196,7 @@ r_dispatch_process_input(struct ccnr_handle *h, int fd)
     }
     if (fdholder->inbuf->length == 0)
         memset(d, 0, sizeof(*d));
-    buf = ccn_charbuf_reserve(fdholder->inbuf, 8800);
+    buf = ccn_charbuf_reserve(fdholder->inbuf, CCN_MAX_MESSAGE_BYTES);
     memset(&sstor, 0, sizeof(sstor));
     if ((fdholder->flags & CCNR_FACE_SOCKMASK) != 0) {
         res = recvfrom(fdholder->filedesc, buf, fdholder->inbuf->limit - fdholder->inbuf->length,

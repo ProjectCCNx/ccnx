@@ -48,8 +48,6 @@
 
 void udplink_fatal(int line, char *format, ...);
 
-#define UDPMAXBUF 8800
-
 #ifdef __CYGWIN__
 /* if_nametoindex() is unsupported on cygwin */
 unsigned if_nametoindex(const char *ifname) { 
@@ -348,7 +346,7 @@ main (int argc, char * const argv[]) {
     struct ccn_skeleton_decoder *ld = &ldecoder;
     struct ccn_skeleton_decoder rdecoder = {0};
     struct ccn_skeleton_decoder *rd = &rdecoder;
-    unsigned char rbuf[UDPMAXBUF];
+    unsigned char rbuf[CCN_MAX_MESSAGE_BYTES];
     struct ccn_charbuf *charbuf;
     ssize_t msgstart = 0;
     ssize_t dres;

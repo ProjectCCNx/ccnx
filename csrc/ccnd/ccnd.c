@@ -5002,7 +5002,7 @@ process_input(struct ccnd_handle *h, int fd)
         face->inbuf = ccn_charbuf_create();
     if (face->inbuf->length == 0)
         memset(d, 0, sizeof(*d));
-    buf = ccn_charbuf_reserve(face->inbuf, 8800);
+    buf = ccn_charbuf_reserve(face->inbuf, CCN_MAX_MESSAGE_BYTES);
     memset(&sstor, 0, sizeof(sstor));
     res = recvfrom(face->recv_fd, buf, face->inbuf->limit - face->inbuf->length,
             /* flags */ 0, addr, &addrlen);
@@ -5064,6 +5064,14 @@ process_input(struct ccnd_handle *h, int fd)
                 face->inbuf->length - msgstart);
             face->inbuf->length -= msgstart;
             d->index -= msgstart;
+        }
+        /*
+         * If after processing any complete messages the remaining message is
+         * larger than our limit we should boot this client
+         */
+        if (face->inbuf->length >= CCN_MAX_MESSAGE_BYTES) {
+            ccnd_msg(h, "protocol error on face %u", source->faceid);
+            shutdown_client_fd(h, fd);
         }
     }
 }
@@ -5853,8 +5861,8 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
         h->mtu = atol(mtu);
         if (h->mtu < 0)
             h->mtu = 0;
-        if (h->mtu > 8800)
-            h->mtu = 8800;
+        if (h->mtu > CCN_MAX_MESSAGE_BYTES)
+            h->mtu = CCN_MAX_MESSAGE_BYTES;
     }
     h->data_pause_microsec = 10000;
     data_pause = getenv("CCND_DATA_PAUSE_MICROSEC");
