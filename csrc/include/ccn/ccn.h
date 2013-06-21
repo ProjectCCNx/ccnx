@@ -51,6 +51,13 @@
 #endif
 
 /**
+ * Limits
+ *
+ */
+#define CCN_MAX_CONTENT_PAYLOAD 8192
+#define CCN_MAX_MESSAGE_BYTES 8800
+
+/**
  * Interest lifetime default.
  *
  * If the interest lifetime is not explicit, this is the default value.
