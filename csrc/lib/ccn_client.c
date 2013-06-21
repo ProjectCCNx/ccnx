@@ -1834,7 +1834,7 @@ ccn_process_input(struct ccn *h)
         h->inbuf = inbuf = ccn_charbuf_create();
     if (inbuf->length == 0)
         memset(d, 0, sizeof(*d));
-    buf = ccn_charbuf_reserve(inbuf, 8800);
+    buf = ccn_charbuf_reserve(inbuf, CCN_MAX_MESSAGE_BYTES);
     res = read(h->sock, buf, inbuf->limit - inbuf->length);
     if (res == 0) {
         ccn_disconnect(h);
