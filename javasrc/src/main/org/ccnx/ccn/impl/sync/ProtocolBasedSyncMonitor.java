@@ -72,7 +72,7 @@ public final class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNCo
 	}
 	private CCNHandle _handle;
 	private Map<SyncHashEntry, SliceData> _sliceData = new ConcurrentHashMap<SyncHashEntry, SliceData>();
-	private long _timeout = SystemConfiguration.EXTRA_LONG_TIMEOUT;
+	private long _timeout = SystemConfiguration.LONG_TIMEOUT;
 	
 	public ProtocolBasedSyncMonitor(CCNHandle handle) {
 		_handle = handle;

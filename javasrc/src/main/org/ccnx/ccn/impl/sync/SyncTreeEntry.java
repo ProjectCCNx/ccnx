@@ -246,15 +246,12 @@ public class SyncTreeEntry {
 	}
 	
 	/**
-	 * Side effect - clear MISSING if node available
 	 * @return
 	 */
 	private SyncNodeComposite getNodeIfPossible() {
 		SyncNodeComposite node = getNodeByReference();
 		if (null == node)
 			node = retrieveFromCache();
-		if (null != node)
-			setFlag(false, MISSING);
 		return node;
 	}
 }

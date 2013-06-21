@@ -111,7 +111,7 @@ public final class SliceComparator implements Runnable, Comparable<SliceComparat
 	private NodeBuilder _nBuilder = new NodeBuilder();
 	
 	private SyncHashCache _shc = new SyncHashCache();
-	private long _timeout = SystemConfiguration.EXTRA_LONG_TIMEOUT;
+	private long _timeout = SystemConfiguration.LONG_TIMEOUT;
 	
 	/**
 	 * Start a comparison on a slice which will call back each registered "callback" each time
@@ -503,6 +503,8 @@ public final class SliceComparator implements Runnable, Comparable<SliceComparat
 							Component.printURI(srtY.getHash()), srtY.getPos());
 				return;
 			}
+			srtY.setMissing(false);		// If we were missing we aren't now. We can only say we aren't
+										// missing when we process the node though which we are now doing.
 			if (srtY.lastPos())
 				continue;
 			sneY = srtY.getCurrentElement();
@@ -1101,8 +1103,9 @@ public final class SliceComparator implements Runnable, Comparable<SliceComparat
 						// our current (X) hash and the lead comparator's are equal. Otherwise we could end
 						// up with disjoint hashes between ourself and the lead comparator leading to missing
 						// or extra callbacks from the lead comparator.
+						boolean doSwitch;
 						synchronized (_leadComparator) {
-							boolean doSwitch = (! _leadComparator._needToCompare) && (_leadComparator.getState() == SyncCompareState.INIT);
+							doSwitch = (! _leadComparator._needToCompare) && (_leadComparator.getState() == SyncCompareState.INIT);
 							if (doSwitch) {
 								SyncTreeEntry lXste = _leadComparator.getCurrentRoot();
 								if (null == lXste || null == _currentRoot)	// May not happen?
@@ -1117,11 +1120,13 @@ public final class SliceComparator implements Runnable, Comparable<SliceComparat
 								// worry about it.
 								for (CCNSyncHandler callback : _callbacks)	// There should never really be more than one here			
 									_leadComparator.addCallback(callback);
-								synchronized (this) {  // Is this dangerous? - I don't think so
-									_shutdown = true;
-								}
 								if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
 									Log.info(Log.FAC_SYNC, "Moving {0} callbacks to lead comparator", _callbacks.size());
+							}
+						}
+						if (doSwitch) {
+							synchronized (this) {
+								_shutdown = true;
 							}
 						}
 					}

@@ -39,7 +39,7 @@ public final class CCNSync {
 	public static final int HASH_SPLIT_TRIGGER = 17; // bytes
 	
 	private SyncMonitor _syncMon = null;
-	private long _timeout = SystemConfiguration.EXTRA_LONG_TIMEOUT;
+	private long _timeout = SystemConfiguration.LONG_TIMEOUT;
 	
 	/**
 	 * 
