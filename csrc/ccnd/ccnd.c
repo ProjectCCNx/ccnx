@@ -5065,6 +5065,14 @@ process_input(struct ccnd_handle *h, int fd)
             face->inbuf->length -= msgstart;
             d->index -= msgstart;
         }
+        /*
+         * If after processing any complete messages the remaining message is
+         * larger than our limit we should boot this client
+         */
+        if (face->inbuf->length >= CCN_MAX_MESSAGE_BYTES) {
+            ccnd_msg(h, "protocol error on face %u", source->faceid);
+            shutdown_client_fd(h, fd);
+        }
     }
 }
 
