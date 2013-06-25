@@ -69,7 +69,7 @@ static void
 append_future_vcomp(struct ccn_charbuf *templ)
 {
     /* One beyond a distant future version stamp */
-    unsigned char b[7] = {CCN_MARKER_VERSION + 1, 0, 0, 0, 0, 0, 0};
+    const unsigned char b[7] = {CCN_MARKER_VERSION + 1, 0, 0, 0, 0, 0, 0};
     ccn_charbuf_append_tt(templ, CCN_DTAG_Component, CCN_DTAG);
     ccn_charbuf_append_tt(templ, sizeof(b), CCN_BLOB);
     ccn_charbuf_append(templ, b, sizeof(b));
@@ -78,7 +78,7 @@ append_future_vcomp(struct ccn_charbuf *templ)
 
 static struct ccn_charbuf *
 resolve_templ(struct ccn_charbuf *templ, unsigned const char *vcomp,
-              int size, int lifetime, int versioning_flags)
+              int size, int lifetime, int versioning_flags, int allow_unversioned)
 {
     if (templ == NULL)
         templ = ccn_charbuf_create();
@@ -90,7 +90,14 @@ resolve_templ(struct ccn_charbuf *templ, unsigned const char *vcomp,
     ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
     ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
     ccn_charbuf_append_closer(templ); /* </Name> */
+    /* exclude: [%01,]*,lowver,highver,*     depending on allow_unversioned */
     ccn_charbuf_append_tt(templ, CCN_DTAG_Exclude, CCN_DTAG);
+    if (allow_unversioned) {
+        ccn_charbuf_append_tt(templ, CCN_DTAG_Component, CCN_DTAG);
+        ccn_charbuf_append_tt(templ, 1, CCN_BLOB);
+        ccn_charbuf_append(templ, "\x01", 1);
+        ccn_charbuf_append_closer(templ); /* </Component> */
+    }
     append_filter_all(templ);
     ccn_charbuf_append_tt(templ, CCN_DTAG_Component, CCN_DTAG);
     ccn_charbuf_append_tt(templ, size, CCN_BLOB);
@@ -133,7 +140,9 @@ ms_to_tu(int m)
  *        version has already been provided.
  * @param timeout_ms is a time value in milliseconds. This is the total time
  *        that the caller can wait.
- * @returns -1 for error, 0 if name was not extended, 1 if was.
+ * @returns -1 if an error occurred, or no content was found,
+ *           0 if name was not extended and unversioned content was found,
+ *           1 if name was extended with a version when content was found.
  */
 int
 ccn_resolve_version(struct ccn *h, struct ccn_charbuf *name,
@@ -155,7 +164,7 @@ ccn_resolve_version(struct ccn *h, struct ccn_charbuf *name,
     int rtt;
     int ttimeout;
     struct ccn_indexbuf *nix = ccn_indexbuf_create();
-    unsigned char lowtime[7] = {CCN_MARKER_VERSION, 0, FF, FF, FF, FF, FF};
+    const unsigned char lowtime[7] = {CCN_MARKER_VERSION, 0, FF, FF, FF, FF, FF};
     
     if ((versioning_flags & ~CCN_V_NESTOK & ~CCN_V_EST) != CCN_V_HIGH) {
         ccn_seterror(h, EINVAL);
@@ -173,7 +182,7 @@ ccn_resolve_version(struct ccn *h, struct ccn_charbuf *name,
         }    
     }
     templ = resolve_templ(templ, lowtime, sizeof(lowtime),
-                          ms_to_tu(timeout_ms) * 7 / 8, versioning_flags);
+                          ms_to_tu(timeout_ms) * 7 / 8, versioning_flags, 1);
     ccn_charbuf_append(prefix, name->buf, name->length); /* our copy */
     cobj->length = 0;
     gettimeofday(&start, NULL);
@@ -186,7 +195,7 @@ ccn_resolve_version(struct ccn *h, struct ccn_charbuf *name,
      * lifetime that should get a retransmit.   If there is no response,
      * return the highest version found so far.
      */
-    myres = 0;
+    myres = -1;
     res = ccn_get(h, prefix, templ, timeout_ms, cobj, pco, ndx, 0);
     while (cobj->length != 0) {
         if (pco->type == CCN_CONTENT_NACK) // XXX - also check for number of components
@@ -195,29 +204,37 @@ ccn_resolve_version(struct ccn *h, struct ccn_charbuf *name,
         if (res < 0)
             break;
         if (vers_size == 7 && vers[0] == CCN_MARKER_VERSION) {
-            /* Looks like we have versions. */
             name->length = 0;
             ccn_charbuf_append(name, prefix->buf, prefix->length);
             ccn_name_append(name, vers, vers_size);
             myres = 1;
             if ((versioning_flags & CCN_V_EST) == 0)
                 break;
-            gettimeofday(&now, NULL);
-            rtt = (now.tv_sec - prev.tv_sec) * 1000000 + (now.tv_usec - prev.tv_usec);
-            if (rtt > rtt_max) rtt_max = rtt;
-            prev = now;
-            timeout_ms -= (now.tv_sec - start.tv_sec) * 1000 + (now.tv_usec - start.tv_usec) / 1000;
-            if (timeout_ms <= 0)
-                break;
-            ttimeout = timeout_ms < (rtt_max/250) ? timeout_ms : (rtt_max/250);
-            templ = resolve_templ(templ, vers, vers_size, ms_to_tu(ttimeout) * 7 / 8, versioning_flags);
-            if (templ == NULL) break;
-            cobj->length = 0;
-            res = ccn_get(h, prefix, templ, ttimeout, cobj, pco, ndx,
-                          CCN_GET_NOKEYWAIT);
-        }
-        else break;
+        } else if (vers_size == 1 && vers[0] == CCN_MARKER_SEQNUM) {
+            /* this branch is only entered once as the next template disallows 
+             * unversioned responses
+             */
+            myres = 0;
+            vers = lowtime;
+            vers_size = sizeof(lowtime);
+        } else
+            break;
+        gettimeofday(&now, NULL);
+        rtt = (now.tv_sec - prev.tv_sec) * 1000000 + (now.tv_usec - prev.tv_usec);
+        if (rtt > rtt_max) rtt_max = rtt;
+        prev = now;
+        timeout_ms -= (now.tv_sec - start.tv_sec) * 1000 + (now.tv_usec - start.tv_usec) / 1000;
+        if (timeout_ms <= 0)
+            break;
+        ttimeout = timeout_ms < (rtt_max/250) ? timeout_ms : (rtt_max/250);
+        templ = resolve_templ(templ, vers, vers_size, ms_to_tu(ttimeout) * 7 / 8, versioning_flags, 0);
+        if (templ == NULL) {
+            break;
+        }        cobj->length = 0;
+        res = ccn_get(h, prefix, templ, ttimeout, cobj, pco, ndx,
+                      CCN_GET_NOKEYWAIT);
     }
+    
 Finish:
     ccn_charbuf_destroy(&prefix);
     ccn_charbuf_destroy(&cobj);
