@@ -129,8 +129,8 @@ Wire representation: the *AnswerOriginKind* element holds a nonNegativeInteger w
 * 16 = Mark as stale in content store (must have Scope 0) __Status:__ _hack_
 * The default is 3, giving normal behavior.  The two low-order bits in combination mean:
 ** 0 = do-not-answer-from-content-store
-** 1 = passive
-** 2 = bypass intermediate caches, and inform applications that they may generate new content.
+** 1 = passive (use caches, applications should not generate new content)
+** 2 = bypass intermediate caches, applications may generate new (or supply old) content.
 ** 3 = normal
 
 == Scope
