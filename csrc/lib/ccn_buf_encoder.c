@@ -154,7 +154,7 @@ ccn_encode_Signature(struct ccn_charbuf *buf,
  * @param data pintes to the raw data to be encoded.
  * @param size is the size, in bytes, of the raw data to be encoded.
  * @param digest_algorithm may be NULL for default.
- * @param private_key is the private key to use for signing.
+ * @param key is the private or symmetric key to use for signing.
  * @returns 0 for success or -1 for error.
  */
 int
@@ -164,12 +164,12 @@ ccn_encode_ContentObject(struct ccn_charbuf *buf,
                          const void *data,
                          size_t size,
                          const char *digest_algorithm,
-                         const struct ccn_pkey *private_key
+                         const struct ccn_pkey *key
                          )
 {
     int res = 0;
-    struct ccn_sigc *sig_ctx;
-    struct ccn_signature *signature;
+    struct ccn_sigc *sig_ctx = NULL;
+    struct ccn_signature *signature = NULL;
     size_t signature_size;
     struct ccn_charbuf *content_header;
     size_t closer_start;
@@ -180,33 +180,50 @@ ccn_encode_ContentObject(struct ccn_charbuf *buf,
         res |= ccn_charbuf_append_tt(content_header, size, CCN_BLOB);
     closer_start = content_header->length;
     res |= ccn_charbuf_append_closer(content_header);
-    if (res < 0)
-        return(-1);
-    sig_ctx = ccn_sigc_create();
-    if (sig_ctx == NULL)
-        return(-1);
-    if (0 != ccn_sigc_init(sig_ctx, digest_algorithm, private_key))
-        return(-1);
-    if (0 != ccn_sigc_update(sig_ctx, Name->buf, Name->length))
-        return(-1);
-    if (0 != ccn_sigc_update(sig_ctx, SignedInfo->buf, SignedInfo->length))
-        return(-1);
-    if (0 != ccn_sigc_update(sig_ctx, content_header->buf, closer_start))
-        return(-1);
-    if (0 != ccn_sigc_update(sig_ctx, data, size))
-        return(-1);
-    if (0 != ccn_sigc_update(sig_ctx, content_header->buf + closer_start,
-                             content_header->length - closer_start))
-        return(-1);
-    signature = calloc(1, ccn_sigc_signature_max_size(sig_ctx, private_key));
-    if (signature == NULL)
-        return(-1);
-    res = ccn_sigc_final(sig_ctx, signature, &signature_size, private_key);
-    if (0 != res) {
-        free(signature);
-        return(-1);
+    if (res < 0) {
+	res = -1;
+	goto Bail;
     }
-    ccn_sigc_destroy(&sig_ctx);
+    sig_ctx = ccn_sigc_create();
+    if (sig_ctx == NULL) {
+	res = -1;
+	goto Bail;
+    }
+    if (0 != ccn_sigc_init(sig_ctx, digest_algorithm, key)) {
+	res = -1;
+	goto Bail;
+    }
+    if (0 != ccn_sigc_update(sig_ctx, Name->buf, Name->length)) {
+	res = -1;
+	goto Bail;
+    }
+    if (0 != ccn_sigc_update(sig_ctx, SignedInfo->buf, SignedInfo->length)) {
+	res = -1;
+	goto Bail;
+    }
+    if (0 != ccn_sigc_update(sig_ctx, content_header->buf, closer_start)) {
+	res = -1;
+	goto Bail;
+    }
+    if (0 != ccn_sigc_update(sig_ctx, data, size)) {
+	res = -1;
+	goto Bail;
+    }
+    if (0 != ccn_sigc_update(sig_ctx, content_header->buf + closer_start,
+                             content_header->length - closer_start)) {
+	res = -1;
+	goto Bail;
+    }
+    signature = calloc(1, ccn_sigc_signature_max_size(sig_ctx, key));
+    if (signature == NULL) {
+	res = -1;
+	goto Bail;
+    }
+    res = ccn_sigc_final(sig_ctx, signature, &signature_size, key);
+    if (0 != res) {
+	res = -1;
+	goto Bail;
+    }
     res |= ccn_charbuf_append_tt(buf, CCN_DTAG_ContentObject, CCN_DTAG);
     res |= ccn_encode_Signature(buf, digest_algorithm,
                                 NULL, 0, signature, signature_size);
@@ -214,7 +231,11 @@ ccn_encode_ContentObject(struct ccn_charbuf *buf,
     res |= ccn_charbuf_append_charbuf(buf, SignedInfo);
     res |= ccnb_append_tagged_blob(buf, CCN_DTAG_Content, data, size);
     res |= ccn_charbuf_append_closer(buf);
-    free(signature);
+Bail:
+    if (sig_ctx != NULL)
+        ccn_sigc_destroy(&sig_ctx);
+    if (signature != NULL)
+	free(signature);
     ccn_charbuf_destroy(&content_header);
     return(res == 0 ? 0 : -1);
 }

@@ -7,7 +7,7 @@ ccnnamelist - extract names from a file of ccnb encoded data
 
 SYNOPSIS
 --------
-*ccnnamelist* [-h] ['file' '...']
+*ccnnamelist* [-hn] ['file' '...']
 
 DESCRIPTION
 -----------
@@ -17,6 +17,8 @@ OPTIONS
 -------
 *-h*::
 	Print the usage message.
+*-n*::
+	Parse all the objects, but don't print their names.
 
 ARGUMENTS
 ---------
@@ -25,7 +27,7 @@ If no arguments are given input will be read from stdin.
 
 OUTPUT
 ------
-A list of CCNx URI format names is produced on standard output.
+Unless the -n option is given, a list of CCNx URI format names is produced on standard output.
 Any errors due to malformed input will result in a message on stderr
 
 EXIT STATUS

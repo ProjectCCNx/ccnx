@@ -366,7 +366,7 @@ CCNBlock(access_t *p_access)
         if (start_offset > data_size) {
             msg_Err(p_access, "CCNBlock start_offset %"PRId64" > data_size %zu", start_offset, data_size);
         } else {
-            p_block = block_New(p_access, data_size - start_offset);
+            p_block = block_Alloc(data_size - start_offset);
             memcpy(p_block->p_buffer, data + start_offset, data_size - start_offset);
         }
         p_access->info.i_pos += (data_size - start_offset);

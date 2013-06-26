@@ -300,6 +300,11 @@ public class SystemConfiguration {
 	 * the system default above.
 	 */
 	protected static String DEFAULT_ENCODING = null;
+	
+	/**
+	 * Keystore naming version
+	 */
+	public static final int KEYSTORE_NAMING_VERSION = 1;
 
 	/**
 	 * Command-line property to set default encoding

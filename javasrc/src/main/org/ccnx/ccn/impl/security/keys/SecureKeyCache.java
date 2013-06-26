@@ -292,9 +292,9 @@ public class SecureKeyCache implements Serializable {
 	 * @param identifier the digest of the public key
 	 * @param sk the secret key
 	 */
-	public synchronized void addSecretKey(ContentName keyName, byte [] identifier, SecretKey sk) {
+	public synchronized void addSecretKey(ContentName keyName, SecretKey sk) {
+		byte[] identifier = getKeyIdentifier(sk);
 		_secretKeyMap.put(identifier, sk);
-		_privateKeyIdentifierMap.put(getKeyIdentifier(sk), identifier);
 		if (null != keyName) {
 			_nameKeyMap.put(keyName, identifier);
 			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding secret key {0} with name {1}",

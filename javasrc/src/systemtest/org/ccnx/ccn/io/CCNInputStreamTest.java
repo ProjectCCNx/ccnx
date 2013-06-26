@@ -58,7 +58,7 @@ public class CCNInputStreamTest extends CCNTestBase {
 
 		testName = testHelper.getTestNamespace("testInput/no/timeout");
 		CCNInputStream	stream = new CCNInputStream(testName, getHandle);
-		BackgroundStreamer bas = new BackgroundStreamer(stream, true, SystemConfiguration.NO_TIMEOUT);
+		BackgroundStreamer bas = new BackgroundStreamer(stream, new byte[0], true, SystemConfiguration.NO_TIMEOUT);
 		ThreadAssertionRunner tar = new ThreadAssertionRunner(new Thread(bas));
 		tar.start();
 		tar.join(SystemConfiguration.EXTRA_LONG_TIMEOUT * 2);
@@ -85,23 +85,8 @@ public class CCNInputStreamTest extends CCNTestBase {
 
 		ContentName testName = testHelper.getTestNamespace("testInput/blockAfterFirst");
 		CCNInputStream stream = new CCNInputStream(testName, getHandle);
-		stream.addFlag(FlagTypes.BLOCK_AFTER_FIRST_SEGMENT);
-		BackgroundStreamer bas = new BackgroundStreamer(stream, false, 0);
-		ThreadAssertionRunner tar = new ThreadAssertionRunner(new Thread(bas));
-		tar.start();
 		CCNOutputStream ostream = new CCNOutputStream(testName, putHandle);
-		ostream.setBlockSize(100);
-		ostream.setTimeout(SystemConfiguration.NO_TIMEOUT);
-		byte[] bytes = new byte[400];
-		for (int i = 0; i < bytes.length; i++)
-			bytes[i] = (byte)i;
-		ostream.write(bytes);
-		ostream.flush();
-		Thread.sleep(SystemConfiguration.getDefaultTimeout() * 2);
-		ostream.write(bytes);
-		ostream.close();
-		tar.join(SystemConfiguration.EXTRA_LONG_TIMEOUT * 2);
-		bas.close();
+		CCNInputStreamTestCommon.blockAfterFirstSegmentTest(testName, stream, ostream);
 
 		Log.info(Log.FAC_TEST, "Completed testBlockAfterFirstSegment");
 	}
@@ -140,44 +125,19 @@ public class CCNInputStreamTest extends CCNTestBase {
 	}
 	
 	private void doStreaming(CCNInputStream stream, ContentName testName, CCNHandle handle, boolean sleepAtStart) throws Error, Exception {
-		BackgroundStreamer bas = new BackgroundStreamer(stream, false, 0);
+		byte[] bytes = new byte[400];
+		for (int i = 0; i < bytes.length; i++)
+			bytes[i] = (byte)i;
+		BackgroundStreamer bas = new BackgroundStreamer(stream, bytes, false, 0);
 		ThreadAssertionRunner tar = new ThreadAssertionRunner(new Thread(bas));
 		tar.start();
 		if (sleepAtStart)
 			Thread.sleep(SystemConfiguration.getDefaultTimeout() * 2);
 		CCNOutputStream ostream = new CCNOutputStream(testName, handle);
 		ostream.setBlockSize(100);
-		byte[] bytes = new byte[400];
-		for (int i = 0; i < bytes.length; i++)
-			bytes[i] = (byte)i;
 		ostream.write(bytes);
 		ostream.close();
 		tar.join(SystemConfiguration.EXTRA_LONG_TIMEOUT * 2);
 		bas.close();
-	}
-	
-	protected class BackgroundStreamer implements Runnable {
-		CCNInputStream _stream = null;
-
-		public BackgroundStreamer(CCNInputStream stream, boolean useTimeout, long timeout) {
-			_stream = stream;
-			if (useTimeout)
-				_stream.setTimeout(timeout);
-		}
-
-		public void close() throws IOException {
-			_stream.close();
-		}
-
-		public void run() {
-			try {
-				int val;
-				do {
-					val = _stream.read();
-				} while (val != -1);
-			} catch (IOException e) {
-				Assert.fail("Input stream timed out or read failed: " + e.getMessage());
-			}
-		}
 	}
 }

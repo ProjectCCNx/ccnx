@@ -240,6 +240,10 @@ public class OIDLookup {
 		
 		_m2oid.put("HMac-SHA256", "1.2.840.112549.2.9");
 		_m2oid.put("HMACSHA256", "1.2.840.112549.2.9");
+		_m2oid.put("HMAC-SHA256", "1.2.840.112549.2.9");
+		_d2oid.put("HMac-SHA256", "2.16.840.1.101.3.4.2.1");
+		_d2oid.put("HMACSHA256", "2.16.840.1.101.3.4.2.1");
+		_d2oid.put("HMAC-SHA256", "2.16.840.1.101.3.4.2.1");
 		_oid2m.put("1.2.840.112549.2.9", "HMac-SHA256");
 	
 		_aliasMap = initAliasLookup();
@@ -342,6 +346,14 @@ public class OIDLookup {
 	public static String getSignatureOID(String algorithm)  {
 		algorithm = resolveSignatureAlias(algorithm);
 		return mapGet(_s2oid, algorithm);
+	}
+	
+	/**
+	 * Return the preferred OID for a MAC algorithm
+	 */
+	public static String getMacOID(String algorithm) {
+		algorithm = resolveMacAlias(algorithm);
+		return mapGet(_m2oid, algorithm);
 	}
 
 	/**
