@@ -130,7 +130,7 @@ Wire representation: the *AnswerOriginKind* element holds a nonNegativeInteger w
 * The default is 3, giving normal behavior.  The two low-order bits in combination mean:
 ** 0 = do-not-answer-from-content-store
 ** 1 = passive
-** 2 = bypass intermediate caches, and inform applications that they may generate new content (currently this combination is disallowed, but later revisions of the protocol will allow it).
+** 2 = bypass intermediate caches, and inform applications that they may generate new content.
 ** 3 = normal
 
 == Scope
