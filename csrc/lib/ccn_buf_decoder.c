@@ -632,9 +632,6 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
         interest->offset[CCN_PI_E_AnswerOriginKind] = d->decoder.token_index;
         if (interest->answerfrom == -1)
             interest->answerfrom = CCN_AOK_DEFAULT;
-        else if ((interest->answerfrom & CCN_AOK_NEW) != 0 &&
-                 (interest->answerfrom & CCN_AOK_CS) == 0)
-            return (d->decoder.state = -__LINE__);
         /* optional Scope */
         interest->offset[CCN_PI_B_Scope] = d->decoder.token_index;
         interest->scope = ccn_parse_optional_tagged_nonNegativeInteger(d,
