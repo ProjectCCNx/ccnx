@@ -38,7 +38,7 @@ CSRC = ccn_bloom.c \
        encodedecodetest.c hashtb.c hashtbtest.c \
        signbenchtest.c skel_decode_test.c \
        basicparsetest.c ccnbtreetest.c \
-       ccn_sockaddrutil.c ccn_setup_sockaddr_un.c
+       ccn_sockaddrutil.c ccn_setup_sockaddr_un.c siphash24.c
 LIBS = libccn.a
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o \
        ccn_dtag_table.o ccn_schedule.o ccn_extend_dict.o \
@@ -50,7 +50,7 @@ LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o \
        ccn_sockaddrutil.o ccn_setup_sockaddr_un.o \
        ccn_bulkdata.o ccn_versioning.o ccn_header.o ccn_fetch.o \
        ccn_btree.o ccn_btree_content.o ccn_btree_store.o \
-       lned.o
+       lned.o siphash24.o
 
 default all: dtag_check lib $(PROGRAMS)
 # Don't try to build shared libs right now.

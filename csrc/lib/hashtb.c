@@ -23,6 +23,7 @@
 #include <string.h>
 
 #include <ccn/hashtb.h>
+#include <ccn/siphash24.h>
 
 struct node;
 struct node {
@@ -51,11 +52,11 @@ struct hashtb {
 size_t
 hashtb_hash(const unsigned char *key, size_t key_size)
 {
-    size_t h;
-    size_t i;
-    for (h = key_size + 23, i = 0; i < key_size; i++)
-        h = ((h << 6) ^ (h >> 27)) + key[i];
-    return(h);
+    const unsigned char seed[16] = {0xf2, 0xdd, 0xb7, 0xcb, 0x69, 0xf0, 0xa3, 0x0c,
+        0x75, 0xc5, 0xde, 0x9c, 0x9b, 0xde, 0x56, 0x24};
+    uint64_t h;
+    h = siphash_2_4(key, key_size, seed);
+    return((size_t)h);
 }
 
 struct hashtb *
