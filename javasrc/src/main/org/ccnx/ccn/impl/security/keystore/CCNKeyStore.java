@@ -30,6 +30,10 @@ import java.security.cert.CertificateException;
 import java.util.Enumeration;
 import java.util.HashMap;
 
+/**
+ * Wraps keystores including standard java keystores and CCN proprietary keystores. Provides
+ * a facility to determine whether the keystore supports only symmetric keys.
+ */
 public final class CCNKeyStore {
 	boolean _requiresSymmetric = false;
 	static HashMap<TypeAndSymmetric, Class<?>> _ourKeyStores = new HashMap<TypeAndSymmetric, Class<?>>();

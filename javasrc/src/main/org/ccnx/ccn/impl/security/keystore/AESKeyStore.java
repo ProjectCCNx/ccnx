@@ -21,6 +21,10 @@ import java.security.KeyStoreException;
 import java.security.KeyStoreSpi;
 import java.security.Provider;
 
+/**
+ * Creates a CCN proprietary keystore to hold symmetric keys
+ * See AESKeyStoreSpi for the format and features of this keystore.
+ */
 public class AESKeyStore extends KeyStore {
 	
 	protected AESKeyStore(KeyStoreSpi keyStoreSpi, Provider provider,
