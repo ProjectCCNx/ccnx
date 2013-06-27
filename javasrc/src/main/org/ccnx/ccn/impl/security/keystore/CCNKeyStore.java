@@ -14,74 +14,99 @@
  * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
+
 package org.ccnx.ccn.impl.security.keystore;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
-import java.security.KeyStoreSpi;
-import java.security.Provider;
+import java.security.NoSuchAlgorithmException;
+import java.security.UnrecoverableEntryException;
+import java.security.cert.CertificateException;
+import java.util.Enumeration;
 import java.util.HashMap;
 
-import sun.security.jca.GetInstance;
-
-/**
- * Allows extensions of the KeyStore and usage of our own service providers.
- * It may be possible to add our service provider to the lists of one of the standard
- * providers but I haven't been able to figure out how to do that.
- *
- */
-@SuppressWarnings({ "rawtypes", "unchecked" })
-public class CCNKeyStore extends KeyStore {
-	protected static HashMap<String, Class<KeyStoreSpi>> _ccnKeyStores = new HashMap<String, Class<KeyStoreSpi>>();
-	protected boolean _requiresSymmetric = false;
-	protected static Class<KeyStoreSpi> _searchedClass = null;
+public final class CCNKeyStore {
+	boolean _requiresSymmetric = false;
+	static HashMap<TypeAndSymmetric, Class<?>> _ourKeyStores = new HashMap<TypeAndSymmetric, Class<?>>();
+	static KeyStore _keyStore = null;
 	
-	static {
-		_ccnKeyStores.put(AESKeyStoreSpi.TYPE, (Class)AESKeyStoreSpi.class);
+	static class TypeAndSymmetric {
+		private String _type;
+		private boolean _requiresSymmetric;
+		
+		private TypeAndSymmetric(String type, boolean requiresSymmetric) {
+			_type = type;
+			_requiresSymmetric = requiresSymmetric;
+		}
 	}
-
-	protected CCNKeyStore(KeyStoreSpi spi, Provider provider, String type, boolean requiresSymmetric) {
-		super(spi, provider, type);
+	
+	static		{
+		_ourKeyStores.put(new TypeAndSymmetric(AESKeyStoreSpi.TYPE, true), AESKeyStore.class);
+	}
+	
+	private CCNKeyStore(KeyStore keyStore, boolean requiresSymmetric) {
+		_keyStore = keyStore;
 		_requiresSymmetric = requiresSymmetric;
 	}
 	
-	/**
-	 * Get instance of either our KeyStore or one of the standard ones based on type
-	 * @param type
-	 * @return
-	 * @throws KeyStoreException
-	 */
 	public static CCNKeyStore getInstance(String type) throws KeyStoreException {
-		boolean requiresSymmetric = false;
-		Class<KeyStoreSpi> ourClass = null;
-		
-		// Is the type one of ours?
-		for (String ccnType : _ccnKeyStores.keySet()) {
-			if (ccnType.equals(type)) {
-				ourClass = (Class<KeyStoreSpi>)_ccnKeyStores.get(type);
-				requiresSymmetric = true;	// yes
-				break;
+		for (TypeAndSymmetric tas :  _ourKeyStores.keySet()) {
+			if (tas._type.equals(type)) {
+				Class<?> ourClass = _ourKeyStores.get(tas);
+				try {
+					Method m = ourClass.getMethod("getInstance", String.class);
+					KeyStore ks = (KeyStore)m.invoke(null, type);
+					return new CCNKeyStore(ks, tas._requiresSymmetric);
+				} catch (IllegalAccessException e) {
+					throw new KeyStoreException(e);
+				} catch (SecurityException e) {
+					throw new KeyStoreException(e);
+				} catch (NoSuchMethodException e) {
+					throw new KeyStoreException(e);
+				} catch (IllegalArgumentException e) {
+					throw new KeyStoreException(e);
+				} catch (InvocationTargetException e) {
+					throw new KeyStoreException(e);
+				}
 			}
 		}
-			
-		try {
-			KeyStoreSpi ourInstance = null;
-			if (null == ourClass) {
-				if (null == _searchedClass)
-					_searchedClass = (Class<KeyStoreSpi>) Class.forName("java.security.KeyStoreSpi");
-				ourClass = _searchedClass;
-				Object[] objs = GetInstance.getInstance("KeyStore", ourClass, type).toArray();
-				ourInstance = (KeyStoreSpi)objs[0];
-			} else
-				ourInstance = ourClass.newInstance();
-			return new CCNKeyStore(ourInstance, null, type, requiresSymmetric);
-		} catch (Exception e) {
-			e.printStackTrace();
-			throw new KeyStoreException(e);
-		} 
+		return new CCNKeyStore(KeyStore.getInstance(type), false);
 	}
 	
 	public boolean requiresSymmetric() {
 		return _requiresSymmetric;
+	}
+	
+	public final void load(InputStream stream, char[] password) 
+			throws IOException, NoSuchAlgorithmException, CertificateException {
+        _keyStore.load(stream, password);	
+	}
+	
+	public KeyStore.Entry getEntry(String alias, KeyStore.ProtectionParameter protParam) 
+			throws NoSuchAlgorithmException, UnrecoverableEntryException, KeyStoreException {
+		return _keyStore.getEntry(alias, protParam);
+	}
+	
+	public void	setEntry(String alias, KeyStore.Entry entry, KeyStore.ProtectionParameter protParam) 
+			throws KeyStoreException {
+		_keyStore.setEntry(alias, entry, protParam);
+	}
+	
+	public void	store(OutputStream stream, char[] password) 
+			throws KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException {
+		_keyStore.store(stream, password);
+	}
+	
+	public Enumeration<String>	aliases() throws KeyStoreException {
+		return _keyStore.aliases();
+	}
+	
+	public boolean	isKeyEntry(String alias) throws KeyStoreException {
+		return _keyStore.isKeyEntry(alias);
 	}
 }
