@@ -4,7 +4,7 @@
 #
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009, 2011 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -141,7 +141,7 @@ fgrep '[verified]' verified.out || Fail should have gotten verified data with ke
 
 rm keyfetchdata.ccnb keyfetchpkey.ccnb keyfetchsetup.ccnb unverified.out verified.out
 ####################################################################################
-: <<'EOF'
+: <<'END'
 # Instructions for creating pre-signed data
 # This will need re-doing if/when schema or encoding changes.
 # Need java for this.  WARNING: mucks with ~/.ccnx
