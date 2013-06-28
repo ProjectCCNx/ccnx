@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -37,6 +37,17 @@ RFC 3986                   URI Generic Syntax               January 2005
       unreserved  = ALPHA / DIGIT / "-" / "." / "_" / "~"
 
 *********/
+static int
+is_uri_reserved(const unsigned char ch)
+{
+    if (('a' <= ch && ch <= 'z') ||
+        ('A' <= ch && ch <= 'Z') ||
+        ('0' <= ch && ch <= '9') ||
+        ch == '-' || ch == '.' || ch == '_' || ch == '~')
+        return (0);
+    else
+        return (1);
+}
 
 /**
  * This appends to c a percent-escaped representation of the component
@@ -64,16 +75,57 @@ ccn_uri_append_percentescaped(struct ccn_charbuf *c,
          * Leave unescaped only the generic URI unreserved characters.
          * See RFC 3986. Here we assume the compiler uses ASCII.
          */
-        if (('a' <= ch && ch <= 'z') ||
-            ('A' <= ch && ch <= 'Z') ||
-            ('0' <= ch && ch <= '9') ||
-            ch == '-' || ch == '.' || ch == '_' || ch == '~')
-            ccn_charbuf_append(c, &(data[i]), 1);
-        else
+        if (is_uri_reserved(ch))
             ccn_charbuf_putf(c, "%%%02X", (unsigned)ch);
+        else
+            ccn_charbuf_append(c, &ch, 1);
     }
 }
 
+void
+ccn_uri_append_mixedescaped(struct ccn_charbuf *c,
+                              const unsigned char *data, size_t size)
+{
+    size_t i;
+    unsigned char ch;
+    int hexmode = 0;
+    for (i = 0; i < size && data[i] == '.'; i++)
+        continue;
+    /* For a component that consists solely of zero or more dots, add 3 more */
+    if (i == size)
+        ccn_charbuf_append(c, "...", 3);
+    if (size == 0)
+        return;
+    /* mixed escaping rules:
+     * If the character following the unprintable character being processed
+     * is printable use %xx.  If the first character being processed is %00 (segment)
+     * or %FD (version) immediately shift into hex mode regardless of whether the
+     * the next character is printable.
+     */
+    if (data[0] == '\0' || data[0] == (unsigned char)'\xFD') {
+        hexmode = 1;
+        ccn_charbuf_append(c, "=", 1);
+    }
+    for (i = 0; i < size; i++) {
+        ch = data[i];
+        /*
+         * Leave unescaped only the generic URI unreserved characters.
+         * See RFC 3986. Here we assume the compiler uses ASCII.
+         */
+        if (hexmode)
+            ccn_charbuf_putf(c, "%02X", (unsigned)ch);
+        else if (!is_uri_reserved(ch))
+            ccn_charbuf_append(c, &ch, 1);
+        else {  /* reserved character -- check for following character */
+            if (ch > 0 && (i + 1 == size || !is_uri_reserved(data[i + 1])))
+                ccn_charbuf_putf(c, "%%%02X", (unsigned)ch);
+            else {
+                hexmode = 1;
+                ccn_charbuf_putf(c, "=%02X", (unsigned)ch);
+            }
+        }
+    }
+}
 /**
  * This appends to c a URI representation of the ccnb-encoded Name element
  * passed in.  For convenience, it will also look inside of a ContentObject
@@ -81,14 +133,15 @@ ccn_uri_append_percentescaped(struct ccn_charbuf *c,
  * Components that consist solely of zero or more dots are converted
  * by adding 3 more dots so there are no ambiguities with . or .. or whether
  * a component is empty or absent.
- * Will prepend "ccnx:" unless includescheme is 0
+ * Will prepend "ccnx:" if flags & CCN_URI_INCLUDESCHEME is not 0
+ * Will escape with "%" and "=" if flags & CCN_URI_MIXEDESCAPES is not 0
  */
 
 int
 ccn_uri_append(struct ccn_charbuf *c,
                const unsigned char *ccnb,
                size_t size,
-               int includescheme)
+               int flags)
 {
     int ncomp = 0;
     const unsigned char *comp = NULL;
@@ -103,7 +156,7 @@ ccn_uri_append(struct ccn_charbuf *c,
     }
     if (!ccn_buf_match_dtag(d, CCN_DTAG_Name))
         return(-1);
-    if (includescheme)
+    if (flags & CCN_URI_INCLUDESCHEME)
         ccn_charbuf_append_string(c, "ccnx:");
     ccn_buf_advance(d);
     while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
@@ -116,7 +169,12 @@ ccn_uri_append(struct ccn_charbuf *c,
             return(d->decoder.state);
         ncomp += 1;
         ccn_charbuf_append(c, "/", 1);
-        ccn_uri_append_percentescaped(c, comp, compsize);
+        if ((flags & CCN_URI_ESCAPE_MASK) == 0)
+            flags |= CCN_URI_DEFAULT_ESCAPE;
+        if (flags & CCN_URI_MIXEDESCAPE) {
+            ccn_uri_append_mixedescaped(c, comp, compsize);
+        } else if (flags & CCN_URI_PERCENTESCAPE)
+            ccn_uri_append_percentescaped(c, comp, compsize);
     }
     ccn_buf_check_close(d);
     if (d->decoder.state < 0)
@@ -163,6 +221,7 @@ ccn_append_uri_component(struct ccn_charbuf *c, const char *s, size_t limit, siz
     size_t start = c->length;
     size_t i;
     int err = 0;
+    int hex = 0;
     int d1, d2;
     unsigned char ch;
     for (i = 0; i < limit; i++) {
@@ -174,9 +233,15 @@ ccn_append_uri_component(struct ccn_charbuf *c, const char *s, size_t limit, siz
             case '#':
                 limit = i;
                 break;
+            case '=':
+                if (hex || i + 3 > limit) {
+                    return(-3);
+                }
+                hex = 1;
+                break;
             case '%':
-                if (i + 3 > limit || (d1 = hexit(s[i+1])) < 0 ||
-                                     (d2 = hexit(s[i+2])) < 0   ) {
+                if (hex || i + 3 > limit || (d1 = hexit(s[i+1])) < 0 ||
+                    (d2 = hexit(s[i+2])) < 0   ) {
                     return(-3);
                 }
                 ch = d1 * 16 + d2;
@@ -185,12 +250,19 @@ ccn_append_uri_component(struct ccn_charbuf *c, const char *s, size_t limit, siz
                 break;
             case ':': case '[': case ']': case '@':
             case '!': case '$': case '&': case '\'': case '(': case ')':
-            case '*': case '+': case ',': case ';': case '=':
+            case '*': case '+': case ',': case ';':
                 err++;
                 /* FALLTHROUGH */
             default:
                 if (ch <= ' ' || ch > '~')
                     err++;
+                if (hex) {
+                    if ((d1 = hexit(s[i])) < 0 || (d2 = hexit(s[i+1])) < 0) {
+                        return(-3);
+                    }
+                    ch = d1 * 16 + d2;
+                    i++;
+                }
                 ccn_charbuf_append(c, &ch, 1);
                 break;
         }
@@ -261,13 +333,14 @@ ccn_name_from_uri(struct ccn_charbuf *c, const char *uri)
         if (res < -2)
             goto Done;
         ccn_charbuf_reserve(compbuf, 1)[0] = 0;
-        if ((0 == strcasecmp((const char *)(compbuf->buf), "ccnx:") ||
-             0 == strcasecmp((const char *)(compbuf->buf), "ccn:")) &&
-            s[cont-1] == ':') {
-            s += cont;
-            cont = 0;
+        if (s[cont-1] == ':') {
+            if ((0 == strcasecmp((const char *)(compbuf->buf), "ccnx:") ||
+                 0 == strcasecmp((const char *)(compbuf->buf), "ccn:"))) {
+                s += cont;
+                cont = 0;
+            } else
+                return (-1);
         }
-        /// @bug XXX - need to error out on other uri schemes
     }
     if (s[0] == '/') {
         ccn_name_init(c);

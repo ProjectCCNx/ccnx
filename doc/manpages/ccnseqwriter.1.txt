@@ -7,7 +7,7 @@ ccnseqwriter - Send data from stdin using ccn versioning and segmentation.
 
 SYNOPSIS
 --------
-*ccnseqwriter* [-h] [-b 'blocksize'] [-r] [-s 'scope'] [-x 'freshness'] 'ccnx:/some/uri'
+*ccnseqwriter* [-h] [-b 'blocksize'] [-r] [-s 'scope'] [-x 'freshness'] [-o 'keystore-directory'] [-d 'digest'] [-p 'password'] 'ccnx:/some/uri'
 
 DESCRIPTION
 -----------
@@ -41,6 +41,15 @@ OPTIONS
 
 *-x* 'freshness'::
 	Use the given freshness on all objects written.
+
+*-o* 'keystore-directory'::
+	Look for keystores in the given directory.
+
+*-d* 'digest'::
+	Use a key with the given digest.
+
+*-p* 'password'::
+	Provide a password for the keystore.
 
 EXIT STATUS
 -----------

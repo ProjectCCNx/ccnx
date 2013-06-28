@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -25,7 +25,8 @@ CSRC = ccn_bloom.c \
        ccn_btree.c ccn_btree_content.c ccn_btree_store.c \
        ccn_buf_decoder.c ccn_buf_encoder.c ccn_bulkdata.c \
        ccn_charbuf.c ccn_client.c ccn_coding.c ccn_digest.c ccn_extend_dict.c \
-       ccn_dtag_table.c ccn_indexbuf.c ccn_interest.c ccn_keystore.c \
+       ccn_dtag_table.c ccn_indexbuf.c ccn_interest.c ccn_keystore.c ccn_aes_keystore.c \
+       ccn_aes_keystore_asn1.c \
        ccn_match.c ccn_reg_mgmt.c ccn_face_mgmt.c \
        ccn_merkle_path_asn1.c ccn_name_util.c ccn_schedule.c \
        ccn_seqwriter.c ccn_signing.c \
@@ -44,7 +45,7 @@ LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o \
        ccn_buf_decoder.o ccn_uri.o ccn_buf_encoder.o ccn_bloom.o \
        ccn_name_util.o ccn_face_mgmt.o ccn_reg_mgmt.o ccn_digest.o \
        ccn_interest.o ccn_keystore.o ccn_seqwriter.o ccn_signing.o \
-       ccn_sockcreate.o ccn_traverse.o \
+       ccn_sockcreate.o ccn_traverse.o ccn_aes_keystore.o ccn_aes_keystore_asn1.o \
        ccn_match.o hashtb.o ccn_merkle_path_asn1.o \
        ccn_sockaddrutil.o ccn_setup_sockaddr_un.o \
        ccn_bulkdata.o ccn_versioning.o ccn_header.o ccn_fetch.o \
@@ -117,6 +118,12 @@ ccn_extend_dict.o:
 ccn_keystore.o:
 	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_keystore.c
 
+ccn_aes_keystore.o:
+	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_aes_keystore.c
+
+ccn_aes_keystore_asn1.o:
+	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_aes_keystore_asn1.c
+
 ccn_signing.o:
 	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_signing.c
 
@@ -146,9 +153,6 @@ signbenchtest.o:
 
 signbenchtest: signbenchtest.o
 	$(CC) $(CFLAGS) -o $@ signbenchtest.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto 
-
-ccndumppcap: ccndumppcap.o
-	$(CC) $(CFLAGS) -o $@ ccndumppcap.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto -lpcap
 
 ccnbtreetest.o:
 	$(CC) $(CFLAGS) -Dccnbtreetest_main=main -c ccnbtreetest.c
@@ -201,6 +205,9 @@ ccn_interest.o: ccn_interest.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h
 ccn_keystore.o: ccn_keystore.c ../include/ccn/keystore.h
+ccn_aes_keystore.o: ccn_aes_keystore.c ../include/ccn/keystore.h \
+  ../include/ccn/aeskeystoreasn1.h
+ccn_aes_keystore_asn1.o: ccn_keystore.c ../include/ccn/aeskeystoreasn1.h
 ccn_match.o: ccn_match.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/digest.h

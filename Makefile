@@ -109,5 +109,31 @@ MD5: _always
 SHA1: _always
 	grep -v $(IGNORELINKS) MANIFEST | xargs openssl dgst -sha1 > SHA1
 
+pkgbin: default
+	echo $(VERSION) > version
+	# make sure VERSION= has been provided
+	grep '^[0-9]....' version
+	mkdir -p ccnx-pkg-$(VERSION)
+	mkdir -p ccnx-pkg-$(VERSION)/lib
+	mkdir -p ccnx-pkg-$(VERSION)/include
+	mkdir -p ccnx-pkg-$(VERSION)/bin
+	mkdir -p ccnx-pkg-$(VERSION)/man/man1
+	mkdir -p ccnx-pkg-$(VERSION)/etc
+	mkdir -p ccnx-pkg-$(VERSION)/doc
+	$(MAKE) dist-docs
+	cp -r doc/ccode ccnx-pkg-$(VERSION)/doc
+	cp -r doc/javacode ccnx-pkg-$(VERSION)/doc
+	cp -r doc/manpages ccnx-pkg-$(VERSION)/doc
+	cp -r doc/technical ccnx-pkg-$(VERSION)/doc
+	cp -r doc/android ccnx-pkg-$(VERSION)/doc
+	cp doc/index.html ccnx-pkg-$(VERSION)/doc
+	cp LICENSE ccnx-pkg-$(VERSION)
+	cp NEWS ccnx-pkg-$(VERSION)
+	mv ccnx-pkg-$(VERSION)/doc/manpages/*.1 ccnx-pkg-$(VERSION)/man/man1
+	$(MAKE) install INSTALL_BASE= DESTDIR=`pwd`/ccnx-pkg-$(VERSION)
+	tar cf ccnx-pkg-$(VERSION).tar ccnx-pkg-$(VERSION)
+	gzip -9 ccnx-pkg-$(VERSION).tar
+	ls -l ccnx-pkg-$(VERSION).tar.gz
+
 _always:
 .PHONY: _always

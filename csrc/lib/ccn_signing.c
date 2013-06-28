@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2010, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -23,13 +23,25 @@
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 #include <openssl/x509.h>
+#include <openssl/hmac.h>
 #include <ccn/merklepathasn1.h>
 #include <ccn/ccn.h>
 #include <ccn/signing.h>
 #include <ccn/random.h>
+#include <ccn/openssl_ex.h>
 
 struct ccn_sigc {
     EVP_MD_CTX context;
+    HMAC_CTX hmac_context;
+    void *ctx_to_use;
+    int key_len;
+    const EVP_MD *md;
+    int (*init_func)(void *ctx, const void *key, int len, const EVP_MD *md);
+    int (*update_func)(void *ctx, const void *data, size_t count);
+    int (*final_func)(void *ctx, unsigned char *sigret, unsigned int *siglen, EVP_PKEY *pkey);
+    int (*verify_init_func)(void *ctx, const void *key, int len, const EVP_MD *md);
+    int (*verify_final_func)(void *ctx, const unsigned char *sigbuf, unsigned int siglen, EVP_PKEY *pkey);
+    void (*cleanup_func)(struct ccn_sigc *ctx);
 };
 
 #if !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA) && defined(NID_ecdsa_with_SHA256)
@@ -57,8 +69,68 @@ static const EVP_MD sha256ec_md=
 };
 #endif
 
-static const EVP_MD *
-md_from_digest_and_pkey(const char *digest, const struct ccn_pkey *pkey)
+#if defined(NEED_OPENSSL_1_0_COMPAT)
+/*
+ * In theory this should allow us to "seamlessly integrate" with OpenSSL 1.0.X (and eventually remove this) 
+ */
+void *EVP_PKEY_get0(EVP_PKEY *pkey)
+{
+    return pkey->pkey.ptr;
+}
+
+int ccn_PKEY_assign(EVP_PKEY *pkey, int type, char *key) {
+    if (EVP_PKEY_assign(pkey, type, key) == 0)
+        return (0);
+    pkey->type = type; // Override type checking
+    return (key != NULL);
+}
+
+#endif
+
+int ccn_hmac_init(void *ctx, const void *key, int len, const EVP_MD *md) 
+{ 
+    HMAC_Init((HMAC_CTX *)ctx, ASN1_STRING_data((ASN1_STRING *)key), len, md);
+    return (1);
+}
+
+int ccn_evp_sign_init(void *ctx, const void *key, int len, const EVP_MD *md)
+{
+    return EVP_SignInit_ex((EVP_MD_CTX *)ctx, md, NULL);
+}
+
+int ccn_evp_verify_init(void *ctx, const void *key, int len, const EVP_MD *md)
+{
+    return EVP_VerifyInit((EVP_MD_CTX *)ctx, md);
+}
+
+int ccn_hmac_final(void *ctx, unsigned char *sigret, unsigned int *siglen, EVP_PKEY *pkey) 
+{
+    HMAC_Final((HMAC_CTX *)ctx, sigret, siglen);
+    return (1);
+}
+
+int ccn_hmac_verify_final(void *ctx, const unsigned char *sigret, unsigned int siglen, 
+			EVP_PKEY *pkey) 
+{
+    unsigned char buf[EVP_MAX_MD_SIZE];
+    unsigned int len = siglen;
+
+    HMAC_Final((HMAC_CTX *)ctx, (unsigned char *)buf, &siglen);
+    if (memcmp(buf, sigret, len))
+	return (0);
+    return (1);
+}
+
+static void cleanup_evp_ctx(struct ccn_sigc *sigc) {
+    EVP_MD_CTX_cleanup(&(sigc->context));
+}
+
+static void cleanup_hmac_ctx(struct ccn_sigc *sigc) {
+    HMAC_CTX_cleanup(&(sigc->hmac_context));
+}
+
+static int
+sigc_from_digest_and_pkey(struct ccn_sigc *sigc, const char *digest, const struct ccn_pkey *pkey)
 {
     int md_nid;
     int pkey_type;
@@ -77,10 +149,37 @@ md_from_digest_and_pkey(const char *digest, const struct ccn_pkey *pkey)
         md_nid = OBJ_txt2nid(digest);
         if (md_nid == NID_undef) {
             fprintf(stderr, "not a DigestAlgorithm I understand right now: %s\n", digest);
-            return (NULL);
+            return (0);
         }
     }
+
+#if defined(NEED_OPENSSL_1_0_COMPAT)
+    pkey_type = ((EVP_PKEY *)pkey)->type;
+#else
     pkey_type = EVP_PKEY_type(((EVP_PKEY *)pkey)->type);
+#endif
+    if (md_nid == NID_hmac || pkey_type == NID_hmac) {
+    	sigc->init_func = (int (*)(void *ctx, const void *, int, const EVP_MD *))ccn_hmac_init;
+    	sigc->verify_init_func = (int (*)(void *ctx, const void *, int, const EVP_MD *))ccn_hmac_init;
+    	sigc->update_func = (int (*)(void *, const void *, size_t))HMAC_Update;
+    	sigc->final_func = ccn_hmac_final;
+    	sigc->verify_final_func = ccn_hmac_verify_final;
+	sigc->md = EVP_sha256();
+	sigc->key_len = 32;
+        sigc->cleanup_func = cleanup_hmac_ctx;
+        sigc->ctx_to_use = &sigc->hmac_context;
+        HMAC_CTX_init(&sigc->hmac_context);
+	return (1);
+    }
+
+    sigc->init_func = ccn_evp_sign_init;
+    sigc->verify_init_func = ccn_evp_verify_init;
+    sigc->update_func = (int (*)(void *, const void *, size_t))EVP_DigestUpdate;
+    sigc->final_func = (int (*)(void *, unsigned char *, unsigned int *, EVP_PKEY *))EVP_SignFinal;
+    sigc->verify_final_func = (int (*)(void *, const unsigned char *, unsigned int, EVP_PKEY *))EVP_VerifyFinal;
+    sigc->cleanup_func = cleanup_evp_ctx;
+    EVP_MD_CTX_init(&sigc->context);
+    sigc->ctx_to_use = &sigc->context;
     switch (pkey_type) {
         case EVP_PKEY_RSA:
         case EVP_PKEY_DSA:
@@ -90,7 +189,7 @@ md_from_digest_and_pkey(const char *digest, const struct ccn_pkey *pkey)
             break;
         default:
             fprintf(stderr, "not a Key type I understand right now: NID %d\n", pkey_type);
-            return(NULL);
+            return(0);
     }
     /*
      * In OpenSSL 0.9.8 the digest algorithm and key type determine the
@@ -110,36 +209,42 @@ md_from_digest_and_pkey(const char *digest, const struct ccn_pkey *pkey)
         case NID_sha1:      // supported for RSA/DSA/EC key types
             switch (pkey_type) {
                 case EVP_PKEY_RSA:
-                    return(EVP_sha1());
+		    sigc->md = EVP_sha1();
+                    return(1);
                 case EVP_PKEY_DSA:
-                    return(EVP_dss1());
+		    sigc->md = EVP_dss1();
+                    return(1);
 #if !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
                 case EVP_PKEY_EC:
-                    return(EVP_ecdsa());
+		    sigc->md = EVP_ecdsa();
+		    return (1);
 #endif
             }
             break;
 #endif
         case NID_sha256:    // supported for RSA/EC key types
-            if (pkey_type == EVP_PKEY_RSA)
-                return(EVP_sha256());
+            if (pkey_type == EVP_PKEY_RSA) {
+		sigc->md = EVP_sha256();
+                return(1);
+	    }
 #if !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA) && defined(NID_ecdsa_with_SHA256)
             else if (pkey_type == EVP_PKEY_EC) {
-                return(&sha256ec_md);
+		sigc->md = &sha256ec_md;
+                return(1);
             } /* our own md */
 #endif
             break;
         case NID_sha512:     // supported for RSA
             if (pkey_type == EVP_PKEY_RSA)
-                return(EVP_sha512());
+		sigc->md = EVP_sha512();
+                return(1);
         default:
             break;
     }
     fprintf(stderr, "not a Digest+Signature algorithm I understand right now: %s with NID %d\n",
             digest, pkey_type);
-    return (NULL);
+    return (0);
 }
-
 
 struct ccn_sigc *
 ccn_sigc_create(void)
@@ -152,20 +257,19 @@ ccn_sigc_destroy(struct ccn_sigc **ctx)
 {
     if (*ctx) {
         // XXX - is it OK to call cleanup unconditionally?
-        EVP_MD_CTX_cleanup(&(*ctx)->context);
+        (*(*ctx)->cleanup_func)((*ctx));
         free(*ctx);
         *ctx = NULL;
     }
 }
 
 int
-ccn_sigc_init(struct ccn_sigc *ctx, const char *digest, const struct ccn_pkey *priv_key)
+ccn_sigc_init(struct ccn_sigc *ctx, const char *digest, const struct ccn_pkey *key)
 {
-    const EVP_MD *md;
-
-    EVP_MD_CTX_init(&ctx->context);
-    md = md_from_digest_and_pkey(digest, priv_key);
-    if (0 == EVP_SignInit_ex(&ctx->context, md, NULL))
+    if (!sigc_from_digest_and_pkey(ctx, digest, key))
+	return (-1);
+    if (0 == (*ctx->init_func)(ctx->ctx_to_use, EVP_PKEY_get0((EVP_PKEY *)key), ctx->key_len, 
+			ctx->md))
         return (-1);
     return (0);
 }
@@ -173,7 +277,7 @@ ccn_sigc_init(struct ccn_sigc *ctx, const char *digest, const struct ccn_pkey *p
 int
 ccn_sigc_update(struct ccn_sigc *ctx, const void *data, size_t size)
 {
-    if (0 == EVP_SignUpdate(&ctx->context, (unsigned char *)data, size))
+    if (0 == (*ctx->update_func)(ctx->ctx_to_use, (unsigned char *)data, size))
         return (-1);
     return (0);
 }
@@ -183,16 +287,20 @@ ccn_sigc_final(struct ccn_sigc *ctx, struct ccn_signature *signature, size_t *si
 {
     unsigned int sig_size;
 
-    if (0 == EVP_SignFinal(&ctx->context, (unsigned char *)signature, &sig_size, (EVP_PKEY *)priv_key))
+    if (0 == (*ctx->final_func)(ctx->ctx_to_use, (unsigned char *)signature, &sig_size, (EVP_PKEY *)priv_key))
         return (-1);
     *size = sig_size;
     return (0);
 }
 
 size_t
-ccn_sigc_signature_max_size(struct ccn_sigc *ctx, const struct ccn_pkey *priv_key)
+ccn_sigc_signature_max_size(struct ccn_sigc *ctx, const struct ccn_pkey *key)
 {
-    return (EVP_PKEY_size((EVP_PKEY *)priv_key));
+#if defined(NEED_OPENSSL_1_0_COMPAT)
+    if (((EVP_PKEY *)key)->type == EVP_PKEY_HMAC)
+	return EVP_MAX_MD_SIZE;
+#endif
+    return (EVP_PKEY_size((EVP_PKEY *)key));
 }
 
 #define is_left(x) (0 == (x & 1))
@@ -280,10 +388,8 @@ int ccn_merkle_root_hash(const unsigned char *msg, size_t size,
 int ccn_verify_signature(const unsigned char *msg,
                      size_t size,
                      const struct ccn_parsed_ContentObject *co,
-                     const struct ccn_pkey *verification_pubkey)
+                     const struct ccn_pkey *verification_key)
 {
-    EVP_MD_CTX verc;
-    EVP_MD_CTX *ver_ctx = &verc;
     X509_SIG *digest_info = NULL;
     const unsigned char *dd = NULL;
     MP_info *merkle_path_info = NULL;
@@ -292,7 +398,6 @@ int ccn_verify_signature(const unsigned char *msg,
 
     int res;
 
-    const EVP_MD *digest = NULL;
     const EVP_MD *merkle_path_digest = NULL;
     
     const unsigned char *signature_bits = NULL;
@@ -301,8 +406,9 @@ int ccn_verify_signature(const unsigned char *msg,
     size_t witness_size = 0;
     const unsigned char *digest_algorithm = NULL;
     size_t digest_algorithm_size;
+    struct ccn_sigc *sigc;
     
-    EVP_PKEY *pkey = (EVP_PKEY *)verification_pubkey;
+    EVP_PKEY *pkey = (EVP_PKEY *)verification_key;
 
     res = ccn_ref_tagged_BLOB(CCN_DTAG_SignatureBits, msg,
                               co->offset[CCN_PCO_B_SignatureBits],
@@ -328,12 +434,16 @@ int ccn_verify_signature(const unsigned char *msg,
          * the string will be null terminated 
          */
     }
-    digest = md_from_digest_and_pkey((const char *)digest_algorithm, verification_pubkey);
-    EVP_MD_CTX_init(ver_ctx);
-    res = EVP_VerifyInit_ex(ver_ctx, digest, NULL);
+    sigc = ccn_sigc_create();
+    if (!sigc_from_digest_and_pkey(sigc, (const char *)digest_algorithm, verification_key)) {
+	res = -1;
+	goto Bail;
+    }
+    res = (*sigc->init_func)(sigc->ctx_to_use, EVP_PKEY_get0((EVP_PKEY *)verification_key), 
+			sigc->key_len, sigc->md);
     if (!res) {
-        EVP_MD_CTX_cleanup(ver_ctx);
-        return (-1);
+        res = -1;
+	goto Bail;
     }
     if (co->offset[CCN_PCO_B_Witness] != co->offset[CCN_PCO_E_Witness]) {
         /* The witness is a DigestInfo, where the octet-string therein encapsulates
@@ -346,8 +456,8 @@ int ccn_verify_signature(const unsigned char *msg,
                                   &witness,
                                   &witness_size);
         if (res < 0) {
-            EVP_MD_CTX_cleanup(ver_ctx);
-            return (-1);
+            res = -1;
+	    goto Bail;
         }
 
         digest_info = d2i_X509_SIG(NULL, &witness, witness_size);
@@ -358,9 +468,9 @@ int ccn_verify_signature(const unsigned char *msg,
         ASN1_OBJECT *merkle_hash_tree_oid = OBJ_txt2obj("1.2.840.113550.11.1.2.2", 1);
         if (0 != OBJ_cmp(digest_info->algor->algorithm, merkle_hash_tree_oid)) {
             fprintf(stderr, "A witness is present without an MHT OID!\n");
-            EVP_MD_CTX_cleanup(ver_ctx);
             ASN1_OBJECT_free(merkle_hash_tree_oid);
-            return (-1);
+            res = -1;
+	    goto Bail;
         }
         /* we're doing an MHT */
         ASN1_OBJECT_free(merkle_hash_tree_oid);
@@ -391,32 +501,32 @@ int ccn_verify_signature(const unsigned char *msg,
         res = ccn_merkle_root_hash(msg, size, co, merkle_path_digest, merkle_path_info, root_hash, root_hash_size);
         MP_info_free(merkle_path_info);
         if (res < 0) {
-            EVP_MD_CTX_cleanup(ver_ctx);
             free(root_hash);
-            return(-1);
+	    res = -1;
+            goto Bail;
         }
-        res = EVP_VerifyUpdate(ver_ctx, root_hash, root_hash_size);
+        res = (*sigc->update_func)(sigc->ctx_to_use, root_hash, root_hash_size);
         free(root_hash);
         if (res == 0) {
-            EVP_MD_CTX_cleanup(ver_ctx);
-            return(-1);
+	    res = -1;
+            goto Bail;
         }
-        res = EVP_VerifyFinal(ver_ctx, signature_bits, signature_bits_size, pkey);
-        EVP_MD_CTX_cleanup(ver_ctx);
+        res = (*sigc->verify_final_func)(sigc->ctx_to_use, signature_bits, signature_bits_size, pkey);
     } else {
         /*
          * In the simple signature case, we signed/verify from the name through
          * the end of the content.
          */
         size_t signed_size = co->offset[CCN_PCO_E_Content] - co->offset[CCN_PCO_B_Name];
-        res = EVP_VerifyUpdate(ver_ctx, msg + co->offset[CCN_PCO_B_Name], signed_size);
+        res = (*sigc->update_func)(sigc->ctx_to_use, msg + co->offset[CCN_PCO_B_Name], signed_size);
         if (res == 0) {
-            EVP_MD_CTX_cleanup(ver_ctx);
-            return(-1);
+	    res = -1;
+	    goto Bail;
         }
-        res = EVP_VerifyFinal(ver_ctx, signature_bits, signature_bits_size, pkey);
-        EVP_MD_CTX_cleanup(ver_ctx);
+        res = (*sigc->verify_final_func)(sigc->ctx_to_use, signature_bits, signature_bits_size, pkey);
     }
+Bail:
+    ccn_sigc_destroy(&sigc);
     return (res);
 }
 

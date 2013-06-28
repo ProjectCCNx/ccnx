@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -47,12 +47,13 @@ uninstall:
 	for i in `$(LS) tools` "" ; do test -z "$$i" || rm -f $(DINST_BIN)/`basename $$i`; done
 
 # Use ant to actually do the work for these targets
-jar test: _always
+jar test unittest: _always
 	$(ANT) -k -DTEST_PORT=$${CCN_LOCAL_PORT_BASE:-63000} $@
 
 clean: _always 
 	$(ANT) -k clean
 	rm -f _always $(JAR)
+	rm -rf target
 
 test: test-alone
 test-alone: _always

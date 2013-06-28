@@ -6,7 +6,7 @@
  */
 
 /*
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011, 2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -102,7 +102,6 @@ r_store_fatal(struct ccnr_handle *h, const char *fn, int lineno)
                  fn, lineno, errno, strerror(errno));
     }
     abort();
-    return(0);
 }
 
 PUBLIC ccnr_accession
@@ -151,7 +150,7 @@ r_store_content_read(struct ccnr_handle *h, struct content_entry *content)
     struct ccn_charbuf *cob = NULL;
     ssize_t rres = 0;
     int fd = -1;
-    unsigned char buf[8800];
+    unsigned char buf[CCN_MAX_MESSAGE_BYTES];
     struct ccn_skeleton_decoder decoder = {0};
     struct ccn_skeleton_decoder *d = &decoder;
     ssize_t dres;
@@ -183,7 +182,7 @@ r_store_content_read(struct ccnr_handle *h, struct content_entry *content)
             ccnr_msg(h, "r_store_content_read %u expected %d bytes, but got %d",
                      fd, (int)content->size, (int)rres);
     } else {
-        rres = pread(fd, buf, 8800, offset); // XXX - should be symbolic
+        rres = pread(fd, buf, CCN_MAX_MESSAGE_BYTES, offset); // XXX - should be symbolic
         if (rres == -1) {
             ccnr_msg(h, "r_store_content_read %u :%s (errno = %d)",
                      fd, strerror(errno), errno);

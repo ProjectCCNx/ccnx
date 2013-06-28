@@ -42,7 +42,7 @@
 int
 main (int argc, char **argv)
 {
-    unsigned char buf[8800];
+    unsigned char buf[CCN_MAX_MESSAGE_BYTES];
     ssize_t size;
     struct ccn_face_instance *face_instance;
     struct ccn_forwarding_entry *forwarding_entry;

@@ -15,7 +15,7 @@ The CCNx Synchronization Protocol allows CCN components to define collections of
 
 A Repository has a Policy that specifies the namespaces (name prefixes) for which it accepts and holds content. An initial Policy may be specified by configuration information; after that, Policies may be updated using the CCNx Repository Protocol like any other content. The process for defining policies is described in link:RepoPolicies.html[CCNx Repository Policy Handling].
 
-The Repository may be initiated with the `ccnr` command. The command and Repository configuration options are described in the link:../manpages/ccnr.html[CCNR(1)] man page.
+The Repository may be initiated with the `ccnr` command. The command and Repository configuration options are described in the link:../manpages/ccnr.1.html[CCNR(1)] man page.
 
 
 == CCNx Repository Protocol

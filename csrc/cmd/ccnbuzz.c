@@ -4,7 +4,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011, 2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -218,7 +218,6 @@ incoming_content(
 {
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *templ = NULL;
-    struct ccn_charbuf *temp = NULL;
     const unsigned char *ccnb = NULL;
     size_t ccnb_size = 0;
     const unsigned char *data = NULL;
@@ -255,8 +254,6 @@ incoming_content(
     if (cc->n < 2) abort();
     res = ccn_name_append_components(name, cb, cc->buf[0], cc->buf[cc->n - 1]);
     if (res < 0) abort();
-    temp = ccn_charbuf_create();
-
     templ = make_template(md, info, NULL);
     // XXX - this program might not work correctly anymore
     res = ccn_express_interest(info->h, name, /* info->pi->prefix_comps,*/ selfp, templ);

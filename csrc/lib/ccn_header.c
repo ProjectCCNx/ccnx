@@ -1,10 +1,10 @@
 /**
- * @file ccn_file_header.c
+ * @file ccn_header.c
  * @brief Support for parsing and creating file headers
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -144,7 +144,7 @@ ccn_get_header(struct ccn *h, struct ccn_charbuf *name, int timeout)
     ccn_charbuf_append_charbuf(hn, name);
     /*
      * Requires consistency with metadata profile in
-     * javasrc/src/org/ccnx/ccn/profiles/metadata/MetadataProfile.java
+     * javasrc/src/main/org/ccnx/ccn/profiles/metadata/MetadataProfile.java
      */
     ccn_name_append(hn, meta, sizeof(meta));
     ccn_name_append_str(hn, ".header");

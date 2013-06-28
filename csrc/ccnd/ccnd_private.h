@@ -433,14 +433,14 @@ uintmax_t ccnd_meter_total(struct ccnd_meter *m);
 /**
  * Refer to doc/technical/Registration.txt for the meaning of these flags.
  *
- * @def CCN_FORW_ACTIVE         1
- * @def CCN_FORW_CHILD_INHERIT  2
- * @def CCN_FORW_ADVERTISE      4
- * @def CCN_FORW_LAST           8
- * @def CCN_FORW_CAPTURE       16
- * @def CCN_FORW_LOCAL         32
- * @def CCN_FORW_TAP           64
- * @def CCN_FORW_CAPTURE_OK   128
+ *  CCN_FORW_ACTIVE         1
+ *  CCN_FORW_CHILD_INHERIT  2
+ *  CCN_FORW_ADVERTISE      4
+ *  CCN_FORW_LAST           8
+ *  CCN_FORW_CAPTURE       16
+ *  CCN_FORW_LOCAL         32
+ *  CCN_FORW_TAP           64
+ *  CCN_FORW_CAPTURE_OK   128
  */
 #define CCN_FORW_PFXO (CCN_FORW_ADVERTISE | CCN_FORW_CAPTURE | CCN_FORW_LOCAL)
 #define CCN_FORW_REFRESHED      (1 << 16) /**< private to ccnd */

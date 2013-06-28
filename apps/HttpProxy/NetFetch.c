@@ -3,7 +3,7 @@
  * 
  * A CCNx program.
  *
- * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2011, 2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -34,6 +34,7 @@
 #include <signal.h>
 #include <string.h>
 #include <strings.h>
+#include <sys/uio.h>
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/uri.h>
@@ -966,7 +967,6 @@ init_internal_keystore(MainData md) {
     struct stat statbuf;
     char *dir = NULL;
     int res = -1;
-    size_t save;
     char *keystore_path = NULL;
     
     temp = ccn_charbuf_create();
@@ -984,15 +984,20 @@ init_internal_keystore(MainData md) {
             goto Finish;
         }
     }
-    save = temp->length;
 	char *kPrefix = "ccnk";
     ccn_charbuf_putf(temp, ".%s_keystore", kPrefix);
     keystore_path = Concat(ccn_charbuf_as_string(temp), "");
     res = ccn_load_default_key(md->ccn, keystore_path, CCNK_KEYSTORE_PASS);
+    if (res >= 0)
+        goto Finish;
+    res = ccn_keystore_file_init(keystore_path, CCNK_KEYSTORE_PASS, "NetFetch", 0, 0);
     if (res != 0) {
         culprit = keystore_path;    
         goto Finish;
     }
+    res = ccn_load_default_key(md->ccn, keystore_path, CCNK_KEYSTORE_PASS);
+    if (res != 0)
+        culprit = keystore_path;
 Finish:
     if (culprit != NULL) {
         fprintf(stdout,
@@ -1370,7 +1375,7 @@ ParseReplyHeader(NetRequest nr) {
 static void
 InitBuffer(NetRequest nr) {
 	// alloc the buffer and init the msg
-	int sz = 8800;
+	int sz = CCN_MAX_MESSAGE_BYTES;
 	nr->buf = ProxyUtil_Alloc(sz+4, char);
 	nr->bufSize = sz;
 	nr->iov.iov_base = nr->buf;

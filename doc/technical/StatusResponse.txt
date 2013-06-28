@@ -22,3 +22,19 @@ used in various internet protocols such as HTTP, FTP, and SMTP.
 == StatusText
 A short textual description of the status.
 Programs should rely on the StatusCode, not the StatusText, for making decisions about haw to proceed.
+
+== Status Code Values
+
+This table is informational, summarizing status codes that are currently is use.
+
+[width="80%",cols="^4m,30d",options="header"]
+|==================================================================
+|  Code  |  Description 
+|   404  | Not found
+|   430  | Not authorized
+|   450  | Temporarily unable to complete operation
+|   453  | Could not setup multicast
+|   501  | Syntax error in address
+|   504  | Parameter error
+|   531  | Missing or incorrect ccndid
+|==================================================================

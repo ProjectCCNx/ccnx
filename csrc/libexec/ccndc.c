@@ -580,7 +580,7 @@ ccndc_srv(struct ccndc_data *self,
     int port = 0;
     char port_str[10];
     struct ccn_charbuf *uri;
-    struct ccn_charbuf *uri_auto;
+    struct ccn_charbuf *uri_auto = NULL;
     struct ccn_face_instance *face;
     struct ccn_face_instance *newface;
     struct ccn_forwarding_entry *prefix;

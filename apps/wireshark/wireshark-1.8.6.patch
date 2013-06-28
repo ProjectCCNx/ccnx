@@ -1,0 +1,104 @@
+diff -r -C3 wireshark-1.8.6/CMakeLists.txt wireshark-1.8.6-ccnx/CMakeLists.txt
+*** wireshark-1.8.6/CMakeLists.txt	2012-06-05 09:33:43.000000000 -0700
+--- wireshark-1.8.6-ccnx/CMakeLists.txt	2013-05-08 21:08:20.804171104 -0700
+***************
+*** 409,414 ****
+--- 409,415 ----
+  	set(PLUGIN_DIR="${DATAFILE_DIR}/plugins/${CPACK_PACKAGE_VERSION}")
+  	set(PLUGIN_SRC_DIRS
+  		plugins/asn1
++ 		plugins/ccn
+  		plugins/docsis
+  		plugins/ethercat
+  		plugins/gryphon
+diff -r -C3 wireshark-1.8.6/configure.in wireshark-1.8.6-ccnx/configure.in
+*** wireshark-1.8.6/configure.in	2013-03-06 10:32:56.000000000 -0800
+--- wireshark-1.8.6-ccnx/configure.in	2013-05-08 21:08:20.804171104 -0700
+***************
+*** 2096,2101 ****
+--- 2096,2102 ----
+    packaging/svr4/pkginfo
+    plugins/Makefile
+    plugins/asn1/Makefile
++   plugins/ccn/Makefile
+    plugins/docsis/Makefile
+    plugins/ethercat/Makefile
+    plugins/gryphon/Makefile
+diff -r -C3 wireshark-1.8.6/epan/Makefile.am wireshark-1.8.6-ccnx/epan/Makefile.am
+*** wireshark-1.8.6/epan/Makefile.am	2013-02-15 12:22:28.000000000 -0800
+--- wireshark-1.8.6-ccnx/epan/Makefile.am	2013-05-08 21:08:20.808171310 -0700
+***************
+*** 211,216 ****
+--- 211,217 ----
+  -include ../plugins/Custom.make
+  plugin_src = \
+  	../plugins/asn1/packet-asn1.c \
++ 	../plugins/ccn/packet-ccn.c \
+  	../plugins/docsis/packet-bintrngreq.c \
+  	../plugins/docsis/packet-bpkmattr.c \
+  	../plugins/docsis/packet-bpkmreq.c \
+diff -r -C3 wireshark-1.8.6/Makefile.am wireshark-1.8.6-ccnx/Makefile.am
+*** wireshark-1.8.6/Makefile.am	2012-11-28 15:16:34.000000000 -0800
+--- wireshark-1.8.6-ccnx/Makefile.am	2013-05-08 21:08:20.812171515 -0700
+***************
+*** 274,279 ****
+--- 274,280 ----
+  -include plugins/Custom.make
+  plugin_ldadd = $(_CUSTOM_plugin_ldadd_) \
+  	-dlopen plugins/asn1/asn1.la \
++ 	-dlopen plugins/ccn/ccn.la \
+  	-dlopen plugins/docsis/docsis.la \
+  	-dlopen plugins/ethercat/ethercat.la \
+  	-dlopen plugins/gryphon/gryphon.la \
+diff -r -C3 wireshark-1.8.6/packaging/nsis/Makefile.nmake wireshark-1.8.6-ccnx/packaging/nsis/Makefile.nmake
+*** wireshark-1.8.6/packaging/nsis/Makefile.nmake	2012-07-27 16:36:21.000000000 -0700
+--- wireshark-1.8.6-ccnx/packaging/nsis/Makefile.nmake	2013-05-08 21:08:20.812171515 -0700
+***************
+*** 46,51 ****
+--- 46,52 ----
+  
+  PLUGINS= \
+  	../../plugins/asn1/asn1.dll \
++ 	../../plugins/ccn/ccn.dll \
+  	../../plugins/docsis/docsis.dll \
+  	../../plugins/ethercat/ethercat.dll \
+  	../../plugins/gryphon/gryphon.dll \
+diff -r -C3 wireshark-1.8.6/packaging/nsis/wireshark.nsi wireshark-1.8.6-ccnx/packaging/nsis/wireshark.nsi
+*** wireshark-1.8.6/packaging/nsis/wireshark.nsi	2012-09-23 13:28:33.000000000 -0700
+--- wireshark-1.8.6-ccnx/packaging/nsis/wireshark.nsi	2013-05-08 21:10:34.955016008 -0700
+***************
+*** 819,824 ****
+--- 819,825 ----
+  ;-------------------------------------------
+  SetOutPath '$INSTDIR\plugins\${VERSION}'
+  File "${STAGING_DIR}\plugins\${VERSION}\asn1.dll"
++ File "${STAGING_DIR}\plugins\${VERSION}\ccn.dll"
+  File "${STAGING_DIR}\plugins\${VERSION}\docsis.dll"
+  File "${STAGING_DIR}\plugins\${VERSION}\ethercat.dll"
+  File "${STAGING_DIR}\plugins\${VERSION}\gryphon.dll"
+diff -r -C3 wireshark-1.8.6/plugins/Makefile.am wireshark-1.8.6-ccnx/plugins/Makefile.am
+*** wireshark-1.8.6/plugins/Makefile.am	2012-09-27 04:45:19.000000000 -0700
+--- wireshark-1.8.6-ccnx/plugins/Makefile.am	2013-05-08 21:08:20.820171923 -0700
+***************
+*** 24,29 ****
+--- 24,30 ----
+  -include Custom.make
+  SUBDIRS = $(_CUSTOM_SUBDIRS_) \
+  	asn1 \
++ 	ccn \
+  	docsis \
+  	ethercat \
+  	gryphon \
+diff -r -C3 wireshark-1.8.6/plugins/Makefile.nmake wireshark-1.8.6-ccnx/plugins/Makefile.nmake
+*** wireshark-1.8.6/plugins/Makefile.nmake	2012-06-05 09:33:17.000000000 -0700
+--- wireshark-1.8.6-ccnx/plugins/Makefile.nmake	2013-05-08 21:08:20.820171923 -0700
+***************
+*** 8,13 ****
+--- 8,14 ----
+  
+  PLUGIN_LIST = \
+  	asn1        \
++ 	ccn	    \
+  	docsis      \
+  	ethercat    \
+  	gryphon     \

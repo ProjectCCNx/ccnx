@@ -2,12 +2,12 @@
 .\"     Title: ccnd
 .\"    Author: [see the "AUTHOR" section]
 .\" Generator: DocBook XSL Stylesheets v1.76.0 <http://docbook.sf.net/>
-.\"      Date: 01/28/2013
+.\"      Date: 05/16/2013
 .\"    Manual: \ \&
-.\"    Source: \ \& 0.7.1
+.\"    Source: \ \& 0.7.2
 .\"  Language: English
 .\"
-.TH "CCND" "1" "01/28/2013" "\ \& 0\&.7\&.1" "\ \&"
+.TH "CCND" "1" "05/16/2013" "\ \& 0\&.7\&.2" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -88,6 +88,8 @@ CCND_MAX_TIME_TO_STALE=
   Limit, in seconds, until content becomes stale\&.  Must be positive\&.
   If necessary, this will be reduced to the largest value
   that the implemementation can enforce\&.
+CCND_MAX_RTE_MICROSEC=
+  Value used to limit response time estimates kept by default strategy\&.
 CCND_KEYSTORE_DIRECTORY=
   Directory readable only by ccnd where its keystores are kept
   Defaults to a private subdirectory of /var/tmp

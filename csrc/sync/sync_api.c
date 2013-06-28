@@ -7,7 +7,7 @@
  *
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2012-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -476,7 +476,7 @@ Cleanup:
  * Write a ccns_slice object to a repository.
  * @param h is the ccn_handle on which to write.
  * @param slice is a pointer to a ccns_slice object to be written.
- * @param name, if non-NULL, is a pointer to a charbuf which will be filled
+ * @param name if non-NULL, is a pointer to a charbuf which will be filled
  *  in with the name of the slice that was written.
  * @returns 0 on success, -1 otherwise.
  */
@@ -1295,6 +1295,7 @@ ccns_close(struct ccns_handle **sh,
                 free(diff_data->get_closure);
                 diff_data->get_closure = NULL;
                 sync_diff_stop(diff_data);
+                free(diff_data);
             }
             // stop any updating
             struct sync_update_data *ud = ch->update_data;
@@ -1303,6 +1304,7 @@ ccns_close(struct ccns_handle **sh,
                 free(ud->done_closure);
                 ud->done_closure = NULL;
                 sync_update_stop(ud);
+                free(ud);
             }
             // stop any fetching
             while (ch->fetch_data != NULL) {
@@ -1315,11 +1317,11 @@ ccns_close(struct ccns_handle **sh,
                 if (root->currentHash != NULL)
                     ccn_charbuf_append_charbuf(rhash, root->currentHash);
             }
-            
+            SyncFreeNameAccumAndNames(ch->namesToAdd);
             // get rid of the root
             ch->root = NULL;
             SyncRemRoot(root);
-
+            // XXX: what about the ch->hashSeen?
             // get rid of the base
             if (ch->base != NULL) {
                 struct sync_plumbing_sync_methods *sm = ch->sync_plumbing->sync_methods;
@@ -1328,7 +1330,7 @@ ccns_close(struct ccns_handle **sh,
                     sm->sync_stop(ch->sync_plumbing, NULL); 
                 }
             }
-
+            free(ch->sync_plumbing);
             free(ch);
             
         }

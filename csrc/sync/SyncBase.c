@@ -4,7 +4,7 @@
  * Part of CCNx Sync.
  */
 /*
- * Copyright (C) 2011-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -176,7 +176,7 @@ sync_start_default(struct sync_plumbing *sd,
     
     // scope for generated interests
     priv->syncScope = getEnvLimited("CCNS_SYNC_SCOPE",
-                                    0, 2, 2);
+                                    0, 3, 2);
     
     
     if (base->debug >= CCNL_INFO) {
@@ -262,6 +262,9 @@ SyncFreeBase(struct SyncBaseStruct **bp) {
                     SyncFreeNameAccumAndNames(nal->accum);
                     free(nal);
                 }
+            }
+            if (priv->saveMethods != NULL) {
+                free(priv->saveMethods);
             }
             ccn_charbuf_destroy(&priv->sliceCmdPrefix);
             ccn_charbuf_destroy(&priv->localHostPrefix);

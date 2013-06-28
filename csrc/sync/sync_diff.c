@@ -1,9 +1,9 @@
 /**
- * @file csrc/sync_diff.c
+ * @file sync/sync_diff.c
  *
  * Part of CCNx Sync.
  *
- * Copyright (C) 2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2012-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -227,6 +227,7 @@ abortCompare(struct sync_diff_data *sdd, char *why) {
     if (sdd->add_closure != NULL && sdd->add_closure->add != NULL)
         // give the client a last shot at the data
         sdd->add_closure->add(sdd->add_closure, NULL);
+    resetDiffData(sdd);
     return -1;
 }
 
@@ -407,6 +408,7 @@ start_node_fetch(struct sync_diff_data *sdd,
                 nc = SyncNodeFromParsedObject(root, content->buf, pco);
                 if (nc != NULL) {
                     // found it!
+                    SyncNodeIncRC(nc);
                     ce->ncL = nc;
                     ce->state |= SyncHashState_local;
                     if (ce->state & SyncHashState_remote)
@@ -927,6 +929,7 @@ compareAction(struct ccn_schedule *sched,
                 sdd->add_closure->add(sdd->add_closure, NULL);
             delay = -1;
             sdd->ev = NULL; // event will not be rescheduled
+            resetDiffData(sdd);
             break;
         }
         case sync_diff_state_error: {
@@ -984,6 +987,7 @@ newNodeCommon(struct SyncRootStruct *root,
             SyncNodeDecRC(nc);
             return NULL;
         }
+        SyncNodeIncRC(nc);
         ce->ncL = nc;
         if (ce->state & SyncHashState_remote)
             setCovered(ce);
@@ -1008,7 +1012,6 @@ newNodeCommon(struct SyncRootStruct *root,
                          (int) nc->cb->length, (int) nodeSplitTrigger);
         }
     }
-    SyncNodeIncRC(nc);
     SyncAccumNode(nodes, nc);
     return ce;
 }
@@ -1106,7 +1109,6 @@ node_from_names(struct sync_update_data *ud, int split) {
     if (ce != NULL && ce->ncL != NULL) {
         // node already exists
         struct SyncNodeComposite *nc = ce->ncL;
-        SyncNodeIncRC(nc);
         SyncAccumNode(ud->nodes, nc);
         if (debug >= CCNL_FINE) {
             char *hex = SyncHexStr(hp, hs);
@@ -1124,11 +1126,14 @@ node_from_names(struct sync_update_data *ud, int split) {
         for (i = 0; i < split; i++) {
             struct ccn_charbuf *name = na->ents[i].name;
             SyncNodeAddName(nc, name);
-            ccn_charbuf_destroy(&name);
-            na->ents[i].name = NULL;
         }
         SyncEndComposite(nc);
         newNodeCommon(root, ud->nodes, nc);
+    }
+    // names 0..split - 1 must be freed as they are either represented by
+    // an existing node or have been copied to a new node
+    for (i = 0; i < split; i++) {
+        ccn_charbuf_destroy(&na->ents[i].name);
     }
     // shift remaining elements down in the name accum
     ud->nameLenAccum = 0;
@@ -1155,7 +1160,6 @@ try_node_split(struct sync_update_data *ud) {
         return 0;
     struct SyncRootStruct *root = ud->root;
     int debug = root->base->debug;
-    struct ccn_charbuf *prev = NULL;
     int accLim = nodeSplitTrigger - nodeSplitTrigger/8;
     int accMin = nodeSplitTrigger/2;
     int res = 0;
@@ -1176,7 +1180,6 @@ try_node_split(struct sync_update_data *ud) {
         int nameLen = name->length + 8;
         if (nameLen > maxLen) maxLen = nameLen;
         accLen = accLen + nameLen + (maxLen - nameLen) * 2;
-        prev = name;
         if (split+1 < lim) {
             if (splitMethod & 1) {
                 // use level shift to split
@@ -1605,9 +1608,8 @@ sync_diff_note_node(struct sync_diff_data *sdd,
 int
 sync_diff_stop(struct sync_diff_data *sdd) {
     struct SyncRootStruct *root = sdd->root;
-    if (sdd == NULL
-        || sdd->state == sync_diff_state_done
-        || sdd->state == sync_diff_state_init) return 0;
+    if (sdd == NULL)
+        return 0;
     struct ccn_scheduled_event *ev = sdd->ev;
     if (ev != NULL && ev->evdata == sdd) {
         // no more callbacks
@@ -1652,7 +1654,8 @@ sync_update_start(struct sync_update_data *ud, struct SyncNameAccum *acc) {
             kickUpdate(ud, 1);
             return 1;
         }
-        default: return 0;
+        default:
+            return 0;
             // don't restart a busy updater
             return -1;
     }
@@ -1661,21 +1664,16 @@ sync_update_start(struct sync_update_data *ud, struct SyncNameAccum *acc) {
 int
 sync_update_stop(struct sync_update_data *ud) {
     char *here = "Sync.sync_update_stop";
-    struct SyncRootStruct *root = ud->root;
+    struct SyncRootStruct *root;
+    if (ud == NULL)
+        return 0;
+    root = ud->root;
     int debug = root->base->debug;
-    switch (ud->state) {
-        case sync_update_state_init:
-        case sync_update_state_done:
-            return 0;
-        default: {
-            if (debug >= CCNL_FINE) {
-                SyncNoteSimple(root, here, "stopping");
-            }
-            resetUpdateData(ud);
-            ud->state = sync_update_state_done;
-            return 1;
-        }
+    if (debug >= CCNL_FINE) {
+        SyncNoteSimple(root, here, "stopping");
     }
-    return 0;
+    resetUpdateData(ud);
+    ud->state = sync_update_state_done;
+    return 1;
 }
 

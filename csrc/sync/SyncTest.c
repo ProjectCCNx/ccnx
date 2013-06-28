@@ -4,9 +4,7 @@
  * Part of CCNx Sync.
  */
 /*
- * Copyright (C) 2011-2012 Palo Alto Research Center, Inc.
- *
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -892,10 +890,8 @@ storeHandler(struct ccn_closure *selfp,
                 if (res >= 0) {
                     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
                     const void *cp = NULL;
-                    size_t cs = 0;
                     sp.type = CCN_CONTENT_DATA;
                     cp = (const void *) cb->buf;
-                    cs = cb->length;
                     sp.template_ccnb = sfd->template;
                     
                     if (seg+1 == sfd->nSegs) sp.sp_flags |= CCN_SP_FINAL_BLOCK;

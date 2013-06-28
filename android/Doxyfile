@@ -2,7 +2,7 @@
 #
 # Part of the CCNx Java Library.
 #
-# Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+# Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -20,7 +20,7 @@
 #---------------------------------------------------------------------------
 DOXYFILE_ENCODING      = UTF-8
 PROJECT_NAME           = "CCNx for Android"
-PROJECT_NUMBER         = 0.7.1
+PROJECT_NUMBER         = 0.7.2
 OUTPUT_DIRECTORY       = ../doc/android
 CREATE_SUBDIRS         = NO
 OUTPUT_LANGUAGE        = English

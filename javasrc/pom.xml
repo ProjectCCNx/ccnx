@@ -1,0 +1,192 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <!--
+ * Copyright (C) 2013 Palo Alto Research Center, Inc.
+ *
+ * This work is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License version 2 as published by the
+ * Free Software Foundation.
+ * This work is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ * for more details. You should have received a copy of the GNU General Public
+ * License along with this program; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301, USA.
+  -->
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.ccnx</groupId>
+    <artifactId>project-ccnx</artifactId>
+    <version>0.7.2-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>project-ccnx-javalib</artifactId>
+  <packaging>jar</packaging>
+  <name>Project CCNx javalib</name>
+  <build>
+      <sourceDirectory>src/main</sourceDirectory>
+      <testSourceDirectory>src/test</testSourceDirectory>
+    <resources>
+        <resource>
+            <directory>src/main</directory>
+        </resource>
+    </resources>
+    <testResources>
+        <testResource>
+            <directory>src/test</directory>
+        </testResource>
+    </testResources>
+    <pluginManagement>
+      <plugins>
+      </plugins>
+    </pluginManagement>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>2.2.1</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>2.9</version>
+        <executions>
+          <execution>
+            <id>attach-javadocs</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>2.3.2</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>testCompile</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <source>1.6</source>
+          <target>1.6</target>
+        </configuration>
+      </plugin>
+      <plugin>
+      	<groupId>org.apache.maven.plugins</groupId>
+      	<artifactId>maven-surefire-plugin</artifactId>
+        <version>2.12.3</version>
+      	<configuration>
+      	  <!-- <skip>true</skip> -->
+      	  <testFailureIgnore>true</testFailureIgnore>
+                <parallel>true</parallel>
+                <suiteXmlFiles>
+                  <suiteXmlFile>src/test/config/testng-unit.xml</suiteXmlFile>
+                </suiteXmlFiles>
+      	</configuration>
+      	<executions>
+      	  <execution>
+      	    <id>surefire-it</id>
+      	    <phase>integration-test</phase>
+      	    <goals>
+      	      <goal>test</goal>
+      	    </goals>
+      	    <configuration>
+      	      <skip>true</skip>
+      	    </configuration>
+      	  </execution>
+      	</executions>
+      </plugin>
+      <plugin>
+      	<artifactId>maven-failsafe-plugin</artifactId>
+      	<version>2.6</version>
+      	<configuration>
+        <skip>true</skip>
+        <testFailureIgnore>true</testFailureIgnore>
+          <!-- Reserve this for future use of testng test configuration -->
+          <!-- 
+          <parallel>true</parallel>
+          <suiteXmlFiles>
+            <suiteXmlFile>src/test/config/testng-integration.xml</suiteXmlFile>
+          </suiteXmlFiles>
+          -->
+      	</configuration>
+      	<executions>
+      	  <execution>
+      	    <goals>
+      	      <goal>integration-test</goal>
+      	      <goal>verify</goal>
+      	    </goals>
+      	  </execution>
+      	</executions>
+      </plugin>
+      <plugin>
+      	<groupId>org.apache.maven.plugins</groupId>
+      	<artifactId>maven-install-plugin</artifactId>
+      	<version>2.3.1</version>
+      	<executions>
+      	</executions>
+      </plugin>
+      <!-- 
+	   SHADE dumps the dependencies into a JAR file
+       Reserve this should we decide we want dependencies bundled in the jar
+	-->
+      <!-- 
+	   <plugin>
+	     <groupId>org.apache.maven.plugins</groupId>	
+	     <artifactId>maven-shade-plugin</artifactId>
+	     <version>1.5</version>
+	     <executions>
+	       <execution>
+		 <phase>package</phase>
+		 <goals>
+		   <goal>shade</goal>
+		 </goals>
+	       </execution>
+	     </executions>
+	     <configuration>
+	       <finalName>${project.artifactId}-${project.version}</finalName>
+	     </configuration>
+	   </plugin>
+	   -->
+    </plugins>
+  </build>
+  <pluginRepositories>
+  </pluginRepositories>
+  <dependencies>
+    <!-- 
+        *
+        * Please Add any new dependencies here
+        * These can easily be found on http://mvnrepository.com
+        * 
+      -->
+    <dependency>
+        <groupId>bouncycastle</groupId>
+        <artifactId>bcprov-jdk16</artifactId>
+        <version>140</version>
+    </dependency>
+    <dependency>
+        <groupId>net.sf.kxml</groupId>
+        <artifactId>kxml2</artifactId>
+        <version>2.3.0</version>
+    </dependency>
+  </dependencies>
+  <reporting>
+    <plugins>
+    </plugins>
+  </reporting>
+</project>
