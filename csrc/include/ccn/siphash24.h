@@ -1,4 +1,4 @@
-/* This code is based on:
+/* This code is based on, and distributed under the same license as:
  SipHash reference C implementation
  
  Written in 2012 by 
