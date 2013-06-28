@@ -62,7 +62,8 @@
 	<!-- To enable remote debugging, the incantation is 
 	"-Xdebug -Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=n" -->
 	<property name="DEBUG_OPTIONS" value=""/>
-	<property name="TOP_DIR" value="../src/test"/>
+	<property name="TOP_DIR" value="../src/systemtest"/>
+	<property name="UNIT_TOP_DIR" value="../src/test"/>
 	<!-- TEST_PORT is alternative ccnd port so we can run tests
         with an isolated ccnd rather than the "live" ccnd on the machine.
         -->
@@ -401,7 +402,7 @@
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
-            <test name="org.ccnx.ccn.CCNUnitTestSuite"/>
+            <test name="org.ccnx.ccn.AllTests"/>
         </junit>
     </target>	
 
