@@ -25,9 +25,6 @@ import org.junit.runners.Suite.SuiteClasses;
 @RunWith(Suite.class)
 
 @SuiteClasses({
-    CCNInputStreamTest.java
-    CCNInputStreamTestCommon.java
-    CCNVersionedInputStreamTest.java
 })
 public class AllTests {
 }

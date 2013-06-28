@@ -25,7 +25,7 @@ import org.junit.runners.Suite.SuiteClasses;
 @RunWith(Suite.class)
 
 @SuiteClasses({
-    org.ccnx.ccn.protocol.AllTests.class
+    org.ccnx.ccn.protocol.AllTests.class,
     org.ccnx.ccn.io.AllTests.class
 })
 public class AllTests {
