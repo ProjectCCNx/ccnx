@@ -25,7 +25,7 @@ import java.net.URISyntaxException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
-import org.ccnx.ccn.impl.security.keystore.CCNKeyStore;
+import org.ccnx.ccn.impl.security.keystore.CCNWrappedKeyStore;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.Tuple;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
@@ -96,7 +96,7 @@ public class NetworkKeyManager extends BasicKeyManager {
 			Log.info("Loading CCN key store from " + _keystoreName + "...");
 			try {
 				in = new CCNVersionedInputStream(keystoreObject, null, handle());
-				CCNKeyStore keyStore = readKeyStore(in, _keyStoreType, password);
+				CCNWrappedKeyStore keyStore = readKeyStore(in, _keyStoreType, password);
 				keyStoreInfo = new KeyStoreInfo(_keystoreName.toURIString(), keyStore, in.getVersion());
 			} catch (IOException e) {
 				Log.warning("Cannot open existing key store: " + _keystoreName);
