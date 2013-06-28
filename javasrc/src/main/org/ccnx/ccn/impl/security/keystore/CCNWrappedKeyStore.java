@@ -34,7 +34,7 @@ import java.util.HashMap;
  * Wraps keystores including standard java keystores and CCN proprietary keystores. Provides
  * a facility to determine whether the keystore supports only symmetric keys.
  */
-public final class CCNKeyStore {
+public final class CCNWrappedKeyStore {
 	boolean _requiresSymmetric = false;
 	static HashMap<TypeAndSymmetric, Class<?>> _ourKeyStores = new HashMap<TypeAndSymmetric, Class<?>>();
 	static KeyStore _keyStore = null;
@@ -53,19 +53,19 @@ public final class CCNKeyStore {
 		_ourKeyStores.put(new TypeAndSymmetric(AESKeyStoreSpi.TYPE, true), AESKeyStore.class);
 	}
 	
-	private CCNKeyStore(KeyStore keyStore, boolean requiresSymmetric) {
+	private CCNWrappedKeyStore(KeyStore keyStore, boolean requiresSymmetric) {
 		_keyStore = keyStore;
 		_requiresSymmetric = requiresSymmetric;
 	}
 	
-	public static CCNKeyStore getInstance(String type) throws KeyStoreException {
+	public static CCNWrappedKeyStore getInstance(String type) throws KeyStoreException {
 		for (TypeAndSymmetric tas :  _ourKeyStores.keySet()) {
 			if (tas._type.equals(type)) {
 				Class<?> ourClass = _ourKeyStores.get(tas);
 				try {
 					Method m = ourClass.getMethod("getInstance", String.class);
 					KeyStore ks = (KeyStore)m.invoke(null, type);
-					return new CCNKeyStore(ks, tas._requiresSymmetric);
+					return new CCNWrappedKeyStore(ks, tas._requiresSymmetric);
 				} catch (IllegalAccessException e) {
 					throw new KeyStoreException(e);
 				} catch (SecurityException e) {
@@ -79,7 +79,7 @@ public final class CCNKeyStore {
 				}
 			}
 		}
-		return new CCNKeyStore(KeyStore.getInstance(type), false);
+		return new CCNWrappedKeyStore(KeyStore.getInstance(type), false);
 	}
 	
 	public boolean requiresSymmetric() {
