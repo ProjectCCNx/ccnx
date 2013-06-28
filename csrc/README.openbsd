@@ -1,0 +1,9 @@
+Building CCNx on OpenBSD
+
+The c portions of CCNx should build on OpenBSD using
+the generic instructions, without requiring additional
+packages.  Building documentation and checking schemas
+will require addition packages; refer to the readme files
+for other BSD systems for hints.
+
+CCNx for Java should work as well, but this has not been tested.
