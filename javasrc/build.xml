@@ -25,7 +25,7 @@
   that require it.
   --> 
 
-<project default="jar" name="java-ccn">
+<project default="jar" name="java-ccnx">
 
 	<!-- To avoid conflict with Eclipse, we build in 'build' not 'bin' -->
 	
@@ -33,6 +33,7 @@
 	<property name="build" location="build"/>
 	<property name="src.dir" location="src/main" />
 	<property name="src.test.dir" location="src/test" />
+	<property name="src.systemtest.dir" location="src/systemtest" />
 	<property name="jarfile-base" value="ccn.jar"/>
 	<property name="jarfile" location="${jarfile-base}"/>
 	<property name="testout" location="testout"/>
@@ -61,7 +62,8 @@
 	<!-- To enable remote debugging, the incantation is 
 	"-Xdebug -Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=n" -->
 	<property name="DEBUG_OPTIONS" value=""/>
-	<property name="TOP_DIR" value="../src/test"/>
+	<property name="TOP_DIR" value="../src/systemtest"/>
+	<property name="UNIT_TOP_DIR" value="../src/test"/>
 	<!-- TEST_PORT is alternative ccnd port so we can run tests
         with an isolated ccnd rather than the "live" ccnd on the machine.
         -->
@@ -96,28 +98,14 @@
 		<doxygen configFilename="Doxyfile"/>
 	</target>
 
-	<!-- target name="compile" depends="init">
-		<mkdir dir="${build}"/>
-		<depend srcdir="${src.dir}" destdir="${build}" closure="yes"/>
-		<javac destdir="${build}"
-              srcdir="${src.dir}" excludes="${build-excludes}"
-              debug="on">
-			<classpath>
-				<path refid="classpath"/>
-			</classpath>
-		</javac>
-		<copy todir="${build}">
-			<fileset dir="${src.dir}" excludes="${build-excludes}, **/*.java"/>
-		</copy>
-	</target -->
-
-  <target name="compile" depends="compile-main, compile-test" description="Compile the main and test classes." />
+  <target name="compile" depends="compile-main, compile-systemtest, compile-test" description="Compile the main and test classes." />
 
   <target name="compile-main" depends="init" description="Compile the main classes">
     <mkdir dir="${build}"/>
     <depend srcdir="${src.dir}" destdir="${build}" closure="yes"/>
     <javac destdir="${build}"
               srcdir="${src.dir}" excludes="${build-excludes}"
+              includeantruntime="false"
               debug="on">
       <classpath>
         <path refid="classpath"/>
@@ -128,17 +116,35 @@
     </copy>
   </target>
 
-  <target name="compile-test" depends="init" description="Compile the test classes">
+  <target name="compile-test" depends="init, compile-systemtest" description="Compile the test classes">
     <mkdir dir="${build}"/>
     <depend srcdir="${src.test.dir}" destdir="${build}" closure="yes"/>
     <javac destdir="${build}"
-              srcdir="${src.test.dir}" excludes="${build-excludes}" debug="on">
+        srcdir="${src.test.dir}" 
+        includeantruntime="false"
+        excludes="${build-excludes}" debug="on">
       <classpath>
         <path refid="classpath"/>
       </classpath>
     </javac>
     <copy todir="${build}">
       <fileset dir="${src.test.dir}" excludes="${build-excludes}, **/*.java"/>
+    </copy>
+  </target>
+
+  <target name="compile-systemtest" depends="init" description="Compile the system test classes">
+    <mkdir dir="${build}"/>
+    <depend srcdir="${src.systemtest.dir}" destdir="${build}" closure="yes"/>
+    <javac destdir="${build}"
+        srcdir="${src.systemtest.dir}"
+        includeantruntime="false"
+        excludes="${build-excludes}" debug="on">
+      <classpath>
+        <path refid="classpath"/>
+      </classpath>
+    </javac>
+    <copy todir="${build}">
+      <fileset dir="${src.systemtest.dir}" excludes="${build-excludes}, **/*.java"/>
     </copy>
   </target>
 
@@ -349,7 +355,33 @@
         <sleep seconds="1"/>
 	</target>
 
-	<!-- test is for running all current automated tests to validate code 
+	<!-- test is for running all current unit tests.  It should not
+         be used to run "end to end" tests, system tests, or other forms
+         of validating multi-unit functionality.
+
+         The following items apply to all checkins:
+         * Every new piece of functionality requires a developer authored
+         unit test, either a new test method, new assertion, or complete
+         suite if required, to ensure new code is working
+         * Every unit test added to the source base should be added to
+         the build system unless marked as skipped
+         * Every unit test should pass before you checkin and push
+         * After unit tests are all passing, it is expected a developer
+         will run the systemtest target and verify no new unexpected
+         issues have arisen.  The QA team should be responsible for
+         developing reasonable system acceptance tests.  If new tests
+         are required these should be filed as a new issue in the bug
+         tracker.
+         * Nightly CI builds will handle a first/last line of defense
+         against issues that may creep in through subsequent commits or
+         those which aren't found due to developer environment.
+         * These rules apply to all contributions, by core team, or from
+         community.
+	     -->
+	<target name="unittest" depends="init, test-all-units">
+	</target>
+
+	<!-- test is for running all current system tests to validate code 
 	     IMPORTANT: test-repo must be run before any test that will start a repo because it
 	     requires that a repo *not* be running when it starts -->
 	<target name="test" depends="init, test-repo, test-protocol, test-impl, test-io, test-endtoend">
@@ -357,7 +389,23 @@
 
 	<target name="test-protocol" depends="test-protocol-without-repo, test-protocol-with-repo">
 	</target>
-	
+
+    <target name="test-all-units" depends="compile-test">
+		<mkdir dir="${testout}"/>
+        <junit printsummary="yes" fork="yes" haltonfailure="no">
+			<classpath>
+				<path refid="classpath"/>
+		        <pathelement location="${build}"/>
+			</classpath>
+			<formatter type="xml" usefile="true"/>
+            <formatter type="plain" usefile="false"/>
+			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
+            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
+            <test name="org.ccnx.ccn.AllTests"/>
+        </junit>
+    </target>	
+
 	<target name="test-protocol-without-repo" depends="jar, ccnd">
 		<mkdir dir="${testout}"/>
 		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" showoutput="${showoutput}" dir="${testout}">

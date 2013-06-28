@@ -47,7 +47,7 @@ uninstall:
 	for i in `$(LS) tools` "" ; do test -z "$$i" || rm -f $(DINST_BIN)/`basename $$i`; done
 
 # Use ant to actually do the work for these targets
-jar test: _always
+jar test unittest: _always
 	$(ANT) -k -DTEST_PORT=$${CCN_LOCAL_PORT_BASE:-63000} $@
 
 clean: _always 
