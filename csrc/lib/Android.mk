@@ -32,7 +32,7 @@ CCNLIBOBJ := ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o \
 		ccn_match.o hashtb.o ccn_merkle_path_asn1.o \
 		ccn_sockaddrutil.o ccn_setup_sockaddr_un.o \
 		ccn_bulkdata.o ccn_verifysig.o ccn_versioning.o ccn_header.o ccn_fetch.o \
-		ccn_btree.o ccn_btree_content.o ccn_btree_store.o lned.o
+		ccn_btree.o ccn_btree_content.o ccn_btree_store.o lned.o siphash24.o
 
 CCNLIBSRC := $(CCNLIBOBJ:.o=.c)
 
