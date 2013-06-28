@@ -97,7 +97,7 @@
 		<doxygen configFilename="Doxyfile"/>
 	</target>
 
-  <target name="compile" depends="compile-main, compile-test, compile-systemtest" description="Compile the main and test classes." />
+  <target name="compile" depends="compile-main, compile-systemtest, compile-test" description="Compile the main and test classes." />
 
   <target name="compile-main" depends="init" description="Compile the main classes">
     <mkdir dir="${build}"/>
@@ -115,7 +115,7 @@
     </copy>
   </target>
 
-  <target name="compile-test" depends="init" description="Compile the test classes">
+  <target name="compile-test" depends="init, compile-systemtest" description="Compile the test classes">
     <mkdir dir="${build}"/>
     <depend srcdir="${src.test.dir}" destdir="${build}" closure="yes"/>
     <javac destdir="${build}"
