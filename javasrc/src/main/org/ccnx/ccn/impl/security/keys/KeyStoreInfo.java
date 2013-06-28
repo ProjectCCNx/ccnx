@@ -16,7 +16,7 @@
  */
 package org.ccnx.ccn.impl.security.keys;
 
-import org.ccnx.ccn.impl.security.keystore.CCNKeyStore;
+import org.ccnx.ccn.impl.security.keystore.CCNWrappedKeyStore;
 import org.ccnx.ccn.protocol.CCNTime;
 
 /**
@@ -29,10 +29,10 @@ public class KeyStoreInfo {
 	// Where did we load this from
 	String _keyStoreURI;
 	String _configurationFileURI;
-	CCNKeyStore _keyStore;
+	CCNWrappedKeyStore _keyStore;
 	CCNTime _version;
 	
-	public KeyStoreInfo(String keyStoreURI, CCNKeyStore keyStore, CCNTime version) {
+	public KeyStoreInfo(String keyStoreURI, CCNWrappedKeyStore keyStore, CCNTime version) {
 		_keyStoreURI = keyStoreURI;
 		_keyStore = keyStore;
 		_version = version;
@@ -42,7 +42,7 @@ public class KeyStoreInfo {
 	 * In case we don't know the 
 	 * @param keyStore
 	 */
-	public void setKeyStore(CCNKeyStore keyStore) {
+	public void setKeyStore(CCNWrappedKeyStore keyStore) {
 		_keyStore = keyStore;
 	}
 	
@@ -54,7 +54,7 @@ public class KeyStoreInfo {
 		_configurationFileURI = configurationFileURI;
 	}
 	
-	public CCNKeyStore getKeyStore() { return _keyStore; }
+	public CCNWrappedKeyStore getKeyStore() { return _keyStore; }
 	public CCNTime getVersion() { return _version; }
 	public String getKeyStoreURI() { return _keyStoreURI; }
 	public String getConfigurationFileURI() { return _configurationFileURI; }

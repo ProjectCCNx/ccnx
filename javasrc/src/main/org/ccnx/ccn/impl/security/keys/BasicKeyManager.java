@@ -55,7 +55,7 @@ import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.security.crypto.EncryptedObjectFileHelper;
 import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
-import org.ccnx.ccn.impl.security.keystore.CCNKeyStore;
+import org.ccnx.ccn.impl.security.keystore.CCNWrappedKeyStore;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.Tuple;
 import org.ccnx.ccn.io.content.KeyValueSet;
@@ -320,7 +320,7 @@ public class BasicKeyManager extends KeyManager {
 		}
 		if (null == keyStoreInfo) {
 			FileInputStream in = null;
-			CCNKeyStore keyStore = null;
+			CCNWrappedKeyStore keyStore = null;
 			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO))
 				Log.info(Log.FAC_KEYS, "Loading CCN key store from " + keyStoreFile.getAbsolutePath() + "...last modified " + keyStoreFile.lastModified() + "(ms).");
 			try {
@@ -343,14 +343,14 @@ public class BasicKeyManager extends KeyManager {
 	 * @param in input stream
 	 * @throws ConfigurationException
 	 */
-	protected CCNKeyStore readKeyStore(InputStream in, String type, char[] password) throws ConfigurationException {
-		CCNKeyStore keyStore = null;
+	protected CCNWrappedKeyStore readKeyStore(InputStream in, String type, char[] password) throws ConfigurationException {
+		CCNWrappedKeyStore keyStore = null;
 		try {
 			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO))
 				Log.info(Log.FAC_KEYS, "Loading CCN key store...");
 			if (null == password)
 				password = _password;
-			keyStore = CCNKeyStore.getInstance(type);
+			keyStore = CCNWrappedKeyStore.getInstance(type);
 			keyStore.load(in, password);
 		} catch (NoSuchAlgorithmException e) {
 			Log.warning("Cannot load keystore: " + e);
@@ -677,7 +677,7 @@ public class BasicKeyManager extends KeyManager {
 				throws ConfigurationException, IOException {
 		
 		Tuple<KeyStoreInfo, OutputStream> streamInfo = createKeyStoreWriteStream();
-	    CCNKeyStore keyStore = createKeyStore(streamInfo.second());
+	    CCNWrappedKeyStore keyStore = createKeyStore(streamInfo.second());
 	    
 	    KeyStoreInfo storeInfo = streamInfo.first();
 	    storeInfo.setKeyStore(keyStore);
@@ -742,7 +742,7 @@ public class BasicKeyManager extends KeyManager {
 	    return new Tuple<KeyStoreInfo, OutputStream>(storeInfo, out);   
 	}
 	
-	protected CCNKeyStore createKeyStore(OutputStream keystoreWriteStream) 
+	protected CCNWrappedKeyStore createKeyStore(OutputStream keystoreWriteStream) 
 			throws ConfigurationException, IOException {
 		return createKeyStore(keystoreWriteStream, null, _keyStoreType, _defaultAlias, _password, _userName);
 	}
@@ -763,7 +763,7 @@ public class BasicKeyManager extends KeyManager {
 	 * @throws ConfigurationException
 	 * @throws IOException
 	 */
-	public static CCNKeyStore createKeyStore(OutputStream keystoreWriteStream, Key key,
+	public static CCNWrappedKeyStore createKeyStore(OutputStream keystoreWriteStream, Key key,
 											 String keyStoreType, String keyAlias,
 											 char [] password,
 											 String userName) throws ConfigurationException, IOException {
@@ -785,11 +785,11 @@ public class BasicKeyManager extends KeyManager {
 			userName = UserConfiguration.userName();
 		}
 
-		CCNKeyStore ks = null;
+		CCNWrappedKeyStore ks = null;
 	    try {
 			if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
 				Log.finest(Log.FAC_KEYS, "createKeyStore: getting instance of keystore type " + keyStoreType);
-			ks = CCNKeyStore.getInstance(keyStoreType);
+			ks = CCNWrappedKeyStore.getInstance(keyStoreType);
 			if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
 				Log.finest(Log.FAC_KEYS, "createKeyStore: loading key store.");
 			ks.load(null, password);
