@@ -58,8 +58,8 @@ depend: dir.mk $(CSRC)
 	echo 'CSRC = \' > newlist
 	for i in $(CSRC); do echo "    $$i" '\'; done | sort -u >> newlist
 	echo >> newlist
-	echo 'LIB_OBJ = \' >> newlist
-	for i in $(LIB_OBJ); do echo "    $$i" '\'; done | sort -u >> newlist
+	echo 'LIB_OBJS = \' >> newlist
+	for i in $(LIB_OBJS); do echo "    $$i" '\'; done | sort -u >> newlist
 	echo >> newlist
 	set -e; for i in $(CSRC); do $(MKDEP) $(CPREFLAGS) $$i; done > depend
 	diff -b depend depend.mk || mv depend depend.mk
