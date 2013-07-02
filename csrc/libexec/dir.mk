@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -38,22 +38,3 @@ clean:
 test:
 	@echo "Sorry, no libexec unit tests at this time"
 
-###############################
-# Dependencies below here are checked by depend target
-# but must be updated manually.
-###############################
-ccndc-log.o: ccndc-log.c
-ccndc-main.o: ccndc-main.c ccndc.h ../include/ccn/charbuf.h ccndc-log.h \
-  ccndc-srv.h
-ccndc-srv.o: ccndc-srv.c ccndc.h ../include/ccn/charbuf.h ccndc-srv.h \
-  ccndc-log.h ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/indexbuf.h ../include/ccn/uri.h \
-  ../include/ccn/reg_mgmt.h
-ccndc.o: ccndc.c ccndc.h ../include/ccn/charbuf.h ccndc-log.h ccndc-srv.h \
-  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/indexbuf.h \
-  ../include/ccn/ccnd.h ../include/ccn/uri.h ../include/ccn/signing.h \
-  ../include/ccn/face_mgmt.h ../include/ccn/sockcreate.h \
-  ../include/ccn/reg_mgmt.h
-udplink.o: udplink.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
-  ../include/ccn/ccnd.h
