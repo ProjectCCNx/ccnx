@@ -38,7 +38,7 @@ CSRC = ccn_bloom.c \
        encodedecodetest.c hashtb.c hashtbtest.c \
        signbenchtest.c skel_decode_test.c \
        basicparsetest.c ccnbtreetest.c \
-       ccn_sockaddrutil.c ccn_setup_sockaddr_un.c
+       ccn_sockaddrutil.c ccn_setup_sockaddr_un.c siphash24.c
 LIBS = libccn.a
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o \
        ccn_dtag_table.o ccn_schedule.o ccn_extend_dict.o \
@@ -50,7 +50,7 @@ LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o \
        ccn_sockaddrutil.o ccn_setup_sockaddr_un.o \
        ccn_bulkdata.o ccn_versioning.o ccn_header.o ccn_fetch.o \
        ccn_btree.o ccn_btree_content.o ccn_btree_store.o \
-       lned.o
+       lned.o siphash24.o
 
 default all: dtag_check lib $(PROGRAMS)
 # Don't try to build shared libs right now.
@@ -204,10 +204,16 @@ ccn_indexbuf.o: ccn_indexbuf.c ../include/ccn/indexbuf.h
 ccn_interest.o: ccn_interest.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h
-ccn_keystore.o: ccn_keystore.c ../include/ccn/keystore.h
-ccn_aes_keystore.o: ccn_aes_keystore.c ../include/ccn/keystore.h \
+ccn_keystore.o: ccn_keystore.c ../include/ccn/keystore.h \
+  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h
+ccn_aes_keystore.o: ccn_aes_keystore.c ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h ../include/ccn/digest.h \
+  ../include/ccn/keystore.h ../include/ccn/aeskeystoreasn1.h \
+  ../include/ccn/openssl_ex.h
+ccn_aes_keystore_asn1.o: ccn_aes_keystore_asn1.c \
   ../include/ccn/aeskeystoreasn1.h
-ccn_aes_keystore_asn1.o: ccn_keystore.c ../include/ccn/aeskeystoreasn1.h
 ccn_match.o: ccn_match.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/digest.h
@@ -230,7 +236,7 @@ ccn_seqwriter.o: ccn_seqwriter.c ../include/ccn/ccn.h \
 ccn_signing.o: ccn_signing.c ../include/ccn/merklepathasn1.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/signing.h \
-  ../include/ccn/random.h
+  ../include/ccn/random.h ../include/ccn/openssl_ex.h
 ccn_sockcreate.o: ccn_sockcreate.c ../include/ccn/sockcreate.h
 ccn_traverse.o: ccn_traverse.c ../include/ccn/bloom.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
@@ -257,7 +263,7 @@ encodedecodetest.o: encodedecodetest.c ../include/ccn/ccn.h \
   ../include/ccn/indexbuf.h ../include/ccn/bloom.h ../include/ccn/uri.h \
   ../include/ccn/digest.h ../include/ccn/keystore.h \
   ../include/ccn/signing.h ../include/ccn/random.h
-hashtb.o: hashtb.c ../include/ccn/hashtb.h
+hashtb.o: hashtb.c ../include/ccn/hashtb.h ../include/ccn/siphash24.h
 hashtbtest.o: hashtbtest.c ../include/ccn/hashtb.h
 signbenchtest.o: signbenchtest.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
@@ -277,3 +283,4 @@ ccn_sockaddrutil.o: ccn_sockaddrutil.c ../include/ccn/charbuf.h \
   ../include/ccn/sockaddrutil.h
 ccn_setup_sockaddr_un.o: ccn_setup_sockaddr_un.c ../include/ccn/ccnd.h \
   ../include/ccn/ccn_private.h ../include/ccn/charbuf.h
+siphash24.o: siphash24.c
