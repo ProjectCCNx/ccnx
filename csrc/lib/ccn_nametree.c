@@ -467,7 +467,7 @@ ccn_nametree_grow(struct ccn_nametree *h)
     cookiemask = 2 * h->cookiemask + 1;
     if (cookiemask > (ccn_cookie)((~0U) / 2))
         return(-1);
-    newtab = calloc(cookiemask, sizeof(newtab[0]));
+    newtab = calloc(cookiemask + 1, sizeof(newtab[0]));
     if (newtab == NULL)
         return(-1);
     for (y = h->head->prev; y != NULL; y = y->prev)
