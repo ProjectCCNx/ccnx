@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009, 2012 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -14,7 +14,7 @@
 
 SUBDIRS = lib ccnd sync ccnr libexec cmd util tests exttests
 OBJTREE = build
-MAKEF =  -f ../conf.mk -f dir.mk -f ../subr.mk
+MAKEF =  -f ../conf.mk -f dir.mk -f ../subr.mk -f depend.mk
 CFLAGS = $(COPT)
 
 default:
@@ -27,7 +27,7 @@ include conf.mk
 default all clean depend coverage test check shared install uninstall config_subdir: conf.mk subr.mk generic.mk _always
 	test -d include/ccn || (test -d ../include/ccn && mkdir -p include && ln -s ../../include/ccn include/ccn)
 	for i in $(SUBDIRS); do         \
-	  (cd "$$i" && pwd && $(MAKE) $(MAKEF) "COPT=$(CFLAGS)" CFLAGS='$$(REAL_CFLAGS)' SRCDIR=../$(SRCDIR)/$$i $@) || exit 1;	\
+	  (cd "$$i" && pwd && :>> depend.mk && $(MAKE) $(MAKEF) "COPT=$(CFLAGS)" CFLAGS='$$(REAL_CFLAGS)' SRCDIR=../$(SRCDIR)/$$i $@) || exit 1;	\
 	done
 	@test -d $(OBJTREE) && echo "+++ NOTE - $(OBJTREE) exists" ||:
 	@rm -f _always

@@ -54,8 +54,15 @@ coverage:
 shared:
 
 depend: dir.mk $(CSRC)
-	for i in $(CSRC); do $(MKDEP) $(CPREFLAGS) $$i; done > depend
-	tail -n `wc -l < depend` dir.mk | diff -b - depend
+	# helper for sorting lists
+	echo 'CSRC = \' > newlist
+	for i in $(CSRC); do echo "    $$i" '\'; done | sort -u >> newlist
+	echo >> newlist
+	echo 'LIB_OBJS = \' >> newlist
+	for i in $(LIB_OBJS); do echo "    $$i" '\'; done | sort -u >> newlist
+	echo >> newlist
+	set -e; for i in $(CSRC); do $(MKDEP) $(CPREFLAGS) $$i; done > depend
+	diff -b depend depend.mk || mv depend depend.mk
 
 install_libs install_programs install uninstall_libs uninstall_programs uninstall coverage shared documentation depend config_subdir: _always
 .PHONY: _always
