@@ -91,7 +91,6 @@ LIB_OBJS = \
     ccn_fetch.o \
     ccn_flatname.o \
     ccn_header.o \
-    ccn_header.o \
     ccn_indexbuf.o \
     ccn_interest.o \
     ccn_keystore.o \
