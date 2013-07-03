@@ -220,7 +220,7 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 	 * Default is 10 seconds
 	 * @param timeout in milliseconds
 	 */
-	public void setTimeout(int timeout) {
+	public void setTimeout(long timeout) {
 		getSegmenter().setTimeout(timeout);
 	}
 }

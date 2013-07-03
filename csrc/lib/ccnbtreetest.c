@@ -621,7 +621,7 @@ test_btree_inserts_from_stdin(void)
     
     c = ccn_charbuf_create();
     CHKPTR(c);
-    CHKPTR(ccn_charbuf_reserve(c, 8800));
+    CHKPTR(ccn_charbuf_reserve(c, CCN_MAX_MESSAGE_BYTES));
     while (fgets((char *)c->buf, c->limit, stdin)) {
         item++;
         c->length = strlen((char *)c->buf);

@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -34,6 +34,7 @@ int ccn_seqw_write(struct ccn_seqwriter *w, const void *buf, size_t size);
 int ccn_seqw_batch_end(struct ccn_seqwriter *w);
 int ccn_seqw_set_block_limits(struct ccn_seqwriter *w, int l, int h);
 int ccn_seqw_set_freshness(struct ccn_seqwriter *w, int freshness);
+int ccn_seqw_set_key_digest(struct ccn_seqwriter *w, unsigned char *key, int keylen);
 int ccn_seqw_close(struct ccn_seqwriter *w);
 
 #endif

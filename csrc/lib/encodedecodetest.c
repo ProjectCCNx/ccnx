@@ -34,6 +34,10 @@
 #include <ccn/signing.h>
 #include <ccn/random.h>
 
+int encode_sample_test(const struct ccn_pkey *signing_key, const struct ccn_pkey *verification_key, 
+			const char *algorithm, char *paths[], char *contents[], 
+			struct ccn_charbuf *signed_info, char *outname);
+
 struct path {
     int count;
     char * comps[];
@@ -144,6 +148,67 @@ decode_message(struct ccn_charbuf *message, struct path * name_path, char *data,
 }
 
 int
+unit_tests_for_signing(struct ccn *h, int *ip, int symmetric)
+{
+    struct ccn_charbuf *co = ccn_charbuf_create();
+    struct ccn_signing_params sparm = CCN_SIGNING_PARAMS_INIT;
+    struct ccn_parsed_ContentObject pco = {0};
+    struct ccn_charbuf *name = ccn_charbuf_create();
+    int res;
+    int result = 0;
+
+    ccn_name_from_uri(name, "ccnx:/test/data/%00%42");
+    res = ccn_sign_content(h, co, name, NULL, "DATA", 4);
+    if (res != 0) {
+        printf("Failed: res == %d\n", (int)res);
+        result = 1;
+    }
+    sparm.template_ccnb = ccn_charbuf_create();
+    res = ccn_parse_ContentObject(co->buf, co->length, &pco, NULL);
+    if (res != 0) {
+        printf("Failed: ccn_parse_ContentObject res == %d\n", (int)res);
+        result = 1;
+        goto Bail;
+    }
+    ccn_charbuf_append(sparm.template_ccnb,
+    co->buf + pco.offset[CCN_PCO_B_SignedInfo],
+    pco.offset[CCN_PCO_E_SignedInfo] - pco.offset[CCN_PCO_B_SignedInfo]);
+    sparm.sp_flags = CCN_SP_TEMPL_TIMESTAMP;
+    printf("Unit test case %d\n", (*ip)++);
+    res = ccn_sign_content(h, co, name, &sparm, "DATA", 4);
+    if (res != 0) {
+        printf("Failed: res == %d\n", (int)res);
+        result = 1;
+    }
+    printf("Unit test case %d\n", (*ip)++);
+    sparm.sp_flags = -1;
+    res = ccn_sign_content(h, co, name, &sparm, "DATA", 4);
+    if (res != -1) {
+        printf("Failed: res == %d\n", (int)res);
+        result = 1;
+    }
+
+    /*
+     * We can run this test with symmetric keys if the problem of being able
+     * to store both a keystore and its associated key in the corresponding
+     * hashtables of a handle can be solved.
+     */
+    if (!symmetric) {
+        printf("Unit test case %d\n", (*ip)++);
+        res = ccn_verify_content(h, co->buf, &pco);
+        if (res != 0) {
+            printf("Failed: res == %d\n", (int)res);
+            result = 1;
+        }
+    }
+Bail:
+    ccn_charbuf_destroy(&name);
+    ccn_charbuf_destroy(&sparm.template_ccnb); 
+    ccn_charbuf_destroy(&co);
+    return result;
+}
+
+int
 expected_res(int res, char code)
 {
     if (code == '*')
@@ -208,12 +273,11 @@ static const char *all_chars_percent_encoded_canon =
 int
 main(int argc, char *argv[])
 {
-    struct ccn_charbuf *buffer = ccn_charbuf_create();
+    struct ccn_charbuf *buffer;
     struct ccn_charbuf *signed_info = ccn_charbuf_create();
     struct ccn_skeleton_decoder dd = {0};
     ssize_t res;
     char *outname = NULL;
-    int fd;
     int result = 0;
     char * contents[] = {"INVITE sip:foo@parc.com SIP/2.0\nVia: SIP/2.0/UDP 127.0.0.1:5060;rport;branch=z9hG4bK519044721\nFrom: <sip:jthornto@13.2.117.52>;tag=2105643453\nTo: Test User <sip:foo@parc.com>\nCall-ID: 119424355@127.0.0.1\nCSeq: 20 INVITE\nContact: <sip:jthornto@127.0.0.1:5060>\nMax-Forwards: 70\nUser-Agent: Linphone-1.7.1/eXosip\nSubject: Phone call\nExpires: 120\nAllow: INVITE, ACK, CANCEL, BYE, OPTIONS, REFER, SUBSCRIBE, NOTIFY, MESSAGE\nContent-Type: application/sdp\nContent-Length:   448\n\nv=0\no=jthornto 123456 654321 IN IP4 127.0.0.1\ns=A conversation\nc=IN IP4 127.0.0.1\nt=0 0\nm=audio 7078 RTP/AVP 111 110 0 3 8 101\na=rtpmap:111 speex/16000/1\na=rtpmap:110 speex/8000/1\na=rtpmap:0 PCMU/8000/1\na=rtpmap:3 GSM/8000/1\na=rtpmap:8 PCMA/8000/1\na=rtpmap:101 telephone-event/8000\na=fmtp:101 0-11\nm=video 9078 RTP/AVP 97 98 99\na=rtpmap:97 theora/90000\na=rtpmap:98 H263-1998/90000\na=fmtp:98 CIF=1;QCIF=1\na=rtpmap:99 MP4V-ES/90000\n",
  
@@ -226,13 +290,19 @@ main(int argc, char *argv[])
                        NULL};
     struct path * cur_path = NULL;
     struct ccn_keystore *keystore = ccn_keystore_create();
+    struct ccn_keystore *aes_keystore = ccn_aes_keystore_create();
     char *keystore_name = NULL;
     char *keystore_password = NULL;
+    char *aes_keystore_name = NULL;
+    unsigned char keybuf[32];
 
     int i;
 
-    while ((i = getopt(argc, argv, "k:p:o:")) != -1) {
+    while ((i = getopt(argc, argv, "a:k:p:o:")) != -1) {
         switch (i) {
+	    case 'a':
+                aes_keystore_name = optarg;
+                break;
             case 'k':
                 keystore_name = optarg;
                 break;
@@ -250,6 +320,9 @@ main(int argc, char *argv[])
 
     if (keystore_name == NULL)
         keystore_name = "test.keystore";
+
+    if (aes_keystore_name == NULL)
+        aes_keystore_name = "test.aeskeystore";
 
     if (keystore_password == NULL)
         keystore_password = "Th1s1sn0t8g00dp8ssw0rd.";
@@ -270,10 +343,26 @@ main(int argc, char *argv[])
         }
     }
 
+    res = ccn_aes_keystore_init(aes_keystore, aes_keystore_name, keystore_password);
+    if (res != 0) {
+        printf ("Initializing AES keystore in %s\n", aes_keystore_name);
+        ccn_generate_symmetric_key(keybuf, 256);
+        res = ccn_aes_keystore_file_init(aes_keystore_name, keystore_password, keybuf, 256);
+        if (res != 0) {
+            fprintf (stderr, "Cannot create keystore [%s]", keystore_name);
+            return res;
+        }
+        res = ccn_aes_keystore_init(aes_keystore, aes_keystore_name, keystore_password);
+        if (res != 0) {
+            printf("Failed to initialize keystore\n");
+            exit(1);
+        }
+    }
+
     printf("Creating signed_info\n");
     res = ccn_signed_info_create(signed_info,
-                                 /*pubkeyid*/ccn_keystore_public_key_digest(keystore),
-                                 /*publisher_key_id_size*/ccn_keystore_public_key_digest_length(keystore),
+                                 /*pubkeyid*/ccn_keystore_key_digest(keystore),
+                                 /*publisher_key_id_size*/ccn_keystore_key_digest_length(keystore),
                                  /*datetime*/NULL,
                                  /*type*/CCN_CONTENT_GONE,
                                  /*freshness*/ 42,
@@ -291,39 +380,14 @@ main(int argc, char *argv[])
     memset(&dd, 0, sizeof(dd));
     printf("Done with signed_info\n");
 
-    printf("Encoding sample message data length %d\n", (int)strlen(contents[0]));
-    cur_path = path_create(paths[0]);
-    if (encode_message(buffer, cur_path, contents[0], strlen(contents[0]), signed_info,
-                       ccn_keystore_private_key(keystore), ccn_keystore_digest_algorithm(keystore))) {
-        printf("Failed to encode message!\n");
-    } else {
-        printf("Encoded sample message length is %d\n", (int)buffer->length);
+    result = encode_sample_test(ccn_keystore_key(keystore), ccn_keystore_public_key(keystore), 
+		ccn_keystore_digest_algorithm(keystore), paths, contents, signed_info, outname);
 
-        res = ccn_skeleton_decode(&dd, buffer->buf, buffer->length);
-        if (!(res == buffer->length && dd.state == 0)) {
-            printf("Failed to decode!  Result %d State %d\n", (int)res, dd.state);
-            result = 1;
-        }
-        if (outname != NULL) {
-            fd = open(outname, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU);
-            if (fd == -1)
-                perror(outname);
-            res = write(fd, buffer->buf, buffer->length);
-            close(fd);
-        }
-        if (decode_message(buffer, cur_path, contents[0], strlen(contents[0]), ccn_keystore_public_key(keystore)) != 0) {
-            result = 1;
-        }
-        printf("Expect signature verification failure: ");
-        if (buffer->length >= 20)
-            buffer->buf[buffer->length - 20] += 1;
-        if (decode_message(buffer, cur_path, contents[0], strlen(contents[0]), ccn_keystore_public_key(keystore)) == 0) {
-            result = 1;
-        }
+    if (! result) {
+    	result = encode_sample_test(ccn_keystore_key(aes_keystore), ccn_keystore_key(aes_keystore), 
+                        ccn_keystore_digest_algorithm(aes_keystore),
+			paths, contents, signed_info, outname);
     }
-    path_destroy(&cur_path);
-    ccn_charbuf_destroy(&buffer);
-    printf("Done with sample message\n");
 
     /* Now exercise as unit tests */
 
@@ -332,10 +396,21 @@ main(int argc, char *argv[])
         cur_path = path_create(paths[i]);
         buffer = ccn_charbuf_create();
         if (encode_message(buffer, cur_path, contents[i], strlen(contents[i]), signed_info,
-                       ccn_keystore_private_key(keystore), ccn_keystore_digest_algorithm(keystore))) {
+                       ccn_keystore_key(keystore), ccn_keystore_digest_algorithm(keystore))) {
             printf("Failed encode\n");
             result = 1;
-        } else if (decode_message(buffer, cur_path, contents[i], strlen(contents[i]), ccn_keystore_public_key(keystore))) {
+        } else if (decode_message(buffer, cur_path, contents[i], strlen(contents[i]), 
+                       ccn_keystore_public_key(keystore))) {
+            printf("Failed decode\n");
+            result = 1;
+        }
+        ccn_charbuf_destroy(&buffer);
+        buffer = ccn_charbuf_create();
+        if (encode_message(buffer, cur_path, contents[i], strlen(contents[i]), signed_info,
+                       ccn_keystore_key(aes_keystore), ccn_keystore_digest_algorithm(aes_keystore))) {
+            printf("Failed encode\n");
+            result = 1;
+        } else if (decode_message(buffer, cur_path, contents[i], strlen(contents[i]), ccn_keystore_key(aes_keystore))) {
             printf("Failed decode\n");
             result = 1;
         }
@@ -661,47 +736,28 @@ main(int argc, char *argv[])
     printf("ccn_sign_content() tests\n");
     do {
         struct ccn *h = ccn_create();
-        struct ccn_charbuf *co = ccn_charbuf_create();
-        struct ccn_signing_params sparm = CCN_SIGNING_PARAMS_INIT;
-        struct ccn_parsed_ContentObject pco = {0};
-        struct ccn_charbuf *name = ccn_charbuf_create();
-
+	int res;
+	res = unit_tests_for_signing(h, &i, 0);
+	if (res == 1)
+            result = 1;
         printf("Unit test case %d\n", i++);
-        ccn_name_from_uri(name, "ccnx:/test/data/%00%42");
-        res = ccn_sign_content(h, co, name, NULL, "DATA", 4);
-        if (res != 0) {
-            printf("Failed: res == %d\n", (int)res);
-            result = 1;
-        }
-        sparm.template_ccnb = ccn_charbuf_create();
-        res = ccn_parse_ContentObject(co->buf, co->length, &pco, NULL);
-        if (res != 0) {
-            printf("Failed: ccn_parse_ContentObject res == %d\n", (int)res);
-            result = 1;
-            break;
-        }
-        ccn_charbuf_append(sparm.template_ccnb,
-            co->buf + pco.offset[CCN_PCO_B_SignedInfo],
-            pco.offset[CCN_PCO_E_SignedInfo] - pco.offset[CCN_PCO_B_SignedInfo]);
-        sparm.sp_flags = CCN_SP_TEMPL_TIMESTAMP;
-        printf("Unit test case %d\n", i++);
-        res = ccn_sign_content(h, co, name, &sparm, "DATA", 4);
-        if (res != 0) {
-            printf("Failed: res == %d\n", (int)res);
-            result = 1;
-        }
-        printf("Unit test case %d\n", i++);
-        sparm.sp_flags = -1;
-        res = ccn_sign_content(h, co, name, &sparm, "DATA", 4);
-        if (res != -1) {
-            printf("Failed: res == %d\n", (int)res);
-            result = 1;
-        }
-        ccn_charbuf_destroy(&name);
-        ccn_charbuf_destroy(&sparm.template_ccnb);
-        ccn_charbuf_destroy(&co);
         ccn_destroy(&h);
     } while (0);
+    do {
+        struct ccn *h = ccn_create();
+	int res;
+	res = ccn_load_default_key(h, aes_keystore_name, keystore_password);
+	if (res < 0) {
+            result = 1;
+            printf("Failed: res == %d\n", (int)res);
+        } else 
+            res = unit_tests_for_signing(h, &i, 1);
+	if (res == 1)
+            result = 1;
+        printf("Unit test case %d\n", i++);
+        ccn_destroy(&h);
+    } while (0);
+    printf("link tests\n");
     printf("link tests\n");
     do {
         struct ccn_charbuf *l = ccn_charbuf_create();
@@ -722,4 +778,53 @@ main(int argc, char *argv[])
     } while (0);
 
     exit(result);
+}
+
+int
+encode_sample_test(const struct ccn_pkey *signing_key, const struct ccn_pkey *verification_key, 
+			const char *algorithm, char *paths[], char *contents[], 
+			struct ccn_charbuf *signed_info, char *outname)
+{
+    int result = 0;
+    int fd;
+    struct path * cur_path = NULL;
+    struct ccn_charbuf *buffer = ccn_charbuf_create();
+    struct ccn_skeleton_decoder dd = {0};
+    ssize_t res;
+
+    printf("Encoding sample message data length %d\n", (int)strlen(contents[0]));
+    cur_path = path_create(paths[0]);
+    if (encode_message(buffer, cur_path, contents[0], strlen(contents[0]), signed_info, signing_key, 
+			algorithm)) {
+        printf("Failed to encode message!\n");
+	result = 1;
+    } else {
+        printf("Encoded sample message length is %d\n", (int)buffer->length);
+
+        res = ccn_skeleton_decode(&dd, buffer->buf, buffer->length);
+        if (!(res == buffer->length && dd.state == 0)) {
+            printf("Failed to decode!  Result %d State %d\n", (int)res, dd.state);
+            result = 1;
+        }
+        if (outname != NULL) {
+            fd = open(outname, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU);
+            if (fd == -1)
+                perror(outname);
+            res = write(fd, buffer->buf, buffer->length);
+            close(fd);
+        }
+        if (decode_message(buffer, cur_path, contents[0], strlen(contents[0]), verification_key) != 0) {
+            result = 1;
+        }
+        printf("Expect signature verification failure: ");
+        if (buffer->length >= 20)
+            buffer->buf[buffer->length - 20] += 1;
+        if (decode_message(buffer, cur_path, contents[0], strlen(contents[0]), verification_key) == 0) {
+            result = 1;
+        }
+    }
+    path_destroy(&cur_path);
+    ccn_charbuf_destroy(&buffer);
+    printf("Done with sample message\n");
+    return result;
 }

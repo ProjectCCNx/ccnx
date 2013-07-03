@@ -149,10 +149,7 @@ public class CCNNetworkManager implements Runnable {
 	// before returning to the user, but when we call cancelInterestFilter we can return before completing a prefix deregistration
 	// since we have already disabled the mechanism to call the users handler so any spurious interest for the prefix will be
 	// ignored.
-	public static final boolean DEFAULT_PREFIX_REG = true;  // Should we use prefix registration? (TODO - this is pretty much obsolete
-															// - it was used during the transition to prefix registration and
-															// should probably be removed)
-	protected boolean _usePrefixReg = DEFAULT_PREFIX_REG;
+	
 	protected PrefixRegistrationManager _prefixMgr = null;
 	protected TreeMap<ContentName, RegisteredPrefix> _registeredPrefixes = new TreeMap<ContentName, RegisteredPrefix>();
 
@@ -279,43 +276,8 @@ public class CCNNetworkManager implements Runnable {
             // FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
             // to understand this.  This isn't a problem for now because the lifetime we request when we register a
             // prefix we use Integer.MAX_VALUE as the requested lifetime.
-            // FIXME: so lets not go around the loop doing nothing... for now.
             long minFilterRefreshTime = PERIOD + ourTime;
-            /* if (_usePrefixReg) {
-            	synchronized (_registeredPrefixes) {
-                    for (ContentName prefix : _registeredPrefixes.keySet()) {
-                    	RegisteredPrefix rp = _registeredPrefixes.get(prefix);
-						if (null != rp._forwarding && rp._lifetime != -1 && rp._nextRefresh != -1) {
-							if (ourTime > rp._nextRefresh) {
-								if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
-									Log.finer(Log.FAC_NETMANAGER, "Refresh registration: {0}", prefix);
-								rp._nextRefresh = -1;
-								try {
-									ForwardingEntry forwarding = _prefixMgr.selfRegisterPrefix(prefix);
-									if (null != forwarding) {
-										rp._lifetime = forwarding.getLifetime();
-//										filter.nextRefresh = new Date().getTime() + (filter.lifetime / 2);
-										_lastHeartbeat = System.currentTimeMillis();
-										rp._nextRefresh = _lastHeartbeat + (rp._lifetime / 2);
-									}
-									rp._forwarding = forwarding;
-
-								} catch (CCNDaemonException e) {
-									Log.warning(e.getMessage());
-									// XXX - don't think this is right
-									rp._forwarding = null;
-									rp._lifetime = -1;
-									rp._nextRefresh = -1;
-									refreshError = true;
-								}
-							}
-							if (minFilterRefreshTime > rp._nextRefresh)
-								minFilterRefreshTime = rp._nextRefresh;
-						}
-						}	// for (Entry<Filter> entry: _myFilters.values())
-				}	// synchronized (_myFilters)
-			} // _usePrefixReg */
-
+            
         	if (refreshError) {
                 Log.warning(Log.FAC_NETMANAGER, "we have had an error when refreshing an interest or prefix registration...  do we need to reconnect to ccnd?");
         	}
@@ -423,7 +385,6 @@ public class CCNNetworkManager implements Runnable {
 	protected class CallbackHandlerRegistration {
 		protected Object handler;
 		public Semaphore sema = null;	//used to block thread waiting for data or null if none
-		public Object owner = null;
 		public boolean cancelled = false;
 
 		/** Equality based on handler if present, so multiple objects can
@@ -431,30 +392,18 @@ public class CCNNetworkManager implements Runnable {
 		 */
 		@Override
 		public boolean equals(Object obj) {
-			if (obj instanceof CallbackHandlerRegistration) {
-				CallbackHandlerRegistration other = (CallbackHandlerRegistration)obj;
-				if (this.owner == other.owner) {
-					if (null == this.handler && null == other.handler){
-						return super.equals(obj);
-					} else if (null != this.handler && null != other.handler) {
-						return this.handler.equals(other.handler);
-					}
-				}
-			}
-			return false;
+			if (this == obj)
+				return true;
+			CallbackHandlerRegistration other = (CallbackHandlerRegistration)obj;
+			return this.handler == other.handler;
 		}
 
 		@Override
 		public int hashCode() {
 			if (null != this.handler) {
-				if (null != owner) {
-					return owner.hashCode() + this.handler.hashCode();
-				} else {
-					return this.handler.hashCode();
-				}
-			} else {
-				return super.hashCode();
+				return hashCode() + this.handler.hashCode();
 			}
+			return hashCode();
 		}
 	}
 
@@ -474,10 +423,9 @@ public class CCNNetworkManager implements Runnable {
 		protected ContentObject content;
 
 		// All internal client interests must have an owner
-		public InterestRegistration(Interest i, Object h, Object owner) {
+		public InterestRegistration(Interest i, Object h) {
 			interest = i;
 			handler = h;
-			this.owner = owner;
 			if (null == handler) {
 				sema = new Semaphore(0);
 			}
@@ -509,7 +457,7 @@ public class CCNNetworkManager implements Runnable {
 							Log.finer(Log.FAC_NETMANAGER, "Interest callback: updated interest to express: {0}", updatedInterest.name());
 						// if we want to cancel this one before we get any data, we need to remember the
 						// updated interest in the handler
-						expressInterest(this.owner, updatedInterest, handler);
+						expressInterest(updatedInterest, handler);
 					}
 				} else {
 					// This is the "get" case
@@ -555,8 +503,8 @@ public class CCNNetworkManager implements Runnable {
 		// extra interests to be delivered: separating these allows avoidance of ArrayList obj in many cases
 		protected ContentName prefix = null;
 
-		public Filter(ContentName n, Object h, Object o) {
-			prefix = n; handler = h; owner = o;
+		public Filter(ContentName n, Object h) {
+			prefix = n; handler = h;
 		}
 
 		/**
@@ -839,7 +787,7 @@ public class CCNNetworkManager implements Runnable {
 
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
 			Log.fine(Log.FAC_NETMANAGER, formatMessage("get: {0} with timeout: {1}"), interest, timeout);
-		InterestRegistration reg = new InterestRegistration(interest, null, null);
+		InterestRegistration reg = new InterestRegistration(interest, null);
 		expressInterest(reg);
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST) )
 			Log.finest(Log.FAC_NETMANAGER, formatMessage("blocking for {0} on {1}"), interest.name(), reg.sema);
@@ -868,48 +816,40 @@ public class CCNNetworkManager implements Runnable {
 	/**
 	 * We express interests to the ccnd and register them within the network manager
 	 *
-	 * @param caller 	must not be null
 	 * @param interest 	the interest
 	 * @param handler	handler to callback on receipt of data
 	 * @throws IOException on incorrect interest
 	 */
 	public void expressInterest(
-			Object caller,
 			Interest interest,
 			Object handler) throws IOException {
-		// TODO - use of "caller" should be reviewed - don't believe this is currently serving
-		// serving any useful purpose.
 		if (null == handler) {
 			throw new NullPointerException(formatMessage("expressInterest: callbackHandler cannot be null"));
 		}
 
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
 			Log.fine(Log.FAC_NETMANAGER, formatMessage("expressInterest: {0}"), interest);
-		InterestRegistration reg = new InterestRegistration(interest, handler, caller);
+		InterestRegistration reg = new InterestRegistration(interest, handler);
 		expressInterest(reg);
 	}
 	
 	/**
 	 * Register to receive a content object without issuing an interest
 	 * 
-	 * @param caller 	must not be null
 	 * @param interest 	the interest
 	 * @param handler	handler to callback on receipt of data
 	 * @throws IOException on incorrect interest
 	 */
 	public void registerInterest(
-			Object caller,
 			Interest interest,
 			Object handler) throws IOException {
-		// TODO - use of "caller" should be reviewed - don't believe this is currently serving
-		// serving any useful purpose.
 		if (null == handler) {
 			throw new NullPointerException(formatMessage("registerInterest: callbackHandler cannot be null"));
 		}
 
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
 			Log.fine(Log.FAC_NETMANAGER, formatMessage("registerInterest: {0}"), interest);
-		InterestRegistration reg = new InterestRegistration(interest, handler, caller);
+		InterestRegistration reg = new InterestRegistration(interest, handler);
 		registerInterest(reg);
 	}
 
@@ -927,14 +867,11 @@ public class CCNNetworkManager implements Runnable {
 	/**
 	 * Cancel this query
 	 *
-	 * @param caller 	must not be null
 	 * @param interest
 	 * @param handler
 	 */
-	public void cancelInterest(Object caller, Interest interest, Object handler) {
+	public void cancelInterest(Interest interest, Object handler) {
 		if (null == handler) {
-			// TODO - use of "caller" should be reviewed - don't believe this is currently serving
-			// serving any useful purpose.
 			throw new NullPointerException(formatMessage("cancelInterest: handler cannot be null"));
 		}
 		_stats.increment(StatsEnum.CancelInterest);
@@ -942,7 +879,7 @@ public class CCNNetworkManager implements Runnable {
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
 			Log.fine(Log.FAC_NETMANAGER, formatMessage("cancelInterest: {0}"), interest.name());
 		// Remove interest from repeated presentation to the network.
-		InterestRegistration reg = unregisterInterest(caller, interest, handler);
+		InterestRegistration reg = unregisterInterest(interest, handler);
 
 		// Make sure potential remnants of cancelled interest are also cancelled
 		synchronized (_beingDeliveredLock) {
@@ -957,13 +894,12 @@ public class CCNNetworkManager implements Runnable {
 	 * be delivered to the handler. Also if this filter matches no currently registered
 	 * prefixes, register its prefix with ccnd.
 	 *
-	 * @param caller 	must not be null
 	 * @param filter	ContentName containing prefix of interests to match
 	 * @param handler 	a CCNInterestHandler
 	 * @throws IOException
 	 */
-	public void setInterestFilter(Object caller, ContentName filter, Object handler) throws IOException {
-		setInterestFilter(caller, filter, handler, null);
+	public void setInterestFilter(ContentName filter, Object handler) throws IOException {
+		setInterestFilter(filter, handler, null);
 	}
 
 	/**
@@ -975,16 +911,13 @@ public class CCNNetworkManager implements Runnable {
 	 * Note that this is mismatched with deregistering prefixes. When registering, we wait for the
 	 * registration to complete before continuing, but when deregistering we don't.
 	 *
-	 * @param caller 	must not be null
 	 * @param filter	ContentName containing prefix of interests to match
 	 * @param callbackHandler a CCNInterestHandler
 	 * @param registrationFlags to use for this registration.
 	 * @throws IOException
 	 *
-	 * TODO - use of "caller" should be reviewed - don't believe this is currently serving
-	 * serving any useful purpose.
 	 */
-	public void setInterestFilter(Object caller, ContentName filter, Object callbackHandler,
+	public void setInterestFilter(ContentName filter, Object callbackHandler,
 			Integer registrationFlags) throws IOException {
 
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
@@ -997,44 +930,42 @@ public class CCNNetworkManager implements Runnable {
 		setupTimers();
 		// set up filters before registering as registration may cause a pending interest
 		// to be delivered immediately.
-		Filter newOne = new Filter(filter, callbackHandler, caller);
+		Filter newOne = new Filter(filter, callbackHandler);
 		_myFilters.add(filter, newOne);
-		if (_usePrefixReg) {
-			RegisteredPrefix prefix = null;
-			_registrationChangeInProgress.acquireUninterruptibly();
-			synchronized(_registeredPrefixes) {
-				// Determine whether we need to register our prefix with ccnd
-				// We do if either its not registered now, or the one registered now is being
-				// cancelled but its still in the process of getting deregistered. In the second
-				// case (closing) we need to wait until the prefix has been deregistered before
-				// we go ahead and register it. And of course, someone else could have registered it
-				// before we got to it so check for that also. If its already registered, just bump
-				// its use count.
-				prefix = getRegisteredPrefix(filter);  // Did someone else already register it?
-				if (null != prefix) {  // no
-					prefix._refCount++;
-				}
+		RegisteredPrefix prefix = null;
+		_registrationChangeInProgress.acquireUninterruptibly();
+		synchronized(_registeredPrefixes) {
+			// Determine whether we need to register our prefix with ccnd
+			// We do if either its not registered now, or the one registered now is being
+			// cancelled but its still in the process of getting deregistered. In the second
+			// case (closing) we need to wait until the prefix has been deregistered before
+			// we go ahead and register it. And of course, someone else could have registered it
+			// before we got to it so check for that also. If its already registered, just bump
+			// its use count.
+			prefix = getRegisteredPrefix(filter);  // Did someone else already register it?
+			if (null != prefix) {  // no
+				prefix._refCount++;
 			}
-
-			if (null == prefix) {
-				// We don't want to hold the _registeredPrefixes lock here, but we're safe to change things
-				// because we have acquired _registrationChangeInProgress.
-				try {
-					if (null == _prefixMgr) {
-						_prefixMgr = new PrefixRegistrationManager(this);
-					}
-					prefix = registerPrefix(filter, registrationFlags);
-				} catch (CCNDaemonException e) {
-					_myFilters.remove(filter, newOne);
-					Log.warning(Log.FAC_NETMANAGER, formatMessage("setInterestFilter: unexpected CCNDaemonException: " + e.getMessage()));
-					throw new IOException(e.getMessage());
-				}
-				synchronized (_registeredPrefixes) {
-					prefix._refCount++;
-				}
-			}
-			_registrationChangeInProgress.release();
 		}
+
+		if (null == prefix) {
+			// We don't want to hold the _registeredPrefixes lock here, but we're safe to change things
+			// because we have acquired _registrationChangeInProgress.
+			try {
+				if (null == _prefixMgr) {
+					_prefixMgr = new PrefixRegistrationManager(this);
+				}
+				prefix = registerPrefix(filter, registrationFlags);
+			} catch (CCNDaemonException e) {
+				_myFilters.remove(filter, newOne);
+				Log.warning(Log.FAC_NETMANAGER, formatMessage("setInterestFilter: unexpected CCNDaemonException: " + e.getMessage()));
+				throw new IOException(e.getMessage());
+			}
+			synchronized (_registeredPrefixes) {
+				prefix._refCount++;
+			}
+		}
+		_registrationChangeInProgress.release();
 	}
 
 	/**
@@ -1087,65 +1018,60 @@ public class CCNNetworkManager implements Runnable {
 	 * If we are the last user of a filter registered with ccnd, we request a deregistration with
 	 * ccnd but we don't need to wait for it to complete.
 	 *
-	 * @param caller 	must not be null
 	 * @param filter	currently registered filter
 	 * @param handler	the handler registered to it
 	 */
-	public void cancelInterestFilter(Object caller, ContentName filter, Object handler) {
-		// TODO - use of "caller" should be reviewed - don't believe this is currently serving
-		// serving any useful purpose.
+	public void cancelInterestFilter(ContentName filter, Object handler) {
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
 			Log.fine(Log.FAC_NETMANAGER, formatMessage("cancelInterestFilter: {0}"), filter);
 		Filter newOne;
-		newOne = new Filter(filter, handler, caller);
+		newOne = new Filter(filter, handler);
 		Entry<Filter> found = null;
 		found = _myFilters.remove(filter, newOne);
 		if (null != found) {
 			boolean semaAcquired = false;
-			if (_usePrefixReg) {
-				// Deregister it with ccnd only if the refCount would go to 0
-				RegisteredPrefix prefix = null;
-				boolean doRemove = false;
+			// Deregister it with ccnd only if the refCount would go to 0
+			RegisteredPrefix prefix = null;
+			boolean doRemove = false;
+			synchronized (_registeredPrefixes) {
+				prefix = getRegisteredPrefix(filter);
+			}
+			if (null != prefix && prefix._refCount <= 1) {
+				// We need to deregister it with ccnd. But first we need to make sure nobody else is messing around
+				// with the ccnd prefix registration.
+				_registrationChangeInProgress.acquireUninterruptibly();
+				semaAcquired = true;
 				synchronized (_registeredPrefixes) {
-					prefix = getRegisteredPrefix(filter);
-				}
-				if (null != prefix && prefix._refCount <= 1) {
-					// We need to deregister it with ccnd. But first we need to make sure nobody else is messing around
-					// with the ccnd prefix registration.
-					_registrationChangeInProgress.acquireUninterruptibly();
-					semaAcquired = true;
-					synchronized (_registeredPrefixes) {
-						prefix = getRegisteredPrefix(filter); // Did some else already remove this prefix?
-						if (null != prefix) {  // no
-							if (prefix._refCount <= 1) {
-								doRemove = true;
-							}
+					prefix = getRegisteredPrefix(filter); // Did some else already remove this prefix?
+					if (null != prefix) {  // no
+						if (prefix._refCount <= 1) {
+							doRemove = true;
 						}
-						if (null != prefix)
-							prefix._refCount--;
 					}
+					if (null != prefix)
+						prefix._refCount--;
 				}
-				if (doRemove) {
-					// We are going to deregister the prefix with ccnd. We don't want to hold locks here but
-					// we don't have to worry about others changing the prefix registration underneath us because
-					// we have acquired _registrationChangeInProgress.
-					try {
-						if (null == _prefixMgr) {
-							_prefixMgr = new PrefixRegistrationManager(this);
-						}
-						if (_channel.isConnected()) {
-							ForwardingEntry entry = prefix._forwarding;
-							_prefixMgr.unRegisterPrefix(filter, prefix, entry.getFaceID());
-						} else
-							_registrationChangeInProgress.release();
-					} catch (CCNDaemonException e) {
-						Log.warning(Log.FAC_NETMANAGER, formatMessage("cancelInterestFilter failed with CCNDaemonException: " + e.getMessage()));
-						_registrationChangeInProgress.release();
+			}
+			if (doRemove) {
+				// We are going to deregister the prefix with ccnd. We don't want to hold locks here but
+				// we don't have to worry about others changing the prefix registration underneath us because
+				// we have acquired _registrationChangeInProgress.
+				try {
+					if (null == _prefixMgr) {
+						_prefixMgr = new PrefixRegistrationManager(this);
 					}
-				} else {
-					if (semaAcquired)
+					if (_channel.isConnected()) {
+						ForwardingEntry entry = prefix._forwarding;
+						_prefixMgr.unRegisterPrefix(filter, prefix, entry.getFaceID());
+					} else
 						_registrationChangeInProgress.release();
+				} catch (CCNDaemonException e) {
+					Log.warning(Log.FAC_NETMANAGER, formatMessage("cancelInterestFilter failed with CCNDaemonException: " + e.getMessage()));
+					_registrationChangeInProgress.release();
 				}
+			} else {
+				if (semaAcquired)
+					_registrationChangeInProgress.release();
 			}
 		} else {
 			if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
@@ -1253,8 +1179,8 @@ public class CCNNetworkManager implements Runnable {
 		return reg;
 	}
 
-	private InterestRegistration unregisterInterest(Object caller, Interest interest, Object handler) {
-		InterestRegistration reg = new InterestRegistration(interest, handler, caller);
+	private InterestRegistration unregisterInterest(Interest interest, Object handler) {
+		InterestRegistration reg = new InterestRegistration(interest, handler);
 		return unregisterInterest(reg);
 	}
 
@@ -1326,7 +1252,7 @@ public class CCNNetworkManager implements Runnable {
 					Interest interest = (Interest)	packet;
 					if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST) )
 						Log.finest(Log.FAC_NETMANAGER, formatMessage("Interest from net for port: " + _port + " {0}"), interest);
-					InterestRegistration oInterest = new InterestRegistration(interest, null, null);
+					InterestRegistration oInterest = new InterestRegistration(interest, null);
 					deliverInterest(oInterest, interest);
 				}  else { // for interests
 					_stats.increment(StatsEnum.ReceiveUnknown);
@@ -1356,16 +1282,14 @@ public class CCNNetworkManager implements Runnable {
 
 		// Call any handlers with matching filters
 		for (Filter filter : _myFilters.getValues(ireg.interest.name())) {
-			if (filter.owner != ireg.owner) {
-				if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
-					Log.finer(Log.FAC_NETMANAGER, formatMessage("Schedule delivery for interest: {0}"), interest);
-				_stats.increment(StatsEnum.DeliverInterestMatchingFilters);
-				long startTime = System.nanoTime();
-				boolean succeeded = filter.deliver(interest);
-				_stats.addSample(StatsEnum.InterestHandlerTime, System.nanoTime() - startTime);
-				if (succeeded)
-					break;	// We only run interest handlers until one succeeds
-			}
+			if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
+				Log.finer(Log.FAC_NETMANAGER, formatMessage("Schedule delivery for interest: {0}"), interest);
+			_stats.increment(StatsEnum.DeliverInterestMatchingFilters);
+			long startTime = System.nanoTime();
+			boolean succeeded = filter.deliver(interest);
+			_stats.addSample(StatsEnum.InterestHandlerTime, System.nanoTime() - startTime);
+			if (succeeded)
+				break;	// We only run interest handlers until one succeeds
 		}
 	}
 

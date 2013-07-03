@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -32,8 +32,10 @@ import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 
 import org.ccnx.ccn.CCNContentHandler;
+import org.ccnx.ccn.CCNContentInterest;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.QueuedContentHandler;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
@@ -124,7 +126,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	/**
 	 * The timeout to use for segment retrieval.
 	 */
-	protected int _timeout = SystemConfiguration.getDefaultTimeout();
+	protected long _timeout = SystemConfiguration.getDefaultTimeout();
 
 	/**
 	 *  Encryption/decryption handler.
@@ -174,6 +176,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	private long processingSegment = -1;
 
 	private final int processingDefer = 0;
+	
+	private ContentHandler _contentHandler = new ContentHandler();
 
 	/**
 	 * Set up an input stream to read segmented CCN content under a given name.
@@ -1139,107 +1143,16 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 		if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 			Log.info(Log.FAC_PIPELINE, "PIPELINE: in handleContent for {0} at {1}", result.name(), System.currentTimeMillis());
 
-		long starttime = System.currentTimeMillis();
-		IncomingSegment is;
-
-		synchronized(processingSegmentLock) {
-			Log.info(Log.FAC_PIPELINE, "PIPELINE: before adjusting avgResponseTime after reception. avgResponseTime = {0} elapsed time {1}", avgResponseTime, (starttime - interest.userTime));
-			if (avgResponseTime == -1) {
-				avgResponseTime = starttime - interest.userTime;
-			} else {
-				//do not include hole filling responses, they will be extra fast
-				//if (interest.exclude()==null)
-
-				//TODO:  find true cause of this bug, temporary fix to get seek/skip fix merged
-				long newResponseTime = starttime - interest.userTime;
-				if (newResponseTime < 100 * avgResponseTime)
-					avgResponseTime = 0.9 * avgResponseTime + 0.1 * newResponseTime;
-				else {
-					//do not include this response time for now.  Will be fixed in bug 100478
-					Log.info(Log.FAC_PIPELINE, "PIPELINE: did not use response time for calculation...  would have been incorrect.  will be fixed in a new branch for 100478 {0}", newResponseTime);
-				}
-			}
-			Log.info(Log.FAC_PIPELINE, "PIPELINE: after adjusting avgResponseTime after reception. avgResponseTime = {0}", avgResponseTime);
-
-			interest.userTime = -1;
-
-			if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
-				Log.info(Log.FAC_PIPELINE, "PIPELINE: in handleContent after reading {0} avgResponseTime {1}", result.name(), avgResponseTime);
-			is = new IncomingSegment(result, interest);
-
-			processingSegment = SegmentationProfile.getSegmentNumber(is.content.name());
-		}
-
-		synchronized(inOrderSegments){
-
-			//was this a content object we were looking for?
-			//synchronized(inOrderSegments) {
-
-			if (SystemConfiguration.PIPELINE_STATS)
-				System.out.println("plot "+(System.currentTimeMillis() - _pipelineStartTime)+" inOrder: "+inOrderSegments.size() +" outOfOrder: "+outOfOrderSegments.size() + " interests: "+_sentInterests.size() +" holes: "+_holes + " received: "+_totalReceived+" ["+_baseName+"].2" + " avgResponseTime "+avgResponseTime);
-
-			if (_sentInterests.remove(is.interest)) {
-				//we had this interest outstanding...
-				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
-					Log.info(Log.FAC_PIPELINE, "PIPELINE: we were expecting this data! we had outstanding interests: {0}", is.interest);
-			} else {
-				//we must have canceled the interest...  drop content object
-				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
-					Log.info(Log.FAC_PIPELINE, "PIPELINE: we must have canceled the interest, dropping ContentObject(s).  old interest: {0}", is.interest);
-
-				//does this match one of our other interests?
-				Interest checkInterest;
-				is.interest = null;
-				for (int i = 0; i < _sentInterests.size(); i++) {
-					checkInterest = _sentInterests.get(i);
-					if (checkInterest.matches(is.content)) {
-						//we found a match!
-						if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
-							Log.info(Log.FAC_PIPELINE, "PIPELINE: the incoming packet's interest is gone, but it matches another interest, using that");
-						is.interest = checkInterest;
-						break;
-					}
-				}
-				if (is.interest == null) {
-					is = null;
-					synchronized(processingSegmentLock) {
-						processingSegment = -1;
-					}
-				}
-			}
-
-			if (is != null) {
-				// verify the content object
-				if (_handle.defaultVerifier().verify(is.content)) {
-					// this content verified
-					receivePipelineContent(is.content);
-				} else {
-					// content didn't verify, don't hand it up...
-					// TODO content that fails verification needs to be handled better.  need to express a new interest
-					if (Log.isLoggable(Log.FAC_PIPELINE, Level.WARNING))
-						Log.warning(Log.FAC_PIPELINE, "Dropping content object due to failed verification: {0} Need to add interest re-expression with exclude", is.content.name());
-					_sentInterests.remove(is.interest);
-				}
-			}
-
-			advancePipeline();
-		}//try holding lock more consistently to control how notify is done
-		attemptHoleFilling();
-
-		if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
-			Log.info(Log.FAC_PIPELINE, "PIPELINE: {0} done with handleContent after reading {1}", (System.currentTimeMillis() - starttime),  result.name());
-
+		_contentHandler.add(new CCNContentInterest(result, interest));
 		return null;
 	}
-
-
 
 	/**
 	 * Set the timeout that will be used for all content retrievals on this stream.
 	 * Default is 5 seconds.
 	 * @param timeout Milliseconds
 	 */
-	public void setTimeout(int timeout) {
+	public void setTimeout(long timeout) {
 		_timeout = timeout;
 	}
 
@@ -1430,6 +1343,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 			if (_keys == null) throw new AccessDeniedException("Cannot find keys to decrypt content.");
 		}
 		setCurrentSegment(newSegment);
+		if (hasFlag(FlagTypes.BLOCK_AFTER_FIRST_SEGMENT))
+			setTimeout(SystemConfiguration.NO_TIMEOUT);
 	}
 
 	/**
@@ -1759,29 +1674,27 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	 * @throws IOException If can't get a valid starting segment number
 	 */
 	public ContentObject getFirstSegment() throws IOException {
+		ContentObject segment = null;
 		if (null != _firstSegment) {
-			return _firstSegment;
+			segment = _firstSegment;
 		} else if (null != _startingSegmentNumber) {
-			int oldTimeout = _timeout;
+			long oldTimeout = _timeout;
 			if (hasFlag(FlagTypes.BLOCKING))
 				setTimeout(SystemConfiguration.NO_TIMEOUT);
-			ContentObject firstSegment = getSegment(_startingSegmentNumber);
-			if (hasFlag(FlagTypes.BLOCK_AFTER_FIRST_SEGMENT))
-				setTimeout(SystemConfiguration.NO_TIMEOUT);
-			else
-				setTimeout(oldTimeout);
+			segment = getSegment(_startingSegmentNumber);
 			if (Log.isLoggable(Log.FAC_IO, Level.FINE)) {
 				Log.fine(Log.FAC_IO, "getFirstSegment: segment number: " + _startingSegmentNumber + " got segment? " +
-						((null == firstSegment) ? "no " : firstSegment.name()));
+						((null == segment) ? "no " : segment.name()));
 			}
+			setTimeout(oldTimeout);
 			// Do not call setFirstSegment() here because that should only be done when
 			// we are initializing since it does one-time processing including changing the
 			// current segment.  Callers to this method may be simply needing the first segment
 			// without changing current.
-			return firstSegment;
 		} else {
 			throw new IOException("Stream does not have a valid starting segment number.");
 		}
+		return segment;
 	}
 
 	/**
@@ -2151,5 +2064,109 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 			interest = i;
 		}
 	}
+	
+	/**
+	 * Creates a separate thread to do content handling. We need this because we can't do
+	 * verification on the netmanager thread because we may need to retrieve a key which
+	 * requires the netmanager thread to complete.
+	 */
+	protected class ContentHandler extends QueuedContentHandler<CCNContentInterest> {
 
+		@Override
+		protected void process(CCNContentInterest ci) {
+
+			long starttime = System.currentTimeMillis();
+			Interest interest = ci.getInterest();
+			ContentObject result = ci.getContent();
+			IncomingSegment is;
+
+			synchronized(processingSegmentLock) {
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: before adjusting avgResponseTime after reception. avgResponseTime = {0} elapsed time {1}", avgResponseTime, (starttime - interest.userTime));
+				if (avgResponseTime == -1) {
+					avgResponseTime = starttime - interest.userTime;
+				} else {
+					//do not include hole filling responses, they will be extra fast
+					//if (interest.exclude()==null)
+
+					//TODO:  find true cause of this bug, temporary fix to get seek/skip fix merged
+					long newResponseTime = starttime - interest.userTime;
+					if (newResponseTime < 100 * avgResponseTime)
+						avgResponseTime = 0.9 * avgResponseTime + 0.1 * newResponseTime;
+					else {
+						//do not include this response time for now.  Will be fixed in bug 100478
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: did not use response time for calculation...  would have been incorrect.  will be fixed in a new branch for 100478 {0}", newResponseTime);
+					}
+				}
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: after adjusting avgResponseTime after reception. avgResponseTime = {0}", avgResponseTime);
+
+				interest.userTime = -1;
+
+				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: in handleContent after reading {0} avgResponseTime {1}", result.name(), avgResponseTime);
+				is = new IncomingSegment(result, interest);
+
+				processingSegment = SegmentationProfile.getSegmentNumber(is.content.name());
+			}
+
+			synchronized(inOrderSegments){
+
+				//was this a content object we were looking for?
+				//synchronized(inOrderSegments) {
+
+				if (SystemConfiguration.PIPELINE_STATS)
+					System.out.println("plot "+(System.currentTimeMillis() - _pipelineStartTime)+" inOrder: "+inOrderSegments.size() +" outOfOrder: "+outOfOrderSegments.size() + " interests: "+_sentInterests.size() +" holes: "+_holes + " received: "+_totalReceived+" ["+_baseName+"].2" + " avgResponseTime "+avgResponseTime);
+
+				if (_sentInterests.remove(is.interest)) {
+					//we had this interest outstanding...
+					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: we were expecting this data! we had outstanding interests: {0}", is.interest);
+				} else {
+					//we must have canceled the interest...  drop content object
+					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: we must have canceled the interest, dropping ContentObject(s).  old interest: {0}", is.interest);
+
+					//does this match one of our other interests?
+					Interest checkInterest;
+					is.interest = null;
+					for (int i = 0; i < _sentInterests.size(); i++) {
+						checkInterest = _sentInterests.get(i);
+						if (checkInterest.matches(is.content)) {
+							//we found a match!
+							if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+								Log.info(Log.FAC_PIPELINE, "PIPELINE: the incoming packet's interest is gone, but it matches another interest, using that");
+							is.interest = checkInterest;
+							break;
+						}
+					}
+					if (is.interest == null) {
+						is = null;
+						synchronized(processingSegmentLock) {
+							processingSegment = -1;
+						}
+					}
+				}
+
+				if (is != null) {
+					// verify the content object
+					if (_handle.defaultVerifier().verify(is.content)) {
+						// this content verified
+						receivePipelineContent(is.content);
+					} else {
+						// content didn't verify, don't hand it up...
+						// TODO content that fails verification needs to be handled better.  need to express a new interest
+						if (Log.isLoggable(Log.FAC_PIPELINE, Level.WARNING))
+							Log.warning(Log.FAC_PIPELINE, "Dropping content object due to failed verification: {0} Need to add interest re-expression with exclude", is.content.name());
+						_sentInterests.remove(is.interest);
+					}
+				}
+
+				advancePipeline();
+			}//try holding lock more consistently to control how notify is done
+			attemptHoleFilling();
+
+			if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: {0} done with process new Content after reading {1}", (System.currentTimeMillis() - starttime),  result.name());
+
+		}
+	}
 }

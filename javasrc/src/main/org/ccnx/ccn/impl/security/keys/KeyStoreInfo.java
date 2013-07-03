@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -16,8 +16,7 @@
  */
 package org.ccnx.ccn.impl.security.keys;
 
-import java.security.KeyStore;
-
+import org.ccnx.ccn.impl.security.keystore.CCNWrappedKeyStore;
 import org.ccnx.ccn.protocol.CCNTime;
 
 /**
@@ -30,10 +29,10 @@ public class KeyStoreInfo {
 	// Where did we load this from
 	String _keyStoreURI;
 	String _configurationFileURI;
-	KeyStore _keyStore;
+	CCNWrappedKeyStore _keyStore;
 	CCNTime _version;
 	
-	public KeyStoreInfo(String keyStoreURI, KeyStore keyStore, CCNTime version) {
+	public KeyStoreInfo(String keyStoreURI, CCNWrappedKeyStore keyStore, CCNTime version) {
 		_keyStoreURI = keyStoreURI;
 		_keyStore = keyStore;
 		_version = version;
@@ -43,7 +42,7 @@ public class KeyStoreInfo {
 	 * In case we don't know the 
 	 * @param keyStore
 	 */
-	public void setKeyStore(KeyStore keyStore) {
+	public void setKeyStore(CCNWrappedKeyStore keyStore) {
 		_keyStore = keyStore;
 	}
 	
@@ -55,7 +54,7 @@ public class KeyStoreInfo {
 		_configurationFileURI = configurationFileURI;
 	}
 	
-	public KeyStore getKeyStore() { return _keyStore; }
+	public CCNWrappedKeyStore getKeyStore() { return _keyStore; }
 	public CCNTime getVersion() { return _version; }
 	public String getKeyStoreURI() { return _keyStoreURI; }
 	public String getConfigurationFileURI() { return _configurationFileURI; }

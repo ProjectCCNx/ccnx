@@ -39,9 +39,11 @@ public abstract class QueuedContentHandler<E> implements Runnable {
 	 */
 	public void add(E e) {
 		_queue.add(e);
-		if (!_isRunning) {
-			_isRunning = true;
-			SystemConfiguration._systemThreadpool.execute(this);
+		synchronized (this) {
+			if (!_isRunning) {
+				_isRunning = true;
+				SystemConfiguration._systemThreadpool.execute(this);
+			}
 		}
 	}
 
@@ -52,9 +54,11 @@ public abstract class QueuedContentHandler<E> implements Runnable {
 		while (!checkShutdown()) {
 			E e = null;
 			e = _queue.poll();
-			if (null == e) {
-				_isRunning = false;
-				return;
+			synchronized (this) {
+				if (null == e) {
+					_isRunning = false;
+					return;
+				}
 			}
 			process(e);
 		}

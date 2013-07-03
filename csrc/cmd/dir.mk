@@ -26,6 +26,7 @@ INSTALLED_PROGRAMS = \
     ccnfilewatch \
     ccnguestprefix \
     ccninitkeystore \
+    ccninitaeskeystore \
     ccnlibtest \
     ccnsyncwatch ccnsyncslice \
     $(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
@@ -35,6 +36,7 @@ PROGRAMS = $(INSTALLED_PROGRAMS) \
     dataresponsetest \
     ccn_fetch_test \
     ccnsnew \
+    ccninitaeskeystore \
    $(PCAP_PROGRAMS)
 
 EXPAT_PROGRAMS = ccn_xmltoccnb
@@ -51,7 +53,8 @@ CSRC =  ccn_ccnbtoxml.c ccn_splitccnb.c ccn_xmltoccnb.c ccnbasicconfig.c \
        ccninitkeystore.c ccnls.c ccnnamelist.c ccnpoke.c ccnrm.c ccnsendchunks.c \
        ccnseqwriter.c \
        ccnsnew.c \
-       ccnsyncwatch.c ccnsyncslice.c ccn_fetch_test.c ccnlibtest.c ccnslurp.c dataresponsetest.c 
+       ccnsyncwatch.c ccnsyncslice.c ccn_fetch_test.c ccnlibtest.c ccnslurp.c dataresponsetest.c \
+       ccninitaeskeystore.c
 
 default all: $(PROGRAMS)
 # Don't try to build broken programs right now.
@@ -151,6 +154,9 @@ ccnhexdumpdata: ccnhexdumpdata.o
 ccninitkeystore: ccninitkeystore.o
 	$(CC) $(CFLAGS) -o $@ ccninitkeystore.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
+ccninitaeskeystore: ccninitaeskeystore.o
+	$(CC) $(CFLAGS) -o $@ ccninitaeskeystore.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+
 ccn_digest.o:
 	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_digest.c
 
@@ -193,96 +199,3 @@ ccnsyncslice: ccnsyncslice.o
 clean:
 	rm -f *.o libccn.a libccn.1.$(SHEXT) $(PROGRAMS) depend
 	rm -rf *.dSYM $(DEBRIS) *% *~
-
-###############################
-# Dependencies below here are checked by depend target
-# but must be updated manually.
-###############################
-ccn_ccnbtoxml.o: ccn_ccnbtoxml.c ../include/ccn/charbuf.h \
-  ../include/ccn/coding.h ../include/ccn/extend_dict.h
-ccn_splitccnb.o: ccn_splitccnb.c ../include/ccn/coding.h
-ccn_xmltoccnb.o: ccn_xmltoccnb.c ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/extend_dict.h
-ccnbasicconfig.o: ccnbasicconfig.c ../include/ccn/bloom.h \
-  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/ccnd.h ../include/ccn/uri.h \
-  ../include/ccn/face_mgmt.h ../include/ccn/sockcreate.h \
-  ../include/ccn/reg_mgmt.h ../include/ccn/signing.h \
-  ../include/ccn/keystore.h
-ccnbuzz.o: ccnbuzz.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/uri.h
-ccnbx.o: ccnbx.c ../include/ccn/charbuf.h ../include/ccn/coding.h \
-  ../include/ccn/ccn.h ../include/ccn/indexbuf.h
-ccnc.o: ccnc.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
-  ../include/ccn/ccn_private.h ../include/ccn/lned.h ../include/ccn/uri.h
-ccncat.o: ccncat.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h \
-  ../include/ccn/fetch.h
-ccnsimplecat.o: ccnsimplecat.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/uri.h
-ccncatchunks.o: ccncatchunks.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/uri.h
-ccncatchunks2.o: ccncatchunks2.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/schedule.h \
-  ../include/ccn/uri.h
-ccndumpnames.o: ccndumpnames.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/uri.h
-ccndumppcap.o: ccndumppcap.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
-  ../include/ccn/ccnd.h
-ccnfilewatch.o: ccnfilewatch.c
-ccnguestprefix.o: ccnguestprefix.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/uri.h
-ccnpeek.o: ccnpeek.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/uri.h
-ccnhexdumpdata.o: ccnhexdumpdata.c ../include/ccn/coding.h \
-  ../include/ccn/ccn.h ../include/ccn/charbuf.h ../include/ccn/indexbuf.h
-ccninitkeystore.o: ccninitkeystore.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/keystore.h
-ccnls.o: ccnls.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
-ccnnamelist.o: ccnnamelist.c ../include/ccn/coding.h ../include/ccn/uri.h \
-  ../include/ccn/charbuf.h
-ccnpoke.o: ccnpoke.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h \
-  ../include/ccn/keystore.h ../include/ccn/signing.h
-ccnrm.o: ccnrm.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
-ccnsendchunks.o: ccnsendchunks.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/uri.h \
-  ../include/ccn/keystore.h ../include/ccn/signing.h
-ccnseqwriter.o: ccnseqwriter.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/uri.h \
-  ../include/ccn/seqwriter.h
-ccnsnew.o: ccnsnew.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
-  ../include/ccn/reg_mgmt.h ../include/ccn/uri.h
-ccnsyncwatch.o: ccnsyncwatch.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/sync.h ../include/ccn/uri.h
-ccnsyncslice.o: ccnsyncslice.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/sync.h ../include/ccn/uri.h
-ccn_fetch_test.o: ccn_fetch_test.c ../include/ccn/fetch.h \
-  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/uri.h
-ccnlibtest.o: ccnlibtest.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
-  ../include/ccn/reg_mgmt.h ../include/ccn/uri.h
-ccnslurp.o: ccnslurp.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/uri.h
-dataresponsetest.o: dataresponsetest.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h

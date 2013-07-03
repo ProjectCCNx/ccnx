@@ -48,7 +48,8 @@ ALLTESTS = \
   test_stale \
   test_twohop_ccnd \
   test_twohop_ccnd_teardown \
-  test_unreg
+  test_unreg \
+  test_symmetric
 
 default all: $(SCRIPTSRC) testdriver
 

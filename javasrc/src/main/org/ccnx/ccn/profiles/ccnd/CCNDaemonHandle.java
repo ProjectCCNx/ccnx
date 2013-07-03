@@ -111,7 +111,7 @@ public class CCNDaemonHandle {
 				contentIn = _manager.get(interested, SystemConfiguration.CCND_OP_TIMEOUT);
 			} else {
 				if (null != prefix) {
-					_manager.expressInterest(this, interested, prefix);
+					_manager.expressInterest(interested, prefix);
 				} else
 					_manager.write(interested);
 			}

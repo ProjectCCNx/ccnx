@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -29,6 +29,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.KeyPair;
@@ -45,12 +46,16 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.logging.Level;
 
+import javax.crypto.SecretKey;
+
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.security.crypto.EncryptedObjectFileHelper;
 import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
+import org.ccnx.ccn.impl.security.keystore.CCNWrappedKeyStore;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.Tuple;
 import org.ccnx.ccn.io.content.KeyValueSet;
@@ -174,7 +179,7 @@ public class BasicKeyManager extends KeyManager {
 				keyStoreFileName : UserConfiguration.keystoreFileName();
 		_configurationFileName = (null != configurationFileName) ? 
 				configurationFileName : UserConfiguration.configurationFileName();
-		// Don't let people override this. Also make "confguration file" a configuration file,
+		// Don't let people override this. Also make "configuration file" a configuration file,
 		// move cached identity data to an identity file name TODO.
 		_keyCacheFileName = UserConfiguration.keyCacheFileName();
 	    _keyStoreDirectory = (null != keyStoreDirectory) ? keyStoreDirectory : UserConfiguration.userConfigurationDirectory();
@@ -205,8 +210,8 @@ public class BasicKeyManager extends KeyManager {
 			return;
 		_publicKeyCache = new PublicKeyCache();
 		_privateKeyCache = new SecureKeyCache();
-		_keyStoreInfo = loadKeyStore();// uses _keyRepository and _privateKeyCache
-		if (!loadValuesFromKeystore(_keyStoreInfo)) {
+		_keyStoreInfo = loadKeyStore(_keyStoreDirectory, _keyStoreType, _keyStoreFileName, _password); // uses _keyRepository and _privateKeyCache
+		if (!loadValuesFromKeystore(_keyStoreInfo, null)) {
 			Log.warning("Cannot process keystore!");
 		}
 		// This also loads our cached keys.
@@ -296,11 +301,10 @@ public class BasicKeyManager extends KeyManager {
 	 * 	uses default in user's home directory.
 	 * @throws ConfigurationException
 	 */
-	protected KeyStoreInfo loadKeyStore() throws ConfigurationException, IOException {
-		
-		File keyStoreFile = new File(_keyStoreDirectory, _keyStoreFileName);
+	protected KeyStoreInfo loadKeyStore(String storeDirectory, String type, String fileName, char[] password) throws ConfigurationException, IOException {
 		
 		KeyStoreInfo keyStoreInfo = null;
+		File keyStoreFile = new File(storeDirectory, fileName);
 		if (!keyStoreFile.exists() || (0 == keyStoreFile.length())) {
 			// If the BC configuration is screwed up, sometimes a 0-length keystore
 			// gets created. If so, blow it away and make a new one.
@@ -316,12 +320,12 @@ public class BasicKeyManager extends KeyManager {
 		}
 		if (null == keyStoreInfo) {
 			FileInputStream in = null;
-			KeyStore keyStore = null;
+			CCNWrappedKeyStore keyStore = null;
 			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO))
 				Log.info(Log.FAC_KEYS, "Loading CCN key store from " + keyStoreFile.getAbsolutePath() + "...last modified " + keyStoreFile.lastModified() + "(ms).");
 			try {
 				in = new FileInputStream(keyStoreFile);
-				keyStore = readKeyStore(in);
+				keyStore = readKeyStore(in, type, password);
 				keyStoreInfo = new KeyStoreInfo(keyStoreFile.toURI().toString(), keyStore, new CCNTime(keyStoreFile.lastModified()));
 				if (Log.isLoggable(Log.FAC_KEYS, Level.INFO))
 					Log.info(Log.FAC_KEYS, "Loaded CCN key store from " + keyStoreFile.getAbsolutePath() + "...version " + keyStoreInfo.getVersion() + " ms: " + keyStoreInfo.getVersion().getTime());
@@ -339,13 +343,15 @@ public class BasicKeyManager extends KeyManager {
 	 * @param in input stream
 	 * @throws ConfigurationException
 	 */
-	protected KeyStore readKeyStore(InputStream in) throws ConfigurationException {
-		KeyStore keyStore = null;
+	protected CCNWrappedKeyStore readKeyStore(InputStream in, String type, char[] password) throws ConfigurationException {
+		CCNWrappedKeyStore keyStore = null;
 		try {
 			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO))
 				Log.info(Log.FAC_KEYS, "Loading CCN key store...");
-			keyStore = KeyStore.getInstance(_keyStoreType);
-			keyStore.load(in, _password);
+			if (null == password)
+				password = _password;
+			keyStore = CCNWrappedKeyStore.getInstance(type);
+			keyStore.load(in, password);
 		} catch (NoSuchAlgorithmException e) {
 			Log.warning("Cannot load keystore: " + e);
 			throw new ConfigurationException("Cannot load default keystore: " + e);
@@ -393,32 +399,39 @@ public class BasicKeyManager extends KeyManager {
 	 * @param keyStore
 	 * @throws ConfigurationException 
 	 */
-	protected boolean loadValuesFromKeystore(KeyStoreInfo keyStoreInfo) throws ConfigurationException {
-		KeyStore.PrivateKeyEntry entry = null;
+	protected boolean loadValuesFromKeystore(KeyStoreInfo keyStoreInfo, char[] password) throws ConfigurationException {
+		KeyStore.Entry entry = null;
+		if (null == password)
+			password = _password;
 		try {
-			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO))
-				Log.info(Log.FAC_KEYS, "Loading key store {0} version {1} version component {2} millis {3}", keyStoreInfo.getKeyStoreURI(), keyStoreInfo.getVersion().toString(), 
-						VersioningProfile.printAsVersionComponent(keyStoreInfo.getVersion()), keyStoreInfo.getVersion().getTime());
-			// Default alias should be a PrivateKeyEntry
-			entry = (KeyStore.PrivateKeyEntry)keyStoreInfo.getKeyStore().getEntry(_defaultAlias, new KeyStore.PasswordProtection(_password));
-			if (null == entry) {
-				Log.warning("Cannot get default key entry: " + _defaultAlias);
-				generateConfigurationException("Cannot retrieve default user keystore entry.", null);
+			if (keyStoreInfo.getKeyStore().requiresSymmetric()) {
+				entry = (KeyStore.SecretKeyEntry)keyStoreInfo.getKeyStore().getEntry(_defaultAlias, new KeyStore.PasswordProtection(password));
+				SecretKey key = ((KeyStore.SecretKeyEntry)entry).getSecretKey();
+				_privateKeyCache.addSecretKey(null, key);
+			} else {
+				if (Log.isLoggable(Log.FAC_KEYS, Level.INFO))
+					Log.info(Log.FAC_KEYS, "Loading key store {0} version {1} version component {2} millis {3}", keyStoreInfo.getKeyStoreURI(), keyStoreInfo.getVersion().toString(), 
+							VersioningProfile.printAsVersionComponent(keyStoreInfo.getVersion()), keyStoreInfo.getVersion().getTime());
+				// Default alias should be a PrivateKeyEntry
+				entry = (KeyStore.PrivateKeyEntry)keyStoreInfo.getKeyStore().getEntry(_defaultAlias, new KeyStore.PasswordProtection(password));
+				if (null == entry) {
+					Log.warning("Cannot get default key entry: " + _defaultAlias);
+					generateConfigurationException("Cannot retrieve default user keystore entry.", null);
+				}
+			    X509Certificate certificate = (X509Certificate)((KeyStore.PrivateKeyEntry)entry).getCertificate();
+			    if (null == certificate) {
+					Log.warning("Cannot get certificate for default key entry: " + _defaultAlias);
+					generateConfigurationException("Cannot retrieve certificate for default user keystore entry.", null);		    	
+			    }
+			    _defaultKeyID = new PublisherPublicKeyDigest(certificate.getPublicKey());
+				if (Log.isLoggable(Log.FAC_KEYS, Level.INFO))
+					Log.info(Log.FAC_KEYS, "Default key ID for user " + _userName + ": " + _defaultKeyID);
+				
+				_privateKeyCache.loadKeyStore(keyStoreInfo, password, _publicKeyCache);
 			}
-		    X509Certificate certificate = (X509Certificate)entry.getCertificate();
-		    if (null == certificate) {
-				Log.warning("Cannot get certificate for default key entry: " + _defaultAlias);
-				generateConfigurationException("Cannot retrieve certificate for default user keystore entry.", null);		    	
-		    }
-		    _defaultKeyID = new PublisherPublicKeyDigest(certificate.getPublicKey());
-			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO))
-				Log.info(Log.FAC_KEYS, "Default key ID for user " + _userName + ": " + _defaultKeyID);
-			
-			_privateKeyCache.loadKeyStore(keyStoreInfo, _password, _publicKeyCache);
-
 		} catch (Exception e) {
 			generateConfigurationException("Cannot retrieve default user keystore entry.", e);
-		}    
+		}
 		return true;
 	}
 	
@@ -664,7 +677,7 @@ public class BasicKeyManager extends KeyManager {
 				throws ConfigurationException, IOException {
 		
 		Tuple<KeyStoreInfo, OutputStream> streamInfo = createKeyStoreWriteStream();
-	    KeyStore keyStore = createKeyStore(streamInfo.second());
+	    CCNWrappedKeyStore keyStore = createKeyStore(streamInfo.second());
 	    
 	    KeyStoreInfo storeInfo = streamInfo.first();
 	    storeInfo.setKeyStore(keyStore);
@@ -729,15 +742,16 @@ public class BasicKeyManager extends KeyManager {
 	    return new Tuple<KeyStoreInfo, OutputStream>(storeInfo, out);   
 	}
 	
-	protected KeyStore createKeyStore(OutputStream keystoreWriteStream) 
+	protected CCNWrappedKeyStore createKeyStore(OutputStream keystoreWriteStream) 
 			throws ConfigurationException, IOException {
-		return createKeyStore(keystoreWriteStream, _keyStoreType, _defaultAlias, _password, _userName);
+		return createKeyStore(keystoreWriteStream, null, _keyStoreType, _defaultAlias, _password, _userName);
 	}
 	
 	/**
 	 * Generates a key pair and a certificate, and stores them to the key store using the specified
 	 * alias, password, and other information.
 	 * @param keystoreWriteStream The output stream to write the keystore to (file stream, ccn stream, ...)
+	 * @param key - used for storing pregenerated key.
 	 * @param keyStoreType The keystore type to use. If null, uses UserConfiguration.defaultKeyStoreType()
 	 * @param keyAlias The key alias to use. If null, uses UserConfiguration.defaultKeyAlias(). Note
 	 * 	 that toLower is called on the alias before it is used, as OSes vary in their handling of
@@ -749,7 +763,7 @@ public class BasicKeyManager extends KeyManager {
 	 * @throws ConfigurationException
 	 * @throws IOException
 	 */
-	public static KeyStore createKeyStore(OutputStream keystoreWriteStream, 
+	public static CCNWrappedKeyStore createKeyStore(OutputStream keystoreWriteStream, Key key,
 											 String keyStoreType, String keyAlias,
 											 char [] password,
 											 String userName) throws ConfigurationException, IOException {
@@ -771,11 +785,11 @@ public class BasicKeyManager extends KeyManager {
 			userName = UserConfiguration.userName();
 		}
 
-		KeyStore ks = null;
+		CCNWrappedKeyStore ks = null;
 	    try {
 			if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
 				Log.finest(Log.FAC_KEYS, "createKeyStore: getting instance of keystore type " + keyStoreType);
-			ks = KeyStore.getInstance(keyStoreType);
+			ks = CCNWrappedKeyStore.getInstance(keyStoreType);
 			if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
 				Log.finest(Log.FAC_KEYS, "createKeyStore: loading key store.");
 			ks.load(null, password);
@@ -791,36 +805,42 @@ public class BasicKeyManager extends KeyManager {
 			generateConfigurationException("Cannot initialize instance of default key store type.", e);
 		}
 		
-		KeyPairGenerator kpg = null;
-		try {
-			kpg = KeyPairGenerator.getInstance(UserConfiguration.defaultKeyAlgorithm());
-		} catch (NoSuchAlgorithmException e) {
-			generateConfigurationException("Cannot generate key using default algorithm: " + UserConfiguration.defaultKeyAlgorithm(), e);
-		}
-		kpg.initialize(UserConfiguration.defaultKeyLength());
-		
-		if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
-			Log.finest(Log.FAC_KEYS, "createKeyStore: generating " + UserConfiguration.defaultKeyLength() + "-bit " + UserConfiguration.defaultKeyAlgorithm() + " key.");
-		KeyPair userKeyPair = kpg.generateKeyPair();
-		if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
-			Log.finest(Log.FAC_KEYS, "createKeyStore: key generated, generating certificate for user " + userName);
-		
-		// Generate a self-signed certificate.
-		String subjectDN = "CN=" + userName;
-		X509Certificate ssCert = null;
-		try {
-			 ssCert = 
-				 MinimalCertificateGenerator.GenerateUserCertificate(userKeyPair, subjectDN, 
-						 											 MinimalCertificateGenerator.MSEC_IN_YEAR);
+	    KeyStore.Entry entry = null;
+	    if (null == key) {
+			KeyPairGenerator kpg = null;
+			try {
+				kpg = KeyPairGenerator.getInstance(UserConfiguration.defaultKeyAlgorithm());
+			} catch (NoSuchAlgorithmException e) {
+				generateConfigurationException("Cannot generate key using default algorithm: " + UserConfiguration.defaultKeyAlgorithm(), e);
+			}
+			kpg.initialize(UserConfiguration.defaultKeyLength());
+			
 			if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
-				Log.finest(Log.FAC_KEYS, "createKeyStore: certificate generated.");
-			 
-		} catch (Exception e) {
-			generateConfigurationException("InvalidKeyException generating user internal certificate.", e);
-		} 
-
-		KeyStore.PrivateKeyEntry entry =
-	        new KeyStore.PrivateKeyEntry(userKeyPair.getPrivate(), new X509Certificate[]{ssCert});
+				Log.finest(Log.FAC_KEYS, "createKeyStore: generating " + UserConfiguration.defaultKeyLength() + "-bit " + UserConfiguration.defaultKeyAlgorithm() + " key.");
+			KeyPair userKeyPair = kpg.generateKeyPair();
+			if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
+				Log.finest(Log.FAC_KEYS, "createKeyStore: key generated, generating certificate for user " + userName);
+			
+			// Generate a self-signed certificate.
+			String subjectDN = "CN=" + userName;
+			X509Certificate ssCert = null;
+			try {
+				 ssCert = 
+					 MinimalCertificateGenerator.GenerateUserCertificate(userKeyPair, subjectDN, 
+							 											 MinimalCertificateGenerator.MSEC_IN_YEAR);
+				if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
+					Log.finest(Log.FAC_KEYS, "createKeyStore: certificate generated.");
+				 
+			} catch (Exception e) {
+				generateConfigurationException("InvalidKeyException generating user internal certificate.", e);
+			} 
+	
+			entry = new KeyStore.PrivateKeyEntry(userKeyPair.getPrivate(), new X509Certificate[]{ssCert});
+	    } else {
+	    	if (ks.requiresSymmetric()) {
+	    		entry = new KeyStore.SecretKeyEntry((SecretKey)key);
+	    	}
+	    }
 
 	    try {
 			if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
@@ -1038,11 +1058,19 @@ public class BasicKeyManager extends KeyManager {
 			Log.finer(Log.FAC_KEYS, "getSigningKey: retrieving key: " + publisher);
 		if (null == publisher)
 			return null;
-		return _privateKeyCache.getPrivateKey(publisher.digest());
+		Key key = _privateKeyCache.getPrivateKey(publisher.digest());
+		if (null == key) {  // Maybe its symmetric and we don't have it yet...
+			try {
+				key = readSymmetricKey(publisher, null, null, null);
+			} catch (IOException e) {
+				return null;
+			}
+		}
+		return key;
 	}
 
 	/**
-	 * Get public key for a publisher, given a key locator.
+	 * Get key for a publisher, given a key locator.
 	 * Times out after timeout amount of time elapsed 
 	 * @param publisherID publisher public key digest
 	 * @param keyLocator key locator
@@ -1051,20 +1079,100 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	@Override
 	public Key getVerificationKey(
-			PublisherPublicKeyDigest desiredKeyID, KeyLocator keyLocator, 
-			long timeout) throws IOException {		
+			PublisherPublicKeyDigest desiredKeyID, KeyLocator keyLocator, String type, String fileName,
+			String password, long timeout) throws IOException {		
 		
 		if (Log.isLoggable(Log.FAC_KEYS, Level.FINER))
 			Log.finer(Log.FAC_KEYS, "getVerificationKey: retrieving key: " + desiredKeyID + " located at: " + keyLocator);
 		if (null == keyLocator) {
 			// Presumably this means that the key is a symmetric key
-			return getSecureKeyCache().getPrivateKey(desiredKeyID.digest());
+			Key key = getSecureKeyCache().getPrivateKey(desiredKeyID.digest());
+			if (null == key) {
+				// We don't have it - try reading it in from a keystore
+				key = readSymmetricKey(desiredKeyID, type, fileName, password);
+			}
+			return key;
 		}
 		// this will try local caches, the locator itself, and if it 
 		// has to, will go to the network. The result will be stored in the cache.
 		// All this tells us is that the key matches the publisher. For whether
 		// or not we should trust it for some reason, we have to get fancy.
 		return (Key)getPublicKeyCache().getPublicKey(desiredKeyID, keyLocator, timeout, handle());
+	}
+	
+	/**
+	 * Save a verification key in a keystore
+	 */
+	public void saveVerificationKey(Key key, ContentName name, String type, String fileName, String password) throws IOException {
+		char[] pwd;
+		SecureKeyCache skc = getSecureKeyCache();
+		if (null == type) {
+			if (key instanceof SecretKey) {
+				skc.addSecretKey(name, (SecretKey)key);
+				type = UserConfiguration.defaultSymmetricKeystoreType();
+			} else {
+				skc.addKey(name, key);
+				type = _keyStoreType;
+			}
+		}
+		if (null == fileName) {
+			fileName = _keyStoreFileName + "-" + keyToKeyStoreSuffix(SystemConfiguration.KEYSTORE_NAMING_VERSION, key);
+		}
+		pwd = (null == password) ? _password : password.toCharArray();
+		try {
+			Tuple<KeyStoreInfo, OutputStream> tuple = createKeyStoreWriteStream(_keyStoreDirectory, fileName);
+			createKeyStore(tuple.second(), key, type, _defaultAlias, pwd, _userName);
+		} catch (ConfigurationException e) {
+			throw new IOException(e);
+		}
+	}
+	
+	/**
+	 * Remove a verification and its backing keystore if applicable
+	 * TODO - should we remove the key from the cache? No mechanism was created for that in the past
+	 */
+	public void removeVerificationKey(Key key, String type, String fileName) throws IOException {
+		if (null == fileName) {
+			fileName = _keyStoreFileName + "-" + keyToKeyStoreSuffix(SystemConfiguration.KEYSTORE_NAMING_VERSION, key);
+		}
+		try {
+			Tuple<KeyStoreInfo, OutputStream> tuple = createKeyStoreWriteStream(_keyStoreDirectory, fileName);
+			KeyStoreInfo ksi = tuple.first();
+			File f = new File(new URI(ksi.getKeyStoreURI()).getRawPath());
+			f.delete();
+		} catch (ConfigurationException e) {
+			throw new IOException(e);
+		} catch (URISyntaxException e) {}	// shouldn't happen
+	}
+	
+	/**
+	 * Read a symmetric key fron a symmetric keystore
+	 * @param desiredKeyID
+	 * @param type
+	 * @param fileName
+	 * @param password
+	 * @return
+	 * @throws IOException
+	 */
+	protected Key readSymmetricKey(PublisherPublicKeyDigest desiredKeyID, String type, String fileName, String password) throws IOException {
+		if (null == type) {
+			type = UserConfiguration.defaultSymmetricKeystoreType();
+		}
+		if (null == fileName) {
+			fileName = _keyStoreFileName + "-" + digestToKeyStoreSuffix(SystemConfiguration.KEYSTORE_NAMING_VERSION, desiredKeyID);
+		}
+		char[] pwd;
+		if (null == password)
+			pwd = _password;
+		else
+			pwd = password.toCharArray();
+		try {
+			KeyStoreInfo ksi = loadKeyStore(_keyStoreDirectory, type, fileName, pwd);
+			loadValuesFromKeystore(ksi, pwd);
+			return getSecureKeyCache().getPrivateKey(desiredKeyID.digest());
+		} catch (ConfigurationException e) {
+			throw new IOException(e);
+		}
 	}
 	
 	/**

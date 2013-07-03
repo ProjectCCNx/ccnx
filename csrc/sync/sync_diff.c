@@ -227,6 +227,7 @@ abortCompare(struct sync_diff_data *sdd, char *why) {
     if (sdd->add_closure != NULL && sdd->add_closure->add != NULL)
         // give the client a last shot at the data
         sdd->add_closure->add(sdd->add_closure, NULL);
+    resetDiffData(sdd);
     return -1;
 }
 
@@ -928,6 +929,7 @@ compareAction(struct ccn_schedule *sched,
                 sdd->add_closure->add(sdd->add_closure, NULL);
             delay = -1;
             sdd->ev = NULL; // event will not be rescheduled
+            resetDiffData(sdd);
             break;
         }
         case sync_diff_state_error: {

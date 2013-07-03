@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -64,33 +64,33 @@ public class SystemConfiguration {
 	 * System operation timeout. Very long timeout used to wait for system events
 	 * such as stopping Daemons.
 	 */
-	public final static int SYSTEM_STOP_TIMEOUT = 30000;
+	public final static long SYSTEM_STOP_TIMEOUT = 30000;
 
 	/**
 	 * Very long timeout for network operations, in msec..
 	 */
-	public final static int MAX_TIMEOUT = 10000;
+	public final static long MAX_TIMEOUT = 10000;
 
 	/**
 	 * Extra-long timeout, e.g. to get around reexpression timing issues.
 	 */
-	public final static int EXTRA_LONG_TIMEOUT = 6000;
+	public final static long EXTRA_LONG_TIMEOUT = 6000;
 
 	/**
 	 * Longer timeout, for e.g. waiting for a latest version and being sure you
 	 * have anything available locally in msec.
 	 */
-	public final static int LONG_TIMEOUT = 3000;
+	public final static long LONG_TIMEOUT = 3000;
 
 	/**
 	 * Medium timeout, used as system default.
 	 */
-	public static final int MEDIUM_TIMEOUT = 1000;
+	public static final long MEDIUM_TIMEOUT = 1000;
 
 	/**
 	 * Short timeout; for things you expect to exist or not exist locally.
 	 */
-	public static final int SHORT_TIMEOUT = 300;
+	public static final long SHORT_TIMEOUT = 300;
 	
 	protected static final String CCN_PROTOCOL_PROPERTY = "org.ccnx.protocol";
 	
@@ -145,8 +145,8 @@ public class SystemConfiguration {
 	 * Default timeout for the flow controller
 	 */
 	protected static final String FC_TIMEOUT_PROPERTY = "org.ccnx.fc.timeout";
-	public final static int FC_TIMEOUT_DEFAULT = MAX_TIMEOUT;
-	public static int FC_TIMEOUT = FC_TIMEOUT_DEFAULT;
+	public final static long FC_TIMEOUT_DEFAULT = MAX_TIMEOUT;
+	public static long FC_TIMEOUT = FC_TIMEOUT_DEFAULT;
 
 	/**
 	 * Allow override to only save to a local repository
@@ -162,8 +162,8 @@ public class SystemConfiguration {
 	 * This should be longer than the interest timeout to permit at least one re-expression.
 	 */
 	protected static final String CCNDID_DISCOVERY_TIMEOUT_PROPERTY = "org.ccnx.ccndid.timeout";
-	public final static int CCNDID_DISCOVERY_TIMEOUT_DEFAULT = 4200;
-	public static int CCNDID_DISCOVERY_TIMEOUT = CCNDID_DISCOVERY_TIMEOUT_DEFAULT;
+	public final static long CCNDID_DISCOVERY_TIMEOUT_DEFAULT = 4200;
+	public static long CCNDID_DISCOVERY_TIMEOUT = CCNDID_DISCOVERY_TIMEOUT_DEFAULT;
 
 	/**
 	 * Pipeline size for pipeline in CCNAbstractInputStream
@@ -222,15 +222,15 @@ public class SystemConfiguration {
 	 */
 	protected static final String CCND_OP_TIMEOUT_PROPERTY = "org.ccnx.ccnop.timeout";
 	protected final static String CCND_OP_TIMEOUT_ENV_VAR = "CCND_OP_TIMEOUT";
-	public final static int CCND_OP_TIMEOUT_DEFAULT = 4200;
-	public static int CCND_OP_TIMEOUT = CCND_OP_TIMEOUT_DEFAULT;
+	public final static long CCND_OP_TIMEOUT_DEFAULT = 4200;
+	public static long CCND_OP_TIMEOUT = CCND_OP_TIMEOUT_DEFAULT;
 
 	/**
 	 * System default timeout
 	 */
 	protected static final String CCNX_TIMEOUT_PROPERTY = "org.ccnx.default.timeout";
 	protected final static String CCNX_TIMEOUT_ENV_VAR = "CCNX_TIMEOUT";
-	public final static int CCNX_TIMEOUT_DEFAULT = EXTRA_LONG_TIMEOUT;
+	public final static long CCNX_TIMEOUT_DEFAULT = EXTRA_LONG_TIMEOUT;
 
 	/**
 	 * GetLatestVersion attempt timeout.
@@ -241,15 +241,15 @@ public class SystemConfiguration {
 	 */
 	protected static final String GLV_ATTEMPT_TIMEOUT_PROPERTY = "org.ccnx.glv.attempt.timeout";
 	protected final static String GLV_ATTEMPT_TIMEOUT_ENV_VAR = "GLV_ATTEMPT_TIMEOUT";
-	public final static int GLV_ATTEMPT_TIMEOUT_DEFAULT = SHORT_TIMEOUT;
-	public static int GLV_ATTEMPT_TIMEOUT = GLV_ATTEMPT_TIMEOUT_DEFAULT;
+	public final static long GLV_ATTEMPT_TIMEOUT_DEFAULT = SHORT_TIMEOUT;
+	public static long GLV_ATTEMPT_TIMEOUT = GLV_ATTEMPT_TIMEOUT_DEFAULT;
 
 	/**
 	 * "Short timeout" that can be set
 	 */
 	protected static final String SETTABLE_SHORT_TIMEOUT_PROPERTY = "org.ccnx.short.timeout";
 	protected final static String SETTABLE_SHORT_TIMEOUT_ENV_VAR = "SETTABLE_SHORT_TIMEOUT";
-	public static int SETTABLE_SHORT_TIMEOUT = SHORT_TIMEOUT;
+	public static long SETTABLE_SHORT_TIMEOUT = SHORT_TIMEOUT;
 
 	/**
 	 * Should we dump netmanager statistics on shutdown
@@ -262,13 +262,13 @@ public class SystemConfiguration {
 	/**
 	 * Settable system default timeout.
 	 */
-	protected static int _defaultTimeout = CCNX_TIMEOUT_DEFAULT;
+	protected static long _defaultTimeout = CCNX_TIMEOUT_DEFAULT;
 
 	/**
 	 * Get system default timeout.
 	 * @return the default timeout.
 	 */
-	public static int getDefaultTimeout() { return _defaultTimeout; }
+	public static long getDefaultTimeout() { return _defaultTimeout; }
 
 	/**
 	 * Set system default timeout.
@@ -279,7 +279,7 @@ public class SystemConfiguration {
 	 * No timeout. Should be single value used in all places in the code where you
 	 * want to block forever.
 	 */
-	public final static int NO_TIMEOUT = -1;
+	public final static long NO_TIMEOUT = -1;
 
 	/**
 	 * Set the maximum number of attempts that VersioningProfile.getLatestVersion will
@@ -300,6 +300,11 @@ public class SystemConfiguration {
 	 * the system default above.
 	 */
 	protected static String DEFAULT_ENCODING = null;
+	
+	/**
+	 * Keystore naming version
+	 */
+	public static final int KEYSTORE_NAMING_VERSION = 1;
 
 	/**
 	 * Command-line property to set default encoding
@@ -419,7 +424,7 @@ public class SystemConfiguration {
 
 		// Allow override of default ccndID discovery timeout.
 		try {
-			CCNDID_DISCOVERY_TIMEOUT = Integer.parseInt(System.getProperty(CCNDID_DISCOVERY_TIMEOUT_PROPERTY, Integer.toString(CCNDID_DISCOVERY_TIMEOUT_DEFAULT)));
+			CCNDID_DISCOVERY_TIMEOUT = Integer.parseInt(System.getProperty(CCNDID_DISCOVERY_TIMEOUT_PROPERTY, Long.toString(CCNDID_DISCOVERY_TIMEOUT_DEFAULT)));
 			//			System.err.println("CCNDID_DISCOVERY_TIMEOUT = " + CCNDID_DISCOVERY_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The ccndID discovery timeout must be an integer.");
@@ -428,7 +433,7 @@ public class SystemConfiguration {
 
 		// Allow override of default flow controller timeout.
 		try {
-			FC_TIMEOUT = Integer.parseInt(System.getProperty(FC_TIMEOUT_PROPERTY, Integer.toString(FC_TIMEOUT_DEFAULT)));
+			FC_TIMEOUT = Integer.parseInt(System.getProperty(FC_TIMEOUT_PROPERTY, Long.toString(FC_TIMEOUT_DEFAULT)));
 			//			System.err.println("FC_TIMEOUT = " + FC_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The default flow controller timeout must be an integer.");
@@ -445,7 +450,7 @@ public class SystemConfiguration {
 
 		// Allow override of ccn default timeout.
 		try {
-			_defaultTimeout = Integer.parseInt(retrievePropertyOrEnvironmentVariable(CCNX_TIMEOUT_PROPERTY, CCNX_TIMEOUT_ENV_VAR, Integer.toString(CCNX_TIMEOUT_DEFAULT)));
+			_defaultTimeout = Integer.parseInt(retrievePropertyOrEnvironmentVariable(CCNX_TIMEOUT_PROPERTY, CCNX_TIMEOUT_ENV_VAR, Long.toString(CCNX_TIMEOUT_DEFAULT)));
 			//			System.err.println("CCNX_TIMEOUT = " + CCNX_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The ccnd default timeout must be an integer.");
@@ -454,7 +459,7 @@ public class SystemConfiguration {
 
 		// Allow override of ccnd op timeout.
 		try {
-			CCND_OP_TIMEOUT = Integer.parseInt(System.getProperty(CCND_OP_TIMEOUT_PROPERTY, Integer.toString(CCND_OP_TIMEOUT_DEFAULT)));
+			CCND_OP_TIMEOUT = Integer.parseInt(System.getProperty(CCND_OP_TIMEOUT_PROPERTY, Long.toString(CCND_OP_TIMEOUT_DEFAULT)));
 			//			System.err.println("CCND_OP_TIMEOUT = " + CCND_OP_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The ccnd op timeout must be an integer.");
@@ -463,7 +468,7 @@ public class SystemConfiguration {
 
 		// Allow override of getLatestVersion attempt timeout.
 		try {
-			GLV_ATTEMPT_TIMEOUT = Integer.parseInt(retrievePropertyOrEnvironmentVariable(GLV_ATTEMPT_TIMEOUT_PROPERTY, GLV_ATTEMPT_TIMEOUT_ENV_VAR, Integer.toString(GLV_ATTEMPT_TIMEOUT_DEFAULT)));
+			GLV_ATTEMPT_TIMEOUT = Integer.parseInt(retrievePropertyOrEnvironmentVariable(GLV_ATTEMPT_TIMEOUT_PROPERTY, GLV_ATTEMPT_TIMEOUT_ENV_VAR, Long.toString(GLV_ATTEMPT_TIMEOUT_DEFAULT)));
 			//			System.err.println("GLV_ATTEMPT_TIMEOUT = " + GLV_ATTEMPT_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The getlatestversion attempt timeout must be an integer.");
@@ -472,7 +477,7 @@ public class SystemConfiguration {
 
 		// Allow override of settable short timeout.
 		try {
-			SETTABLE_SHORT_TIMEOUT = Integer.parseInt(retrievePropertyOrEnvironmentVariable(SETTABLE_SHORT_TIMEOUT_PROPERTY, SETTABLE_SHORT_TIMEOUT_ENV_VAR, Integer.toString(SHORT_TIMEOUT)));
+			SETTABLE_SHORT_TIMEOUT = Integer.parseInt(retrievePropertyOrEnvironmentVariable(SETTABLE_SHORT_TIMEOUT_PROPERTY, SETTABLE_SHORT_TIMEOUT_ENV_VAR, Long.toString(SHORT_TIMEOUT)));
 			//			System.err.println("SETTABLE_SHORT_TIMEOUT = " + SETTABLE_SHORT_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The settable short timeout must be an integer.");

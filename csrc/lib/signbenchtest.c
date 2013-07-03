@@ -3,7 +3,7 @@
  * 
  * A simple test program to benchmark signing performance.
  *
- * Copyright (C) 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009,2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/keystore.h>
@@ -30,10 +31,22 @@
 #define COUNT 3000
 #define PAYLOAD_SIZE 51
 
+#define PASSWORD "Th1s1sn0t8g00dp8ssw0rd."
+
+static void
+usage(const char *progname)
+{
+        fprintf(stderr,
+                "%s [-h] [-s]\n"
+		"Run signing benchmark -s uses symmetric keys instead of key pairs",
+		progname);
+        exit(1);
+}
+
 int
 main(int argc, char **argv)
 {
-
+  const char *progname = argv[0];
   struct ccn_keystore *keystore = NULL;
   int res = 0;
   struct ccn_charbuf *signed_info = ccn_charbuf_create();
@@ -46,11 +59,34 @@ main(int argc, char **argv)
   struct ccn_charbuf *seq = ccn_charbuf_create();
 
   struct ccn_charbuf *temp = ccn_charbuf_create();
-  keystore = ccn_keystore_create();
+  int symmetric = 0;
+
+  while ((res = getopt(argc, argv, "s")) != -1) {
+    switch (res) {
+    case 's':
+      symmetric = 1;
+      break;
+    case 'h':
+      usage(progname);
+      break;
+    }
+  }
+
   ccn_charbuf_putf(temp, "%s/.ccnx/.ccnx_keystore", getenv("HOME"));
-  res = ccn_keystore_init(keystore,
+  if (symmetric) {
+    unsigned char keybuf[32];
+    keystore = ccn_aes_keystore_create();
+    ccn_generate_symmetric_key(keybuf, 256);
+    res = ccn_aes_keystore_file_init("/tmp/ccn_aes_keystore", PASSWORD, keybuf, 256);
+    if (res == 0) {
+      res = ccn_aes_keystore_init(keystore, "/tmp/ccn_aes_keystore", PASSWORD);
+    }
+  } else {
+    keystore = ccn_keystore_create();
+    res = ccn_keystore_init(keystore,
 			  ccn_charbuf_as_string(temp),
-			  "Th1s1sn0t8g00dp8ssw0rd.");
+			  PASSWORD);
+  }
   if (res != 0) {
     printf("Failed to initialize keystore %s\n", ccn_charbuf_as_string(temp));
     exit(1);
@@ -58,14 +94,19 @@ main(int argc, char **argv)
   ccn_charbuf_destroy(&temp);
   
   res = ccn_signed_info_create(signed_info,
-			       /* pubkeyid */ ccn_keystore_public_key_digest(keystore),
-			       /* publisher_key_id_size */ ccn_keystore_public_key_digest_length(keystore),
+			       /* pubkeyid */ ccn_keystore_key_digest(keystore),
+			       /* publisher_key_id_size */ ccn_keystore_key_digest_length(keystore),
 			       /* datetime */ NULL,
 			       /* type */ CCN_CONTENT_DATA,
 			       /* freshness */ FRESHNESS,
                                /*finalblockid*/ NULL,
 			       /* keylocator */ NULL);
 
+  if (res != 0) {
+    printf("Signed info creation failed\n");
+    exit(1);
+  }
+    ccn_charbuf_reset(message);
   srandom(time(NULL));
   for (i=0; i<PAYLOAD_SIZE; i++) {
     msgbuf[i] = random();
@@ -97,8 +138,12 @@ main(int argc, char **argv)
 				   path, signed_info, 
 				   msgbuf, PAYLOAD_SIZE,
 				   ccn_keystore_digest_algorithm(keystore), 
-				   ccn_keystore_private_key(keystore));
+				   ccn_keystore_key(keystore));
 
+    if (res != 0) {
+      printf("ContentObject encode failed on iteration %d\n", i);
+      exit(1);
+    }
     ccn_charbuf_reset(message);
     ccn_charbuf_reset(path);
     ccn_charbuf_reset(seq);

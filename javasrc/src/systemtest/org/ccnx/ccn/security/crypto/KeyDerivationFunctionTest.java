@@ -21,12 +21,10 @@ import java.security.SecureRandom;
 
 import javax.crypto.spec.SecretKeySpec;
 
-import junit.framework.AssertionFailedError;
-
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
-import org.ccnx.ccn.impl.security.crypto.KeyDerivationFunction;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys.ContentInfo;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys.KeyAndIV;
+import org.ccnx.ccn.impl.security.crypto.KeyDerivationFunction;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -88,7 +86,7 @@ public class KeyDerivationFunctionTest {
 		Log.info(Log.FAC_TEST, "Completed testKeysSameTwice");
 	}
 	
-	@Test(expected=AssertionFailedError.class)
+	@Test(expected=AssertionError.class)
 	public void testLabelMakesDifference() {
 		Assert.assertEquals(keyandiv, keyandivnolabel);
 	}
@@ -105,7 +103,7 @@ public class KeyDerivationFunctionTest {
 		Log.info(Log.FAC_TEST, "Completed testNoLabelSameTwice");
 	}
 	
-	@Test(expected=AssertionFailedError.class)
+	@Test(expected=AssertionError.class)
 	public void testVersionMakesDifference() throws Exception {
 		Log.info(Log.FAC_TEST, "Starting testVersionMakesDifference");
 

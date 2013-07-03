@@ -34,6 +34,7 @@
 #include <signal.h>
 #include <string.h>
 #include <strings.h>
+#include <sys/uio.h>
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/uri.h>
@@ -1374,7 +1375,7 @@ ParseReplyHeader(NetRequest nr) {
 static void
 InitBuffer(NetRequest nr) {
 	// alloc the buffer and init the msg
-	int sz = 8800;
+	int sz = CCN_MAX_MESSAGE_BYTES;
 	nr->buf = ProxyUtil_Alloc(sz+4, char);
 	nr->bufSize = sz;
 	nr->iov.iov_base = nr->buf;

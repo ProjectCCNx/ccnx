@@ -52,6 +52,8 @@ PAGE_NAMES =        		\
 	ccnprintlink		\
 	ccnrepoimport		\
 	ccntestloop 		\
+	ccninitkeystore 	\
+	ccninitaeskeystore 	\
 
 
 PROJECT_NUMBER = 0.7.2

@@ -23,7 +23,7 @@
 #
 
 # This is the prefix that openssl installs into by default.
-OPENSSL_PREFIX = /usr/local/ssl
+OPENSSL_PREFIX = ~/PARC/openssl/openssl-0.9.8x
 
 OPENSSL_CFLAGS = -I$(OPENSSL_PREFIX)/include
 

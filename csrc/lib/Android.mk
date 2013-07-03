@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010, 2012 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -22,16 +22,43 @@ LOCAL_C_INCLUDES	+= $(LOCAL_PATH)/..
 
 LOCAL_C_INCLUDES	+= $(LOCAL_PATH)/../../android/external/openssl-armv5/include
 
-CCNLIBOBJ := ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o \
-		ccn_dtag_table.o ccn_schedule.o ccn_extend_dict.o \
-		ccn_buf_decoder.o ccn_uri.o ccn_buf_encoder.o ccn_bloom.o \
-		ccn_name_util.o ccn_face_mgmt.o ccn_reg_mgmt.o ccn_digest.o \
-		ccn_interest.o ccn_keystore.o ccn_seqwriter.o ccn_signing.o \
-		ccn_sockcreate.o ccn_traverse.o \
-		ccn_match.o hashtb.o ccn_merkle_path_asn1.o \
-		ccn_sockaddrutil.o ccn_setup_sockaddr_un.o \
-		ccn_bulkdata.o ccn_versioning.o ccn_header.o ccn_fetch.o \
-		ccn_btree.o ccn_btree_content.o ccn_btree_store.o
+CCNLIBOBJ := \
+    ccn_aes_keystore.o \
+    ccn_aes_keystore_asn1.o \
+    ccn_bloom.o \
+    ccn_btree.o \
+    ccn_btree_content.o \
+    ccn_btree_store.o \
+    ccn_buf_decoder.o \
+    ccn_buf_encoder.o \
+    ccn_bulkdata.o \
+    ccn_charbuf.o \
+    ccn_client.o \
+    ccn_coding.o \
+    ccn_digest.o \
+    ccn_dtag_table.o \
+    ccn_extend_dict.o \
+    ccn_face_mgmt.o \
+    ccn_fetch.o \
+    ccn_header.o \
+    ccn_indexbuf.o \
+    ccn_interest.o \
+    ccn_keystore.o \
+    ccn_match.o \
+    ccn_merkle_path_asn1.o \
+    ccn_name_util.o \
+    ccn_reg_mgmt.o \
+    ccn_schedule.o \
+    ccn_seqwriter.o \
+    ccn_setup_sockaddr_un.o \
+    ccn_signing.o \
+    ccn_sockaddrutil.o \
+    ccn_sockcreate.o \
+    ccn_traverse.o \
+    ccn_uri.o \
+    ccn_versioning.o \
+    hashtb.o \
+    lned.o
 
 CCNLIBSRC := $(CCNLIBOBJ:.o=.c)
 

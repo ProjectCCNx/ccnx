@@ -1,7 +1,7 @@
 /*
  * A CCNx command line utility.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -36,6 +36,8 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  */
 public class ccngetfile implements Usage {
 	static Usage u = new ccngetfile();
+	static String[] okArgs = {"-unversioned", "-timeout", "-log", "-v", "-as", "-ac"};
+
 	/**
 	 * @param args
 	 */
@@ -43,7 +45,7 @@ public class ccngetfile implements Usage {
 		Log.setDefaultLevel(Level.WARNING);
 
 		for (int i = 0; i < args.length; i++) {
-			if (!CommonArguments.parseArguments(args, i, u)) {
+			if (!CommonArguments.parseArguments(args, i, u, okArgs)) {
 				if (i >= args.length - 3) {
 					CommonParameters.startArg = i;
 					break;
