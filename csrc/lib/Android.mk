@@ -58,7 +58,8 @@ CCNLIBOBJ := \
     ccn_uri.o \
     ccn_versioning.o \
     hashtb.o \
-    lned.o
+    lned.o \
+    siphash24.o
 
 CCNLIBSRC := $(CCNLIBOBJ:.o=.c)
 

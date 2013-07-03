@@ -111,5 +111,6 @@ lned.o: lned.c ../include/ccn/lned.h
 signbenchtest.o: signbenchtest.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/keystore.h
+siphash24.o: siphash24.c
 skel_decode_test.o: skel_decode_test.c ../include/ccn/charbuf.h \
   ../include/ccn/coding.h
