@@ -63,6 +63,7 @@ depend: dir.mk $(CSRC)
 	echo >> newlist
 	set -e; for i in $(CSRC); do $(MKDEP) $(CPREFLAGS) $$i; done > depend
 	diff -b depend depend.mk || mv depend depend.mk
+	$(RM) templist
 
 install_libs install_programs install uninstall_libs uninstall_programs uninstall coverage shared documentation depend config_subdir: _always
 .PHONY: _always

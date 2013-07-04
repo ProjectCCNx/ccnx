@@ -146,6 +146,14 @@ test: default encodedecodetest ccnbtreetest nametreetest
 dtag_check: _always
 	@./gen_dtag_table 2>/dev/null | diff - ccn_dtag_table.c | grep '^[<]' >/dev/null && echo '*** Warning: ccn_dtag_table.c may be out of sync with tagnames.cvsdict' || :
 
+depend: android_obj.mk
+android_obj.mk: _always
+	echo 'CCNLIBOBJ := \' > templist
+	for i in $(LIB_OBJS); do echo "    $$i" '\'; done | sort -u >> templist
+	echo >> templist
+	diff -b templist android_obj.mk || mv templist android_obj.mk
+	$(RM) templist
+
 libccn.a: $(LIB_OBJS)
 	$(RM) $@
 	$(AR) crus $@ $(LIB_OBJS)
