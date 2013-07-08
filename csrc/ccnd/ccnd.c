@@ -1513,7 +1513,7 @@ send_content(struct ccnd_handle *h, struct face *face, struct content_entry *con
     }
     size = content->size;
     if (h->debug & 4)
-        ccnd_debug_ccnb(h, __LINE__, "content_to", face, content->ccnb, size);
+        ccnd_debug_content(h, __LINE__, "content_to", face, content);
     stuff_and_send(h, face, content->ccnb, size, NULL, 0, 0, 0);
     ccnd_meter_bump(h, face->meter[FM_DATO], 1);
     h->content_items_sent += 1;
@@ -1683,8 +1683,8 @@ face_send_queue_insert(struct ccnd_handle *h,
             ans = ccn_indexbuf_member(face->q[k]->send_queue, content->accession);
             if (ans >= 0) {
                 if (h->debug & 8)
-                    ccnd_debug_ccnb(h, __LINE__, "content_otherq", face,
-                                    content->ccnb, content->size);
+                    ccnd_debug_content(h, __LINE__, "content_otherq", face,
+                                       content);
                 return(ans);
             }
         }
@@ -2303,8 +2303,7 @@ remove_content(struct ccnd_handle *h, struct content_entry *content)
     if (y == NULL)
         return(-1);
     if (h->debug & 4)
-        ccnd_debug_ccnb(h, __LINE__, "remove", NULL,
-                        content->ccnb, content->size);
+        ccnd_debug_content(h, __LINE__, "remove", NULL, content);
     ccny_remove(h->content_tree, y);
     content = NULL;
     ccny_destroy(h->content_tree, &y); /* releases content as well */
@@ -4189,9 +4188,8 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
             last_match = NULL;
             content = find_first_match_candidate(h, msg, pi);
             if (content != NULL && (h->debug & 8))
-                ccnd_debug_ccnb(h, __LINE__, "first_candidate", NULL,
-                                content->ccnb,
-                                content->size);
+                ccnd_debug_content(h, __LINE__, "first_candidate", NULL,
+                                   content);
             if (content != NULL &&
                 !content_matches_prefix(h, content, flatname)) {
                 if (h->debug & 8)
@@ -4205,9 +4203,8 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                                        content->size,
                                        1, NULL, msg, size, pi)) {
                     if (h->debug & 8)
-                        ccnd_debug_ccnb(h, __LINE__, "matches", NULL,
-                                        content->ccnb,
-                                        content->size);
+                        ccnd_debug_content(h, __LINE__, "matches", NULL,
+                                           content);
                     if ((pi->orderpref & 1) == 0) // XXX - should be symbolic
                         break;
                     last_match = content;
@@ -4219,9 +4216,8 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                 if (content != NULL &&
                     !content_matches_prefix(h, content, flatname)) {
                     if (h->debug & 8)
-                        ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
-                                        content->ccnb,
-                                        content->size);
+                        ccnd_debug_content(h, __LINE__, "prefix_mismatch", NULL,
+                                           content);
                     content = NULL;
                 }
             }
@@ -4364,8 +4360,6 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
                      obj.magic);
         }
     }
-    if (h->debug & 4)
-        ccnd_debug_ccnb(h, __LINE__, "content_from", face, msg, size);
     f = charbuf_obtain(h);
     ccn_flatname_append_from_ccnb(f, msg, size, 0, -1);
     ccn_flatname_append_component(f, obj.digest, obj.digest_bytes);
@@ -4399,7 +4393,7 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         }
         else {
             h->content_dups_recvd++;
-            ccnd_debug_ccnb(h, __LINE__, "dup", face, msg, size);
+            ccnd_debug_content(h, __LINE__, "content_dup", face, content);
         }
         res = 0;
     }
@@ -4419,6 +4413,8 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         memcpy(content->ccnb, msg, size);
         set_content_timer(h, content, &obj);
         h->accessioned++;
+        if (h->debug & 4)
+            ccnd_debug_content(h, __LINE__, "content_from", face, content);
         if (h->content_tree->n >= h->content_tree->limit) {
             if (h->content_tree->limit < h->capacity)
                 ccn_nametree_grow(h->content_tree);

@@ -518,7 +518,11 @@ void ccnd_debug_ccnb(struct ccnd_handle *h,
                      struct face *face,
                      const unsigned char *ccnb,
                      size_t ccnb_size);
-
+void ccnd_debug_content(struct ccnd_handle *h,
+                        int lineno,
+                        const char *msg,
+                        struct face *face,
+                        struct content_entry *content);
 struct ccnd_handle *ccnd_create(const char *, ccnd_logger, void *);
 void ccnd_run(struct ccnd_handle *h);
 void ccnd_destroy(struct ccnd_handle **);
