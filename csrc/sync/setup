@@ -89,7 +89,7 @@ EndTest () {
   I=0
   while test $I -le $SyncTestRepos; do
     WithCCND $I ccndsmoketest kill
-    I=`expr $I + 1`
+    I=$((I + 1))
   done
   sleep 1
 }
@@ -104,13 +104,12 @@ AwkMax () {
 }
 ZeroPoint () {
   # create a non-participating slice to set the initial point
-  local I
   I=1
   while test $I -le $SyncTestRepos; do
     WithCCND $I SyncTest -scope 1 -mark -slice $SyncTestTopo /zero/point >/dev/null
     WithCCND $I SyncTest $SyncPutFlags -put $SyncTestDir/small.data ccnx:/zero/point/data >$SyncTestDir/tfr0.$I.txt
     WithCCND $I GetStats $ZeroPointHash $SyncTestDir/zero.$I.txt
-    I=`expr $I + 1`
+    I=$((I + 1))
   done
 }
 GetCPU () {
@@ -136,7 +135,6 @@ IfInitDataAfter () {
    fi
 }
 AppendSummary () {
-  local I
   etLine="Elapsed"
   etMax=0.0
   packetSum=0
@@ -158,7 +156,7 @@ AppendSummary () {
     packetSum=$(($packetSum + $packets))
     intLine="$intLine, P$I = $packets"
     echo Repo $I dCPU = $dCPU, maxrss = $maxrss, depth = $treeDepth, treeBytes = $treeBytes, nodesCreated = $nodesCreated, lastHashChange = $lastHashChange >>$SyncTestDir/res.txt
-      I=`expr $I + 1`
+      I=$((I + 1))
   done
   etLine="$etLine, max = $etMax"
   echo $etLine >>$SyncTestDir/res.txt
@@ -172,23 +170,20 @@ InitData () {
   WithCCND 1 SyncTest $SyncPutFlags -put $SyncTestDir/test.data ccnx:/root/beer/floatZ >>$SyncTestDir/tfr2.txt
 }
 WaitLim () {
-  local I
   I=1
   while test $I -le $SyncTestRepos; do
       WaitRepoLeaves $I $LIM
-      I=`expr $I + 1`
+      I=$((I + 1))
   done
 }
 SetSlices () {
-  local I
   I=1
   while test $I -le $SyncTestRepos; do {
      WithCCND $I DoSlice $I >$SyncTestDir/slice.$I.txt
-      I=`expr $I + 1`
+      I=$((I + 1))
   }; done
 }
 DoTest () {
-  local I
   testOrder="after"
   if [ ${SyncTestInitBefore:=0} -gt 0 ]; then testOrder="before"; fi
   testLine="-- Testing, repos $SyncTestRepos, config $repoConfig, init $testOrder, $SyncTestExtra, names $SyncTestNames, `MyDate`"
@@ -198,7 +193,7 @@ DoTest () {
   while test $I -le $SyncTestRepos; do
       WithCCND $I ccnd 2>$SyncTestDir/ccnd.$I.$SyncTestNames.txt &
       sleep 0.2
-      I=`expr $I + 1`
+      I=$((I + 1))
   done
   sleep 1
   if [ ${SyncTestUseStar:=0} -eq 1 ] ; then
@@ -206,21 +201,21 @@ DoTest () {
   while test $I -le $SyncTestRepos; do {
     Linkup 1 $I
     Linkup $I 1
-    I=`expr $I + 1`
+    I=$((I + 1))
   }; done
   else
   I=1
   while test $I -lt $SyncTestRepos; do {
-    II=`expr $I + 1`
+    II=$((I + 1))
     Linkup $I $II
     Linkup $II $I
-    I=`expr $I + 1`
+    I=$((I + 1))
   }; done
   fi
   I=1
   while test $I -le $SyncTestRepos; do {
     WithCCND $I StartEmptyRepo $I &
-    I=`expr $I + 1`
+    I=$((I + 1))
   }; done
   sleep $(( $SyncTestRepos / 4 ))
 
@@ -247,10 +242,10 @@ DoTest () {
     I=1
     while test $I -le $SyncTestRepos; do
       WithCCND $I GetStats $RootBeerHash $SyncTestDir/prev.$I.txt
-      I=`expr $I + 1`
+      I=$((I + 1))
     done
     WithCCND 1 SyncTest $SyncPutFlags -put $SyncTestDir/small.data ccnx:/root/beer/floatY >$SyncTestDir/tfr3.txt
-    LIM=`expr $LIM + $stp`
+    LIM=$((LIM + stp))
     ncLine="Added $stp name"
     ncMax=0
     etLine="Update time"
@@ -285,7 +280,7 @@ DoTest () {
       packets=`awk -f scan-sumint.awk $SyncTestDir/stats.$I.txt`
       packetSum=$(($packetSum + $packets))
       intLine="$intLine, P$I = $packets"
-      I=`expr $I + 1`
+      I=$((I + 1))
     done
     echo ----
     tail -1 $SyncTestDir/tfr3.txt >>$SyncTestDir/res.txt
@@ -310,7 +305,7 @@ DoTest () {
     StatsPause
     stuff=`jobs -p`
     if [ ! "$stuff" ] ; then break; fi ;
-    x=`expr $x + 1`
+    x=$((x + 1))
   } ; done
 }
 CheckDir () {
@@ -330,12 +325,12 @@ StartTest () {
   while test $I -le $SyncTestRepos; do
       WithCCND $I ccnd 2>$SyncTestDir/ccnd.$I.$SyncTestNames.txt &
       sleep 0.2
-      I=`expr $I + 1`
+      I=$((I + 1))
   done
   I=1
   while test $I -le $SyncTestRepos; do
      WithCCND $I StartEmptyRepo $I &
-     I=`expr $I + 1`
+     I=$((I + 1))
   done
   I=0
   while test $I -le $SyncTestRepos; do
@@ -345,9 +340,9 @@ StartTest () {
            echo Linkup $I $J
            Linkup $I $J
         fi
-        J=`expr $J + 1`
+        J=$((J + 1))
       done
-      I=`expr $I + 1`
+      I=$((I + 1))
   done
   SetSlices
 }
