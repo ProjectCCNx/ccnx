@@ -31,7 +31,7 @@ static void
 usage(const char *progname)
 {
         fprintf(stderr,
-                "%s [-h] [-b 0<blocksize<=4096] [-r] [-d digest] [-p password] [-o keystore-directory] [-d digest] [-p password] ccnx:/some/uri\n"
+                "%s [-h] [-b 0<blocksize<=4096] [-r] [-o keystore-directory] [-d digest] [-p password] ccnx:/some/uri\n"
                 "    Reads stdin, sending data under the given URI"
                 " using ccn versioning and segmentation.\n"
                 "    -h generate this help message.\n"
@@ -154,6 +154,7 @@ main(int argc, char **argv)
             exit(1);
         }
         ccn_seqw_set_key_digest(w, key_digest->buf, key_digest->length);
+        ccn_charbuf_destroy(&key_digest);
     }
     
     ccn_seqw_set_block_limits(w, blocksize, blocksize);

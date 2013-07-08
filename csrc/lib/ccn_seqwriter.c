@@ -42,7 +42,7 @@ struct ccn_seqwriter {
     int freshness;
     unsigned char interests_possibly_pending;
     unsigned char closed;
-    unsigned char *key_digest;
+    unsigned char key_digest[32];
     unsigned int digestlen;
 };
 
@@ -58,9 +58,8 @@ seqw_next_cob(struct ccn_seqwriter *w)
         sp.sp_flags |= CCN_SP_FINAL_BLOCK;
     if (w->freshness > -1)
         sp.freshness = w->freshness;
-    if (w->key_digest != NULL) {
-        int len = (sizeof(sp.pubid) > w->digestlen) ? w->digestlen : sizeof(sp.pubid);
-        memcpy(sp.pubid, w->key_digest, len);
+    if (w->digestlen == sizeof(sp.pubid)) {
+        memcpy(sp.pubid, w->key_digest, sizeof(sp.pubid));
         sp.sp_flags |= CCN_SP_OMIT_KEY_LOCATOR;
     }
     ccn_charbuf_append(name, w->nv->buf, w->nv->length);
@@ -174,7 +173,7 @@ ccn_seqw_create(struct ccn *h, struct ccn_charbuf *name)
     w->blockminsize = 0;
     w->blockmaxsize = MAX_DATA_SIZE;
     w->freshness = -1;
-    w->key_digest = NULL;
+    w->digestlen = 0;
     res = ccn_set_interest_filter(h, nb, &(w->cl));
     if (res < 0) {
         ccn_charbuf_destroy(&w->nb);
@@ -314,13 +313,13 @@ ccn_seqw_set_freshness(struct ccn_seqwriter *w, int freshness)
  * @param digestlen is the length of key_digest
  */
 int
-ccn_seqw_set_key_digest(struct ccn_seqwriter *w, unsigned char *key_digest, int digestlen)
+ccn_seqw_set_key_digest(struct ccn_seqwriter *w, const unsigned char *key_digest, int digestlen)
 {
     if (w == NULL || w->cl.data != w || w->closed)
         return(-1);
-    if (digestlen < 1 || key_digest == NULL)
+    if (digestlen < 1 || digestlen > sizeof(w->key_digest) || key_digest == NULL)
         return(-1);
-    w->key_digest = key_digest;
+    memcpy(w->key_digest, key_digest, digestlen);
     w->digestlen = digestlen;
     return(0);
 }
