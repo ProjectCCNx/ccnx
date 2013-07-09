@@ -130,7 +130,10 @@ ccnd_append_excludes(struct ccn_charbuf *c,
         comp_size = 0;
         if (ccn_buf_match_blob(d, &comp, &comp_size))
             ccn_buf_advance(d);
-        ccn_uri_append_percentescaped(c, comp, comp_size);
+        if ((CCN_URI_DEFAULT_ESCAPE & CCN_URI_MIXEDESCAPE) != 0)
+            ccn_uri_append_mixedescaped(c, comp, comp_size);
+        else
+            ccn_uri_append_percentescaped(c, comp, comp_size);
         ccn_buf_check_close(d);
         if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
             ccn_buf_advance(d);
