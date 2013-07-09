@@ -122,3 +122,40 @@ struct ccny *ccny_prev(struct ccny *y);
 struct ccny *ccn_nametree_last(struct ccn_nametree *h);
 
 #endif
+
+#ifdef CCN_NAMETREE_IMPL
+
+/**
+ *  A nametree entry
+ *
+ * The nametree is designed for rapid lookup of data by name prefix.
+ * This can be useful for keeping track of such things as
+ * PIT entries, FIB entries, statistics used by the strategy layer,
+ * name enumeration, and creation/deletion notifications.
+ *
+ * To accomplish this, the nametree nodes are linked into several
+ * data structures.  One of these is a skiplist, so that we can
+ * quickly access the first node that has a given prefix.  Use of the base
+ * layer of the skiplist links also allows for rapid forward traversal.
+ * There is a linked list of the nodes in reverse order, so backward
+ * traversal and removal is fast as well.
+ *
+ * Clients should normally use the procedural interface, so the details
+ * of struct ccny are only exposed if CCN_NAMETREE_IMPL is defined before
+ * inclusion of the header file.
+ *
+ */
+struct ccny {
+    struct ccny *prev;      /**< link to previous, in name order */
+    unsigned char *key;     /**< for skiplist, et. al. */
+    unsigned keylen;        /**< size of key, in bytes */
+    ccn_cookie cookie;      /**< cookie for this entry */
+    void *payload;          /**< client payload */
+    unsigned info;          /**< for client use */
+    unsigned short prv;     /**< not for client use */
+    short skipdim;          /**< dimension of skiplinks array */
+    struct ccny *skiplinks[1]; /**< skiplist links (flex array) */
+};
+
+#endif
+
