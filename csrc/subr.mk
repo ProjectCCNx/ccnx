@@ -12,7 +12,8 @@
 # FOR A PARTICULAR PURPOSE.
 #
 
-REAL_CFLAGS = $(COPT) $(CWARNFLAGS) $(CPREFLAGS) $(PLATCFLAGS)
+REAL_CFLAGS = $(COPT) $(CWARNFLAGS) $(CINCFLAGS) $(CPREFLAGS) $(PLATCFLAGS)
+CINCFLAGS = -I../include $(CDIRFLAGS)
 
 $(CSRC) $(HSRC) $(SCRIPTSRC) $(SRCLINKS):
 	test -f $(SRCDIR)/$@ && ln -s $(SRCDIR)/$@
@@ -61,7 +62,7 @@ depend: dir.mk $(CSRC)
 	echo 'LIB_OBJS = \' >> newlist
 	for i in $(LIB_OBJS); do echo "    $$i" '\'; done | sort -u >> newlist
 	echo >> newlist
-	set -e; for i in $(CSRC); do $(MKDEP) $(CPREFLAGS) $$i; done > depend
+	set -e; for i in $(CSRC); do $(MKDEP) $(CINCFLAGS) $(CPREFLAGS) $$i; done > depend
 	diff -b depend depend.mk || mv depend depend.mk
 	$(RM) templist depend
 

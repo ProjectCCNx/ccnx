@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -17,4 +17,4 @@ SHLIBDEPS=
 SHARED_LD_FLAGS = -shared --whole-archive -soname=$(SHLIBNAME) -lc
 PLATCFLAGS=-fPIC
 CWARNFLAGS = -Wall -Wpointer-arith -Wreturn-type -Wstrict-prototypes
-CPREFLAGS= -I../include -D_REENTRANT
+CPREFLAGS= -D_REENTRANT

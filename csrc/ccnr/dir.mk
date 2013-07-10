@@ -15,8 +15,7 @@
 LDLIBS = -L$(CCNLIBDIR) -L$(SYNCLIBDIR) $(MORE_LDLIBS) -lccnsync -lccn
 CCNLIBDIR = ../lib
 SYNCLIBDIR = ../sync
-# Override conf.mk or else we don't pick up all the includes
-CPREFLAGS = -I../include -I..
+CDIRFLAGS = -I..
 
 INSTALLED_PROGRAMS = ccnr
 PROGRAMS = $(INSTALLED_PROGRAMS)
