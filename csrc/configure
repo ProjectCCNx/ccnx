@@ -41,9 +41,10 @@ echo '#' generated `uname -nsrv` > conf.mk
 # in order by increasing specificity.
 TryAppend "`uname`"
 TryAppend "`uname -sr | sed -e 's/ /-/g'`"
-TryAppend "local"
 # Next the relevant scripts, that get to do whatever is needed.
 TryScript "`uname`" "$@"
+# Local overrides happen next
+TryAppend "local"
 TryScript "local" "$@"
 
 # CFLAGS take some extra care.
