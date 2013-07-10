@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -22,7 +22,7 @@ PACKLIST = Makefile README LICENSE NEWS NOTICES configure doc/index.txt \
 default:
 
 # If csrc/conf.mk is missing or old, we need to run configure.
-csrc/conf.mk: csrc/configure
+csrc/conf.mk: csrc/configure csrc/Makefile javasrc/Makefile apps/Makefile
 	./configure
 
 SUBMAKE = $(MAKE) -f ../csrc/conf.mk -f Makefile
