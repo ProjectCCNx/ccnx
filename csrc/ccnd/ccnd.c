@@ -4107,7 +4107,6 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
     struct hashtb_enumerator *e = &ee;
     struct ccn_parsed_interest parsed_interest = {0};
     struct ccn_parsed_interest *pi = &parsed_interest;
-    size_t namesize = 0;
     int k;
     int res;
     int try;
@@ -4145,7 +4144,6 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                          pi->magic);
             }
         }
-        namesize = comps->buf[pi->prefix_comps] - comps->buf[0];
         h->interests_accepted += 1;
         res = nonce_ok(h, face, msg, pi, NULL, 0);
         if (res == 0) {
@@ -4689,7 +4687,6 @@ process_input(struct ccnd_handle *h, int fd)
     struct face *face = NULL;
     struct face *source = NULL;
     ssize_t res;
-    ssize_t dres;
     ssize_t msgstart;
     unsigned char *buf;
     struct ccn_skeleton_decoder *d;
@@ -4749,7 +4746,7 @@ process_input(struct ccnd_handle *h, int fd)
             ccnd_stats_handle_http_connection(h, face);
             return;
         }
-        dres = ccn_skeleton_decode(d, buf, res);
+        ccn_skeleton_decode(d, buf, res);
         while (d->state == 0) {
             process_input_message(h, source,
                                   face->inbuf->buf + msgstart,
@@ -4760,14 +4757,14 @@ process_input(struct ccnd_handle *h, int fd)
                 face->inbuf->length = 0;
                 return;
             }
-            dres = ccn_skeleton_decode(d,
-                    face->inbuf->buf + d->index, // XXX - msgstart and d->index are the same here - use msgstart
-                    res = face->inbuf->length - d->index);  // XXX - why is res set here?
+            ccn_skeleton_decode(d,
+                                face->inbuf->buf + msgstart,
+                                face->inbuf->length - msgstart);
         }
         if ((face->flags & CCN_FACE_DGRAM) != 0) {
             ccnd_msg(h, "protocol error on face %u, discarding %u bytes",
                 source->faceid,
-                (unsigned)(face->inbuf->length));  // XXX - Should be face->inbuf->length - d->index (or msgstart)
+                (unsigned)(face->inbuf->length - msgstart));
             face->inbuf->length = 0;
             /* XXX - should probably ignore this source for a while */
             return;
