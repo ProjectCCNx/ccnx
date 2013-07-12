@@ -96,7 +96,8 @@ process_fd(int fd, struct ccn_charbuf *c, const struct options *o)
             return(0);
         }
     }
-    fprintf(stderr, "Unable to mmap input.\n");
+    if (o->no_output)
+        fprintf(stderr, "Unable to mmap input, using read instead.\n");
     /* either not a regular file amenable to mapping, or the map failed */
     bufp = &buf[0];
     res = 0;
