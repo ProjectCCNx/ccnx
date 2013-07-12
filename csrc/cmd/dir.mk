@@ -190,7 +190,9 @@ ccnfilewatch: ccnfilewatch.o
 ccnsnew: ccnsnew.o
 	$(CC) $(CFLAGS) -o $@ ccnsnew.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
-ccnsyncwatch: ccnsyncwatch.o
+ccnsyncwatch ccnsyncslice: ../sync/libccnsync.a
+
+ccnsyncwatch: ccnsyncwatch.o 
 	$(CC) $(CFLAGS) -o $@ ccnsyncwatch.o $(SYNCLIBS) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccnsyncslice: ccnsyncslice.o
