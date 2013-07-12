@@ -78,7 +78,7 @@ struct ccns_handle {
     struct SyncHashCacheEntry *next_ce;
     struct SyncNameAccum *namesToAdd;
     struct SyncHashInfoList *hashSeen;
-    struct ccn_closure *registered; // registered action for RA interests
+    //struct ccn_closure *registered; // registered action for RA interests
     int debug;
     struct ccn *ccn;
     struct sync_diff_fetch_data *fetch_data;
@@ -777,6 +777,7 @@ start_round(struct ccns_handle *ch, int micros) {
                                 each_round,
                                 ch,
                                 0);
+    start_interest(ch->diff_data);
     return;
 }
 
@@ -895,7 +896,7 @@ advise_interest_arrived(struct ccn_closure *selfp,
                         struct ccn_upcall_info *info) {
     // the reason to have a listener is to be able to listen for changes
     // in the collection without relying on the replies to our root advise
-    // interests, which may not receive timely replies (althoug they eventually
+    // interests, which may not receive timely replies (although they eventually
     // get replies)
     static char *here = "sync_track.advise_interest_arrived";
     enum ccn_upcall_res ret = CCN_UPCALL_RESULT_ERR;
@@ -1228,6 +1229,7 @@ ccns_open(struct ccn *h,
     // make the debug levels agree
     int debug = base->debug; // TBD: how to let client set this?
     if (debug < CCNL_WARNING) debug = CCNL_WARNING;
+//XXX debug = CCNL_FINE;
     base->debug = debug;
     ch->debug = debug;
     root = SyncAddRoot(base, base->priv->syncScope,
@@ -1236,6 +1238,7 @@ ccns_open(struct ccn *h,
     diff_data->root = root;
     update_data->root = root;
     
+#if 0
     // register the root advise interest listener
     struct ccn_charbuf *prefix = SyncCopyName(diff_data->root->topoPrefix);
     ccn_name_append_str(prefix, "\xC1.S.ra");
@@ -1254,6 +1257,8 @@ ccns_open(struct ccn *h,
         // start the very first round
         start_round(ch, 10);
     }
+#endif
+start_round(ch, 10);
     return ch;
 }
 
@@ -1270,7 +1275,7 @@ ccns_close(struct ccns_handle **sh,
         if (ch != NULL) {
             struct SyncRootStruct *root = ch->root;
             
-            struct ccn_closure *registered = ch->registered;
+            struct ccn_closure *registered = NULL; //ch->registered;
             if (registered != NULL) {
                 // break the link, remove this particular registration
                 registered->data = NULL;
