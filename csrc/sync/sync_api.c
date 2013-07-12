@@ -41,6 +41,7 @@
 #include "SyncNode.h"
 #include "SyncPrivate.h"
 
+// XXX - these defines are not used - should thay go away?
 #define CACHE_PURGE_TRIGGER 60     // cache entry purge, in seconds
 #define CACHE_CLEAN_BATCH 16       // seconds between cleaning batches
 #define CACHE_CLEAN_DELTA 8        // cache clean batch size
