@@ -955,6 +955,31 @@ advise_interest_arrived(struct ccn_closure *selfp,
     return ret;
 }
 
+/*
+ * Make a template for our root advise interest.  We only want to track
+ * stuff from a local repo, so use a scope 1 interest.  Use an exclude so that
+ * we only see forward progress.  If c is not NULL, it holds the current hash.
+ */
+static struct ccn_charbuf *
+make_ra_template(struct ccn_charbuf *c)
+{
+    struct ccn_charbuf *templ = NULL;
+    templ = ccn_charbuf_create();
+    ccnb_element_begin(templ, CCN_DTAG_Interest);
+    ccnb_element_begin(templ, CCN_DTAG_Name);
+    ccnb_element_end(templ); /* </Name> */
+    if (c != NULL) {
+        ccnb_element_begin(templ, CCN_DTAG_Exclude);
+        ccnb_tagged_putf(templ, CCN_DTAG_Any, "");
+        ccnb_append_tagged_blob(templ, CCN_DTAG_Component, c->buf, c->length);
+        ccnb_element_end(templ); /* </Exclude> */
+    }
+    ccnb_tagged_putf(templ, CCN_DTAG_AnswerOriginKind, "%u", CCN_AOK_NEW);
+    ccnb_tagged_putf(templ, CCN_DTAG_Scope, "%u", 1);
+    ccnb_element_end(templ); /* </Interest> */
+    return(templ);
+}
+
 static int
 start_interest(struct sync_diff_data *diff_data) {
     static char *here = "sync_track.start_interest";
@@ -978,12 +1003,14 @@ start_interest(struct sync_diff_data *diff_data) {
         // append an empty component
         res |= ccn_name_append(prefix, "", 0);
     }
-    struct SyncNameAccum *excl = SyncExclusionsFromHashList(root, NULL, ch->hashSeen);
-    struct ccn_charbuf *template = SyncGenInterest(NULL,
-                                                   base->priv->syncScope,
-                                                   base->priv->fetchLifetime,
-                                                   -1, -1, excl);
-    SyncFreeNameAccumAndNames(excl);
+    struct ccn_charbuf *template = make_ra_template(ce == NULL ? NULL : ce->hash);
+    
+//    struct SyncNameAccum *excl = SyncExclusionsFromHashList(root, NULL, ch->hashSeen);
+//    struct ccn_charbuf *template = SyncGenInterest(NULL,
+//                                                   base->priv->syncScope,
+//                                                   base->priv->fetchLifetime,
+//                                                   -1, -1, excl);
+//    SyncFreeNameAccumAndNames(excl);
     struct ccn_closure *action = calloc(1, sizeof(*action));
     struct sync_diff_fetch_data *fetch_data = calloc(1, sizeof(*fetch_data));
     fetch_data->diff_data = diff_data;
