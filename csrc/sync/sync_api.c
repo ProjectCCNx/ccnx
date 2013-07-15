@@ -85,6 +85,8 @@ struct ccns_handle {
     struct sync_diff_data *diff_data;
     struct sync_update_data *update_data;
     int needUpdate;
+    int ppkd_size;
+    unsigned char ppkd[32];
     int64_t add_accum;
     int64_t startTime;
 };
@@ -861,6 +863,21 @@ my_response(struct ccn_closure *selfp,
                     if (ch->next_ce == NULL)
                         // have to have an initial place to start
                         ch->next_ce = ce;
+                    if (ch->ppkd_size == 0) {
+                        // Should belong the repo we want to track.
+                        // Remember it so we work from the same repo.
+                        const unsigned char *blob = NULL;
+                        size_t blob_size = 0;
+                        int res;
+                        res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest, info->content_ccnb,
+                                                  info->pco->offset[CCN_PCO_B_PublisherPublicKeyDigest],
+                                                  info->pco->offset[CCN_PCO_E_PublisherPublicKeyDigest],
+                                                  &blob, &blob_size);
+                        if (res >= 0 && blob_size <= sizeof(ch->ppkd)) {
+                            memcpy(ch->ppkd, blob, blob_size);
+                            ch->ppkd_size = blob_size;
+                        }
+                    }
                 }
                 if (ce->ncR == NULL) {
                     // store the node
@@ -961,20 +978,24 @@ advise_interest_arrived(struct ccn_closure *selfp,
  * we only see forward progress.  If c is not NULL, it holds the current hash.
  */
 static struct ccn_charbuf *
-make_ra_template(struct ccn_charbuf *c)
+make_ra_template(struct ccns_handle *ch, struct ccn_charbuf *c)
 {
     struct ccn_charbuf *templ = NULL;
     templ = ccn_charbuf_create();
     ccnb_element_begin(templ, CCN_DTAG_Interest);
     ccnb_element_begin(templ, CCN_DTAG_Name);
     ccnb_element_end(templ); /* </Name> */
+    if (ch->ppkd_size != 0)
+        ccnb_append_tagged_blob(templ, CCN_DTAG_PublisherPublicKeyDigest,
+                                ch->ppkd, ch->ppkd_size);
     if (c != NULL) {
         ccnb_element_begin(templ, CCN_DTAG_Exclude);
         ccnb_tagged_putf(templ, CCN_DTAG_Any, "");
         ccnb_append_tagged_blob(templ, CCN_DTAG_Component, c->buf, c->length);
         ccnb_element_end(templ); /* </Exclude> */
     }
-    ccnb_tagged_putf(templ, CCN_DTAG_AnswerOriginKind, "%u", CCN_AOK_NEW);
+    if (ch->ppkd_size != 0)
+        ccnb_tagged_putf(templ, CCN_DTAG_AnswerOriginKind, "%u", CCN_AOK_NEW);
     ccnb_tagged_putf(templ, CCN_DTAG_Scope, "%u", 1);
     ccnb_element_end(templ); /* </Interest> */
     return(templ);
@@ -1003,7 +1024,7 @@ start_interest(struct sync_diff_data *diff_data) {
         // append an empty component
         res |= ccn_name_append(prefix, "", 0);
     }
-    struct ccn_charbuf *template = make_ra_template(ce == NULL ? NULL : ce->hash);
+    struct ccn_charbuf *template = make_ra_template(ch, ce == NULL ? NULL : ce->hash);
     
 //    struct SyncNameAccum *excl = SyncExclusionsFromHashList(root, NULL, ch->hashSeen);
 //    struct ccn_charbuf *template = SyncGenInterest(NULL,
