@@ -41,7 +41,7 @@
 #include "SyncNode.h"
 #include "SyncPrivate.h"
 
-// XXX - these defines are not used - should thay go away?
+// These defines are not used right now. See similar defs in SyncActions.c
 #define CACHE_PURGE_TRIGGER 60     // cache entry purge, in seconds
 #define CACHE_CLEAN_BATCH 16       // seconds between cleaning batches
 #define CACHE_CLEAN_DELTA 8        // cache clean batch size
@@ -999,9 +999,12 @@ make_ra_template(struct ccns_handle *ch, struct ccn_charbuf *c)
         ccnb_append_tagged_blob(templ, CCN_DTAG_Component, c->buf, c->length);
         ccnb_element_end(templ); /* </Exclude> */
     }
-    if (ch->ppkd_size != 0)
+    if (ch->ppkd_size == 0)
         ccnb_tagged_putf(templ, CCN_DTAG_AnswerOriginKind, "%u", CCN_AOK_NEW);
     ccnb_tagged_putf(templ, CCN_DTAG_Scope, "%u", 1);
+    // Repo sync does not keep a PIT, so a long lifetime does not win anything.
+    // Try to match our polling interval.
+    ccnb_append_tagged_binary_number(templ, CCN_DTAG_InterestLifetime, 4096/2);
     ccnb_element_end(templ); /* </Interest> */
     return(templ);
 }
@@ -1114,7 +1117,6 @@ my_get(struct sync_diff_get_closure *gc,
 }
 
 // my_add is called when sync_diff discovers a new name
-// right now all we do is log it
 static int
 my_add(struct sync_diff_add_closure *ac, struct ccn_charbuf *name) {
     char *here = "sync_track.my_add";
