@@ -713,6 +713,8 @@ each_round(struct ccn_schedule *sched,
         return -1;
     struct ccns_handle *ch = ev->evdata;
     if (flags & CCN_SCHEDULE_CANCEL || ch == NULL) {
+        if (ch != NULL && ch->ev == ev)
+            ch->ev = NULL;
         return -1;
     }
     if (ch->needUpdate) {
@@ -756,6 +758,10 @@ each_round(struct ccn_schedule *sched,
                         diff_data->hashY = ch->next_ce->hash;
                     sync_diff_start(diff_data);
                 }
+                else {
+                    // Time to start asking for a new root
+                    start_interest(diff_data);
+                }
             }
             default:
                 // we are busy right now
@@ -773,13 +779,13 @@ start_round(struct ccns_handle *ch, int micros) {
     if (ev != NULL && ev->action != NULL && ev->evdata == ch)
         // get rid of the existing event
         ccn_schedule_cancel(ch->sync_plumbing->sched, ev);
+    if (ch->ev != NULL) abort();
     // start a new event
     ch->ev = ccn_schedule_event(ch->sync_plumbing->sched,
                                 micros,
                                 each_round,
                                 ch,
                                 0);
-    start_interest(ch->diff_data);
     return;
 }
 
@@ -809,7 +815,6 @@ my_response(struct ccn_closure *selfp,
             if (diff_data == NULL) break;
             struct ccns_handle *ch = diff_data->client_data;
             free_fetch_data(ch, fd);
-            start_round(ch, 10);
             ret = CCN_UPCALL_RESULT_OK;
             break;
         }
@@ -1333,11 +1338,8 @@ ccns_close(struct ccns_handle **sh,
                                                    0);
             }
             // cancel my looping event
-            struct ccn_scheduled_event *ev = ch->ev;
-            if (ev != NULL) {
-                ch->ev = NULL;
-                ev->evdata = NULL;
-                ccn_schedule_cancel(ch->sync_plumbing->sched, ev);
+            if (ch->ev != NULL) {
+                ccn_schedule_cancel(ch->sync_plumbing->sched, ch->ev);
             }
             // stop any differencing
             struct sync_diff_data *diff_data = ch->diff_data;
