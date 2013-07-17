@@ -1205,83 +1205,6 @@ Bail:
     return(content);
 }
 
-#if 0
-/**
- * Mark content as stale
- */
-PUBLIC void
-r_store_mark_stale(struct ccnr_handle *h, struct content_entry *content)
-{
-    ccnr_cookie cookie = content->cookie;
-    if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
-        return;
-    if (CCNSHOULDLOG(h, LM_4, CCNL_FINE))
-            ccnr_debug_content(h, __LINE__, "stale", NULL, content);
-    content->flags |= CCN_CONTENT_ENTRY_STALE;
-    h->n_stale++;
-    if (cookie < h->min_stale)
-        h->min_stale = cookie;
-    if (cookie > h->max_stale)
-        h->max_stale = cookie;
-}
-/**
- * Scheduled event that makes content stale when its FreshnessSeconds
- * has expired.
- */
-static int
-expire_content(struct ccn_schedule *sched,
-               void *clienth,
-               struct ccn_scheduled_event *ev,
-               int flags)
-{
-    struct ccnr_handle *h = clienth;
-    ccnr_cookie cookie = ev->evint;
-    struct content_entry *content = NULL;
-    if ((flags & CCN_SCHEDULE_CANCEL) != 0)
-        return(0);
-    content = r_store_content_from_cookie(h, cookie);
-    if (content != NULL)
-        r_store_mark_stale(h, content);
-    return(0);
-}
-
-/**
- * Schedules content expiration based on its FreshnessSeconds.
- *
- */
-PUBLIC void
-r_store_set_content_timer(struct ccnr_handle *h, struct content_entry *content,
-                  struct ccn_parsed_ContentObject *pco)
-{
-    int seconds = 0;
-    int microseconds = 0;
-    size_t start = pco->offset[CCN_PCO_B_FreshnessSeconds];
-    size_t stop  = pco->offset[CCN_PCO_E_FreshnessSeconds];
-    const unsigned char *content_msg = NULL;
-    if (start == stop)
-        return;
-    content_msg = r_store_content_base(h, content);
-    if (content_msg == NULL) {
-        ccnr_debug_content(h, __LINE__, "Missing_content_base", NULL,
-                           content);
-        return;        
-    }
-    seconds = ccn_fetch_tagged_nonNegativeInteger(
-                CCN_DTAG_FreshnessSeconds,
-                content_msg,
-                start, stop);
-    if (seconds <= 0)
-        return;
-    if (seconds > ((1U<<31) / 1000000)) {
-        ccnr_debug_content(h, __LINE__, "FreshnessSeconds_too_large", NULL,
-                           content);
-        return;
-    }
-    microseconds = seconds * 1000000;
-    ccn_schedule_event(h->sched, microseconds,
-                       &expire_content, NULL, content->cookie);
-}
-#endif
 /**
  * Parses content object and sets content->flatname
  */
@@ -1375,9 +1298,6 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
         if (content == NULL)
             goto Bail;
     }
-#if 0
-    r_store_set_content_timer(h, content, &obj);
-#endif
     r_match_match_interests(h, content, &obj, NULL, fdholder);
     return(content);
 Bail:
