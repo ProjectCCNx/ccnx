@@ -671,6 +671,7 @@ noteHash(struct SyncRootStruct *root, struct SyncHashCacheEntry *ce,
         head = each;
     }
     if (each != NULL) {
+        /// XXX Is each->ce always NULL here? (don't think so).  I think it is always NULL or == ce.  In the latter case, we bump busy when we shouldn't.
         each->ce = ce;
         if (ce != NULL) ce->busy++;
         each->lastSeen = mark;
