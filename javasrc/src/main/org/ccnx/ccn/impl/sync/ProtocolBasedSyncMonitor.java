@@ -33,6 +33,7 @@ import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.PublisherID;
 
 /**
  * Snoops on the sync protocol to report new files seen by sync on a slice to a registered handler
@@ -68,6 +69,8 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 	}
 	protected CCNHandle _handle;
 	protected HashMap<SyncHashEntry, SliceData> _sliceData = new HashMap<SyncHashEntry, SliceData>();
+	
+	protected boolean _interestSnooping = false;
 	
 	public ProtocolBasedSyncMonitor(CCNHandle handle) {
 		_handle = handle;
@@ -105,8 +108,11 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 			ContentName rootAdvise = new ContentName(slice.topo, Sync.SYNC_ROOT_ADVISE_MARKER, slice.getHash());
 			Interest interest = new Interest(rootAdvise);
 			interest.scope(1);
-			_handle.registerFilter(rootAdvise, this);
+			interest.answerOriginKind(2);
 			_handle.expressInterest(interest, this);
+			
+			if (_interestSnooping)
+				_handle.registerFilter(rootAdvise, this);
 		}
 	}
 
@@ -184,6 +190,7 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 	 */
 	public Interest handleContent(ContentObject data, Interest interest) {
 		ContentName name = data.name();
+		Interest updatedInterest = null;
 		int hashComponent = name.containsWhere(Sync.SYNC_ROOT_ADVISE_MARKER);
 		if (hashComponent < 0 || name.count() < hashComponent + 3) {
 			if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
@@ -204,8 +211,13 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 					sc.kickCompare();
 				}
 			}
+			//now create a new interest based on the info we received
+			ContentName rootAdvise = (name.cut(hashComponent+2).append(name.subname(hashComponent+3, hashComponent+4)));
+			updatedInterest = new Interest(rootAdvise, data.signedInfo().getPublisherKeyID());
+			updatedInterest.scope(1);
+			updatedInterest.answerOriginKind(2);
 		}
-		return null;
+		return updatedInterest;
 	}
 	
 	/**
@@ -222,6 +234,7 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 		byte[] hash = name.component(hashComponent + 2);
 		if (hash.length == 0)
 			return false;
+		
 		SliceData cg = null;
 		synchronized (this) {
 			cg = _sliceData.get(new SyncHashEntry(name.component(hashComponent + 1)));
