@@ -1205,6 +1205,7 @@ Bail:
     return(content);
 }
 
+#if 0
 /**
  * Mark content as stale
  */
@@ -1223,7 +1224,6 @@ r_store_mark_stale(struct ccnr_handle *h, struct content_entry *content)
     if (cookie > h->max_stale)
         h->max_stale = cookie;
 }
-
 /**
  * Scheduled event that makes content stale when its FreshnessSeconds
  * has expired.
@@ -1281,7 +1281,7 @@ r_store_set_content_timer(struct ccnr_handle *h, struct content_entry *content,
     ccn_schedule_event(h->sched, microseconds,
                        &expire_content, NULL, content->cookie);
 }
-
+#endif
 /**
  * Parses content object and sets content->flatname
  */
@@ -1375,7 +1375,9 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
         if (content == NULL)
             goto Bail;
     }
+#if 0
     r_store_set_content_timer(h, content, &obj);
+#endif
     r_match_match_interests(h, content, &obj, NULL, fdholder);
     return(content);
 Bail:
