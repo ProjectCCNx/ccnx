@@ -2,6 +2,9 @@
  * @file sync/SyncActions.c
  *  
  * Part of CCNx Sync.
+ */
+/*
+ *  Copyright (C) 2011-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -2383,6 +2386,7 @@ SendDeltasReply(struct SyncRootStruct *root, struct SyncRootDeltas *deltas) {
                 showCacheEntry2(root, "Sync.$RootAdvise", temp,
                                 deltas->ceStart, deltas->ceStop);
         }
+        // ZZZ - Check to see if this consumes a held root advise interest
     } else {
         if (debug >= CCNL_SEVERE)
             SyncNoteUri(root, here, "reply failed", name);
@@ -2397,7 +2401,7 @@ SendDeltasReply(struct SyncRootStruct *root, struct SyncRootDeltas *deltas) {
     return res;
 }
 
-// scanRemoteSeen returns the first SyncHashInfoList object int the remoteSeen
+// scanRemoteSeen returns the first SyncHashInfoList object in the remoteSeen
 // list that refers to the given hash entry (which may be NULL)
 static struct SyncHashInfoList *
 scanRemoteSeen(struct SyncRootStruct *root, struct SyncHashCacheEntry *ceR) {
@@ -2562,6 +2566,7 @@ SyncInterestArrived(struct ccn_closure *selfp,
                                 showCacheEntry1(root, highHere, "interest arrived", ceR);
                         }
                         if (ceL == ceR) {
+                            // ZZZ here we should hold the interest so we can answer it quickly when we get a new root.
                             // hash given is same as our root hash, so ignore the request
                             if (debug >= CCNL_INFO)
                                 SyncNoteSimple2(root, here, who, "ignored (same hash)");
@@ -2700,6 +2705,7 @@ SyncInterestArrived(struct ccn_closure *selfp,
                                             showCacheEntry2(root, highHere, why, ceR, ceL);
                                         else showCacheEntry1(root, highHere, why, ceL);
                                     }
+                                    // ZZZ - If we have a held interest, and it is matched, consume it here.
                                 }
                             } else {
                                 if (debug >= CCNL_SEVERE)
@@ -2708,6 +2714,7 @@ SyncInterestArrived(struct ccn_closure *selfp,
                             ret = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
                         } else {
                             // the exclusion filter disallows it
+                            // ZZZ - We might want to check for a match against our held interest here, but it may not be worth it.
                             if (debug >= CCNL_FINE)
                                 SyncNoteUri(root, here, "no match", name);
                         }
@@ -3516,6 +3523,7 @@ UpdateAction(struct ccn_schedule *sched,
                         // note the time of the last hash change
                         root->priv->lastHashChange = now;
                         noteHash(root, ce, 1, 0);
+                        // ZZZ - if we have a held root advise interest, soon is a good time to answer it.  It may get answered by a delta reply below, though, so don't be too eager.
                     }
                     ud->ceStop = ce;
                     // now that we have a new current hash, close out the deltas
