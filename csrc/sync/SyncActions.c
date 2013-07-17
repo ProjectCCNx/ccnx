@@ -668,12 +668,12 @@ noteHash(struct SyncRootStruct *root, struct SyncHashCacheEntry *ce,
         // need a new entry
         each = NEW_STRUCT(1, SyncHashInfoList);
         each->next = head;
+        each->ce = ce;
+        if (ce != NULL) ce->busy++;
         head = each;
     }
     if (each != NULL) {
-        /// XXX Is each->ce always NULL here? (don't think so).  I think it is always NULL or == ce.  In the latter case, we bump busy when we shouldn't.
-        each->ce = ce;
-        if (ce != NULL) ce->busy++;
+        if (each->ce != ce) abort();
         each->lastSeen = mark;
         each->lastReplied = 0;
     }
