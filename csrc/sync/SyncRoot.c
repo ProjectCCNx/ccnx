@@ -4,7 +4,7 @@
  * Part of CCNx Sync.
  */
 /*
- * Copyright (C) 2011-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -153,6 +153,7 @@ SyncAddRoot(struct SyncBaseStruct *base,
     
     root->sliceCoding = ccn_charbuf_create();
     root->sliceHash = ccn_charbuf_create();
+    root->heldRAInterest = ccn_charbuf_create();
     if (SyncRootAppendSlice(root->sliceCoding, root) >= 0) {
         // make a hash code from the encoding
         struct ccn_digest *cow = ccn_digest_create(CCN_DIGEST_DEFAULT);
@@ -193,6 +194,8 @@ SyncRemRoot(struct SyncRootStruct *root) {
                 SyncFreeNameAccumAndNames(root->namesToFetch);
             if (root->sliceCoding != NULL)
                 ccn_charbuf_destroy(&root->sliceCoding);
+            if (root->heldRAInterest != NULL)
+                ccn_charbuf_destroy(&root->heldRAInterest);
             if (root->sliceHash != NULL)
                 ccn_charbuf_destroy(&root->sliceHash);
             if (rp != NULL) {
