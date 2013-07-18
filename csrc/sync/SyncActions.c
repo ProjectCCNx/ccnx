@@ -2442,7 +2442,7 @@ SendDeltasReply(struct SyncRootStruct *root, struct SyncRootDeltas *deltas) {
                 showCacheEntry2(root, "Sync.$RootAdvise", temp,
                                 deltas->ceStart, deltas->ceStop);
         }
-        // ZZZ - Check to see if this consumes a held root advise interest
+        // Check to see if this consumes a held root advise interest
         CheckHeldInterest(root, cob);
     } else {
         if (debug >= CCNL_SEVERE)
@@ -2623,7 +2623,7 @@ SyncInterestArrived(struct ccn_closure *selfp,
                                 showCacheEntry1(root, highHere, "interest arrived", ceR);
                         }
                         if (ceL == ceR) {
-                            // ZZZ here we should hold the interest so we can answer it quickly when we get a new root.
+                            // Here we should hold the interest so we can answer it quickly when we get a new root.
                             HoldInterest(root, info);
                             // hash given is same as our root hash, so ignore the request
                             if (debug >= CCNL_INFO)
@@ -2763,7 +2763,7 @@ SyncInterestArrived(struct ccn_closure *selfp,
                                             showCacheEntry2(root, highHere, why, ceR, ceL);
                                         else showCacheEntry1(root, highHere, why, ceL);
                                     }
-                                    // ZZZ - If we have a held interest, and it is matched, consume it here.
+                                    // If we have a held interest, and it is matched, consume it here.
                                     if (data->kind == SRI_Kind_AdviseInt)
                                         CheckHeldInterest(root, cob);
                                 }
@@ -2774,7 +2774,7 @@ SyncInterestArrived(struct ccn_closure *selfp,
                             ret = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
                         } else {
                             // the exclusion filter disallows it
-                            // ZZZ - We might want to check for a match against our held interest here, but it may not be worth it.
+                            // We might want to check for a match against our held interest here, but it may not be worth it.
                             if (debug >= CCNL_FINE)
                                 SyncNoteUri(root, here, "no match", name);
                         }
@@ -3584,7 +3584,7 @@ UpdateAction(struct ccn_schedule *sched,
                         // note the time of the last hash change
                         root->priv->lastHashChange = now;
                         noteHash(root, ce, 1, 0);
-                        // ZZZ - if we have a held root advise interest, soon is a good time to answer it.  It may get answered by a delta reply below, though, so don't be too eager.
+                        // If we have a held root advise interest, soon is a good time to answer it.  It may get answered by a delta reply below, though, so don't be too eager.
                         movedOn = 1;
                     }
                     ud->ceStop = ce;
@@ -3673,7 +3673,7 @@ UpdateAction(struct ccn_schedule *sched,
             root->update = FreeUpdateData(ud);
             ev->evdata = NULL;
             if (movedOn)
-                ReprocessHeldInterest(root); //ZZZ
+                ReprocessHeldInterest(root);
             kickHeartBeat(root, 0);
             return -1;
         }
