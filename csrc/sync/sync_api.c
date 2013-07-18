@@ -1014,7 +1014,7 @@ make_ra_template(struct ccns_handle *ch, struct ccn_charbuf *c)
     // Repo sync keeps a PIT, so a long lifetime is fine.
     // Try to match our polling interval.
     ccnb_append_tagged_binary_number(templ, CCN_DTAG_InterestLifetime,
-                                     59 * 4096);
+                                     25 * 4096);
     ccnb_element_end(templ); /* </Interest> */
     return(templ);
 }
