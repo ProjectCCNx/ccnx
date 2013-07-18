@@ -29,6 +29,7 @@
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
 #include <ccn/indexbuf.h>
+#include <ccn/ccn_private.h>
 #include <ccn/schedule.h>
 
 #include "SyncActions.h"
@@ -2278,6 +2279,60 @@ SyncHandleSlice(struct SyncBaseStruct *base, struct ccn_charbuf *name) {
     return -1;
 }
 
+// Preserve a root advise interest that we can't answer right now, but will
+// be able to answer as soon as something changes.
+static void
+HoldInterest(struct SyncRootStruct *root, struct ccn_upcall_info *info)
+{
+    struct ccn_parsed_interest *pi = info->pi;
+    struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
+    const unsigned char *ppid = NULL;
+    size_t size = 0;
+    int pubidstart;
+    int pubidend;
+    int res;
+    
+    pubidstart = pi->offset[CCN_PI_B_PublisherIDKeyDigest];
+    pubidend = pi->offset[CCN_PI_E_PublisherIDKeyDigest];
+    if (pubidstart == pubidend) return; /* ignore things without a key digest */
+    res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest,
+                              info->interest_ccnb, pubidstart, pubidend,
+                              &ppid, &size);
+    if (res < 0) return;
+    /* Get our pub key digest. */
+    res = ccn_chk_signing_params(root->base->sd->ccn, NULL, &sp,
+                                 NULL, NULL, NULL, NULL);
+    if (res < 0) return;
+    if (size != sizeof(sp.pubid)) return;
+    if (memcmp(ppid, sp.pubid, size) != 0) return;
+    // OK, this seems worth saving
+    ccn_charbuf_reset(root->heldRAInterest);
+    ccn_charbuf_append(root->heldRAInterest,
+                       info->interest_ccnb, pi->offset[CCN_PI_E]);
+}
+
+// If the supplied content object matches a held interest, consume the latter.
+static void
+CheckHeldInterest(struct SyncRootStruct *root, struct ccn_charbuf *cob)
+{
+    if (ccn_content_matches_interest(cob->buf, cob->length,
+                                     1, NULL,
+                                     root->heldRAInterest->buf,
+                                     root->heldRAInterest->length,
+                                     NULL))
+        ccn_charbuf_reset(root->heldRAInterest);
+}
+
+// We have recently moved to a new root hash, so try to answer held interest
+static void
+ReprocessHeldInterest(struct SyncRootStruct *root)
+{
+    if (root->heldRAInterest->length == 0) return;
+    ccn_dispatch_message(root->base->sd->ccn,
+                         root->heldRAInterest->buf,
+                         root->heldRAInterest->length);
+}
+
 // NewDeltas allocates a new deltas object for the given root
 // note: caller is responsible for storing the pointer 
 static struct SyncRootDeltas *
@@ -2388,6 +2443,7 @@ SendDeltasReply(struct SyncRootStruct *root, struct SyncRootDeltas *deltas) {
                                 deltas->ceStart, deltas->ceStop);
         }
         // ZZZ - Check to see if this consumes a held root advise interest
+        CheckHeldInterest(root, cob);
     } else {
         if (debug >= CCNL_SEVERE)
             SyncNoteUri(root, here, "reply failed", name);
@@ -2568,6 +2624,7 @@ SyncInterestArrived(struct ccn_closure *selfp,
                         }
                         if (ceL == ceR) {
                             // ZZZ here we should hold the interest so we can answer it quickly when we get a new root.
+                            HoldInterest(root, info);
                             // hash given is same as our root hash, so ignore the request
                             if (debug >= CCNL_INFO)
                                 SyncNoteSimple2(root, here, who, "ignored (same hash)");
@@ -2707,6 +2764,8 @@ SyncInterestArrived(struct ccn_closure *selfp,
                                         else showCacheEntry1(root, highHere, why, ceL);
                                     }
                                     // ZZZ - If we have a held interest, and it is matched, consume it here.
+                                    if (data->kind == SRI_Kind_AdviseInt)
+                                        CheckHeldInterest(root, cob);
                                 }
                             } else {
                                 if (debug >= CCNL_SEVERE)
@@ -3497,6 +3556,7 @@ UpdateAction(struct ccn_schedule *sched,
         case SyncUpdate_busy: {
             // ud->nodes has the nodes created from the names
             // the last step is to make up the node superstructure
+            int movedOn = 0;
             if (showEntry && debug >= CCNL_INFO) {
                 SyncNoteSimple(root, here, "SyncUpdate_busy");
             }
@@ -3525,6 +3585,7 @@ UpdateAction(struct ccn_schedule *sched,
                         root->priv->lastHashChange = now;
                         noteHash(root, ce, 1, 0);
                         // ZZZ - if we have a held root advise interest, soon is a good time to answer it.  It may get answered by a delta reply below, though, so don't be too eager.
+                        movedOn = 1;
                     }
                     ud->ceStop = ce;
                     // now that we have a new current hash, close out the deltas
@@ -3611,6 +3672,8 @@ UpdateAction(struct ccn_schedule *sched,
             }
             root->update = FreeUpdateData(ud);
             ev->evdata = NULL;
+            if (movedOn)
+                ReprocessHeldInterest(root); //ZZZ
             kickHeartBeat(root, 0);
             return -1;
         }
