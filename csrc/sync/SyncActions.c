@@ -2292,8 +2292,8 @@ HoldInterest(struct SyncRootStruct *root, struct ccn_upcall_info *info)
     int pubidend;
     int res;
     
-    pubidstart = pi->offset[CCN_PI_B_PublisherIDKeyDigest];
-    pubidend = pi->offset[CCN_PI_E_PublisherIDKeyDigest];
+    pubidstart = pi->offset[CCN_PI_B_PublisherID];
+    pubidend = pi->offset[CCN_PI_E_PublisherID];
     if (pubidstart == pubidend) return; /* ignore things without a key digest */
     res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest,
                               info->interest_ccnb, pubidstart, pubidend,
