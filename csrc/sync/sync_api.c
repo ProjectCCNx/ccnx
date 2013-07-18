@@ -76,6 +76,7 @@ struct ccns_handle {
     struct ccns_name_closure *nc;
     struct SyncHashCacheEntry *last_ce;
     struct SyncHashCacheEntry *next_ce;
+    struct SyncHashCacheEntry *pending_ce; // What the RA we sent has
     struct SyncNameAccum *namesToAdd;
     struct SyncHashInfoList *hashSeen;
     //struct ccn_closure *registered; // registered action for RA interests
@@ -86,7 +87,7 @@ struct ccns_handle {
     struct sync_update_data *update_data;
     int needUpdate;
     int ppkd_size;
-    unsigned char ppkd[32];
+    unsigned char ppkd[32]; // key digest of tracked repo, if known.
     int64_t add_accum;
     int64_t startTime;
 };
@@ -809,11 +810,18 @@ my_response(struct ccn_closure *selfp,
             break;
         case CCN_UPCALL_INTEREST_TIMED_OUT: {
             struct sync_diff_fetch_data *fd = selfp->data;
-            //enum local_flags flags = selfp->intdata;
+            enum local_flags flags = selfp->intdata;
             if (fd == NULL) break;
             struct sync_diff_data *diff_data = fd->diff_data;
             if (diff_data == NULL) break;
             struct ccns_handle *ch = diff_data->client_data;
+            if (flags == LF_ADVISE) {
+                if (ch->pending_ce != NULL && ch->pending_ce == ch->next_ce) {
+                    ret = CCN_UPCALL_RESULT_REEXPRESS;
+                    break;
+                }
+                ch->pending_ce = NULL;
+            }
             free_fetch_data(ch, fd);
             ret = CCN_UPCALL_RESULT_OK;
             break;
@@ -864,6 +872,7 @@ my_response(struct ccn_closure *selfp,
                                                               nc->hash->buf, nc->hash->length,
                                                               SyncHashState_remote);
                 if (flags == LF_ADVISE) {
+                    ch->pending_ce = NULL;
                     ch->hashSeen = SyncNoteHash(ch->hashSeen, ce);
                     if (ch->next_ce == NULL)
                         // have to have an initial place to start
@@ -1002,9 +1011,10 @@ make_ra_template(struct ccns_handle *ch, struct ccn_charbuf *c)
     if (ch->ppkd_size == 0)
         ccnb_tagged_putf(templ, CCN_DTAG_AnswerOriginKind, "%u", CCN_AOK_NEW);
     ccnb_tagged_putf(templ, CCN_DTAG_Scope, "%u", 1);
-    // Repo sync does not keep a PIT, so a long lifetime does not win anything.
+    // Repo sync keeps a PIT, so a long lifetime is fine.
     // Try to match our polling interval.
-    ccnb_append_tagged_binary_number(templ, CCN_DTAG_InterestLifetime, 4096/2);
+    ccnb_append_tagged_binary_number(templ, CCN_DTAG_InterestLifetime,
+                                     59 * 4096);
     ccnb_element_end(templ); /* </Interest> */
     return(templ);
 }
@@ -1016,13 +1026,17 @@ start_interest(struct sync_diff_data *diff_data) {
     struct SyncBaseStruct *base = root->base;
     struct ccns_handle *ch = diff_data->client_data;
     struct SyncHashCacheEntry *ce = ch->next_ce;
-    struct ccn_charbuf *prefix = SyncCopyName(diff_data->root->topoPrefix);
+    struct ccn_charbuf *prefix = NULL;
     int res = 0;
     struct ccn *ccn = base->sd->ccn;
-    if (ccn == NULL) {
-        ccn_charbuf_destroy(&prefix);
+    if (ccn == NULL)
         return SyncNoteFailed(root, here, "bad ccn handle", __LINE__);
+    if (ce != NULL && ce == ch->pending_ce) {
+        /* We already have a pending interest */
+        return(0);
     }
+    ch->pending_ce = NULL;
+    prefix = SyncCopyName(diff_data->root->topoPrefix);
     res |= ccn_name_append_str(prefix, "\xC1.S.ra");
     res |= ccn_name_append(prefix, root->sliceHash->buf, root->sliceHash->length);
     if (ce != NULL) {
@@ -1033,13 +1047,6 @@ start_interest(struct sync_diff_data *diff_data) {
         res |= ccn_name_append(prefix, "", 0);
     }
     struct ccn_charbuf *template = make_ra_template(ch, ce == NULL ? NULL : ce->hash);
-    
-//    struct SyncNameAccum *excl = SyncExclusionsFromHashList(root, NULL, ch->hashSeen);
-//    struct ccn_charbuf *template = SyncGenInterest(NULL,
-//                                                   base->priv->syncScope,
-//                                                   base->priv->fetchLifetime,
-//                                                   -1, -1, excl);
-//    SyncFreeNameAccumAndNames(excl);
     struct ccn_closure *action = calloc(1, sizeof(*action));
     struct sync_diff_fetch_data *fetch_data = calloc(1, sizeof(*fetch_data));
     fetch_data->diff_data = diff_data;
@@ -1064,6 +1071,7 @@ start_interest(struct sync_diff_data *diff_data) {
         free(action);
         return -1;
     }
+    ch->pending_ce = ce;
     return 1;
 }
 
