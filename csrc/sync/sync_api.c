@@ -35,27 +35,10 @@
 #include <ccn/uri.h>
 #include <ccn/ccn_private.h>
 
-
 #include "sync_diff.h"
 #include "SyncUtil.h"
 #include "SyncNode.h"
 #include "SyncPrivate.h"
-
-#define CACHE_PURGE_TRIGGER 60     // cache entry purge, in seconds
-#define CACHE_CLEAN_BATCH 16       // seconds between cleaning batches
-#define CACHE_CLEAN_DELTA 8        // cache clean batch size
-#define ADVISE_NEED_RESET 1        // reset value for adviseNeed
-#define UPDATE_STALL_DELTA 15      // seconds used to determine stalled update
-#define UPDATE_NEED_DELTA 6        // seconds for adaptive update
-#define SHORT_DELAY_MICROS 500    // short delay for quick reschedule
-#define COMPARE_ASSUME_BAD 20      // secs since last fetch OK to assume compare failed
-#define NODE_SPLIT_TRIGGER 400    // in bytes, triggers node split
-#define EXCLUSION_LIMIT 1000       // in bytes, limits exclusion list size
-#define EXCLUSION_TRIG 5           // trigger for including root hashes in excl list (secs)
-#define STABLE_TIME_TRIG 10        // trigger for storing stable point (secs)
-#define HASH_SPLIT_TRIGGER 17      // trigger for splitting based on hash (n/255)
-#define NAMES_YIELD_INC 100        // number of names to inc between yield tests
-#define NAMES_YIELD_MICROS 20*1000 // number of micros to use as yield trigger
 
 struct ccns_slice {
     unsigned version;
@@ -65,8 +48,6 @@ struct ccns_slice {
     struct ccn_charbuf **clauses; // contents defined in documentation, need utils
 };
 
-#define CCNS_FLAGS_SC 1      // start at current root hash.
-
 struct ccns_handle {
     struct sync_plumbing *sync_plumbing;
     struct SyncBaseStruct *base;
@@ -75,15 +56,18 @@ struct ccns_handle {
     struct ccns_name_closure *nc;
     struct SyncHashCacheEntry *last_ce;
     struct SyncHashCacheEntry *next_ce;
+    struct SyncHashCacheEntry *pending_ce; // Of the RA we last sent
     struct SyncNameAccum *namesToAdd;
     struct SyncHashInfoList *hashSeen;
-    struct ccn_closure *registered; // registered action for RA interests
+    //struct ccn_closure *registered; // registered action for RA interests
     int debug;
     struct ccn *ccn;
     struct sync_diff_fetch_data *fetch_data;
     struct sync_diff_data *diff_data;
     struct sync_update_data *update_data;
     int needUpdate;
+    int ppkd_size;
+    unsigned char ppkd[32]; // key digest of tracked repo, if known.
     int64_t add_accum;
     int64_t startTime;
 };
@@ -199,6 +183,7 @@ append_slice(struct ccn_charbuf *c, struct ccns_slice *s) {
     res |= ccnb_element_end(c);
     return (res);
 }
+
 /*
  * utility, may need to be exported, to parse the buffer into a given slice
  * structure.
@@ -565,16 +550,6 @@ start_interest(struct sync_diff_data *diff_data);
 
 // utilities and stuff
 
-// noteErr2 is used to deliver error messages when there is no
-// active root or base
-
-static int
-noteErr2(const char *why, const char *msg) {
-    fprintf(stderr, "** ERROR: %s, %s\n", why, msg);
-    fflush(stderr);
-    return -1;
-}
-
 static void
 my_r_sync_msg(struct sync_plumbing *sd, const char *fmt, ...) {
     va_list ap;
@@ -614,17 +589,6 @@ extractNode(struct SyncRootStruct *root, struct ccn_upcall_info *info) {
         nc = NULL;
     }
     return nc;
-}
-
-/* UNUSED */ struct sync_diff_fetch_data *
-check_fetch_data(struct ccns_handle *ch, struct sync_diff_fetch_data *fd) {
-    struct sync_diff_fetch_data *each = ch->fetch_data;
-    while (each != NULL) {
-        struct sync_diff_fetch_data *next = each->next;
-        if (each == fd) return fd;
-        each = next;
-    }
-    return NULL;
 }
 
 static struct sync_diff_fetch_data *
@@ -710,6 +674,8 @@ each_round(struct ccn_schedule *sched,
         return -1;
     struct ccns_handle *ch = ev->evdata;
     if (flags & CCN_SCHEDULE_CANCEL || ch == NULL) {
+        if (ch != NULL && ch->ev == ev)
+            ch->ev = NULL;
         return -1;
     }
     if (ch->needUpdate) {
@@ -753,6 +719,10 @@ each_round(struct ccn_schedule *sched,
                         diff_data->hashY = ch->next_ce->hash;
                     sync_diff_start(diff_data);
                 }
+                else {
+                    // Time to start asking for a new root
+                    start_interest(diff_data);
+                }
             }
             default:
                 // we are busy right now
@@ -770,6 +740,7 @@ start_round(struct ccns_handle *ch, int micros) {
     if (ev != NULL && ev->action != NULL && ev->evdata == ch)
         // get rid of the existing event
         ccn_schedule_cancel(ch->sync_plumbing->sched, ev);
+    if (ch->ev != NULL) abort();
     // start a new event
     ch->ev = ccn_schedule_event(ch->sync_plumbing->sched,
                                 micros,
@@ -799,13 +770,19 @@ my_response(struct ccn_closure *selfp,
             break;
         case CCN_UPCALL_INTEREST_TIMED_OUT: {
             struct sync_diff_fetch_data *fd = selfp->data;
-            //enum local_flags flags = selfp->intdata;
+            enum local_flags flags = selfp->intdata;
             if (fd == NULL) break;
             struct sync_diff_data *diff_data = fd->diff_data;
             if (diff_data == NULL) break;
             struct ccns_handle *ch = diff_data->client_data;
+            if (flags == LF_ADVISE) {
+                if (ch->pending_ce != NULL && ch->pending_ce == ch->next_ce) {
+                    ret = CCN_UPCALL_RESULT_REEXPRESS;
+                    break;
+                }
+                ch->pending_ce = NULL;
+            }
             free_fetch_data(ch, fd);
-            start_round(ch, 10);
             ret = CCN_UPCALL_RESULT_OK;
             break;
         }
@@ -855,10 +832,26 @@ my_response(struct ccn_closure *selfp,
                                                               nc->hash->buf, nc->hash->length,
                                                               SyncHashState_remote);
                 if (flags == LF_ADVISE) {
+                    ch->pending_ce = NULL;
                     ch->hashSeen = SyncNoteHash(ch->hashSeen, ce);
                     if (ch->next_ce == NULL)
                         // have to have an initial place to start
                         ch->next_ce = ce;
+                    if (ch->ppkd_size == 0) {
+                        // Should belong the repo we want to track.
+                        // Remember it so we work from the same repo.
+                        const unsigned char *blob = NULL;
+                        size_t blob_size = 0;
+                        int res;
+                        res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest, info->content_ccnb,
+                                                  info->pco->offset[CCN_PCO_B_PublisherPublicKeyDigest],
+                                                  info->pco->offset[CCN_PCO_E_PublisherPublicKeyDigest],
+                                                  &blob, &blob_size);
+                        if (res >= 0 && blob_size <= sizeof(ch->ppkd)) {
+                            memcpy(ch->ppkd, blob, blob_size);
+                            ch->ppkd_size = blob_size;
+                        }
+                    }
                 }
                 if (ce->ncR == NULL) {
                     // store the node
@@ -888,69 +881,37 @@ my_response(struct ccn_closure *selfp,
     return ret;
 }
 
-static enum ccn_upcall_res
-advise_interest_arrived(struct ccn_closure *selfp,
-                        enum ccn_upcall_kind kind,
-                        struct ccn_upcall_info *info) {
-    // the reason to have a listener is to be able to listen for changes
-    // in the collection without relying on the replies to our root advise
-    // interests, which may not receive timely replies (althoug they eventually
-    // get replies)
-    static char *here = "sync_track.advise_interest_arrived";
-    enum ccn_upcall_res ret = CCN_UPCALL_RESULT_ERR;
-    switch (kind) {
-        case CCN_UPCALL_FINAL:
-            free(selfp);
-            ret = CCN_UPCALL_RESULT_OK;
-            break;
-        case CCN_UPCALL_INTEREST: {
-            struct ccns_handle *ch = selfp->data;
-            if (ch == NULL) {
-                // this got cancelled
-                ret = CCN_UPCALL_RESULT_OK;
-                break;
-            }
-            struct sync_diff_data *diff_data = ch->diff_data;
-            struct SyncRootStruct *root = ch->root;
-            //struct SyncBaseStruct *base = root->base;
-            int skipToHash = SyncComponentCount(diff_data->root->topoPrefix) + 2;
-            // skipToHash gets to the new hash
-            // topo + marker + sliceHash
-            const unsigned char *hp = NULL;
-            size_t hs = 0;
-            if (ch->debug >= CCNL_FINE) {
-                struct ccn_charbuf *name = SyncNameForIndexbuf(info->interest_ccnb,
-                                                               info->interest_comps);
-                SyncNoteUri(root, here, "entered", name);
-                ccn_charbuf_destroy(&name);
-            }
-            int cres = ccn_name_comp_get(info->interest_ccnb, info->interest_comps, skipToHash, &hp, &hs);
-            if (cres < 0) {
-                if (ch->debug >= CCNL_INFO)
-                    SyncNoteSimple(diff_data->root, here, "wrong number of interest name components");
-                break;
-            }
-            struct SyncHashCacheEntry *ce = SyncHashEnter(root->ch, hp, hs,
-                                                          SyncHashState_remote);
-            if (ce == NULL || ce->state & SyncHashState_covered) {
-                // should not be added
-                if (ch->debug >= CCNL_FINE)
-                    SyncNoteSimple(diff_data->root, here, "skipped");
-            } else {
-                // remember the remote hash, maybe start something
-                if (ch->debug >= CCNL_FINE)
-                    SyncNoteSimple(diff_data->root, here, "noting");
-                ch->hashSeen = SyncNoteHash(ch->hashSeen, ce);
-                start_interest(diff_data);
-            }
-            ret = CCN_UPCALL_RESULT_OK;
-            break;
-        }
-        default:
-            // SHOULD NOT HAPPEN
-            break;
+/*
+ * Make a template for our root advise interest.  We only want to track
+ * stuff from a local repo, so use a scope 1 interest.  Use an exclude so that
+ * we only see forward progress.  If c is not NULL, it holds the current hash.
+ */
+static struct ccn_charbuf *
+make_ra_template(struct ccns_handle *ch, struct ccn_charbuf *c)
+{
+    struct ccn_charbuf *templ = NULL;
+    templ = ccn_charbuf_create();
+    ccnb_element_begin(templ, CCN_DTAG_Interest);
+    ccnb_element_begin(templ, CCN_DTAG_Name);
+    ccnb_element_end(templ); /* </Name> */
+    if (ch->ppkd_size != 0)
+        ccnb_append_tagged_blob(templ, CCN_DTAG_PublisherPublicKeyDigest,
+                                ch->ppkd, ch->ppkd_size);
+    if (c != NULL) {
+        ccnb_element_begin(templ, CCN_DTAG_Exclude);
+        ccnb_tagged_putf(templ, CCN_DTAG_Any, "");
+        ccnb_append_tagged_blob(templ, CCN_DTAG_Component, c->buf, c->length);
+        ccnb_element_end(templ); /* </Exclude> */
     }
-    return ret;
+    if (ch->ppkd_size == 0)
+        ccnb_tagged_putf(templ, CCN_DTAG_AnswerOriginKind, "%u", CCN_AOK_NEW);
+    ccnb_tagged_putf(templ, CCN_DTAG_Scope, "%u", 1);
+    // Repo sync keeps a PIT, so a long lifetime is fine.
+    // Try to match our polling interval.
+    ccnb_append_tagged_binary_number(templ, CCN_DTAG_InterestLifetime,
+                                     25 * 4096);
+    ccnb_element_end(templ); /* </Interest> */
+    return(templ);
 }
 
 static int
@@ -960,13 +921,17 @@ start_interest(struct sync_diff_data *diff_data) {
     struct SyncBaseStruct *base = root->base;
     struct ccns_handle *ch = diff_data->client_data;
     struct SyncHashCacheEntry *ce = ch->next_ce;
-    struct ccn_charbuf *prefix = SyncCopyName(diff_data->root->topoPrefix);
+    struct ccn_charbuf *prefix = NULL;
     int res = 0;
     struct ccn *ccn = base->sd->ccn;
-    if (ccn == NULL) {
-        ccn_charbuf_destroy(&prefix);
+    if (ccn == NULL)
         return SyncNoteFailed(root, here, "bad ccn handle", __LINE__);
+    if (ce != NULL && ce == ch->pending_ce) {
+        /* We already have a pending interest */
+        return(0);
     }
+    ch->pending_ce = NULL;
+    prefix = SyncCopyName(diff_data->root->topoPrefix);
     res |= ccn_name_append_str(prefix, "\xC1.S.ra");
     res |= ccn_name_append(prefix, root->sliceHash->buf, root->sliceHash->length);
     if (ce != NULL) {
@@ -976,12 +941,7 @@ start_interest(struct sync_diff_data *diff_data) {
         // append an empty component
         res |= ccn_name_append(prefix, "", 0);
     }
-    struct SyncNameAccum *excl = SyncExclusionsFromHashList(root, NULL, ch->hashSeen);
-    struct ccn_charbuf *template = SyncGenInterest(NULL,
-                                                   base->priv->syncScope,
-                                                   base->priv->fetchLifetime,
-                                                   -1, -1, excl);
-    SyncFreeNameAccumAndNames(excl);
+    struct ccn_charbuf *template = make_ra_template(ch, ce == NULL ? NULL : ce->hash);
     struct ccn_closure *action = calloc(1, sizeof(*action));
     struct sync_diff_fetch_data *fetch_data = calloc(1, sizeof(*fetch_data));
     fetch_data->diff_data = diff_data;
@@ -1006,6 +966,7 @@ start_interest(struct sync_diff_data *diff_data) {
         free(action);
         return -1;
     }
+    ch->pending_ce = ce;
     return 1;
 }
 
@@ -1059,7 +1020,6 @@ my_get(struct sync_diff_get_closure *gc,
 }
 
 // my_add is called when sync_diff discovers a new name
-// right now all we do is log it
 static int
 my_add(struct sync_diff_add_closure *ac, struct ccn_charbuf *name) {
     char *here = "sync_track.my_add";
@@ -1234,25 +1194,7 @@ ccns_open(struct ccn *h,
     ch->root = root;
     diff_data->root = root;
     update_data->root = root;
-    
-    // register the root advise interest listener
-    struct ccn_charbuf *prefix = SyncCopyName(diff_data->root->topoPrefix);
-    ccn_name_append_str(prefix, "\xC1.S.ra");
-    ccn_name_append(prefix, root->sliceHash->buf, root->sliceHash->length);
-    struct ccn_closure *action = NEW_STRUCT(1, ccn_closure);
-    action->data = ch;
-    action->p = &advise_interest_arrived;
-    ch->registered = action;
-    int res = ccn_set_interest_filter(h, prefix, action);
-    ccn_charbuf_destroy(&prefix);
-    if (res < 0) {
-        noteErr2("ccns_open", "registration failed");
-        ccns_close(&ch, rhash, pname);
-        ch = NULL;
-    } else {
-        // start the very first round
-        start_round(ch, 10);
-    }
+    start_round(ch, 10);
     return ch;
 }
 
@@ -1269,7 +1211,7 @@ ccns_close(struct ccns_handle **sh,
         if (ch != NULL) {
             struct SyncRootStruct *root = ch->root;
             
-            struct ccn_closure *registered = ch->registered;
+            struct ccn_closure *registered = NULL; //ch->registered;
             if (registered != NULL) {
                 // break the link, remove this particular registration
                 registered->data = NULL;
@@ -1279,11 +1221,8 @@ ccns_close(struct ccns_handle **sh,
                                                    0);
             }
             // cancel my looping event
-            struct ccn_scheduled_event *ev = ch->ev;
-            if (ev != NULL) {
-                ch->ev = NULL;
-                ev->evdata = NULL;
-                ccn_schedule_cancel(ch->sync_plumbing->sched, ev);
+            if (ch->ev != NULL) {
+                ccn_schedule_cancel(ch->sync_plumbing->sched, ch->ev);
             }
             // stop any differencing
             struct sync_diff_data *diff_data = ch->diff_data;
@@ -1336,5 +1275,3 @@ ccns_close(struct ccns_handle **sh,
         }
     }
 }
-
-

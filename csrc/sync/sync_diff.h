@@ -29,6 +29,8 @@ enum sync_diff_side {
     sync_diff_Y
 };
 
+struct sync_diff_data;
+
 /**
  * sync_diff_add_closure is called from the differencing operation to note
  * a name difference for sdd.  If name == NULL then there are no more names
