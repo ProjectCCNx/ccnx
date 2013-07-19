@@ -290,7 +290,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		int segments2 = SyncTestCommon.writeFile(prefix1b, true, 0, putHandle);
 		segmentCheck = checkCallbacks(callbackNames, prefix1b, segments2, 0);
 		if (segmentCheck!=0)
-			Assert.fail("Did not receive all of the callbacks");
+			Assert.fail("Did not receive all of the callbacks (1)");
 		synchronized (callbackNames) {
 			for (ContentName n: callbackNames) {
 				Assert.assertTrue("Saw unexpected data in zero length root test: " + n, prefix1b.isPrefixOf(n));
@@ -313,7 +313,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		int segments3 = SyncTestCommon.writeFile(prefix1c, true, 0, putHandle);
 		segmentCheck = checkCallbacks(callbackNames, prefix1c, segments3, 0);
 		if (segmentCheck!=0)
-			Assert.fail("Did not receive all of the callbacks");
+			Assert.fail("Did not receive all of the callbacks (2)");
 		if (needRound2) {
 			segmentCheck = checkCallbacks(callbackNames, prefix1b, segments2, 0);
 			if (segmentCheck!=0)
@@ -335,10 +335,10 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		int segments4 = SyncTestCommon.writeFile(prefix1d, true, 0, putHandle);
 		segmentCheck = checkCallbacks(callbackNames, prefix1c, segments3, 0);
 		if (segmentCheck!=0)
-			Assert.fail("Did not receive all of the callbacks");
+			Assert.fail("Did not receive all of the callbacks (3)");
 		segmentCheck = checkCallbacks(callbackNames, prefix1d, segments4, 0);
 		if (segmentCheck!=0)
-			Assert.fail("Did not receive all of the callbacks");
+			Assert.fail("Did not receive all of the callbacks (4)");
 		if (needRound2) {
 			segmentCheck = checkCallbacks(callbackNames, prefix1b, segments2, 0);
 			if (segmentCheck!=0)
@@ -400,7 +400,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		int segments5 = SyncTestCommon.writeFile(prefix1e, true, 0, putHandle);
 		segmentCheck = checkCallbacks(callbackNames, prefix1e, segments5, 0);
 		if (segmentCheck!=0)
-			Assert.fail("Did not receive all of the callbacks");
+			Assert.fail("Did not receive all of the callbacks (5)");
 		sync1.shutdown(slice7);
 		if (doUnexpectedDataTest) {
 			for (ContentName n: callbackNames) {
@@ -455,6 +455,7 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		ContentName prefix1;
 		prefix1 = prefix.append("slice9");
 		CCNSync sync1 = new CCNSync();
+		sync1.setTimeout(SystemConfiguration.LONG_TIMEOUT);		// Test some of timeout mechanism
 		
 		Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1);
 		
@@ -498,6 +499,52 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		sync1.shutdown(slice8);
 	
 		Log.info(Log.FAC_TEST,"Finished running testMultiSync");
+	}
+	
+	@Test
+	public void testSyncRecovery() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testSyncRecovery");
+		
+		ContentName prefix10;
+		callbackNames.clear();
+		prefix10 = prefix.append("slice10");
+		CCNSync sync10 = new CCNSync();
+		ConfigSlice slice10 = sync10.startSync(getHandle, topo, prefix10, this);
+		slices.add(slice10);
+		
+		//the slice should be written..  now save content and get a callback.
+		Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix10);
+		
+		int segments = SyncTestCommon.writeFile(prefix10, false, SystemConfiguration.BLOCK_SIZE, putHandle);
+		int segmentCheck = checkCallbacks(callbackNames, prefix10, segments, 0);
+		Assert.assertTrue("Did not receive all of the callbacks", segmentCheck == 0);
+		Log.fine(Log.FAC_TEST, "I got all the callbacks for part 1 of testSyncRecovery!");
+		
+		/**
+		 * I don't know how to generate a repeatable recovery situation but the following code seems
+		 * pretty sure to generate some errors
+		 */
+		sync10.setTimeout(slice10, 1);
+		ContentName nextPrefix = null;
+		int prefixId = 11;
+		for (int i = 0; i < 20; i++) {
+			nextPrefix = prefix10.append("round" + prefixId++);
+			callbackNames.clear();
+			segments = SyncTestCommon.writeFile(nextPrefix, false, SystemConfiguration.BLOCK_SIZE, putHandle);
+			segmentCheck = checkCallbacks(callbackNames, nextPrefix, segments, 0);
+			if (segmentCheck == segments)
+				break;
+		}
+		
+		sync10.setTimeout(slice10, SystemConfiguration.EXTRA_LONG_TIMEOUT);
+		nextPrefix = prefix10.append("round" + prefixId);
+		segments = SyncTestCommon.writeFile(nextPrefix, false, SystemConfiguration.BLOCK_SIZE, putHandle);
+		segmentCheck = checkCallbacks(callbackNames, nextPrefix, segments, 0);
+		Assert.assertTrue("Did not receive all of the callbacks after recovery", segmentCheck == 0);
+		
+		sync10.shutdown(slice10);
+
+		Log.info(Log.FAC_TEST,"Finished running testSyncRecovery");
 	}
 	
 	public void handleContentName(ConfigSlice syncSlice, ContentName syncedContent) {

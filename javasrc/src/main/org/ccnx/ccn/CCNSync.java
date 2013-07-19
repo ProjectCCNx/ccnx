@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.sync.ProtocolBasedSyncMonitor;
 import org.ccnx.ccn.impl.sync.SyncMonitor;
@@ -31,13 +32,14 @@ import org.ccnx.ccn.io.content.ConfigSlice.Filter;
 import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 
-public class CCNSync {
+public final class CCNSync {
 	
 	public static final int SYNC_HASH_MAX_LENGTH = 40;
 	public static final int NODE_SPLIT_TRIGGER = 4000; // bytes
 	public static final int HASH_SPLIT_TRIGGER = 17; // bytes
 	
-	protected SyncMonitor syncMon = null;
+	private SyncMonitor _syncMon = null;
+	private long _timeout = SystemConfiguration.LONG_TIMEOUT;
 	
 	/**
 	 * 
@@ -63,9 +65,11 @@ public class CCNSync {
 		}
 		try {
 			ConfigSlice slice = ConfigSlice.checkAndCreate(topo, prefix, f, handle);
-			if (syncMon == null)
-				syncMon = new ProtocolBasedSyncMonitor(handle);
-			syncMon.registerCallback(syncCallback, slice, startHash, startName);
+			if (_syncMon == null) {
+				_syncMon = new ProtocolBasedSyncMonitor(handle);
+				_syncMon.setTimeout(slice, _timeout);
+			}
+			_syncMon.registerCallback(syncCallback, slice, startHash, startName);
 			if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
 				Log.info("Started sync with topo: {0} and prefix: {1}", topo, prefix);
 			return slice;
@@ -82,14 +86,23 @@ public class CCNSync {
 	
 	public void stopSync(CCNSyncHandler syncHandler, ConfigSlice syncSlice) throws IOException{
 		//will unregister the callback here
-		syncMon.removeCallback(syncHandler, syncSlice);
+		_syncMon.removeCallback(syncHandler, syncSlice);
+	}
+	
+	public void setTimeout(long timeout) {
+		_timeout = timeout;
+	}
+	
+	public void setTimeout(ConfigSlice slice, long timeout) {
+		if (null != _syncMon)
+			_syncMon.setTimeout(slice, timeout);
 	}
 	
 	public void shutdown(ConfigSlice slice) {
-		syncMon.shutdown(slice);
+		_syncMon.shutdown(slice);
 	}
 	
 	public SyncNodeCache getNodeCache(ConfigSlice slice) {
-		return syncMon.getNodeCache(slice);
+		return _syncMon.getNodeCache(slice);
 	}
 }

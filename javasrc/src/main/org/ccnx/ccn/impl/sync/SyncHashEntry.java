@@ -19,18 +19,27 @@ package org.ccnx.ccn.impl.sync;
 
 import java.util.Arrays;
 
-public class SyncHashEntry {
+public final class SyncHashEntry implements Comparable<SyncHashEntry> {
 	protected byte[] _hash;
 	
 	public SyncHashEntry(byte[] hash) {
 		_hash = hash;
 	}
+	
 	public boolean equals(Object hash) {
 		if (null == hash)
 			return false;
+		if (! (hash instanceof SyncHashEntry))
+			return false;
 		return Arrays.equals(((SyncHashEntry)hash)._hash, _hash);
 	}
+	
 	public int hashCode() {
 		return Arrays.hashCode(_hash);
+	}
+	
+	@Override
+	public int compareTo(SyncHashEntry arg0) {
+		return Arrays.hashCode(_hash) - Arrays.hashCode(arg0._hash);
 	}
 }

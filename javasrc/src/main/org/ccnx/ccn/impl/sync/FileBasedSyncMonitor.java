@@ -329,4 +329,7 @@ public class FileBasedSyncMonitor extends SyncMonitor implements Runnable{
 	public SyncNodeCache getNodeCache(ConfigSlice slice) {
 		return null;
 	}
+
+	@Override
+	public void setTimeout(ConfigSlice slice, long timeout) {}	// doesn't use timeouts
 }
