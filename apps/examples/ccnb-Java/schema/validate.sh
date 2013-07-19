@@ -1,7 +1,7 @@
 #!/bin/sh
 # schema/validate.sh
 
-# Copyright (C) 2011 Palo Alto Research Center, Inc.
+# Copyright (C) 2011-2013 Palo Alto Research Center, Inc.
 # 
 # This work is free software; you can redistribute it and/or modify it under
 #  the terms of the GNU General Public License version 2 as published by the
@@ -35,7 +35,6 @@ echo == Validating $SCHEMA
 xmllint --schema XMLSchema.xsd --noout $SCHEMA
 
 ValidateXML () {
-local X
 X="$1"
 echo == Normalizing ${X}.xml to use base64Binary
 # Note for this purpose it does not matter that ccn_ccnbtoxml is ignorant of
