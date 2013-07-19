@@ -102,6 +102,7 @@ struct ccn_fetch_stream {
 	int nBufs;				// the number of buffers allocated
 	struct ccn_fetch_buffer *bufList;	// the buffer list
 	char *id;
+	void *context;			// caller's context
 	struct ccn_charbuf *name;			// interest name (without seq#)
 	struct ccn_charbuf *interest;		// interest template
 	int segSize;			// the segment size (-1 if variable, 0 if unknown)
@@ -729,6 +730,24 @@ ccn_fetch_next(struct ccn_fetch *f, struct ccn_fetch_stream *fs) {
 		}
 	}
 	return NULL;
+}
+
+/**
+ * Sets caller's context for the stream.
+ */
+void 
+ccn_fetch_set_context(struct ccn_fetch_stream *fs, void *context)
+{
+	fs->context = context;
+}
+
+/**
+ * @returns caller's context, as provided to ccn_fetch_open for the stream.
+ */
+void *
+ccn_fetch_get_context(struct ccn_fetch_stream *fs)
+{
+	return fs->context;
 }
 
 /**
