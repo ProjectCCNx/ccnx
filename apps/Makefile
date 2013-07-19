@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2011-2012 Palo Alto Research Center, Inc.
+# Copyright (C) 2011-2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -18,7 +18,7 @@
 # Otherwise it just does a recursive make.
 
 SUBDIRS = HttpProxy ccnChat ccnFileProxy `cat local.subdirs 2>/dev/null || :`
-MAKEF =  -f ../conf.mk -f dir.mk -f ../subr.mk $(PASSTHRU)
+MAKEF =  -f ../conf.mk -f dir.mk -f ../subr.mk -f depend.mk $(PASSTHRU)
 PASSTHRU = DINST_INC=$(DINST_INC) DINST_LIB=$(DINST_LIB) DINST_BIN=$(DINST_BIN)
 CSRCDIR = ../csrc
 CFLAGS = $(COPT)

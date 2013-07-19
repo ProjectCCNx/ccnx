@@ -13,6 +13,6 @@ You might have some success creating a csrc/conf/local.mk containing
 	CC = gcc
 	PLATCFLAGS=-fPIC
 	CWARNFLAGS = -Wall -Wpointer-arith -Wreturn-type -Wstrict-prototypes
-	CPREFLAGS= -I../include -D_REENTRANT
+	CPREFLAGS= -D_REENTRANT
 
 before you run "configure"

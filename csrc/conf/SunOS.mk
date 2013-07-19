@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -12,7 +12,7 @@
 # FOR A PARTICULAR PURPOSE.
 #
 MORE_LDLIBS = -lmtmalloc -lnsl -lsocket -L/usr/sfw/lib -R/usr/sfw/lib
-CPREFLAGS = -I../include -I/usr/sfw/include
+CPREFLAGS = -I/usr/sfw/include
 SHEXT = so
 SHLIBNAME=libccn.$(SHEXT).1
 SHLIBDEPS=

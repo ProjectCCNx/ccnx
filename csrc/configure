@@ -41,19 +41,21 @@ echo '#' generated `uname -nsrv` > conf.mk
 # in order by increasing specificity.
 TryAppend "`uname`"
 TryAppend "`uname -sr | sed -e 's/ /-/g'`"
-TryAppend "local"
 # Next the relevant scripts, that get to do whatever is needed.
 TryScript "`uname`" "$@"
+# Local overrides happen next
+TryAppend "local"
 TryScript "local" "$@"
 
 # CFLAGS take some extra care.
 # Save these as COPT in conf.mk
-echo COPT = ${CFLAGS:="-g"} >> conf.mk
+[ -z "$CFLAGS" ] || echo COPT = $CFLAGS >> conf.mk
 
 # Finally, provide default values and pick up overrides from the environment
+ProvideDefault COPT = -g
 ProvideDefault CWARNFLAGS
 ProvideDefault PLATCFLAGS
-ProvideDefault CPREFLAGS = -I../include
+ProvideDefault CPREFLAGS
 ProvideDefault INSTALL_BASE = /usr/local
 ProvideDefault INSTALL_INCLUDE = '$(INSTALL_BASE)/include'
 ProvideDefault INSTALL_LIB = '$(INSTALL_BASE)/lib'

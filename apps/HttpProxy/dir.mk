@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2011 Palo Alto Research Center, Inc.
+# Copyright (C) 2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -37,16 +37,3 @@ clean:
 
 test: default
 
-###############################
-# Dependencies below here are checked by depend target
-# but must be updated manually.
-###############################
-HttpProxy.o: HttpProxy.c ProxyUtil.h SockHop.h ProxyUtil.h \
-  ../include/ccn/fetch.h ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
-NetFetch.o: NetFetch.c ProxyUtil.h SockHop.h ProxyUtil.h \
-  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/uri.h \
-  ../include/ccn/keystore.h ../include/ccn/signing.h
-ProxyUtil.o: ProxyUtil.c ProxyUtil.h
-SockHop.o: SockHop.c SockHop.h ProxyUtil.h ProxyUtil.h

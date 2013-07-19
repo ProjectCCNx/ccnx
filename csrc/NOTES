@@ -52,6 +52,12 @@ working.  Then, if you wish, you can use `make install` to install into
 /usr/local (or elsewhere if you have defined an override in local.mk).
 Of course, the appropriate permissions are needed.
 
+@subsection depend Dependencies 
+
+The depend target (`make depend `) rebuilds the depend.mk files that capture
+build dependencies.  This is not necessary when building from a release, because
+a generic set of dependencies is included.  But if there have been modifications,
+it is a good idea to run this before building.
 
 */
 
