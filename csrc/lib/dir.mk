@@ -21,6 +21,7 @@ PROGRAMS = hashtbtest skel_decode_test \
 
 BROKEN_PROGRAMS =
 DEBRIS = ccn_verifysig _bt_* test.keystore
+
 CSRC = \
     basicparsetest.c \
     ccn_aes_keystore.c \
@@ -67,6 +68,7 @@ CSRC = \
     lned.c \
     nametreetest.c \
     signbenchtest.c \
+    siphash24.c \
     skel_decode_test.c
 
 LIBS = libccn.a
@@ -109,7 +111,8 @@ LIB_OBJS = \
     ccn_uri.o \
     ccn_versioning.o \
     hashtb.o \
-    lned.o
+    lned.o \
+    siphash24.o
 
 default all: dtag_check lib $(PROGRAMS)
 # Don't try to build shared libs right now.

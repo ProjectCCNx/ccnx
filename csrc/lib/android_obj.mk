@@ -37,4 +37,5 @@ CCNLIBOBJ := \
     ccn_versioning.o \
     hashtb.o \
     lned.o \
+    siphash24.o \
 

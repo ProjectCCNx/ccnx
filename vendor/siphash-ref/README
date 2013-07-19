@@ -1,0 +1,19 @@
+This is the reference implementation of siphash-2-4 from https://131002.net/siphash/siphash24.c
+as of 2013-06-27.
+
+/*
+   SipHash reference C implementation
+
+   Written in 2012 by 
+   Jean-Philippe Aumasson <jeanphilippe.aumasson@gmail.com>
+   Daniel J. Bernstein <djb@cr.yp.to>
+
+   To the extent possible under law, the author(s) have dedicated all copyright
+   and related and neighboring rights to this software to the public domain
+   worldwide. This software is distributed without any warranty.
+
+   You should have received a copy of the CC0 Public Domain Dedication along with
+   this software. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
+*/
+
+This is the basis for the siphash24 code incorporated in the CCNx library.
