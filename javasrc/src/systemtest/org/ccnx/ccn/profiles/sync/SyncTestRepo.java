@@ -163,6 +163,8 @@ public class SyncTestRepo extends CCNTestBase implements CCNSyncHandler, CCNCont
 		slices.add(slice4);
 		prefix2 = prefix.append("slice5");
 		ConfigSlice slice5 = sync1.startSync(getHandle, topo, prefix2, this);
+		slices.add(slice5);
+
 		
 		//the slice should be written..  now save content and get a callback.
 		Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1);
