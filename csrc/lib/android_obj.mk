@@ -16,6 +16,7 @@ CCNLIBOBJ := \
     ccn_extend_dict.o \
     ccn_face_mgmt.o \
     ccn_fetch.o \
+    ccn_flatname.o \
     ccn_header.o \
     ccn_indexbuf.o \
     ccn_interest.o \
@@ -23,6 +24,7 @@ CCNLIBOBJ := \
     ccn_match.o \
     ccn_merkle_path_asn1.o \
     ccn_name_util.o \
+    ccn_nametree.o \
     ccn_reg_mgmt.o \
     ccn_schedule.o \
     ccn_seqwriter.o \

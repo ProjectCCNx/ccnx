@@ -6,7 +6,7 @@
  */
 
 /*
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -77,7 +77,6 @@ process_input_message(struct ccnr_handle *h, struct fdholder *fdholder,
 {
     struct ccn_skeleton_decoder decoder = {0};
     struct ccn_skeleton_decoder *d = &decoder;
-    ssize_t dres;
     enum ccn_dtag dtag;
     struct content_entry *content = NULL;
     
@@ -89,7 +88,7 @@ process_input_message(struct ccnr_handle *h, struct fdholder *fdholder,
         r_io_register_new_face(h, fdholder);
     }
     d->state |= CCN_DSTATE_PAUSE;
-    dres = ccn_skeleton_decode(d, msg, size);
+    ccn_skeleton_decode(d, msg, size);
     if (d->state < 0)
         abort(); /* cannot happen because of checks in caller */
     if (CCN_GET_TT_FROM_DSTATE(d->state) != CCN_DTAG) {
@@ -164,7 +163,6 @@ r_dispatch_process_input(struct ccnr_handle *h, int fd)
     struct fdholder *fdholder = NULL;
     struct fdholder *source = NULL;
     ssize_t res;
-    ssize_t dres;
     ssize_t msgstart;
     unsigned char *buf;
     struct ccn_skeleton_decoder *d;
@@ -231,7 +229,7 @@ r_dispatch_process_input(struct ccnr_handle *h, int fd)
             ccnr_stats_handle_http_connection(h, fdholder);
             return;
         }
-        dres = ccn_skeleton_decode(d, buf, res);
+        ccn_skeleton_decode(d, buf, res);
         while (d->state == 0) {
             if (offsetp != NULL)
                 *offsetp = fdholder->bufoffset + msgstart;
@@ -246,7 +244,7 @@ r_dispatch_process_input(struct ccnr_handle *h, int fd)
                 fdholder->bufoffset += msgstart;
                 return;
             }
-            dres = ccn_skeleton_decode(d,
+            ccn_skeleton_decode(d,
                     fdholder->inbuf->buf + msgstart,
                     fdholder->inbuf->length - msgstart);
         }

@@ -17,7 +17,7 @@ EXPATLIBS = -lexpat
 CCNLIBDIR = ../lib
 
 PROGRAMS = hashtbtest skel_decode_test \
-    encodedecodetest signbenchtest basicparsetest ccnbtreetest
+    encodedecodetest signbenchtest basicparsetest ccnbtreetest nametreetest
 
 BROKEN_PROGRAMS =
 DEBRIS = ccn_verifysig _bt_* test.keystore
@@ -40,6 +40,7 @@ CSRC = \
     ccn_extend_dict.c \
     ccn_face_mgmt.c \
     ccn_fetch.c \
+    ccn_flatname.c \
     ccn_header.c \
     ccn_indexbuf.c \
     ccn_interest.c \
@@ -47,6 +48,7 @@ CSRC = \
     ccn_match.c \
     ccn_merkle_path_asn1.c \
     ccn_name_util.c \
+    ccn_nametree.c \
     ccn_reg_mgmt.c \
     ccn_schedule.c \
     ccn_seqwriter.c \
@@ -63,6 +65,7 @@ CSRC = \
     hashtb.c \
     hashtbtest.c \
     lned.c \
+    nametreetest.c \
     signbenchtest.c \
     skel_decode_test.c
 
@@ -86,6 +89,7 @@ LIB_OBJS = \
     ccn_extend_dict.o \
     ccn_face_mgmt.o \
     ccn_fetch.o \
+    ccn_flatname.o \
     ccn_header.o \
     ccn_indexbuf.o \
     ccn_interest.o \
@@ -93,6 +97,7 @@ LIB_OBJS = \
     ccn_match.o \
     ccn_merkle_path_asn1.o \
     ccn_name_util.o \
+    ccn_nametree.o \
     ccn_reg_mgmt.o \
     ccn_schedule.o \
     ccn_seqwriter.o \
@@ -131,10 +136,11 @@ shlib: $(SHLIBNAME)
 
 lib: libccn.a
 
-test: default encodedecodetest ccnbtreetest
+test: default encodedecodetest ccnbtreetest nametreetest
 	./encodedecodetest -o /dev/null
 	./ccnbtreetest
 	./ccnbtreetest - < q.dat
+	./nametreetest - < q.dat
 	$(RM) -R _bt_*
 
 dtag_check: _always
@@ -221,6 +227,12 @@ ccnbtreetest.o:
 
 ccnbtreetest: ccnbtreetest.o libccn.a
 	$(CC) $(CFLAGS) -o $@ ccnbtreetest.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+
+nametreetest.o:
+	$(CC) $(CFLAGS) -Dnametreetest_main=main -c nametreetest.c
+
+nametreetest: nametreetest.o libccn.a
+	$(CC) $(CFLAGS) -o $@ nametreetest.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 clean:
 	rm -f *.o libccn.a libccn.1.$(SHEXT) $(PROGRAMS) depend

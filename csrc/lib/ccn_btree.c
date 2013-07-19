@@ -3,7 +3,7 @@
  */ 
 /* Part of the CCNx C Library.
  *
- * Copyright (C) 2011, 2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -24,6 +24,7 @@
 #include <string.h>
 
 #include <ccn/charbuf.h>
+#include <ccn/flatname.h>
 #include <ccn/hashtb.h>
 
 #include <ccn/btree.h>
@@ -272,7 +273,7 @@ ccn_btree_key_append(struct ccn_charbuf *dst,
  * The comparison is a standard lexicographic one on unsigned bytes; that is,
  * there is no assumption of what the bytes actually encode.
  *
- * The special return value -9999 indicates the key is a strict prefix.
+ * The special return value CCN_STRICT_PREFIX indicates the key is a strict prefix.
  * This does not matter to the btree lookup, but is useful for higher levels.
  *
  * @returns negative, zero, or positive to indicate less, equal, or greater
@@ -305,7 +306,7 @@ ccn_btree_compare(const unsigned char *key,
     if (res != 0)
         return(res);
     if (size < ksiz)
-        return(-9999); /* key is a strict prefix */
+        return(CCN_STRICT_PREFIX); /* key is a strict prefix */
     /* Compare the other part of the key */
     key += cmplen;
     size -= cmplen;
@@ -322,7 +323,7 @@ ccn_btree_compare(const unsigned char *key,
     if (res != 0)
         return(res);
     if (size < ksiz)
-        return(-9999); /* key is a strict prefix */
+        return(CCN_STRICT_PREFIX); /* key is a strict prefix */
     return(size > ksiz);
 }
 

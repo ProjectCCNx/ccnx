@@ -327,7 +327,6 @@ r_io_shutdown_client_fd(struct ccnr_handle *h, int fd)
     struct fdholder *fdholder = NULL;
     enum cq_delay_class c;
     int m;
-    int res;
     
     fdholder = r_io_fdholder_from_fd(h, fd);
     if (fdholder == NULL) {
@@ -335,11 +334,11 @@ r_io_shutdown_client_fd(struct ccnr_handle *h, int fd)
         return;
     }
     if (fdholder == h->face0)
-        (res = 0, h->face0 = NULL);
+        h->face0 = NULL;
     else if ((fdholder->flags & CCNR_FACE_CCND))
-        res = ccn_disconnect(h->direct_client);
+        ccn_disconnect(h->direct_client);
     else
-        res = close(fd);
+        close(fd);
     if (CCNSHOULDLOG(h, sdfdf, CCNL_INFO))
         ccnr_msg(h, "shutdown client fd=%d", fd);
     ccn_charbuf_destroy(&fdholder->inbuf);
@@ -358,7 +357,6 @@ r_io_shutdown_client_fd(struct ccnr_handle *h, int fd)
         h->active_out_fd = -1;
     if (h->repofile1_fd == fd)
         h->repofile1_fd = -1;
-    // r_fwd_reap_needed(h, 250000);
 }
 
 /**

@@ -28,6 +28,7 @@
 #include <ccn/ccn.h>
 #include <ccn/ccnd.h>
 #include <ccn/charbuf.h>
+#include <ccn/flatname.h>
 #include <ccn/hashtb.h>
 #include <ccn/uri.h>
 
@@ -83,7 +84,7 @@ ccnd_msg(struct ccnd_handle *h, const char *fmt, ...)
  *  @param      c   pointer to the charbuf to append to
  *  @param      ccnb    pointer to ccnb-encoded Interest
  *  @param      pi  pointer to the parsed interest data
- *  @param      limit   number of components to print before ending with "..."
+ *  @param      limit   number of components to print before ending with " .."
  */
 void
 ccnd_append_excludes(struct ccn_charbuf *c,
@@ -248,6 +249,35 @@ ccnd_debug_ccnb(struct ccnd_handle *h,
         for (i = 0; i < nonce_size; i++)
             ccn_charbuf_putf(c, "%s%02X", (*p) && (*p++)=='-' ? "-" : "", nonce[i]);
     }
+    ccnd_msg(h, "%s", ccn_charbuf_as_string(c));
+    ccn_charbuf_destroy(&c);
+}
+
+/**
+ *  Produce a ccnd debug trace entry for content
+ *  
+ *  This takes a content handle so that we can print the already-computed
+ *  implicit digest.
+ */
+void
+ccnd_debug_content(struct ccnd_handle *h,
+                   int lineno,
+                   const char *msg,
+                   struct face *face,
+                   struct content_entry *content)
+{
+    struct ccny *y = NULL;
+    struct ccn_charbuf *c;
+    
+    y = ccny_from_cookie(h->content_tree, content->accession);
+    if (y == NULL) return;
+    c = ccn_charbuf_create();
+    if (c == NULL) return;
+    ccn_charbuf_putf(c, "debug.%d %s ", lineno, msg);
+    if (face != NULL)
+        ccn_charbuf_putf(c, "%u ", face->faceid);
+    ccn_uri_append_flatname(c, ccny_key(y), ccny_keylen(y), 1);
+    ccn_charbuf_putf(c, " (%u bytes)", (unsigned)content->size);
     ccnd_msg(h, "%s", ccn_charbuf_as_string(c));
     ccn_charbuf_destroy(&c);
 }

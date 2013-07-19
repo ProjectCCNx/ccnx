@@ -33,6 +33,7 @@
 
 #include <ccn/ccn_private.h>
 #include <ccn/coding.h>
+#include <ccn/nametree.h>
 #include <ccn/reg_mgmt.h>
 #include <ccn/schedule.h>
 #include <ccn/seqwriter.h>
@@ -56,12 +57,8 @@ struct nameprefix_entry;
 struct interest_entry;
 struct guest_entry;
 struct pit_face_item;
-struct content_tree_node;
 struct ccn_forwarding;
 struct ccn_strategy;
-
-//typedef uint_least64_t ccn_accession_t;
-typedef unsigned ccn_accession_t;
 
 /**
  * Used for keeping track of interest expiry.
@@ -87,11 +84,9 @@ struct ccnd_handle {
     struct hashtb *faces_by_fd;     /**< keyed by fd */
     struct hashtb *dgram_faces;     /**< keyed by sockaddr */
     struct hashtb *faceid_by_guid;  /**< keyed by guid */
-    struct hashtb *content_tab;     /**< keyed by portion of ContentObject */
     struct hashtb *nameprefix_tab;  /**< keyed by name prefix components */
     struct hashtb *interest_tab;    /**< keyed by interest msg sans Nonce */
     struct hashtb *guest_tab;       /**< keyed by faceid */
-    struct ccn_indexbuf *skiplinks; /**< skiplist for content-ordered ops */
     unsigned forward_to_gen;        /**< for forward_to updates */
     unsigned face_gen;              /**< faceid generation number */
     unsigned face_rover;            /**< for faceid allocation */
@@ -119,23 +114,17 @@ struct ccnd_handle {
     struct ccn_charbuf *send_interest_scratch; /**< for use by send_interest */
     struct ccn_charbuf *scratch_charbuf; /**< one-slot scratch cache */
     struct ccn_indexbuf *scratch_indexbuf; /**< one-slot scratch cache */
-    /** Next three fields are used for direct accession-to-content table */
-    ccn_accession_t accession_base;
-    unsigned content_by_accession_window;
-    struct content_entry **content_by_accession;
-    /** The following holds stragglers that would otherwise bloat the above */
-    struct hashtb *sparse_straggler_tab; /* keyed by accession */
-    ccn_accession_t accession;      /**< newest used accession number */
-    ccn_accession_t min_stale;      /**< smallest accession of stale content */
-    ccn_accession_t max_stale;      /**< largest accession of stale content */
-    unsigned long capacity;         /**< may toss content if there more than
+    struct ccn_nametree *content_tree; /**< content store */
+    struct content_entry *headx;    /**< list head for expiry queue */
+    unsigned capacity;              /**< may toss content if there more than
                                      this many content objects in the store */
-    unsigned long n_stale;          /**< Number of stale content objects */
-    struct ccn_indexbuf *unsol;     /**< unsolicited content */
+    struct ccn_nametree *ex_index;  /**< for speedy adds to expiry queue */
+    unsigned long accessioned;
     unsigned long oldformatcontent;
     unsigned long oldformatcontentgrumble;
     unsigned long oldformatinterests;
     unsigned long oldformatinterestgrumble;
+    unsigned long content_accessions;
     unsigned long content_dups_recvd;
     unsigned long content_items_sent;
     unsigned long interests_accepted;
@@ -266,41 +255,27 @@ struct face {
 #define CCN_NOFACEID    (~0U)    /** denotes no face */
 
 /**
- *  The content hash table is keyed by the initial portion of the ContentObject
- *  that contains all the parts of the complete name.  The extdata of the hash
- *  table holds the rest of the object, so that the whole ContentObject is
- *  stored contiguously.  The internal form differs from the on-wire form in
- *  that the final content-digest name component is represented explicitly,
- *  which simplifies the matching logic.
- *  The original ContentObject may be reconstructed simply by excising this
- *  last name component, which is easily located via the comps array.
+ * Content table entry
+ *
+ * The content table is built on a nametree that is keyed by the flatname
+ * representation of the content name (including the implicit digest).
  */
 struct content_entry {
-    ccn_accession_t accession;  /**< assigned in arrival order */
+    ccn_cookie accession;       /**< for associated nametree entry */
     unsigned arrival_faceid;    /**< the faceid of first arrival */
-    unsigned short *comps;      /**< Name Component byte boundary offsets */
     int ncomps;                 /**< Number of name components plus one */
-    int flags;                  /**< see below */
-    const unsigned char *key;   /**< ccnb-encoded ContentObject */
-    int key_size;               /**< Size of fragment prior to Content */
+    int flags;                  /**< see defines below */
+    unsigned char *ccnb;        /**< ccnb-encoded ContentObject */
     int size;                   /**< Size of ContentObject */
-    struct ccn_indexbuf *skiplinks; /**< skiplist for name-ordered ops */
+    int staletime;              /**< Time in seconds, relative to starttime */
+    struct content_entry *nextx; /**< Next to expire after us */
+    struct content_entry *prevx; /**< Expiry doubly linked for fast removal */
 };
 
 /**
  * content_entry flags
  */
 #define CCN_CONTENT_ENTRY_SLOWSEND  1
-#define CCN_CONTENT_ENTRY_STALE     2
-#define CCN_CONTENT_ENTRY_PRECIOUS  4
-
-/**
- * The sparse_straggler hash table, keyed by accession, holds scattered
- * entries that would otherwise bloat the direct content_by_accession table.
- */
-struct sparse_straggler_entry {
-    struct content_entry *content;
-};
 
 /**
  * State for the strategy engine
@@ -532,6 +507,8 @@ int ccnd_destroy_face(struct ccnd_handle *h, unsigned faceid);
 void ccnd_send(struct ccnd_handle *h, struct face *face,
                const void *data, size_t size);
 
+int ccnd_n_stale(struct ccnd_handle *h);
+
 /* Consider a separate header for these */
 int ccnd_stats_handle_http_connection(struct ccnd_handle *, struct face *);
 void ccnd_msg(struct ccnd_handle *, const char *, ...);
@@ -541,7 +518,11 @@ void ccnd_debug_ccnb(struct ccnd_handle *h,
                      struct face *face,
                      const unsigned char *ccnb,
                      size_t ccnb_size);
-
+void ccnd_debug_content(struct ccnd_handle *h,
+                        int lineno,
+                        const char *msg,
+                        struct face *face,
+                        struct content_entry *content);
 struct ccnd_handle *ccnd_create(const char *, ccnd_logger, void *);
 void ccnd_run(struct ccnd_handle *h);
 void ccnd_destroy(struct ccnd_handle **);

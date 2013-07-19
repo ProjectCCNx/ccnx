@@ -2,7 +2,7 @@
  * @file ccndsmoketest.c
  * Simple program for smoke-test of ccnd.
  *
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -325,7 +325,7 @@ main(int argc, char **argv)
             if (res == 0) {
                 res = open_socket(host, portstr, SOCK_STREAM);
                 if (res != -1) {
-                    wlen = write(res, " ", 1);
+                    write(res, " ", 1);
                     close(res);
                 }
                 poll(fds, 1, 5000);
@@ -356,7 +356,7 @@ main(int argc, char **argv)
                 outstream = popen(cmd, "w");
                 wlen = send(sock, "GET / " HTTPVERSION CRLF , 8, 0);
             }
-
+            if (wlen < 0) perror("send");
             recvloop = 1;
             do_pclose = 1;
             argp--;
