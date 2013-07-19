@@ -235,23 +235,20 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 		if (hash.length == 0)
 			return false;
 		
-		SliceData cg = null;
-		synchronized (this) {
-			cg = _sliceData.get(new SyncHashEntry(name.component(hashComponent + 1)));
-			if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
-				Log.info(Log.FAC_SYNC, "Saw data from interest: hash: {0}", Component.printURI(hash));
-			if (null != cg) {
-				for (SliceComparator sc : cg._activeComparators) {
-					SyncTreeEntry ste = sc.getHashCache().addHash(hash, sc.getNodeCache());
-					if (sc == cg._leadComparator || !sc.shutdownIfUseless()) {
-						if (sc.addPending(ste)) {
-							sc.checkNextRound();
-							sc.kickCompare();
-						}
+		SliceData cg  = _sliceData.get(new SyncHashEntry(name.component(hashComponent + 1)));
+		if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
+			Log.info(Log.FAC_SYNC, "Saw data from interest: hash: {0}", Component.printURI(hash));
+		if (null != cg) {
+			for (SliceComparator sc : cg._activeComparators) {
+				SyncTreeEntry ste = sc.getHashCache().addHash(hash, sc.getNodeCache());
+				if (sc == cg._leadComparator || !sc.shutdownIfUseless()) {
+					if (sc.addPending(ste)) {
+						sc.checkNextRound();
+						sc.kickCompare();
 					}
 				}
 			}
-		}	
+		}
 		return false;		// We're just snooping so don't say we've handled this
 	}
 
