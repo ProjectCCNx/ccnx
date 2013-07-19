@@ -1,11 +1,13 @@
 /**
- * @file ccn_splitccnb.c
- * Utility to break up a file filled with ccnb-encoded data items into
- * one data item per file.
+ * @file cmd/ccnnamelist.c
+ *
+ * Utility to print on standard output a list of names from ccnb-encoded
+ * data items in one or more files.
  *
  * A CCNx command-line utility.
- *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ */
+/*
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -94,7 +96,8 @@ process_fd(int fd, struct ccn_charbuf *c, const struct options *o)
             return(0);
         }
     }
-    fprintf(stderr, "Unable to mmap input.\n");
+    if (o->no_output)
+        fprintf(stderr, "Unable to mmap input, using read instead.\n");
     /* either not a regular file amenable to mapping, or the map failed */
     bufp = &buf[0];
     res = 0;
