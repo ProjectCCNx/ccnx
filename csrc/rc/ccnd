@@ -1,0 +1,138 @@
+#!/bin/bash
+#
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+# Please customize script header to match the Linux/Unix distribution you are using.
+# Should be installed with system init scripts.
+
+# Init header customized for Ubuntu
+### BEGIN INIT INFO
+# Provides:        ccnd
+# Required-Start:  $network $remote_fs $syslog
+# Required-Stop:   $network $remote_fs $syslog
+# Default-Start:   2 3 4 5
+# Default-Stop:    1
+# Short-Description: Start ccnd
+### END INIT INFO
+
+# Startup Variables
+DAEMON_PATH="/usr/local/bin"
+DAEMON=ccnd
+DAEMONUSER=ccnd
+NAME=ccnd
+DESC="CCNx ccnd daemon"
+PIDFILE=/var/run/$NAME.pid
+SCRIPTNAME=/etc/init.d/$NAME
+
+# CCND Default Values
+# CCNDHOME sets the location for the .ccnx folder.
+CCNDHOME=/home/ccnd
+
+
+case "$1" in
+start)
+	if [ -f $PIDFILE ]; then
+	    PID=`cat $PIDFILE`
+	    if [ -z "`ps axf | grep ${PID} | grep -v grep`" ]; then
+	        printf "Process is dead but pidfile exists.\n"
+	    else
+	    	printf "Process is already running.\n"
+	    fi
+	else
+	    printf "%-50s" "Starting $NAME..."
+
+	    # Test for ccndrc in .ccnx folder and execute contents.
+            test -f $CCNDHOME/.ccnx/ccndrc && . $CCNDHOME/.ccnx/ccndrc
+
+            PID=`su $DAEMONUSER -c $DAEMON_PATH/$DAEMON> /dev/null 2>$CCND_LOG & echo $!`
+            if [ -z $PID ]; then
+                printf "%s\n" "Fail"
+            else
+                echo $PID > $PIDFILE
+                printf "%s\n" "OK"
+
+
+                # Be kind to ccnd and give it time to start
+		# ccndsmoketest will hold execution until ccnd responds
+	        $DAEMON_PATH/ccndsmoketest
+
+                # Check for CCND services script and execute contents.
+	        if [ -f $CCNDHOME/.ccnx/ccndsvcsrc ]; then
+                    printf "%-50s" "Post ccnd services start..."
+		    su $DAEMONUSER -c "sh $CCNDHOME/.ccnx/ccndsvcsrc"
+		    printf "%s\n" "OK"
+	        else
+		    printf "No services file found...\n"
+	        fi
+
+	        printf "%-50s" "Processing ccnd.conf..."
+                `su $DAEMONUSER -c "test -f $CCNDHOME/.ccnx/ccnd.conf && $DAEMON_PATH/ccndc -f $CCNDHOME/.ccnx/ccnd.conf"`
+	        printf "%s\n" "OK"
+
+	    fi
+	fi
+;;
+status)
+        printf "%-50s" "Checking $NAME..."
+        if [ -f $PIDFILE ]; then
+            PID=`cat $PIDFILE`
+            if [ -z "`ps axf | grep ${PID} | grep -v grep`" ]; then
+               	printf "%s\n" "Process dead but pidfile exists"
+            else
+            	echo "Running"
+            fi
+        else
+            printf "%s\n" "Service not running"
+        fi
+;;
+fullstatus)
+        if [ -f $PIDFILE ]; then
+            PID=`cat $PIDFILE`
+            if [ -z "`ps axf | grep ${PID} | grep -v grep`" ]; then
+                printf "%s\n" "Process dead but pidfile exists"
+            else
+                su $DAEMONUSER -c $DAEMON_PATH/ccndstatus
+            fi
+        else
+            printf "%s\n" "Service not running"
+        fi
+;;
+stop)
+        printf "%-50s" "Stopping $NAME"
+            PID=`cat $PIDFILE`
+            cd $DAEMON_PATH
+        if [ -f $PIDFILE ]; then
+            kill $PID
+            printf "%s\n" "OK"
+            rm -f $PIDFILE
+        else
+            printf "%s\n" "pidfile not found"
+        fi
+
+	# Check for ccnd services cleanup file and execute contents.
+	if [ -f $CCNDHOME/.ccnx/ccndcleanup ]; then
+		printf "%-50s" "ccndsvcs cleanup..."
+		su $DAEMONUSER -c "sh $CCNDHOME/.ccnx/ccndcleanup"
+		printf "%s\n" "OK"
+	fi
+;;
+
+restart)
+        $0 stop
+        $0 start
+;;
+
+*)
+        echo "Usage: $0 {status|fullstatus|start|stop|restart}"
+        exit 1
+esac
+
