@@ -3,12 +3,14 @@ Changes between 0.7.2 and 0.8.0:
 This highlights some important changes since the most recent numbered release.
 Refer to http://redmine.ccnx.org/versions/17 for more details on CCNx 0.8.0.
 
-- The more readable escaping convention is now the default.  If for whatever reason you prefer to use only percent-escaping in URIs, use
+- The use of symmetric key HMACs in place of public/private key signatures is now an option in both libraries.  In situations where it can be used, it provides a much higher performance alternative.
+- The content store in ccnd has been improved.  It now uses a flatname representation for indexing, in the same way that ccnr does.  Also, the underlying skiplist implementation has moved into the library, so that applications may take advantage of it in the future.  In the process, some old ccnd bugs relating to the handling of extreme values of FreshnessSeconds were fixed.
+- The more readable escaping convention in URIs is now the default.  If for whatever reason you prefer to use only percent-escaping in URIs, use
 
 		CFLAGS='-g -DCCN_URI_DEFAULT_ESCAPE=4' ./configure
 
-	before typing make.
-- The content store in ccnd has been improved.  It now uses a flatname representation for indexing, in the same way that ccnr does.  Also, the underlying skiplist implementation has moved into the library, so that applications may take advantage of it in the future.  In the process, some old bugs relating to the handling of extreme values of FreshnessSeconds were fixed.
+	before typing make.  Note that both forms of escaping are accepted as input.
+- An example rc startup script is now included, but needs to be installed by hand.  It is coded for Ubuntu Linux, but should be easily adaptable to other systems.
 
   * Issues Resolved:
 	* Bug #100118: ccnd does not handle FreshnessSeconds=0 correctly.
