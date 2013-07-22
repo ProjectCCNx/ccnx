@@ -55,13 +55,6 @@ coverage:
 shared:
 
 depend: dir.mk $(CSRC)
-	# helper for sorting lists
-	echo 'CSRC = \' > newlist
-	for i in $(CSRC); do echo "    $$i" '\'; done | sort -u >> newlist
-	echo >> newlist
-	echo 'LIB_OBJS = \' >> newlist
-	for i in $(LIB_OBJS); do echo "    $$i" '\'; done | sort -u >> newlist
-	echo >> newlist
 	set -e; for i in $(CSRC); do $(MKDEP) $(CINCFLAGS) $(CPREFLAGS) $$i; done > depend
 	diff -b depend depend.mk || mv depend depend.mk
 	$(RM) templist depend
