@@ -18,7 +18,7 @@
 
   <groupId>org.ccnx</groupId>
   <artifactId>project-ccnx</artifactId>
-  <version>0.7.2-SNAPSHOT</version><!-- Probably use a plugin to handle versioning -->
+  <version>0.8.0-SNAPSHOT</version><!-- Probably use a plugin to handle versioning -->
   <packaging>pom</packaging>
   <name>Project CCNx</name>
   <url>http://ccnx.org</url>
