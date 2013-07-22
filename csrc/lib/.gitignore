@@ -8,4 +8,5 @@ libccn.a
 matrixtest
 signbenchtest
 skel_decode_test
+test.aeskeystore
 test.keystore
