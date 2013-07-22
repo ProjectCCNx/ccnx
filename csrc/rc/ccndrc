@@ -1,0 +1,40 @@
+#
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+# Please customize script header to match the Linux/Unix distribution you are using.
+# Should be installed in $CCNDHOME/.ccnx.
+
+# Source a file containing settings.
+# To learn about things that you can set, use this command: ccnd -h
+# This file belongs in the .ccnx folder within your ccnd home folder
+
+# Common CCNx variables
+CCND_DEBUG=65
+CCND_LOG=/var/log/ccnd/ccnd.log
+CCND_AUTOREG=
+CCND_CAP=50000
+
+# Rarely used variables set for thoroughness.
+CCN_LOCAL_PORT=''
+CCND_LISTEN_ON=''
+CCND_MTU=''
+CCN_LOCAL_SOCKNAME=''
+CCND_DATA_PAUSE_MICROSEC=''
+CCND_KEYSTORE_DIRECTORY=''
+CCND_DEFAULT_TIME_TO_STALE=''
+CCND_MAX_TIME_TO_STALE=''
+
+
+export CCN_LOCAL_PORT CCND_CAP CCND_DEBUG CCND_AUTOREG CCND_LISTEN_ON CCND_MTU
+export CCN_LOCAL_SOCKNAME CCND_DATA_PAUSE_MICROSEC CCND_KEYSTORE_DIRECTORY
+export CCND_DEFAULT_TIME_TO_STALE CCND_MAX_TIME_TO_STALE CCND_LOG
+

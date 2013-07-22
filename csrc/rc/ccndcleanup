@@ -1,0 +1,22 @@
+#
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+# Please customize script header to match the Linux/Unix distribution you are using.
+# Should be installed in $CCNDHOME/.ccnx.
+
+# Cleans up bad processes that don't finish when ccnd does
+# Place this file in the .ccnx folder within your ccnd home folder
+# Called by stop directive within the ccnd init script
+
+# Add any cleanup commands to this file as needed
+
+
