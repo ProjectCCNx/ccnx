@@ -43,6 +43,7 @@ Refer to http://redmine.ccnx.org/versions/17 for more details on CCNx 0.8.0.
 	* Feature #100912: Support symmetric key signing and verification on the C side
 	* Feature #100942: Incorporate better hash functions
 	* Feature #100955: Allow AnswerOriginKind = 2 in Interests
+	* Feature #100960: track caller context in ccn_fetch API
 	* Feature #100988: Make =-escaping of ccnx URIs the default
 	* Feature #100995: Review use of "caller" parameter to java NetManager expressInterest
 	* Feature #100997: javasrc System testing should move to javasrc/src/systemtest and 'make test' should be isolated to running unit tests
