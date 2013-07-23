@@ -15,6 +15,7 @@ Refer to http://redmine.ccnx.org/versions/17 for more details on CCNx 0.8.0.
   * Issues Resolved:
 	* Bug #100118: ccnd does not handle FreshnessSeconds=0 correctly.
 	* Bug #100119: ccnd should handle large values of FreshnessSeconds
+	* Bug #100558: test-security does not pass
 	* Bug #100897: timeout values  should be consistently long throughout java code 
 	* Bug #100966: Incorrect processing of CCNS_SYNC_SCOPE=3
 	* Bug #100977: Problem with verify in CCNInputStream when trying to retrieve key
@@ -22,11 +23,13 @@ Refer to http://redmine.ccnx.org/versions/17 for more details on CCNx 0.8.0.
 	* Bug #100998: VLC 2.1.x block_New definition removed
 	* Bug #100999: java BLOCK_AFTER_FIRST_SEGMENT doesn't work in all cases
 	* Bug #101000: sync_diff code should reset differencing data when aborting or completing a comparison
+	* Bug #101004: QueuedContentHandler has a sync error
 	* Bug #101005: CCNx Android Services build out of sync with API changes to CCNx C-lib
 	* Bug #101007: ccn_resolve_version() should distinguish between no response and finding an unversioned object.
 	* Bug #101010: ccnseqwriter command busy-loops when its ccnd goes away
 	* Bug #101011: Compile warning when building new symmetric key code with openssl 0.9.8
 	* Bug #101012: Improve recovery from node fetch timeout in java sync
+	* Bug #101013: node fetch timeout in java sync implementation should be longer and settable
 	* Bug #101015: ccnd needs to protect against malformed/malicious ccnb encoded data on stream faces
 	* Bug #101018: Java symmetric key code uses old Sun class
 	* Bug #101020: library sync watch functionality needs to use an appropriate scope setting
@@ -41,6 +44,7 @@ Refer to http://redmine.ccnx.org/versions/17 for more details on CCNx 0.8.0.
 	* Feature #100942: Incorporate better hash functions
 	* Feature #100955: Allow AnswerOriginKind = 2 in Interests
 	* Feature #100988: Make =-escaping of ccnx URIs the default
+	* Feature #100995: Review use of "caller" parameter to java NetManager expressInterest
 	* Feature #100997: javasrc System testing should move to javasrc/src/systemtest and 'make test' should be isolated to running unit tests
 	* Feature #101003: Add option to ccnnamelist to make it easier to test parse speed
 	* Feature #101021: Add example rc init scripts
