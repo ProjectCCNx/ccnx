@@ -3,7 +3,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2010-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -742,7 +742,7 @@ ccn_fetch_set_context(struct ccn_fetch_stream *fs, void *context)
 }
 
 /**
- * @returns caller's context, as provided to ccn_fetch_open for the stream.
+ * @returns caller's context, as previously set for the stream.
  */
 void *
 ccn_fetch_get_context(struct ccn_fetch_stream *fs)
