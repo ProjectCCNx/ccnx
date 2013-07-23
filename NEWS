@@ -26,20 +26,25 @@ Refer to http://redmine.ccnx.org/versions/17 for more details on CCNx 0.8.0.
 	* Bug #101007: ccn_resolve_version() should distinguish between no response and finding an unversioned object.
 	* Bug #101010: ccnseqwriter command busy-loops when its ccnd goes away
 	* Bug #101011: Compile warning when building new symmetric key code with openssl 0.9.8
+	* Bug #101012: Improve recovery from node fetch timeout in java sync
 	* Bug #101015: ccnd needs to protect against malformed/malicious ccnb encoded data on stream faces
 	* Bug #101018: Java symmetric key code uses old Sun class
 	* Bug #101020: library sync watch functionality needs to use an appropriate scope setting
 	* Bug #101022: update eclipse configuration to include systemtest
+	* Bug #101023: ccnr should not schedule expiry events based on the FreshnessSeconds of stored content
+	* Bug #101026: GACMNodeKeyDirtyTestRepo bugs
 	* Feature #100617: Android code to support 'ccnd' no longer needs to run the script to create keystore.
 	* Feature #100720: Java testing log level setting is confusing
 	* Feature #100874: Implement a keystore that can support symmetric keys
 	* Feature #100890: Add an ordered dictionary to libccn
+	* Feature #100912: Support symmetric key signing and verification on the C side
 	* Feature #100942: Incorporate better hash functions
 	* Feature #100955: Allow AnswerOriginKind = 2 in Interests
 	* Feature #100988: Make =-escaping of ccnx URIs the default
 	* Feature #100997: javasrc System testing should move to javasrc/src/systemtest and 'make test' should be isolated to running unit tests
 	* Feature #101003: Add option to ccnnamelist to make it easier to test parse speed
 	* Feature #101021: Add example rc init scripts
+	* Feature #101024: Improve documentation for deprecated key functionality in the C library
 	* Support #100937: Prepare for ccnx-0.8.0 release
 	* Support #100991: Add support for running on OpenBSD
 	* Support #101019: Spruce up csrc makefiles to make them more easily maintainable
