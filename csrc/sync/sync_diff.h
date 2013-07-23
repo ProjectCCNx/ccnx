@@ -2,6 +2,9 @@
  * @file sync/sync_protocol.h
  *  
  * Part of CCNx Sync.
+ */
+/*
+ * Copyright (C) 2011-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
