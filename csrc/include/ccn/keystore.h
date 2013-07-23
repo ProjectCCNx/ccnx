@@ -78,7 +78,10 @@ void ccn_generate_symmetric_key(unsigned char *keybuf, int keylength);
 struct ccn_charbuf *ccn_get_aes_keystore_path(struct ccn *h, char *suffix);
 
 /* Deprecated functions after 0.7.1 */
+/* Deprecated in favor of ccn_keystore_key */
 const struct ccn_pkey *ccn_keystore_private_key(struct ccn_keystore *p) DEPRECATED;
+/* Deprecated in favor of ccn_keystore_key_digest_length */
 ssize_t ccn_keystore_public_key_digest_length(struct ccn_keystore *p) DEPRECATED;
+/* Deprecated in favor of ccn_keystore_key_digest */
 const unsigned char *ccn_keystore_public_key_digest(struct ccn_keystore *p) DEPRECATED;
 #endif
