@@ -80,7 +80,6 @@ public class GACMNodeKeyDirtyTestRepo {
 		handle = td.getHandleForUser(friendlyNames[0]);
 		acm = new GroupAccessControlManager(directoryBase, groupNamespace, userNamespace, handle);
 		acm.publishMyIdentity(new ContentName(userNamespace, friendlyNames[0]), handle.keyManager().getDefaultPublicKey());
-		handle.keyManager().publishKeyToRepository();
 		
 		// create the root ACL
 		// The root has user0 as a manager
@@ -102,7 +101,6 @@ public class GACMNodeKeyDirtyTestRepo {
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
 		td.closeAll();
-		handle.close();
 	}
 	
 	/**
