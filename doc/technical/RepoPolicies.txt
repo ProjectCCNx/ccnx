@@ -41,8 +41,9 @@ A Repository Policy is in xml format (using ccnb encoding), and is stored in the
 <Policy>
   <PolicyVersion>1.5</PolicyVersion>
   <LocalName>Repository</LocalName>
-  <GlobalPrefix>ccnx:/parc.com/csl/ccn/Repos</GlobalPrefix>
-  <Namespace>some/prefix</Namespace>
+  <GlobalPrefix>ccnx:/parc.com/csl/ccn/Repos/42</GlobalPrefix>
+  <Namespace>/some/prefix</Namespace>
+  <Namespace>/some/other/prefix</Namespace>
 </Policy>
 .......................................................
 with a separate `<Namespace>` element for each namespace. (There can be an arbitrary number of namespaces.)

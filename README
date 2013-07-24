@@ -111,6 +111,7 @@ The file tree is organized as follows:
 * `apps/wireshark` - wireshark plugin dissector for decoding CCNx packets
 * `csrc/` - C code tree
 * `csrc/ccnd` - CCN daemon, the user-space forwarder implementation
+* `csrc/ccnr` - repository daemon, for persistent storage of content
 * `csrc/cmd` - simple command-line utilities
 * `csrc/conf` - OS-specific configuration scripts etc.
 * `csrc/contrib` - third-party library needed for certain platforms that
@@ -119,6 +120,8 @@ The file tree is organized as follows:
 * `csrc/lib` - C application library implementation
 * `csrc/libexec` - connectivity utilities, especially ccndc, the ccnd
        configurator and connectivity agent
+* `csrc/rc` - sample rc scripts for automatic daemon startup
+* `csrc/sync` - sync protocol implementation
 * `csrc/tests` - C test suite
 * `csrc/util` - launch script support
 * `doc/` - documentation tree
@@ -135,6 +138,7 @@ The file tree is organized as follows:
 * `javasrc/src` - Java source tree
 * `javasrc/tools` - convenience scripts
 * `schema` - XML schema and DTD files
+* `vendor` - unmodified copies of included third-party code
 
 After building, the following notable directories will appear:
 
@@ -330,7 +334,7 @@ the fully qualified pathname of the repository file directory.
 
     bin/ccnr
 
-The directory named by `CCNR_DIRECTORY` does not need to exist already.
+The directory named by `CCNR_DIRECTORY` must exist already.
 To start ccnr as a daemon, redirect stderr to a file and execute
 
     bin/ccnr &
@@ -360,10 +364,13 @@ configuration, see the ccnr man page at `doc/manpages/ccnr.html`.
 
 A policy file specifies the namespaces for which the repository accepts
 and holds content. The name of the policy file is the concatenation of
-the global prefix and "`data/policy.xml`". Unless an alternative policy has
-been explicitly written/published under the policy information name, the
+the global prefix and "`data/policy.xml`". The actual encoding of the
+files is in ccnb form, and it must be stored in the repository to take
+effect. Unless an alternative policy has been explicitly
+written/published under the policy information name, the
 the policy defaults to `/`, which means that writes will be accepted for
 any name and reads serviced for any name for which there is content.
+The command `ccnrpolicyedit` may be used to edit the policy.
 For more information about policies, see `doc/technical/RepoPolicies.html`.
 
 __UTILITIES__
