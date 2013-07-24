@@ -21,6 +21,7 @@ Refer to http://redmine.ccnx.org/versions/17 for more details on CCNx 0.8.0.
 - An example rc startup script is now included, but needs to be installed by
   hand.  It is coded for Ubuntu Linux, but should be easily adaptable to other
   systems.
+- This release drops support for Java JDK 1.5.
 
   * Issues Resolved:
 	* Bug #100118: ccnd does not handle FreshnessSeconds=0 correctly.

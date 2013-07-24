@@ -187,12 +187,11 @@ configured on each OS.
 
 __JAVA LANGUAGE REQUIREMENTS AND TOOLS__
 
-For parts of the system written in Java, CCNx code is tested with Sun
-Java JDK 1.5 and 1.6 only, with ant used as the canonical build tool.
+For parts of the system written in Java, CCNx code is tested with
+Java JDK 1.6 and 1.7 only, with ant used as the canonical build tool.
 You will need:
 
 * ant (>= 1.8.2 tested, download latest version from: http://ant.apache.org/bindownload.cgi)
-  extra libraries for JDK1.5 only (see below)
 
 Eclipse `.project` and `.classpath` files are included in the distribution
 so you can create Eclipse projects easily that will resolve
@@ -206,27 +205,7 @@ Projects into Workspace".  Type in (or browse to) the appropriate
 directory and you should see the named Project listed and selected so
 you can click Finish to complete the import.
 
-Please let us know if JDK1.5 support is important to you, as we plan
-to eliminate it in the near future.  The CCNx distribution includes
-JAR files for required libraries for JDK1.6.
-
-ONLY IF you are going to run on JDK1.5 you must obtain the following additional
-library file independently:
-
-* Bouncy Castle Provider for JDK1.5: `bcprov-jdk15-143.jar`
-   (http://www.bouncycastle.org/download/bcprov-jdk15-143.jar)
-
-Copy the extra JAR file into `javasrc/lib`, again ONLY IF you
-are running on JDK1.5.
-
 __SPECIAL PLATFORM NOTES__
-
-_Fedora_
-
-JDK1.5 on Fedora has been seen to be extremely slow at seeding the
-random number generator, which causes major delays for certain
-operations such as generating the initial keystore file.  We recommend
-using JDK1.6 on Fedora.
 
 _Solaris_
 
