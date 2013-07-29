@@ -21,8 +21,8 @@ DEBRIS = anything.ccnb contentobjecthash.ccnb contentmishash.ccnb \
          contenthash.ccnb
 
 BROKEN_PROGRAMS = 
-CSRC = ccnd_main.c ccnd.c ccnd_msg.c ccnd_stats.c ccnd_internal_client.c ccndsmoketest.c
-HSRC = ccnd_private.h
+CSRC = ccnd_main.c ccnd.c ccnd_msg.c ccnd_stats.c ccnd_internal_client.c ccnd_strategy0.c ccndsmoketest.c
+HSRC = ccnd_private.h ccnd_strategy.h
 SCRIPTSRC = testbasics fortunes.ccnb contentobjecthash.ref anything.ref \
             minsuffix.ref
  
@@ -32,7 +32,8 @@ all: default $(BROKEN_PROGRAMS)
 
 $(PROGRAMS): $(CCNLIBDIR)/libccn.a
 
-CCND_OBJ = ccnd_main.o ccnd.o ccnd_msg.o ccnd_stats.o ccnd_internal_client.o
+CCND_OBJ = ccnd_main.o ccnd.o ccnd_msg.o ccnd_stats.o ccnd_internal_client.o ccnd_strategy0.o
+
 ccnd: $(CCND_OBJ) ccnd_built.sh
 	$(CC) $(CFLAGS) -o $@ $(CCND_OBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 	sh ./ccnd_built.sh

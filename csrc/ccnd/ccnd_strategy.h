@@ -1,0 +1,111 @@
+/**
+ * @file ccnd_strategy.h
+ *
+ * This header defines the API to be used by strategy callouts.
+ *
+ * Part of ccnd - the CCNx Daemon.
+ *
+ * Copyright (C) 2013 Palo Alto Research Center, Inc.
+ *
+ * This work is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License version 2 as published by the
+ * Free Software Foundation.
+ * This work is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ * for more details. You should have received a copy of the GNU General Public
+ * License along with this program; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301, USA.
+ */
+ 
+#ifndef CCND_STRATEGY_DEFINED
+#define CCND_STRATEGY_DEFINED
+
+#include <sys/types.h>
+#include <stddef.h>
+#include <stdint.h>
+
+/* These types should remain opaque for strategy routines */
+struct ccnd_handle;
+struct interest_entry;
+
+
+/**
+ * Used for keeping track of interest expiry.
+ *
+ * Modulo 2**32, time units and origin are abitrary and private.
+ */
+typedef uint32_t ccn_wrappedtime;
+
+#define TYPICAL_NONCE_SIZE 12       /**< actual allocated size may differ */
+/**
+ * Per-face PIT information
+ *
+ * This is used to track the pending interest info that is specific to
+ * a face.  The list may contain up to two entries for a given face - one
+ * to track the most recent arrival on that face (the downstream), and
+ * one to track the most recently sent (the upstream).
+ */
+struct pit_face_item {
+    struct pit_face_item *next;     /**< next in list */
+    unsigned faceid;                /**< face id */
+    ccn_wrappedtime renewed;        /**< when entry was last refreshed */
+    ccn_wrappedtime expiry;         /**< when entry expires */
+    unsigned pfi_flags;             /**< CCND_PFI_x */
+    unsigned char nonce[TYPICAL_NONCE_SIZE]; /**< nonce bytes */
+};
+#define CCND_PFI_NONCESZ  0x00FF    /**< Mask for actual nonce size */
+#define CCND_PFI_UPSTREAM 0x0100    /**< Tracks upstream (sent interest) */
+#define CCND_PFI_UPENDING 0x0200    /**< Has been sent upstream */
+#define CCND_PFI_SENDUPST 0x0400    /**< Should be sent upstream */
+#define CCND_PFI_UPHUNGRY 0x0800    /**< Upstream hungry, cupboard bare */
+#define CCND_PFI_DNSTREAM 0x1000    /**< Tracks downstream (recvd interest) */
+#define CCND_PFI_PENDING  0x2000    /**< Pending for immediate data */
+#define CCND_PFI_SUPDATA  0x4000    /**< Suppressed data reply */
+#define CCND_PFI_DCFACE  0x10000    /**< This upstream is a DC face */
+
+/**
+ * State for the strategy engine
+ */
+struct ccn_strategy {
+    struct pit_face_item *pfl;      /**< upstream and downstream faces */
+    int stateA;
+    ccn_wrappedtime birth;          /**< when interest entry was created */
+    ccn_wrappedtime renewed;        /**< when interest entry was renewed */
+    unsigned renewals;              /**< number of times renewed */
+    struct interest_entry *ie;      /**< associated interest entry */
+};
+
+/** Ops for strategy callout */
+enum ccn_strategy_op {
+    CCNST_NOP,      /* no-operation */
+    CCNST_FIRST,    /* newly created interest entry (pit entry) */
+    CCNST_TIMER,    /* wakeup used by strategy */
+    CCNST_SATISFIED, /* matching content has arrived, pit entry will go away */
+    CCNST_TIMEOUT,  /* all downstreams timed out, pit entry will go away */
+};
+
+/**
+ * Strategies are implemented by a procedure that is called at
+ * critical junctures in the lifetime of a pending interest.
+ */
+typedef void (*strategy_callout_proc)(struct ccnd_handle *h,
+                                      struct interest_entry *ie,
+                                      enum ccn_strategy_op op);
+
+/**
+ * Schedule a strategy wakeup
+ *
+ * This causes the associated strategy callout to be called at
+ * a later time.  The op will be passed to the deferred invocation.
+ *
+ * Any previously scheduled wakeup will be cancelled.
+ * To just cancel any existing wakeup, pass CCNST_NOP.
+ *
+ */
+void
+strategy_settimer(struct ccnd_handle *h, struct interest_entry *ie,
+                  int usec, enum ccn_strategy_op op);
+
+#endif
