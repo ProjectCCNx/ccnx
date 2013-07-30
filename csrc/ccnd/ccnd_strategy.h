@@ -81,6 +81,14 @@ struct ccn_strategy {
 enum ccn_strategy_op {
     CCNST_NOP,      /* no-operation */
     CCNST_FIRST,    /* newly created interest entry (pit entry) */
+// additional downstream face
+// additional upstream face (e.g. new registration)
+// refresh
+// notification
+// expiry of upstream
+// expiry of downstream
+// removal of upstream
+// removal of downstream
     CCNST_TIMER,    /* wakeup used by strategy */
     CCNST_SATISFIED, /* matching content has arrived, pit entry will go away */
     CCNST_TIMEOUT,  /* all downstreams timed out, pit entry will go away */
