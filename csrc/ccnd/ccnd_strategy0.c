@@ -32,7 +32,6 @@ strategy0_callout(struct ccnd_handle *h,
     struct pit_face_item *x = NULL;
     struct pit_face_item *p = NULL;
     struct strategy_state *npe = NULL;
-//    struct ccn_indexbuf *tap = NULL;
     unsigned best = CCN_NOFACEID;
     unsigned randlow, randrange;
     unsigned nleft;
@@ -43,10 +42,6 @@ strategy0_callout(struct ccnd_handle *h,
         case CCNST_NOP:
             break;
         case CCNST_FIRST:
-            
-//            npe = get_fib_npe(h, ie);
-//            if (npe != NULL)
-//                tap = npe->tap;
             npe = strategy_getstate(h, ie);
             best = npe->src;
             if (best == CCN_NOFACEID)
@@ -55,11 +50,8 @@ strategy0_callout(struct ccnd_handle *h,
             for (x = ie->pfl; x != NULL; x = x->next)
                 if ((x->pfi_flags & CCND_PFI_DNSTREAM) != 0)
                     break;
-//            if (x == NULL || (x->pfi_flags & CCND_PFI_PENDING) == 0) {
-//                ccnd_debug_ccnb(h, __LINE__, "canthappen", NULL,
-//                                ie->interest_msg, ie->size);
-//                break;
-//            }
+            if (x == NULL || (x->pfi_flags & CCND_PFI_PENDING) == 0)
+                return;
             if (best == CCN_NOFACEID) {
                 randlow = 4000;
                 randrange = 75000;
@@ -74,11 +66,11 @@ strategy0_callout(struct ccnd_handle *h,
             for (p = ie->pfl; p!= NULL; p = p->next) {
                 if ((p->pfi_flags & CCND_PFI_UPSTREAM) != 0) {
                     if (p->faceid == best) {
-                        p = send_interest(h, ie->ie, x, p);
+                        /* we may have already sent in case of TAP */
+                        if ((p->pfi_flags & CCND_PFI_UPENDING) == 0)
+                            p = send_interest(h, ie->ie, x, p);
                         strategy_settimer(h, ie->ie, npe->usec, CCNST_TIMER);
                     }
-//                    else if (ccn_indexbuf_member(tap, p->faceid) >= 0)
-//                        p = send_interest(h, ie->ie, x, p);
                     else if (p->faceid == npe->osrc)
                         pfi_set_expiry_from_micros(h, ie->ie, p, randlow);
                     else {

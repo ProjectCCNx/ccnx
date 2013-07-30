@@ -3725,6 +3725,35 @@ pfi_unique_nonce(struct ccnd_handle *h, struct interest_entry *ie,
 }
 
 /**
+ * Send out a new interest to all the TAP registrations
+ */
+static void
+send_tap_interests(struct ccnd_handle *h, struct interest_entry *ie)
+{
+    struct nameprefix_entry *npe;
+    struct ccn_indexbuf *tap = NULL;
+    struct pit_face_item *x = NULL;
+    struct pit_face_item *p = NULL;
+
+    npe = get_fib_npe(h, ie);
+    if (npe == NULL) return;
+    tap = npe->tap;
+    if (tap == NULL) return;
+    /* Find our downstream; right now there should be just one. */
+    for (x = ie->strategy.pfl; x != NULL; x = x->next)
+        if ((x->pfi_flags & CCND_PFI_DNSTREAM) != 0)
+            break;
+    if (x == NULL || (x->pfi_flags & CCND_PFI_PENDING) == 0)
+        return;
+    for (p = ie->strategy.pfl; p!= NULL; p = p->next) {
+        if ((p->pfi_flags & CCND_PFI_UPSTREAM) != 0) {
+            if (ccn_indexbuf_member(tap, p->faceid) >= 0)
+                p = send_interest(h, ie, x, p);
+        }
+    }
+}
+
+/**
  * Schedules the propagation of an Interest message.
  */
 static int
@@ -3810,8 +3839,13 @@ propagate_interest(struct ccnd_handle *h,
             p->pfi_flags &= ~CCND_PFI_UPHUNGRY;
         }
     }
-    if (res == HT_NEW_ENTRY)
+    if (res == HT_NEW_ENTRY) {
+        send_tap_interests(h, ie);
+        
+        
+        
         strategy_callout(h, ie, CCNST_FIRST);
+    }
     usec = ie_next_usec(h, ie, &expiry);
     if (ie->ev != NULL && wt_compare(expiry + 2, ie->ev->evint) < 0)
         ccn_schedule_cancel(h->sched, ie->ev);
