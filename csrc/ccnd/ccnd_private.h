@@ -245,7 +245,6 @@ struct face {
 #define CCN_FACE_BC    (1 << 20) /** Needs SO_BROADCAST to send */
 #define CCN_FACE_NBC   (1 << 21) /** Don't use SO_BROADCAST to send */
 #define CCN_FACE_ADJ   (1 << 22) /** Adjacency guid has been negotiatied */
-#define CCN_NOFACEID    (~0U)    /** denotes no face */
 
 /**
  * Content table entry
@@ -328,9 +327,7 @@ struct nameprefix_entry {
     int children;                /**< number of children */
     unsigned flags;              /**< CCN_FORW_* flags about namespace */
     int fgen;                    /**< used to decide when forward_to is stale */
-    unsigned src;                /**< faceid of recent content source */
-    unsigned osrc;               /**< and of older matching content */
-    unsigned usec;               /**< response-time prediction */
+    struct strategy_state sst;   /**< used by strategy layer */
 };
 
 /**

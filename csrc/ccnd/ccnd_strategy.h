@@ -30,13 +30,24 @@
 struct ccnd_handle;
 struct interest_entry;
 
+/** A PRNG returning 31-bit pseudo-random numbers */
+uint32_t ccnd_random(struct ccnd_handle *);
+
+struct strategy_state {
+    unsigned src;                /**< faceid of recent content source */
+    unsigned osrc;               /**< and of older matching content */
+    unsigned usec;               /**< response-time prediction */
+};
 
 /**
  * Used for keeping track of interest expiry.
  *
- * Modulo 2**32, time units and origin are abitrary and private.
+ * Modulo 2**32 - time units and origin are arbitrary and private.
  */
 typedef uint32_t ccn_wrappedtime;
+
+/** A faceid is declared simply as unsigned. There is one special value. */
+#define CCN_NOFACEID    (~0U)    /** denotes no face */
 
 #define TYPICAL_NONCE_SIZE 12       /**< actual allocated size may differ */
 /**
@@ -99,8 +110,36 @@ enum ccn_strategy_op {
  * critical junctures in the lifetime of a pending interest.
  */
 typedef void (*strategy_callout_proc)(struct ccnd_handle *h,
-                                      struct interest_entry *ie,
+                                      struct ccn_strategy *s,
                                       enum ccn_strategy_op op);
+
+
+/**
+ *  Forward an interest message
+ *
+ *  x is downstream (the interest came x).
+ *  p is upstream (the interest is to be forwarded to p).
+ *  @returns p (or its reallocated replacement).
+ */
+struct pit_face_item *
+send_interest(struct ccnd_handle *h, struct interest_entry *ie,
+              struct pit_face_item *x, struct pit_face_item *p);
+
+/**
+ * Set the expiry of the pit face item using a time in microseconds from present
+ *
+ * Does not set the renewed timestamp.
+ */
+void
+pfi_set_expiry_from_micros(struct ccnd_handle *h, struct interest_entry *ie,
+                           struct pit_face_item *p, unsigned micros);
+
+/**
+ * Return a pointer to the strategy state record for
+ * the name prefix of the given interest entry
+ */
+struct strategy_state *
+strategy_getstate(struct ccnd_handle *h, struct ccn_strategy *s);
 
 /**
  * Schedule a strategy wakeup
@@ -115,5 +154,14 @@ typedef void (*strategy_callout_proc)(struct ccnd_handle *h,
 void
 strategy_settimer(struct ccnd_handle *h, struct interest_entry *ie,
                   int usec, enum ccn_strategy_op op);
+
+// This still needs to be teased out of ccnd.c
+void adjust_predicted_response(struct ccnd_handle *h,
+                               struct interest_entry *ie, int up);
+
+// Replace later with a strategy registry of some flavor.
+void strategy0_callout(struct ccnd_handle *h,
+                       struct ccn_strategy *s,
+                       enum ccn_strategy_op op);
 
 #endif
