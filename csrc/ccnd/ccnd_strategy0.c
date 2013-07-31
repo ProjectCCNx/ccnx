@@ -19,6 +19,10 @@
 
 #include "ccnd_strategy.h"
 
+static void
+adjust_predicted_response(struct ccnd_handle *h,
+                          struct strategy_state *sst, int up);
+
 /**
  * This implements the default strategy.
  *
@@ -27,22 +31,26 @@
 void
 strategy0_callout(struct ccnd_handle *h,
                   struct ccn_strategy *ie,
-                  enum ccn_strategy_op op)
+                  enum ccn_strategy_op op,
+                  unsigned faceid)
 {
     struct pit_face_item *x = NULL;
     struct pit_face_item *p = NULL;
     struct strategy_state *npe = NULL;
+    struct strategy_state *sst[2] = {NULL};
     unsigned best = CCN_NOFACEID;
     unsigned randlow, randrange;
     unsigned nleft;
     unsigned amt;
     int usec;
+    int i;
     
     switch (op) {
         case CCNST_NOP:
             break;
         case CCNST_FIRST:
-            npe = strategy_getstate(h, ie);
+            strategy_getstate(h, ie, sst, 2);
+            npe = sst[0];
             best = npe->src;
             if (best == CCN_NOFACEID)
                 best = npe->src = npe->osrc;
@@ -71,6 +79,8 @@ strategy0_callout(struct ccnd_handle *h,
                             p = send_interest(h, ie->ie, x, p);
                         strategy_settimer(h, ie->ie, npe->usec, CCNST_TIMER);
                     }
+                    else if ((p->pfi_flags & CCND_PFI_UPENDING) != 0)
+                        /* TAP interest has already been sent */;
                     else if (p->faceid == npe->osrc)
                         pfi_set_expiry_from_micros(h, ie->ie, p, randlow);
                     else {
@@ -98,11 +108,53 @@ strategy0_callout(struct ccnd_handle *h,
              * Our best choice has not responded in time.
              * Increase the predicted response.
              */
-            adjust_predicted_response(h, ie->ie, 1);
+            strategy_getstate(h, ie, sst, 2);
+            for (i = 0; i < 2 && sst[i] != NULL; i++)
+                adjust_predicted_response(h, sst[i], 1);
             break;
         case CCNST_SATISFIED:
+            /* Keep a little history about where matching content comes from. */
+            strategy_getstate(h, ie, sst, 2);
+            for (i = 0; i < 2 && sst[i] != NULL; i++) {
+                struct strategy_state *s = sst[i];
+                if (s->src == faceid)
+                    adjust_predicted_response(h, s, 0);
+                else if (s->src == CCN_NOFACEID)
+                    s->src = faceid;
+                else {
+                    s->osrc = s->src;
+                    s->src = faceid;
+                }
+            }
             break;
         case CCNST_TIMEOUT:
+            /* Interest has not been satisfied or refreshed */
             break;
     }
+}
+
+// XXX - import this late so we don't pollute too much.
+#include "ccnd_private.h"
+
+/**
+ * Adjust the predicted response associated with a name prefix entry.
+ *
+ * It is decreased by a small fraction if we get content within our
+ * previous predicted value, and increased by a larger fraction if not.
+ *
+ */
+static void
+adjust_predicted_response(struct ccnd_handle *h,
+                          struct strategy_state *sst, int up)
+{
+    unsigned t = sst->usec;
+    if (up)
+        t = t + (t >> 3);
+    else
+        t = t - (t >> 7);
+    if (t < 127)
+        t = 127;
+    else if (t > h->predicted_response_limit)
+        t = h->predicted_response_limit;
+    sst->usec = t;
 }

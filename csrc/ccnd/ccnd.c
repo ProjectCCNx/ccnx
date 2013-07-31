@@ -63,7 +63,7 @@
 
 #include "ccnd_private.h"
 
-#define strategy_callout(h,i,j) strategy0_callout(h,&(i)->strategy,j)  // XXX - for now
+#define strategy_callout(h,i,j,f) strategy0_callout(h,&(i)->strategy,j,f)  // XXX - for now
 
 static void cleanup_at_exit(void);
 static void unlink_at_exit(const char *path);
@@ -1726,7 +1726,8 @@ consume_matching_interests(struct ccnd_handle *h,
                            struct nameprefix_entry *npe,
                            struct content_entry *content,
                            struct ccn_parsed_ContentObject *pc,
-                           struct face *face)
+                           struct face *face,
+                           struct face *content_face)
 {
     int matches = 0;
     struct ielinks *head;
@@ -1755,79 +1756,12 @@ consume_matching_interests(struct ccnd_handle *h,
                                            content);
             }
             matches += 1;
-            strategy_callout(h, p, CCNST_SATISFIED);
+            if (content_face != NULL)
+                strategy_callout(h, p, CCNST_SATISFIED, content_face->faceid);
             consume_interest(h, p);
         }
     }
     return(matches);
-}
-
-/**
- * Adjust the predicted response associated with a name prefix entry.
- *
- * It is decreased by a small fraction if we get content within our
- * previous predicted value, and increased by a larger fraction if not.
- *
- */
-static void
-adjust_npe_predicted_response(struct ccnd_handle *h,
-                              struct nameprefix_entry *npe, int up)
-{
-    unsigned t = npe->sst.usec;
-    if (up)
-        t = t + (t >> 3);
-    else
-        t = t - (t >> 7);
-    if (t < 127)
-        t = 127;
-    else if (t > h->predicted_response_limit)
-        t = h->predicted_response_limit;
-    npe->sst.usec = t;
-}
-
-/**
- * Adjust the predicted responses for an interest.
- *
- * We adjust two npes, so that the parents are informed about activity
- * at the leaves.
- *
- */
-void
-adjust_predicted_response(struct ccnd_handle *h,
-                          struct interest_entry *ie, int up)
-{
-    struct nameprefix_entry *npe;
-        
-    npe = ie->ll.npe;
-    if (npe == NULL)
-        return;
-    adjust_npe_predicted_response(h, npe, up);
-    if (npe->parent != NULL)
-        adjust_npe_predicted_response(h, npe->parent, up);
-}
-
-/**
- * Keep a little history about where matching content comes from.
- */
-static void
-note_content_from(struct ccnd_handle *h,
-                  struct nameprefix_entry *npe,
-                  unsigned from_faceid,
-                  int prefix_comps)
-{
-    struct strategy_state *sst = &npe->sst;
-    
-    if (sst->src == from_faceid)
-        adjust_npe_predicted_response(h, npe, 0);
-    else if (sst->src == CCN_NOFACEID)
-        sst->src = from_faceid;
-    else {
-        sst->osrc = sst->src;
-        sst->src = from_faceid;
-    }
-    if (h->debug & 8)
-        ccnd_msg(h, "sl.%d %u ci=%d osrc=%u src=%u usec=%d", __LINE__,
-                 from_faceid, prefix_comps, npe->sst.osrc, npe->sst.src, npe->sst.usec);
 }
 
 /**
@@ -1848,7 +1782,6 @@ match_interests(struct ccnd_handle *h, struct content_entry *content,
     int n_matched = 0;
     int new_matches;
     int ci;
-    int cm = 0;
     struct ccn_charbuf *name = NULL;
     struct ccn_indexbuf *namecomps = NULL;
     unsigned c0 = 0;
@@ -1875,19 +1808,15 @@ match_interests(struct ccnd_handle *h, struct content_entry *content,
     name = NULL;
     indexbuf_release(h, namecomps);
     namecomps = NULL;
-    for (; npe != NULL; npe = npe->parent, ci--) {
+    for (; npe != NULL; npe = npe->parent) {
         if (npe->fgen != h->forward_to_gen)
             update_forward_to(h, npe);
         if (from_face != NULL && (npe->flags & CCN_FORW_LOCAL) != 0 &&
             (from_face->flags & CCN_FACE_GG) == 0)
             return(-1);
-        new_matches = consume_matching_interests(h, npe, content, pc, face);
-        if (from_face != NULL && (new_matches != 0 || ci + 1 == cm))
-            note_content_from(h, npe, from_face->faceid, ci);
-        if (new_matches != 0) {
-            cm = ci; /* update stats for this prefix and one shorter */
-            n_matched += new_matches;
-        }
+        new_matches = consume_matching_interests(h, npe, content, pc,
+                                                 face, from_face);
+        n_matched += new_matches;
     }
     return(n_matched);
 }
@@ -3309,7 +3238,7 @@ strategy_timer(struct ccn_schedule *sched,
         ie->stev = NULL;
     if (flags & CCN_SCHEDULE_CANCEL)
         return(0);
-    strategy_callout(h, ie, (enum ccn_strategy_op)ev->evint);
+    strategy_callout(h, ie, (enum ccn_strategy_op)ev->evint, CCN_NOFACEID);
     return(0);
 }
 
@@ -3332,13 +3261,21 @@ strategy_settimer(struct ccnd_handle *h, struct interest_entry *ie,
 }
 
 /**
- * Return a pointer to the strategy state record for
- * the name prefix of the given interest entry
+ * Return a pointer to the strategy state records for
+ * the name prefix of the given interest entry and up to k-1 parents.
  */
-struct strategy_state *
-strategy_getstate(struct ccnd_handle *h, struct ccn_strategy *s)
+void
+strategy_getstate(struct ccnd_handle *h, struct ccn_strategy *s,
+                  struct strategy_state **sst, int k)
 {
-    return (&s->ie->ll.npe->sst);
+    struct nameprefix_entry *npe;
+    int i;
+    
+    npe = s->ie->ll.npe;
+    for (i = 0; i < k && npe != NULL; i++, npe = npe->parent)
+        sst[i] = &npe->sst;
+    while (i < k)
+        sst[i++] = NULL;
 }
 
 /**
@@ -3447,7 +3384,7 @@ do_propagate(struct ccn_schedule *sched,
         }
     }
     if (pending == 0 && upstreams == 0) {
-        strategy_callout(h, ie, CCNST_TIMEOUT);
+        strategy_callout(h, ie, CCNST_TIMEOUT, CCN_NOFACEID);
         consume_interest(h, ie);
         return(0);
     }
@@ -3841,10 +3778,7 @@ propagate_interest(struct ccnd_handle *h,
     }
     if (res == HT_NEW_ENTRY) {
         send_tap_interests(h, ie);
-        
-        
-        
-        strategy_callout(h, ie, CCNST_FIRST);
+        strategy_callout(h, ie, CCNST_FIRST, faceid);
     }
     usec = ie_next_usec(h, ie, &expiry);
     if (ie->ev != NULL && wt_compare(expiry + 2, ie->ev->evint) < 0)
@@ -3956,6 +3890,7 @@ nameprefix_seek(struct ccnd_handle *h, struct hashtb_enumerator *e,
                 npe->sst = parent->sst;
             }
             else {
+                // XXX - strategy should set this up
                 npe->sst.src = npe->sst.osrc = CCN_NOFACEID;
                 npe->sst.usec = (nrand48(h->seed) % 4096U) + 8192;
             }

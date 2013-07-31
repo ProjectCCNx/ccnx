@@ -106,13 +106,18 @@ enum ccn_strategy_op {
 };
 
 /**
+ *
  * Strategies are implemented by a procedure that is called at
  * critical junctures in the lifetime of a pending interest.
+ *
+ * faceid for CCNST_FIRST tells the interest arrival face (downstream).
+ * faceid for CCNST_SATISFIED tells the content arrival face (upstream).
+ *
  */
 typedef void (*strategy_callout_proc)(struct ccnd_handle *h,
                                       struct ccn_strategy *s,
-                                      enum ccn_strategy_op op);
-
+                                      enum ccn_strategy_op op,
+                                      unsigned faceid);
 
 /**
  *  Forward an interest message
@@ -135,11 +140,13 @@ pfi_set_expiry_from_micros(struct ccnd_handle *h, struct interest_entry *ie,
                            struct pit_face_item *p, unsigned micros);
 
 /**
- * Return a pointer to the strategy state record for
- * the name prefix of the given interest entry
+ * Return a pointer to the strategy state records for
+ * the name prefix of the given interest entry and up to k-1 parents.
+ *
+ * The sst array is filled in; NULL values are provided as needed.
  */
-struct strategy_state *
-strategy_getstate(struct ccnd_handle *h, struct ccn_strategy *s);
+void strategy_getstate(struct ccnd_handle *h, struct ccn_strategy *s,
+                       struct strategy_state **sst, int k);
 
 /**
  * Schedule a strategy wakeup
@@ -149,19 +156,15 @@ strategy_getstate(struct ccnd_handle *h, struct ccn_strategy *s);
  *
  * Any previously scheduled wakeup will be cancelled.
  * To just cancel any existing wakeup, pass CCNST_NOP.
- *
  */
 void
 strategy_settimer(struct ccnd_handle *h, struct interest_entry *ie,
                   int usec, enum ccn_strategy_op op);
 
-// This still needs to be teased out of ccnd.c
-void adjust_predicted_response(struct ccnd_handle *h,
-                               struct interest_entry *ie, int up);
-
 // Replace later with a strategy registry of some flavor.
 void strategy0_callout(struct ccnd_handle *h,
                        struct ccn_strategy *s,
-                       enum ccn_strategy_op op);
+                       enum ccn_strategy_op op,
+                       unsigned faceid);
 
 #endif
