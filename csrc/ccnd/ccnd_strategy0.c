@@ -22,21 +22,11 @@
 #define MINE 0x65e272 // hint: openssl rand -hex 3
 
 struct strategy_state {
-    unsigned magic;              /**< */
+    unsigned magic;              /**< MINE to mark our stuff */
     unsigned src;                /**< faceid of recent content source */
     unsigned osrc;               /**< and of older matching content */
     unsigned usec;               /**< response-time prediction */
 };
-
-static struct strategy_state *
-narrow(struct nameprefix_state *p)
-{
-    if (p == NULL)
-        return(NULL);
-    if (p->s[0] == MINE)
-        return((struct strategy_state *)p->s);
-    return NULL;
-}
 
 static void
 adjust_predicted_response(struct ccnd_handle *h,
@@ -56,6 +46,8 @@ strategy0_callout(struct ccnd_handle *h,
     struct pit_face_item *x = NULL;
     struct pit_face_item *p = NULL;
     struct strategy_state *npe = NULL;
+    struct strategy_state *parent = NULL;
+    struct strategy_state *s = NULL;
     struct nameprefix_state *sst[2] = {NULL};
     struct strategy_state dummy = { MINE, CCN_NOFACEID, CCN_NOFACEID, 50000 };
     unsigned best = CCN_NOFACEID;
@@ -65,24 +57,34 @@ strategy0_callout(struct ccnd_handle *h,
     int usec;
     int i;
     
+    /* We will want access to the state for our prefix and its parent */
+    strategy_getstate(h, ie, sst, 2);
+    
+    /* First get or initialize the parent nameprefix state */
+    if (sst[1] == NULL)
+        parent = &dummy;
+    else if (sst[1]->s[0] == CCN_UNINIT) {
+        parent = (struct strategy_state *)sst[1]->s;
+        *parent = dummy;
+    }
+    else if ((sst[1]->s[0] & CCN_MAGIC_MASK) == MINE)
+        parent = (struct strategy_state *)sst[1]->s;
+    
+    /* Now get the state for the longer prefix */
+    npe = (struct strategy_state *)sst[0]->s; /* This one should not be NULL */
+    if ((npe->magic & CCN_AGED) != 0) {
+        if ((npe->magic & CCN_MAGIC_MASK) != MINE)
+            *npe = *parent;
+        else
+            npe->magic = MINE;
+    }
+    if (npe->magic != MINE)
+        npe = &dummy; /* do not walk on somebody else's state */
+    
     switch (op) {
         case CCNST_NOP:
             break;
         case CCNST_FIRST:
-            strategy_getstate(h, ie, sst, 2);
-            if (sst[0]->s[0] == CCN_UNINIT) {
-                /* lay claim to this entry */
-                sst[0]->s[0] = MINE;
-                npe = narrow(sst[0]);
-                npe->src = npe->osrc = CCN_NOFACEID;
-                npe->usec = 50000; // XXX
-                // XXX - may want to get better estimates from parent
-                // XXX - need to lay claim to the parent, perhaps
-            }
-            npe = narrow(sst[0]);
-            if (npe == NULL) {
-                npe = &dummy; // XXX
-            }
             best = npe->src;
             if (best == CCN_NOFACEID)
                 best = npe->src = npe->osrc;
@@ -140,16 +142,12 @@ strategy0_callout(struct ccnd_handle *h,
              * Our best choice has not responded in time.
              * Increase the predicted response.
              */
-            strategy_getstate(h, ie, sst, 2);
-            for (i = 0; i < 2 && sst[i] != NULL; i++)
-                adjust_predicted_response(h, narrow(sst[i]), 1);
+            adjust_predicted_response(h, npe, 1);
+            adjust_predicted_response(h, parent, 1);
             break;
         case CCNST_SATISFIED:
             /* Keep a little history about where matching content comes from. */
-            strategy_getstate(h, ie, sst, 2);
-            for (i = 0; i < 2 && sst[i] != NULL; i++) {
-                struct strategy_state *s = narrow(sst[i]);
-                if (s == NULL) continue;
+            for (i = 0, s = npe; i < 2; i++, s = parent) {
                 if (s->src == faceid)
                     adjust_predicted_response(h, s, 0);
                 else if (s->src == CCN_NOFACEID)
@@ -181,9 +179,6 @@ adjust_predicted_response(struct ccnd_handle *h,
                           struct strategy_state *sst, int up)
 {
     unsigned t;
-    
-    if (sst == NULL || (sst->magic & CCN_MAGIC_MASK) != MINE)
-        return;
     t = sst->usec;
     if (up)
         t = t + (t >> 3);
