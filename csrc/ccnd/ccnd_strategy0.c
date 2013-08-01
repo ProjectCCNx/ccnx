@@ -28,6 +28,8 @@ struct strategy_state {
     unsigned usec;               /**< response-time prediction */
 };
 
+CCN_STATESIZECHECK(X_strategy_state, struct strategy_state);
+
 static void
 adjust_predicted_response(struct ccnd_handle *h,
                           struct strategy_state *sst, int up);

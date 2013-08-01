@@ -52,6 +52,15 @@ struct nameprefix_state {
 };
 
 /**
+ * Use this macro to make sure that overlaying structures are not oversize
+ *
+ * XX is an otherwise unised identifier, and T is the overlaid struct type.
+ * This shoulf cause a compilation error if T becomes too big.
+ */
+#define CCN_STATESIZECHECK(XX, T) \
+    struct XX {char x[(int)(sizeof(struct nameprefix_state)-sizeof(T))];}
+
+/**
  * Used for keeping track of interest expiry.
  *
  * Modulo 2**32 - time units and origin are arbitrary and private.
