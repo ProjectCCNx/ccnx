@@ -2150,7 +2150,7 @@ check_nameprefix_entries(struct ccnd_handle *h)
     
     hashtb_start(h->nameprefix_tab, e);
     for (npe = e->data; npe != NULL; npe = e->data) {
-        if (  npe->sst.src == CCN_NOFACEID &&
+        if ( (npe->sst.s[0] & CCN_AGED) != 0 &&
               npe->children == 0 &&
               npe->forwarding == NULL) {
             head = &npe->ie_head;
@@ -2166,9 +2166,10 @@ check_nameprefix_entries(struct ccnd_handle *h)
         }
         check_forward_to(h, &npe->forward_to);
         check_forward_to(h, &npe->tap);
+        npe->sst.s[0] |= CCN_AGED;
 // XXX - this should happen within the strategy
-        npe->sst.osrc = npe->sst.src;
-        npe->sst.src = CCN_NOFACEID;
+ //       npe->sst.osrc = npe->sst.src;
+ //       npe->sst.src = CCN_NOFACEID;
         hashtb_next(e);
     }
     hashtb_end(e);
@@ -3266,7 +3267,7 @@ strategy_settimer(struct ccnd_handle *h, struct interest_entry *ie,
  */
 void
 strategy_getstate(struct ccnd_handle *h, struct ccn_strategy *s,
-                  struct strategy_state **sst, int k)
+                  struct nameprefix_state **sst, int k)
 {
     struct nameprefix_entry *npe;
     int i;
@@ -3861,6 +3862,7 @@ nameprefix_seek(struct ccnd_handle *h, struct hashtb_enumerator *e,
                 const unsigned char *msg, struct ccn_indexbuf *comps, int ncomps)
 {
     int i;
+    int j;
     int base;
     int res = -1;
     struct nameprefix_entry *parent = NULL;
@@ -3888,11 +3890,11 @@ nameprefix_seek(struct ccnd_handle *h, struct hashtb_enumerator *e,
                 parent->children++;
                 npe->flags = parent->flags;
                 npe->sst = parent->sst;
+                // XXX - it might be a good idea to flag the copy
             }
             else {
-                // XXX - strategy should set this up
-                npe->sst.src = npe->sst.osrc = CCN_NOFACEID;
-                npe->sst.usec = (nrand48(h->seed) % 4096U) + 8192;
+                for (j = 0; j < CCND_STRATEGY_STATE_N; j++)
+                    npe->sst.s[j] = CCN_UNINIT;
             }
         }
         parent = npe;

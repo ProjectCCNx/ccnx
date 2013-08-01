@@ -327,7 +327,7 @@ struct nameprefix_entry {
     int children;                /**< number of children */
     unsigned flags;              /**< CCN_FORW_* flags about namespace */
     int fgen;                    /**< used to decide when forward_to is stale */
-    struct strategy_state sst;   /**< used by strategy layer */
+    struct nameprefix_state sst; /**< used by strategy layer */
 };
 
 /**

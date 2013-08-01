@@ -19,6 +19,25 @@
 
 #include "ccnd_strategy.h"
 
+#define MINE 0x65e272 // hint: openssl rand -hex 3
+
+struct strategy_state {
+    unsigned magic;              /**< */
+    unsigned src;                /**< faceid of recent content source */
+    unsigned osrc;               /**< and of older matching content */
+    unsigned usec;               /**< response-time prediction */
+};
+
+static struct strategy_state *
+narrow(struct nameprefix_state *p)
+{
+    if (p == NULL)
+        return(NULL);
+    if (p->s[0] == MINE)
+        return((struct strategy_state *)p->s);
+    return NULL;
+}
+
 static void
 adjust_predicted_response(struct ccnd_handle *h,
                           struct strategy_state *sst, int up);
@@ -37,7 +56,8 @@ strategy0_callout(struct ccnd_handle *h,
     struct pit_face_item *x = NULL;
     struct pit_face_item *p = NULL;
     struct strategy_state *npe = NULL;
-    struct strategy_state *sst[2] = {NULL};
+    struct nameprefix_state *sst[2] = {NULL};
+    struct strategy_state dummy = { MINE, CCN_NOFACEID, CCN_NOFACEID, 50000 };
     unsigned best = CCN_NOFACEID;
     unsigned randlow, randrange;
     unsigned nleft;
@@ -50,7 +70,19 @@ strategy0_callout(struct ccnd_handle *h,
             break;
         case CCNST_FIRST:
             strategy_getstate(h, ie, sst, 2);
-            npe = sst[0];
+            if (sst[0]->s[0] == CCN_UNINIT) {
+                /* lay claim to this entry */
+                sst[0]->s[0] = MINE;
+                npe = narrow(sst[0]);
+                npe->src = npe->osrc = CCN_NOFACEID;
+                npe->usec = 50000; // XXX
+                // XXX - may want to get better estimates from parent
+                // XXX - need to lay claim to the parent, perhaps
+            }
+            npe = narrow(sst[0]);
+            if (npe == NULL) {
+                npe = &dummy; // XXX
+            }
             best = npe->src;
             if (best == CCN_NOFACEID)
                 best = npe->src = npe->osrc;
@@ -110,13 +142,14 @@ strategy0_callout(struct ccnd_handle *h,
              */
             strategy_getstate(h, ie, sst, 2);
             for (i = 0; i < 2 && sst[i] != NULL; i++)
-                adjust_predicted_response(h, sst[i], 1);
+                adjust_predicted_response(h, narrow(sst[i]), 1);
             break;
         case CCNST_SATISFIED:
             /* Keep a little history about where matching content comes from. */
             strategy_getstate(h, ie, sst, 2);
             for (i = 0; i < 2 && sst[i] != NULL; i++) {
-                struct strategy_state *s = sst[i];
+                struct strategy_state *s = narrow(sst[i]);
+                if (s == NULL) continue;
                 if (s->src == faceid)
                     adjust_predicted_response(h, s, 0);
                 else if (s->src == CCN_NOFACEID)
@@ -147,7 +180,11 @@ static void
 adjust_predicted_response(struct ccnd_handle *h,
                           struct strategy_state *sst, int up)
 {
-    unsigned t = sst->usec;
+    unsigned t;
+    
+    if (sst == NULL || (sst->magic & CCN_MAGIC_MASK) != MINE)
+        return;
+    t = sst->usec;
     if (up)
         t = t + (t >> 3);
     else

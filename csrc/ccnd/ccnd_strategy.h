@@ -30,13 +30,25 @@
 struct ccnd_handle;
 struct interest_entry;
 
-/** A PRNG returning 31-bit pseudo-random numbers */
-uint32_t ccnd_random(struct ccnd_handle *);
+#define CCN_UNINIT    (~0U)     /**< initial value of strategy vars */
+#define CCN_MAGIC_MASK 0x00FFFFFF /**< for magic number */
+#define CCN_AGED       0x10000000 /**< for aging */
+#define CCND_STRATEGY_STATE_N 4 /**< number of per-prefix strategy vars */
 
-struct strategy_state {
-    unsigned src;                /**< faceid of recent content source */
-    unsigned osrc;               /**< and of older matching content */
-    unsigned usec;               /**< response-time prediction */
+/**
+ * This is a place for strategies to record state that is attached
+ * to a given name prefix.
+ *
+ * At this level, we simply have an array of unsigned ints.
+ * The leading value, s[0], has some special significance in
+ * that it should be used hold a value that identifies the
+ * interpretation of the remaining values, as well as an aging flag.
+ *
+ * When a name prefix entry is created, the associated state
+ * is initialized to all CCN_UNINIT.
+ */
+struct nameprefix_state {
+    unsigned s[CCND_STRATEGY_STATE_N];
 };
 
 /**
@@ -146,7 +158,7 @@ pfi_set_expiry_from_micros(struct ccnd_handle *h, struct interest_entry *ie,
  * The sst array is filled in; NULL values are provided as needed.
  */
 void strategy_getstate(struct ccnd_handle *h, struct ccn_strategy *s,
-                       struct strategy_state **sst, int k);
+                       struct nameprefix_state **sst, int k);
 
 /**
  * Schedule a strategy wakeup
@@ -160,6 +172,9 @@ void strategy_getstate(struct ccnd_handle *h, struct ccn_strategy *s,
 void
 strategy_settimer(struct ccnd_handle *h, struct interest_entry *ie,
                   int usec, enum ccn_strategy_op op);
+
+/** A PRNG returning 31-bit pseudo-random numbers */
+uint32_t ccnd_random(struct ccnd_handle *);
 
 // Replace later with a strategy registry of some flavor.
 void strategy0_callout(struct ccnd_handle *h,
