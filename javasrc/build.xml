@@ -1059,7 +1059,7 @@
 	<target name="test-access-control-with-repo" depends="jar, ccnd, repo">
 		<!-- Access Control tests that need a repo running -->
 		<mkdir dir="${testout}"/>
-		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="no" dir="${testout}" showoutput="${showoutput}">
+		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="no" dir="${testout}" showoutput="${showoutput}" maxmemory="1024m">
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
