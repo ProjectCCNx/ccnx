@@ -1,7 +1,7 @@
 /*
- * ccnd/ccnd_strategy0.c
+ * @file ccnd/ccnd_strategy0.c
  *
- * Main program of ccnd - the CCNx Daemon
+ * Part of ccnd - the CCNx Daemon
  *
  * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
@@ -32,7 +32,7 @@ CCN_STATESIZECHECK(X_strategy_state, struct strategy_state);
 
 static void
 adjust_predicted_response(struct ccnd_handle *h,
-                          struct strategy_state *sst, int up);
+                          struct strategy_state *s, unsigned faceid);
 
 /**
  * This implements the default strategy.
@@ -49,7 +49,6 @@ strategy0_callout(struct ccnd_handle *h,
     struct pit_face_item *p = NULL;
     struct strategy_state *npe = NULL;
     struct strategy_state *parent = NULL;
-    struct strategy_state *s = NULL;
     struct nameprefix_state *sst[2] = {NULL};
     struct strategy_state dummy = { MINE, CCN_NOFACEID, CCN_NOFACEID, 50000 };
     unsigned best = CCN_NOFACEID;
@@ -57,7 +56,6 @@ strategy0_callout(struct ccnd_handle *h,
     unsigned nleft;
     unsigned amt;
     int usec;
-    int i;
     
     /* We will want access to the state for our prefix and its parent */
     strategy_getstate(h, ie, sst, 2);
@@ -144,21 +142,13 @@ strategy0_callout(struct ccnd_handle *h,
              * Our best choice has not responded in time.
              * Increase the predicted response.
              */
-            adjust_predicted_response(h, npe, 1);
-            adjust_predicted_response(h, parent, 1);
+            adjust_predicted_response(h, npe, CCN_NOFACEID);
+            adjust_predicted_response(h, parent, CCN_NOFACEID);
             break;
         case CCNST_SATISFIED:
             /* Keep a little history about where matching content comes from. */
-            for (i = 0, s = npe; i < 2; i++, s = parent) {
-                if (s->src == faceid)
-                    adjust_predicted_response(h, s, 0);
-                else if (s->src == CCN_NOFACEID)
-                    s->src = faceid;
-                else {
-                    s->osrc = s->src;
-                    s->src = faceid;
-                }
-            }
+            adjust_predicted_response(h, npe, faceid);
+            adjust_predicted_response(h, parent, faceid);
             break;
         case CCNST_TIMEOUT:
             /* Interest has not been satisfied or refreshed */
@@ -175,20 +165,32 @@ strategy0_callout(struct ccnd_handle *h,
  * It is decreased by a small fraction if we get content within our
  * previous predicted value, and increased by a larger fraction if not.
  *
+ * faceid is CCN_NOFACEID if no content arrived, or else tells the
+ * arrival face.
  */
 static void
 adjust_predicted_response(struct ccnd_handle *h,
-                          struct strategy_state *sst, int up)
+                          struct strategy_state *s, unsigned faceid)
 {
-    unsigned t;
-    t = sst->usec;
-    if (up)
-        t = t + (t >> 3);
-    else
-        t = t - (t >> 7);
-    if (t < 127)
-        t = 127;
-    else if (t > h->predicted_response_limit)
-        t = h->predicted_response_limit;
-    sst->usec = t;
+    unsigned t = s->usec;
+    if (faceid == CCN_NOFACEID) {
+        t = t + (t >> 3); /* no content arrived */
+        if (t > h->predicted_response_limit)
+            t = h->predicted_response_limit;
+    }
+    else if (faceid == s->src) {
+        t = t - (t >> 7); /* content arrived on expected face */
+        if (t < 127)
+            t = 127;
+    }
+    s->usec = t;
+    if (faceid == CCN_NOFACEID)
+        return;
+    /* content arrived, so keep track of the arrival face */
+    if (s->src == CCN_NOFACEID)
+        s->src = faceid;
+    else if (s->src != faceid) {
+        s->osrc = s->src;
+        s->src = faceid;
+    }
 }
