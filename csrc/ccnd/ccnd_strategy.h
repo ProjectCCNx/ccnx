@@ -54,8 +54,8 @@ struct nameprefix_state {
 /**
  * Use this macro to make sure that overlaying structures are not oversize
  *
- * XX is an otherwise unised identifier, and T is the overlaid struct type.
- * This shoulf cause a compilation error if T becomes too big.
+ * XX is an otherwise unused identifier, and T is the overlaid struct type.
+ * This is intended to cause a compilation error if T becomes too big.
  */
 #define CCN_STATESIZECHECK(XX, T) \
     struct XX {char x[(int)(sizeof(struct nameprefix_state)-sizeof(T))];}
@@ -131,8 +131,8 @@ enum ccn_strategy_op {
  * Strategies are implemented by a procedure that is called at
  * critical junctures in the lifetime of a pending interest.
  *
- * faceid for CCNST_FIRST tells the interest arrival face (downstream).
- * faceid for CCNST_SATISFIED tells the content arrival face (upstream).
+ * If op is CCNST_FIRST, faceid tells the interest arrival face (downstream).
+ * If op is CCNST_SATISFIED, faceid tells the content arrival face (upstream).
  *
  */
 typedef void (*strategy_callout_proc)(struct ccnd_handle *h,
