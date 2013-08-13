@@ -660,6 +660,7 @@ r_proto_start_write(struct ccn_closure *selfp,
     int start = 0;
     int end = 0;
     int is_policy = 0;
+    intmax_t segment;
     int i;
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     
@@ -712,7 +713,7 @@ r_proto_start_write(struct ccn_closure *selfp,
         goto Bail;
     }
 
-    /* Send an interest for segment 0 */
+    /* Send an interest for the content */
     expect_content = calloc(1, sizeof(*expect_content));
     if (expect_content == NULL)
         goto Bail;
@@ -734,8 +735,18 @@ r_proto_start_write(struct ccn_closure *selfp,
     ic = info->interest_comps;
     ccn_name_init(name);
     ccn_name_append_components(name, info->interest_ccnb, ic->buf[0], ic->buf[marker_comp]);
-    ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, 0);
-    expect_content->outstanding[0] = 0;
+    /* when invoked from start-write-checked we have nonce, starting segment, and hash */
+    if (0 == r_util_name_comp_compare(info->interest_ccnb, info->interest_comps,
+                                      marker_comp, REPO_SWC, strlen(REPO_SWC))) {
+        segment = r_util_segment_from_component(info->interest_ccnb, ic->buf[marker_comp + 2], ic->buf[marker_comp + 3]);
+        ccn_name_append_components(name, info->interest_ccnb, ic->buf[marker_comp + 2], ic->buf[marker_comp + 4]);
+    } else {
+        /* start-write does not specify starting segment, start at segment 0 */
+        segment = 0;
+        ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, segment);
+    }
+    if (segment >= 0)
+        expect_content->outstanding[segment % CCNR_PIPELINE] = segment;
     res = ccn_express_interest(info->h, name, incoming, templ);
     if (res >= 0) {
         /* upcall will free these when it is done. */
