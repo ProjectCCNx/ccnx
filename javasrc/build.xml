@@ -343,7 +343,7 @@
 	<!-- test is for running all current system tests to validate code 
 	     IMPORTANT: test-repo must be run before any test that will start a repo because it
 	     requires that a repo *not* be running when it starts -->
-	<target name="test" depends="init, test-repo, test-protocol, test-impl, test-io, test-endtoend">
+	<target name="test" depends="init, test-repo, test-protocol, test-impl, test-io, test-versioning, test-endtoend">
 	</target>
 
 	<target name="test-protocol" depends="test-protocol-without-repo, test-protocol-with-repo">
@@ -608,7 +608,8 @@
 	
 	<!-- IMPORTANT: test-repo-structure and test-repo-initial-policy must be the *first* tests in this list 
 	     because they require that the repo must not have been running and subsequent tests start the repo -->
-	<target name="test-repo" depends="test-repo-structure, test-repo-initial-policy, test-repo-name-responder, test-repo-initial-read, test-repo-io">
+	<target name="test-repo" depends="test-repo-structure, test-repo-initial-policy, test-repo-name-responder, test-repo-initial-read, 
+				test-repo-io, test-repo-checked-write">
 	</target>
 	
 	<target name="test-enumerated-name-list" depends="jar, ccnd, repo">
