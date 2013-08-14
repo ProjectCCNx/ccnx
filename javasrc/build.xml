@@ -343,7 +343,8 @@
 	<!-- test is for running all current system tests to validate code 
 	     IMPORTANT: test-repo must be run before any test that will start a repo because it
 	     requires that a repo *not* be running when it starts -->
-	<target name="test" depends="init, test-repo, test-protocol, test-impl, test-io, test-versioning, test-endtoend">
+	<target name="test" depends="init, test-repo, test-protocol, test-impl, test-io, test-versioning, 
+				test-security, test-endtoend">
 	</target>
 
 	<target name="test-protocol" depends="test-protocol-without-repo, test-protocol-with-repo">
@@ -813,13 +814,14 @@
 		</parallel>
 	</target>
 
-	<target name="test-security" depends="test-security-without-repo, test-security-with-repo">
+	<target name="test-security" depends="test-security-without-repo, test-security-with-repo" >
 	</target>
 	
 	<target name="test-security-without-repo" depends="jar, ccnd">
 		<!-- Security tests that don't need a repo running -->
 		<mkdir dir="${testout}"/>
-		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
+		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" 
+					showoutput="${showoutput}" maxmemory="1024m">
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
