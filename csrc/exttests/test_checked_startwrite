@@ -52,7 +52,12 @@ ccn_splitccnb sw-c/repoFile1
 # Construct a checked start-write request for an intermediate segment
 grep content_to.\*`ccnnamelist sw-c/repoFile1-00004.ccnb` ccnd4-capped-100.out|\
   cut -d ' ' -f 6 > sw-c-name.out
-SWCR=`cut -d / -f 1-4 < sw-c-name.out`/%C1.R.sw-c/%C1.N%00`GenSym`/`cut -d / -f 5- < sw-c-name.out`
+PART1=`cut -d / -f 1-4 < sw-c-name.out` # prefix plus version
+PART2=%C1.R.sw-c                        # command marker
+PART3=%C1.N%00`GenSym`                  # nonce component
+PART4=`cut -d / -f 5 < sw-c-name.out`   # segment
+PART5=`cut -d / -f 6 < sw-c-name.out`   # digest
+SWCR=$PART1/$PART2/$PART3/$PART4/$PART5
 echo SWCR is $SWCR
 
 # Start a new ccnd, and a new, empty, repo.
@@ -62,8 +67,25 @@ rm -rf sw-c-2
 mkdir -p sw-c-2
 WithCCND 5 env CCNR_DEBUG=FINEST CCNR_DIRECTORY=sw-c-2 ccnr 2>ccnr5.out &
 
+WithCCND 5 ccnlibtest -v sw-c/repoFile1-*.ccnb prefix $PART1 run 5000 mincob 4 maxcob 4 > sw-c-libtest.out &
+PID=$!
 # Issue the request, save the response.
 WithCCND 5 ccnpeek -c $SWCR > sw-c.ccnb || Fail no reply to $SWCR
+ccn_ccnbtoxml sw-c.ccnb
+
+# We should be doing the partial save. In the meantime, make a new save command
+SWCR=$PART1/$PART2/%C1.N%00`GenSym`/$PART4/$PART5
+echo SWCR is now $SWCR
+
+wait $PID || Fail check sw-c-libtest.out
+
+# See if we have the expected pieces
+NSEG=`ccnnamelist sw-c-2/repoFile1 | grep -c $PREFIX/`
+[ $((NSEG)) -eq 6 ] || Fail expecting 6 segments, but got $((NSEG)).
+
+WithCCND 5 ccnpeek -c $SWCR > sw-c-2.ccnb || Fail no reply to $SWCR
+ccn_ccnbtoxml sw-c-2.ccnb
+
 
 # Stop ccnd and ccnr
 WithCCND 5 ccndstop
