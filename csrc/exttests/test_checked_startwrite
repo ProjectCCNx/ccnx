@@ -36,6 +36,11 @@ WithCCND 4 env CCNR_DEBUG=FINEST CCNR_DIRECTORY=sw-c ccnr 2>ccnr4.out &
 I=0; while [ $((I)) -lt 8 ]; do echo segment$I; I=$((I+1)); done |
   WithCCND 4 ccnseqwriter -b 9 -r -s 1 $PREFIX
 
+# Make a cob without segmentation
+echo unsegmented | WithCCND 4 ccnpoke ccnx:/test-sw-c/unsegmented/$UNIQ &
+WithCCND 4 ccnpeek ccnx:/test-sw-c/unsegmented/$UNIQ > unsegmented.ccnb
+USDIGEST=`openssl dgst -sha256 unsegmented.ccnb | sed -e 's/^.*=[ ]*//'`
+[ -z "$USDIGEST" ] && SkipTest unsegmented.ccnb indigestable
 # Stop ccnd and ccnr
 WithCCND 4 ccndstop
 wait
@@ -71,6 +76,8 @@ WithCCND 5 ccnlibtest -v sw-c/repoFile1-*.ccnb prefix $PART1 run 5000 mincob 4 m
 PID=$!
 # Issue the request, save the response.
 WithCCND 5 ccnpeek -c $SWCR > sw-c.ccnb || Fail no reply to $SWCR
+
+# Check for info response
 ccn_ccnbtoxml sw-c.ccnb
 
 # We should be doing the partial save. In the meantime, make a new save command
@@ -80,12 +87,29 @@ echo SWCR is now $SWCR
 wait $PID || Fail check sw-c-libtest.out
 
 # See if we have the expected pieces
-NSEG=`ccnnamelist sw-c-2/repoFile1 | grep -c $PREFIX/`
+ccnnamelist sw-c-2/repoFile1 > sw-c-2.names.out
+NSEG=`grep -c $PREFIX/ sw-c-2.names.out`
 [ $((NSEG)) -eq 6 ] || Fail expecting 6 segments, but got $((NSEG)).
+NAME=`ccnnamelist sw-c/repoFile1-00004.ccnb`
+grep -w $NAME sw-c-2.names.out >/dev/null || Fail did not store $NAME
+NAME=`ccnnamelist sw-c/repoFile1-00003.ccnb`
+grep -w $NAME sw-c-2.names.out >/dev/null && Fail oops, stored $NAME
 
+# Now we need to do it again, but this time it should be there
 WithCCND 5 ccnpeek -c $SWCR > sw-c-2.ccnb || Fail no reply to $SWCR
+# Check for status response
 ccn_ccnbtoxml sw-c-2.ccnb
 
+# Next comes the test for unsegmented data.
+WithCCND 5 ccnlibtest unsegmented.ccnb prefix ccnx:/test-sw-c/unsegmented run 5000 maxcob 0 &
+PID=$!
+SWCR=ccnx:/test-sw-c/unsegmented/%C1.R.sw-c/%C1.N%00`GenSym`/$UNIQ/=$USDIGEST
+echo SWCR is now $SWCR
+WithCCND 5 ccnpeek -c $SWCR > sw-c-us.ccnb || Fail no reply to $SWCR
+wait $PID || Fail ccnlibtest unsegmented.ccnb ...
+ccnnamelist sw-c-2/repoFile1 > sw-c-2.names.out
+NAME=`ccnnamelist unsegmented.ccnb`
+grep -w $NAME sw-c-2.names.out >/dev/null || Fail did not store $NAME
 
 # Stop ccnd and ccnr
 WithCCND 5 ccndstop
