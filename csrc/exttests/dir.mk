@@ -20,6 +20,7 @@ ALLTESTS = \
   test_alone \
   test_btree_next_leaf \
   test_btree_prev_leaf \
+  test_checked_startwrite \
   test_final_teardown \
   test_finished \
   test_happy_face \
