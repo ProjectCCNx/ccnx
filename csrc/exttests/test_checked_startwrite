@@ -46,10 +46,10 @@ WithCCND 4 ccndstop
 wait
 
 # Make sure that we got the expected number of segments.
-# Note - ccnseqwriter makes an empty segment at the end, so expect 9.
-# This may be fixed someday.
+# Note - ccnseqwriter sometimes makes an empty segment at the end, so allow 9.
 NSEG=`ccnnamelist sw-c/repoFile1 | grep -c $PREFIX/`
-[ $((NSEG)) -eq 9 ] || SkipTest expecting 9 segments, but got $((NSEG)).
+[ $((NSEG)) -eq 8 -o $((NSEG)) -eq 9 ] || \
+  SkipTest expecting 8 or 9 segments, but got $((NSEG)).
 
 # Split repo file into individual pieces
 ccn_splitccnb sw-c/repoFile1
@@ -88,8 +88,9 @@ wait $PID || Fail check sw-c-libtest.out
 
 # See if we have the expected pieces
 ccnnamelist sw-c-2/repoFile1 > sw-c-2.names.out
+WANT=$((NSEG-3))
 NSEG=`grep -c $PREFIX/ sw-c-2.names.out`
-[ $((NSEG)) -eq 6 ] || Fail expecting 6 segments, but got $((NSEG)).
+[ $((NSEG)) -eq $((WANT)) ] || Fail expecting $((WANT)) segments, got $((NSEG)).
 NAME=`ccnnamelist sw-c/repoFile1-00004.ccnb`
 grep -w $NAME sw-c-2.names.out >/dev/null || Fail did not store $NAME
 NAME=`ccnnamelist sw-c/repoFile1-00003.ccnb`
