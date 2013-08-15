@@ -17,24 +17,13 @@
 
 package org.ccnx.ccn.profiles.ccnd;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-
+import org.ccnx.ccn.LibraryTestBase;
 import org.ccnx.ccn.impl.CCNNetworkManager;
 import org.ccnx.ccn.impl.CCNNetworkManager.NetworkProtocol;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.content.ContentDecodingException;
-import org.ccnx.ccn.io.content.ContentEncodingException;
-import org.ccnx.ccn.profiles.ccnd.CCNDaemonException;
-import org.ccnx.ccn.profiles.ccnd.FaceManager;
-import org.ccnx.ccn.profiles.ccnd.FaceManager.ActionType;
-import org.ccnx.ccn.profiles.ccnd.FaceManager.FaceInstance;
-import org.ccnx.ccn.LibraryTestBase;
-import org.ccnx.ccn.impl.encoding.XMLEncodableTester;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -78,83 +67,6 @@ public class FaceManagerTest extends LibraryTestBase {
 	 */
 	@After
 	public void tearDown() throws Exception {
-	}
-	
-	/**
-	 * Test method for org.ccnx.ccn.profiles.VersioningProfile#addVersion(org.ccnx.ccn.protocol.ContentName, long).
-	 */
-	@Test
-	public void testEncodeOutputStream() {
-		Log.info(Log.FAC_TEST, "Starting testEncodeOutputStream");
-
-		FaceInstance face = new FaceInstance(ActionType.NewFace, null, NetworkProtocol.TCP, "TheNameDoesntMatter", 
-				new Integer(5),	"WhoCares", new Integer(42), new Integer(100));
-		// ActionType.NewFace, _ccndId, ipProto, host, port,  multicastInterface, multicastTTL, freshnessSeconds
-		System.out.println("Encoding: " + face);
-		assertNotNull(face);
-		
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		try {
-			face.encode(baos);
-		} catch (ContentEncodingException e) {
-			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
-			e.printStackTrace();
-		}
-		System.out.println("Encoded: " );
-		System.out.println(baos.toString());
-		
-		Log.info(Log.FAC_TEST, "Completed testEncodeOutputStream");
-	}
-
-	@Test
-	public void testDecodeInputStream() {
-		Log.info(Log.FAC_TEST, "Starting testDecodeInputStream");
-
-		FaceInstance faceToEncode = new FaceInstance(ActionType.NewFace, null, NetworkProtocol.TCP, "TheNameDoesntMatter", 
-				new Integer(5),	"WhoCares", new Integer(42), new Integer(100));
-		System.out.println("Encoding: " + faceToEncode);
-		assertNotNull(faceToEncode);
-		
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		try {
-			faceToEncode.encode(baos);
-		} catch (ContentEncodingException e) {
-			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
-			e.printStackTrace();
-		}
-		System.out.println("Encoded: " );
-		System.out.println(baos.toString());
-		
-		System.out.println("Decoding: ");
-		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
-		FaceInstance faceToDecodeTo = new FaceInstance();  /* We need an empty one to decode into */
-		try {
-			faceToDecodeTo.decode(bais);
-		} catch (ContentDecodingException e) {
-			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
-			e.printStackTrace();
-		}
-		System.out.println("Decoded: " + faceToDecodeTo);
-		assertEquals(faceToEncode, faceToDecodeTo);
-		
-		Log.info(Log.FAC_TEST, "Completed testDecodeInputStream");
-	}
-	
-	@Test
-	public void testEncodingDecoding() {
-		Log.info(Log.FAC_TEST, "Starting testEncodingDecoding");
-
-		FaceInstance faceToEncode = new FaceInstance(ActionType.NewFace, null, NetworkProtocol.TCP, "TheNameDoesntMatter", 
-				new Integer(5),	"WhoCares", new Integer(42), new Integer(100));
-		System.out.println("Encoding: " + faceToEncode);
-
-		FaceInstance  textFaceToDecodeInto = new FaceInstance();
-		assertNotNull(textFaceToDecodeInto);
-		FaceInstance  binaryFaceToDecodeInto = new FaceInstance();
-		assertNotNull(binaryFaceToDecodeInto);
-		XMLEncodableTester.encodeDecodeTest("FaceIntance", faceToEncode, textFaceToDecodeInto, binaryFaceToDecodeInto);
-		
-		Log.info(Log.FAC_TEST, "Completed testEncodingDecoding");
 	}
 	
 	@Test

@@ -17,30 +17,58 @@
 
 package org.ccnx.ccn.profiles.versioning;
 
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.Random;
+import java.util.TreeSet;
 
-import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.content.CCNStringObject;
-import org.ccnx.ccn.profiles.VersioningProfile;
-import org.ccnx.ccn.profiles.versioning.VersioningHelper.TestListener;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.protocol.ContentObject;
-import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class InterestDataTestRepo {
+public class InterestDataTest {
 
 	protected final Random _rnd = new Random();
 	protected final static long TIMEOUT=30000;
 	protected final ContentName prefix;
 	
-	public InterestDataTestRepo() throws MalformedContentNameStringException {
+	protected final VersionNumber vn_411000000000L = new VersionNumber(411000000000L);
+	protected final VersionNumber vn_411111000000L = new VersionNumber(411111000000L);
+	protected final VersionNumber vn_411222000000L = new VersionNumber(411222000000L);
+	protected final VersionNumber vn_411333000000L = new VersionNumber(411333000000L);
+
+	public InterestDataTest() throws MalformedContentNameStringException {
 		prefix  = ContentName.fromNative(String.format("/repotest/test_%016X", _rnd.nextLong()));
+	}
+	
+	@Test
+	public void testVersionNumberInTree() throws Exception {
+		Log.info(Log.FAC_TEST, "Started testVersionNumberInTree");
+
+		// make sure the sortable work
+		long [] values = new long [] {1111110000000L, 1110000000000L, 1113330000000L, 1112220000000L};
+		VersionNumber [] vns = new VersionNumber[values.length];
+		TreeSet<VersionNumber> tree = new TreeSet<VersionNumber>();
+
+		for(int i = 0; i < values.length; i++) {
+			vns[i] = new VersionNumber(values[i]);
+			tree.add(vns[i]);
+		}
+
+		// they should be in the same order as the sorted values
+		Arrays.sort(values);
+		Iterator<VersionNumber> iter = tree.iterator();
+		int index = 0;
+		while( iter.hasNext() ) {
+			VersionNumber v = iter.next();
+			Assert.assertEquals(values[index], v.getAsMillis());
+			index++;
+		}
+		
+		Log.info(Log.FAC_TEST, "Completed testVersionNumberInTree");
 	}
 
 	@Test
@@ -63,45 +91,24 @@ public class InterestDataTestRepo {
 		Log.info(Log.FAC_TEST, "Started testVersionNumberCompare");
 	}
 
-	/**
-	 * Create one object then create an InterestData for it and make sure we get the object.
-	 * @throws Exception
-	 */
 	@Test
-	public void testInterestDataInterest() throws Exception {
-		Log.info(Log.FAC_TEST, "Started testInterestDataInterest");
+	public void testInterestDataStartTimeCompare() throws Exception {
+		Log.info(Log.FAC_TEST, "Started testInterestDataStartTimeCompare");
 
-		CCNHandle handle = CCNHandle.getHandle();
 		ContentName basename = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
-		TestListener listener = new TestListener();
 
-		InterestData id = new InterestData(basename);
+		InterestData id1 =  new InterestData(basename, vn_411000000000L, new VersionNumber(411110000010L));
+		InterestData id1a = new InterestData(basename, vn_411000000000L, new VersionNumber(411110000020L));
+		InterestData id2 =  new InterestData(basename, vn_411222000000L, new VersionNumber(411330000000L));
 
-		// Save content
-		CCNStringObject so = new CCNStringObject(basename, "hello, world!", SaveType.LOCALREPOSITORY, handle);
-		so.save();
-		CCNTime version = so.getVersion();
-		so.close();
-
-		// Now use the interest to retrive it
-		Interest interest = id.buildInterest();
-
-		Log.info(Log.FAC_TEST, "Expressing interest " + interest);
+		InterestData.StartTimeComparator stc = new InterestData.StartTimeComparator();
 		
-		handle.expressInterest(interest, listener);
-
-		Assert.assertTrue( listener.cl.waitForValue(1L, TIMEOUT) );
-
-		// now make sure what we got is what we expected
-		ContentObject co = listener.received.get(0).object;
-
-		CCNTime received_version = VersioningProfile.getLastVersionAsTimestamp(co.name());
-		Assert.assertTrue(version.equals(received_version));
-
-		CCNStringObject received_so = new CCNStringObject(co, handle);
-		Assert.assertTrue(so.string().equals(received_so.string()));
+		Assert.assertTrue(stc.compare(id1, id1a) == 0);
+		Assert.assertTrue(stc.compare(id1a, id1) == 0);
+		Assert.assertTrue(stc.compare(id1, id2) < 0);
+		Assert.assertTrue(stc.compare(id2, id1) > 0);
 		
-		Log.info(Log.FAC_TEST, "Completed testInterestDataInterest");
+		Log.info(Log.FAC_TEST, "Completed testInterestDataStartTimeCompare");
 	}
 	
 	@Test

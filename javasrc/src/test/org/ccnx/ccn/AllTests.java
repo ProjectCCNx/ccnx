@@ -16,8 +16,6 @@
  */
 package org.ccnx.ccn;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 import org.junit.runners.Suite.SuiteClasses;
@@ -25,8 +23,19 @@ import org.junit.runners.Suite.SuiteClasses;
 @RunWith(Suite.class)
 
 @SuiteClasses({
+	org.ccnx.ccn.encoding.AllTests.class,
+	org.ccnx.ccn.impl.AllTests.class,
+	org.ccnx.ccn.impl.security.keys.AllTests.class,
+	org.ccnx.ccn.impl.support.AllTests.class,
     org.ccnx.ccn.protocol.AllTests.class,
-    org.ccnx.ccn.io.AllTests.class
+    org.ccnx.ccn.io.AllTests.class,
+    org.ccnx.ccn.io.content.AllTests.class,
+    org.ccnx.ccn.profiles.AllTests.class,
+    org.ccnx.ccn.profiles.ccnd.AllTests.class,
+    org.ccnx.ccn.profiles.security.access.group.AllTests.class,
+    org.ccnx.ccn.profiles.versioning.AllTests.class,
+    org.ccnx.ccn.repo.AllTests.class,
+    org.ccnx.ccn.security.crypto.AllTests.class,
 })
 public class AllTests {
 }
