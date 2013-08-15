@@ -21,13 +21,19 @@ BEFORE : test_alone
 UNIQ=`GenSym`
 PREFIX=ccnx:/test-sw-c/$UNIQ
 
+# Make a nice, clean, repo directories, but keep any keys
+rm -rf sw-c/repo* sw-c/index sw-c/config
+mkdir -p sw-c
+rm -rf sw-c-2/repo* sw-c-2/index sw-c-2/config
+mkdir -p sw-c-2
+
+# Start ccnr with no ccnd to init the new repos
+WithCCND 4 CCNR_DIRECTORY=sw-c ccnr 2>/dev/null
+WithCCND 4 CCNR_DIRECTORY=sw-c-2 ccnr 2>/dev/null
+
 # Start a test ccnd, and set its logging at medium
 WithCCND 4 CappedCCNDStart 100
 WithCCND 4 ccndlogging med
-
-# Make a nice, clean, repo directory
-rm -rf sw-c
-mkdir -p sw-c
 
 # Start a repo to capture the segments
 WithCCND 4 env CCNR_DEBUG=FINEST CCNR_DIRECTORY=sw-c ccnr 2>ccnr4.out &
@@ -68,10 +74,9 @@ echo SWCR is $SWCR
 # Start a new ccnd, and a new, empty, repo.
 WithCCND 5 CappedCCNDStart 100
 WithCCND 5 ccndlogging med
-rm -rf sw-c-2
-mkdir -p sw-c-2
 WithCCND 5 env CCNR_DEBUG=FINEST CCNR_DIRECTORY=sw-c-2 ccnr 2>ccnr5.out &
 
+# Prep to store just some of the segments.
 WithCCND 5 ccnlibtest -v sw-c/repoFile1-*.ccnb prefix $PART1 run 1000 mincob 4 maxcob 4 > sw-c-libtest.out &
 PID=$!
 # Issue the request, save the response.
