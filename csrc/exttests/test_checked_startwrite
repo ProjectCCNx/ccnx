@@ -77,13 +77,13 @@ WithCCND 5 ccndlogging med
 WithCCND 5 env CCNR_DEBUG=FINEST CCNR_DIRECTORY=sw-c-2 ccnr 2>ccnr5.out &
 
 # Prep to store just some of the segments.
-WithCCND 5 ccnlibtest -v sw-c/repoFile1-*.ccnb prefix $PART1 run 1000 mincob 4 maxcob 4 > sw-c-libtest.out &
+WithCCND 5 ccnlibtest -v sw-c/repoFile1-*.ccnb prefix $PART1 run 2000 mincob 4 maxcob 4 > sw-c-libtest.out &
 PID=$!
 # Issue the request, save the response.
 WithCCND 5 ccnpeek -c $SWCR > sw-c.ccnb || Fail no reply to $SWCR
 
 # Check for info response
-ccn_ccnbtoxml sw-c.ccnb
+ccn_ccnbtoxml sw-c.ccnb | grep INFO >/dev/null || Fail expected INFO response
 
 # We should be doing the partial save. In the meantime, make a new save command
 SWCR=$PART1/$PART2/%C1.N%00`GenSym`/$PART4/$PART5
@@ -104,7 +104,7 @@ grep -w $NAME sw-c-2.names.out >/dev/null && Fail oops, stored $NAME
 # Now we need to do it again, but this time it should be there
 WithCCND 5 ccnpeek -c $SWCR > sw-c-2.ccnb || Fail no reply to $SWCR
 # Check for status response
-ccn_ccnbtoxml sw-c-2.ccnb
+ccn_ccnbtoxml sw-c-2.ccnb | grep DATA >/dev/null || Fail expected DATA response
 
 # Next comes the test for unsegmented data.
 WithCCND 5 ccnlibtest unsegmented.ccnb prefix ccnx:/test-sw-c/unsegmented run 1000 maxcob 0 &
