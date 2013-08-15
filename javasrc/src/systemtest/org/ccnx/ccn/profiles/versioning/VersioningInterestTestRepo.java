@@ -27,6 +27,7 @@ import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.versioning.VersionNumber;
@@ -79,7 +80,7 @@ public class VersioningInterestTestRepo {
 	 */
 	@Test
 	public void testTwoNamesOneListener() throws Exception {
-		System.out.println("****** testTwoNamesOneListener starting");
+		Log.info(Log.FAC_TEST, "Started testTowNamesOneListener");
 		ContentName base1 = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
 		ContentName base2 = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
 
@@ -103,7 +104,7 @@ public class VersioningInterestTestRepo {
 		
 		// now make sure we get them all
 		boolean b = listener.cl.waitForValue(count, TIMEOUT);
-		System.out.println("Received: " + listener.cl.getValue());
+		Log.info(Log.FAC_TEST, "Received: " + listener.cl.getValue());
 		Assert.assertTrue(b);
 		
 		HashSet<CCNTime> recv = new HashSet<CCNTime>();
@@ -117,13 +118,13 @@ public class VersioningInterestTestRepo {
 		boolean missing = false;
 		for(CCNTime version : sent) {
 			if( !recv.contains(version) ) {
-				System.out.println("recv missing version " + new VersionNumber(version));
+				Log.info(Log.FAC_TEST, "recv missing version " + new VersionNumber(version));
 				missing = true;
 			}
 		}
 		Assert.assertFalse(missing);
 		vi.close();
-		System.out.println("****** testTwoNamesOneListener done");
+		Log.info(Log.FAC_TEST, "Completed testTowNamesOneListener");
 	}
 	
 	/**
@@ -131,7 +132,7 @@ public class VersioningInterestTestRepo {
 	 */
 	@Test
 	public void testThreeNamesFourListener() throws Exception {
-		System.out.println("****** testThreeNamesFourListener starting");
+		Log.info(Log.FAC_TEST, "Started testThreeNamesFourListener");
 		ContentName base1 = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
 		ContentName base2 = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
 		ContentName base3 = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
@@ -162,7 +163,7 @@ public class VersioningInterestTestRepo {
 		
 		// now make sure we get them all
 		boolean b = listener4.cl.waitForValue(count, TIMEOUT);
-		System.out.println("Received: " + listener4.cl.getValue());
+		Log.info(Log.FAC_TEST, "Received: " + listener4.cl.getValue());
 		Assert.assertTrue(b);
 		
 		HashSet<CCNTime> recv = new HashSet<CCNTime>();
@@ -176,7 +177,7 @@ public class VersioningInterestTestRepo {
 		boolean missing = false;
 		for(CCNTime version : sent) {
 			if( !recv.contains(version) ) {
-				System.out.println("recv missing version " + new VersionNumber(version));
+				Log.info(Log.FAC_TEST, "recv missing version " + new VersionNumber(version));
 				missing = true;
 			}
 		}
@@ -184,12 +185,12 @@ public class VersioningInterestTestRepo {
 		
 		// Make sure other listeners got their shares
 		long sum = listener1.cl.getValue() + listener2.cl.getValue() + listener3.cl.getValue();
-		System.out.println("Other listeners got " + sum);
+		Log.info(Log.FAC_TEST, "Other listeners got " + sum);
 		Assert.assertEquals(count, (int) sum);
 		
 		vi.close();
 		
-		System.out.println("****** testThreeNamesFourListener done");
+		Log.info(Log.FAC_TEST, "Completed testThreeNamesFourListener");
 	}
 	
 	// ========================================================

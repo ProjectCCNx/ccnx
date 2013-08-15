@@ -25,6 +25,7 @@ import java.util.TreeSet;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.versioning.InterestData;
@@ -56,6 +57,8 @@ public class InterestDataTestRepo {
 	
 	@Test
 	public void testVersionNumberInTree() throws Exception {
+		Log.info(Log.FAC_TEST, "Started testVersionNumberInTree");
+
 		// make sure the sortable work
 		long [] values = new long [] {1111110000000L, 1110000000000L, 1113330000000L, 1112220000000L};
 		VersionNumber [] vns = new VersionNumber[values.length];
@@ -75,11 +78,13 @@ public class InterestDataTestRepo {
 			Assert.assertEquals(values[index], v.getAsMillis());
 			index++;
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testVersionNumberInTree");
 	}
 
 	@Test
 	public void testVersionNumberCompare() throws Exception {
-		// make sure the sortable work
+		Log.info(Log.FAC_TEST, "Started testVersionNumberCompare");
 
 		VersionNumber a = new VersionNumber(new CCNTime(111111000000L));
 		VersionNumber aa = new VersionNumber(new CCNTime(111111000000L));
@@ -92,11 +97,15 @@ public class InterestDataTestRepo {
 		Assert.assertTrue(a.compareTo(c) < 0);
 		Assert.assertTrue(b.compareTo(c) < 0);
 		Assert.assertTrue(c.compareTo(a) > 0);
-		Assert.assertTrue(c.compareTo(b) > 0);	
+		Assert.assertTrue(c.compareTo(b) > 0);
+		
+		Log.info(Log.FAC_TEST, "Started testVersionNumberCompare");
 	}
 
 	@Test
 	public void testInterestDataStartTimeCompare() throws Exception {
+		Log.info(Log.FAC_TEST, "Started testInterestDataStartTimeCompare");
+
 		ContentName basename = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		InterestData id1 =  new InterestData(basename, vn_411000000000L, new VersionNumber(411110000010L));
@@ -108,7 +117,9 @@ public class InterestDataTestRepo {
 		Assert.assertTrue(stc.compare(id1, id1a) == 0);
 		Assert.assertTrue(stc.compare(id1a, id1) == 0);
 		Assert.assertTrue(stc.compare(id1, id2) < 0);
-		Assert.assertTrue(stc.compare(id2, id1) > 0);		
+		Assert.assertTrue(stc.compare(id2, id1) > 0);
+		
+		Log.info(Log.FAC_TEST, "Completed testInterestDataStartTimeCompare");
 	}
 
 	/**
@@ -117,6 +128,8 @@ public class InterestDataTestRepo {
 	 */
 	@Test
 	public void testInterestDataInterest() throws Exception {
+		Log.info(Log.FAC_TEST, "Started testInterestDataInterest");
+
 		CCNHandle handle = CCNHandle.getHandle();
 		ContentName basename = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
 		TestListener listener = new TestListener();
@@ -132,7 +145,7 @@ public class InterestDataTestRepo {
 		// Now use the interest to retrive it
 		Interest interest = id.buildInterest();
 
-		System.out.println("Expressing interest " + interest);
+		Log.info(Log.FAC_TEST, "Expressing interest " + interest);
 		
 		handle.expressInterest(interest, listener);
 
@@ -146,6 +159,8 @@ public class InterestDataTestRepo {
 
 		CCNStringObject received_so = new CCNStringObject(co, handle);
 		Assert.assertTrue(so.string().equals(received_so.string()));
+		
+		Log.info(Log.FAC_TEST, "Completed testInterestDataInterest");
 	}
 
 
@@ -155,6 +170,8 @@ public class InterestDataTestRepo {
 	 */
 	@Test
 	public void testInterestDataInterestStream() throws Exception {
+		Log.info(Log.FAC_TEST, "Started testInterestDataInterestStream");
+		
 		CCNHandle handle = CCNHandle.getHandle();
 		ContentName basename = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
 
@@ -173,6 +190,8 @@ public class InterestDataTestRepo {
 
 		// now make sure what we got is what we sent
 		VersioningHelper.compareReceived(handle, sent, listener);
+		
+		Log.info(Log.FAC_TEST, "Completed testInterestDataInterestStream");
 	}
 	
 	/**
@@ -181,6 +200,8 @@ public class InterestDataTestRepo {
 	 */
 	@Test
 	public void testInterestDataInterestStreamWithStartTime() throws Exception {
+		Log.info(Log.FAC_TEST, "Started testInterestDataInterestStreamWithStartTime");
+
 		CCNHandle handle = CCNHandle.getHandle();
 		ContentName basename = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
 
@@ -203,6 +224,8 @@ public class InterestDataTestRepo {
 
 		// now make sure what we got is what we sent
 		VersioningHelper.compareReceived(handle, sent2, listener);
+		
+		Log.info(Log.FAC_TEST, "Completed testInterestDataInterestStreamWithStartTime");
 	}
 
 	/**
@@ -212,6 +235,8 @@ public class InterestDataTestRepo {
 	 */
 	@Test
 	public void testInterestDataInterestStreamWithStartAndStopTime() throws Exception {
+		Log.info(Log.FAC_TEST, "Started testInterestDataInterestStreamWithStartAndStopTime");
+
 		CCNHandle handle = CCNHandle.getHandle();
 		ContentName basename = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
 
@@ -234,7 +259,7 @@ public class InterestDataTestRepo {
 		// now final stream
 		VersioningHelper.sendEventStream(handle, basename, tosend);
 
-		System.out.println(String.format("Start/stop versions %s to %s",
+		Log.info(Log.FAC_TEST, String.format("Start/stop versions %s to %s",
 				start_version.printAsVersionComponent(),
 				stop_version.printAsVersionComponent()));
 				
@@ -248,10 +273,14 @@ public class InterestDataTestRepo {
 
 		// now make sure what we got is what we sent
 		VersioningHelper.compareReceived(handle, sent2, listener);
+		
+		Log.info(Log.FAC_TEST, "Completed testInterestDataInterestStreamWithStartAndStopTime");
 	}
 	
 	@Test
 	public void testSplitLeft() throws Exception {
+		Log.info(Log.FAC_TEST, "Started testSplitLeft");
+
 		// put a bunch of exclusions in an INterestData, then split it and check results.
 		ContentName basename = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
 
@@ -289,6 +318,7 @@ public class InterestDataTestRepo {
 		Assert.assertTrue(left.validate());
 		Assert.assertTrue(data.validate());
 		
+		Log.info(Log.FAC_TEST, "Completed testSplitLeft");		
 	}
 	
 }

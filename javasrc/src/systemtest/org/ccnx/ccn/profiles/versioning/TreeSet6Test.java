@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Random;
 
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.TreeSet6;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -32,11 +33,13 @@ public class TreeSet6Test {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		String javaVersion = System.getProperty("java.version");
-		System.out.println("Java version: " + javaVersion);
+		Log.info(Log.FAC_TEST, "Java version: " + javaVersion);
 	}
 	
 	@Test
 	public void testFloor() throws Exception {
+		Log.info(Log.FAC_TEST, "Started testFloor");
+
 		TreeSet6<String> set = new TreeSet6<String>();
 		
 		set.add("bbb");
@@ -45,17 +48,20 @@ public class TreeSet6Test {
 		
 		String s;
 		s = set.floorCompatible("ccc");
-		System.out.println("floor of ccc is : " + s);
+		Log.info(Log.FAC_TEST, "floor of ccc is : " + s);
 		Assert.assertTrue("ccc".equals(s));	
 		
 		s = set.floorCompatible("b");
-		System.out.println("floor of b is : " + s);
-		Assert.assertTrue("aaa".equals(s));	
+		Log.info(Log.FAC_TEST, "floor of b is : " + s);
+		Assert.assertTrue("aaa".equals(s));
 		
+		Log.info(Log.FAC_TEST, "Completed testFloor");	
 	}
 	
 	@Test
 	public void testLower() throws Exception {
+		Log.info(Log.FAC_TEST, "Started testLower");
+
 		TreeSet6<String> set = new TreeSet6<String>();
 		
 		set.add("bbb");
@@ -64,15 +70,19 @@ public class TreeSet6Test {
 		
 		String s;
 		s = set.lowerCompatible("ccc");
-		System.out.println("lower of ccc is : " + s);
+		Log.info(Log.FAC_TEST, "lower of ccc is : " + s);
 		Assert.assertTrue("bbb".equals(s));		
 		s = set.lowerCompatible("b");
-		System.out.println("lower of b is : " + s);
-		Assert.assertTrue("aaa".equals(s));	
+		Log.info(Log.FAC_TEST, "lower of b is : " + s);
+		Assert.assertTrue("aaa".equals(s));
+		
+		Log.info(Log.FAC_TEST, "Completed testLower");		
 	}
 	
 	@Test
 	public void testCeiling() throws Exception {
+		Log.info(Log.FAC_TEST, "Started testCeiling");
+
 		TreeSet6<String> set = new TreeSet6<String>();
 		
 		set.add("bbb");
@@ -81,15 +91,19 @@ public class TreeSet6Test {
 		
 		String s;
 		s = set.ceilingCompatible("bbb");
-		System.out.println("ceiling of bbb is : " + s);
+		Log.info(Log.FAC_TEST, "ceiling of bbb is : " + s);
 		Assert.assertTrue("bbb".equals(s));		
 		s = set.ceilingCompatible("b");
-		System.out.println("ceiling of b is : " + s);
-		Assert.assertTrue("bbb".equals(s));	
+		Log.info(Log.FAC_TEST, "ceiling of b is : " + s);
+		Assert.assertTrue("bbb".equals(s));
+		
+		Log.info(Log.FAC_TEST, "Completed testCeiling");
 	}
 	
 	@Test
 	public void testHigher() throws Exception {
+		Log.info(Log.FAC_TEST, "Started testHigher");
+
 		TreeSet6<String> set = new TreeSet6<String>();
 		
 		set.add("bbb");
@@ -98,17 +112,20 @@ public class TreeSet6Test {
 		
 		String s;
 		s = set.higherCompatible("bbb");
-		System.out.println("higher of bbb is : " + s);
+		Log.info(Log.FAC_TEST, "higher of bbb is : " + s);
 		Assert.assertTrue("ccc".equals(s));	
 
 		s = set.higherCompatible("b");
-		System.out.println("higher of b is : " + s);
-		Assert.assertTrue("bbb".equals(s));	
-	
+		Log.info(Log.FAC_TEST, "higher of b is : " + s);
+		Assert.assertTrue("bbb".equals(s));
+		
+		Log.info(Log.FAC_TEST, "Completed testHigher");	
 	}
 	
 	@Test
 	public void testInternalFloor() throws Exception {
+		Log.info(Log.FAC_TEST, "Started testInternalFloor");
+
 		TestTreeSet6<String> set = new TestTreeSet6<String>();
 		
 		set.add("bbb");
@@ -117,17 +134,20 @@ public class TreeSet6Test {
 		
 		String s;
 		s = set.exposeInternalFloor("ccc");
-		System.out.println("internal floor of ccc is : " + s);
+		Log.info(Log.FAC_TEST, "internal floor of ccc is : " + s);
 		Assert.assertTrue("ccc".equals(s));	
 		
 		s = set.exposeInternalFloor("b");
-		System.out.println("internal floor of b is : " + s);
-		Assert.assertTrue("aaa".equals(s));	
+		Log.info(Log.FAC_TEST, "internal floor of b is : " + s);
+		Assert.assertTrue("aaa".equals(s));
 		
+		Log.info(Log.FAC_TEST, "Completed testInternalFloor");		
 	}
 	
 	@Test
 	public void testInternalLower() throws Exception {
+		Log.info(Log.FAC_TEST, "Started testInternalLower");
+
 		TestTreeSet6<String> set = new TestTreeSet6<String>();
 		
 		set.add("bbb");
@@ -136,15 +156,19 @@ public class TreeSet6Test {
 		
 		String s;
 		s = set.exposeInternalLower("ccc");
-		System.out.println("internal lower of ccc is : " + s);
+		Log.info("internal lower of ccc is : " + s);
 		Assert.assertTrue("bbb".equals(s));		
 		s = set.exposeInternalLower("b");
-		System.out.println("internal lower of b is : " + s);
-		Assert.assertTrue("aaa".equals(s));	
+		Log.info("internal lower of b is : " + s);
+		Assert.assertTrue("aaa".equals(s));
+		
+		Log.info(Log.FAC_TEST, "Completed testInternalLower");
 	}
 	
 	@Test
-	public void testIntenralCeiling() throws Exception {
+	public void testInternalCeiling() throws Exception {
+		Log.info(Log.FAC_TEST, "Started testInternalCeiling");
+
 		TestTreeSet6<String> set = new TestTreeSet6<String>();
 		
 		set.add("bbb");
@@ -153,15 +177,19 @@ public class TreeSet6Test {
 		
 		String s;
 		s = set.exposeInternalCeiling("bbb");
-		System.out.println("internal ceiling of bbb is : " + s);
+		Log.info(Log.FAC_TEST, "internal ceiling of bbb is : " + s);
 		Assert.assertTrue("bbb".equals(s));		
 		s = set.exposeInternalCeiling("b");
-		System.out.println("internal ceiling of b is : " + s);
-		Assert.assertTrue("bbb".equals(s));	
+		Log.info(Log.FAC_TEST, "internal ceiling of b is : " + s);
+		Assert.assertTrue("bbb".equals(s));
+		
+		Log.info(Log.FAC_TEST, "Completed testInternalCeiling");
 	}
 	
 	@Test
 	public void testInternalHigher() throws Exception {
+		Log.info(Log.FAC_TEST, "Started testInternalHigher");
+
 		TestTreeSet6<String> set = new TestTreeSet6<String>();
 		
 		set.add("bbb");
@@ -170,16 +198,20 @@ public class TreeSet6Test {
 		
 		String s;
 		s = set.exposeInternalHigher("bbb");
-		System.out.println("internal higher of bbb is : " + s);
+		Log.info(Log.FAC_TEST, "internal higher of bbb is : " + s);
 		Assert.assertTrue("ccc".equals(s));	
 
 		s = set.exposeInternalHigher("b");
-		System.out.println("internal higher of b is : " + s);
-		Assert.assertTrue("bbb".equals(s));	
+		Log.info(Log.FAC_TEST, "internal higher of b is : " + s);
+		Assert.assertTrue("bbb".equals(s));
+		
+		Log.info(Log.FAC_TEST, "Completed testInternalHigher");
 	}
 	
 	@Test
 	public void testDescendingIterator() throws Exception {
+		Log.info(Log.FAC_TEST, "Started testDescendingIterator");
+
 		TreeSet6<Integer> set = new TreeSet6<Integer>();
 		int count = 1000;
 		int [] truth = new int [count];
@@ -211,10 +243,14 @@ public class TreeSet6Test {
 			Assert.assertEquals(truth[index], test.intValue());
 		}
 		Assert.assertEquals(0, index);
+		
+		Log.info(Log.FAC_TEST, "Completed testDescendingIterator");
 	}
 	
 	@Test
 	public void testDescendingIteratorRemoveFirst() throws Exception {
+		Log.info(Log.FAC_TEST, "Started testDescendingIteratorRemoveFirst");
+
 		TreeSet6<Integer> set = new TreeSet6<Integer>();
 		int count = 1000;
 		int [] truth = new int [count];
@@ -248,10 +284,14 @@ public class TreeSet6Test {
 			Assert.assertEquals(truth[index], test.intValue());
 		}
 		Assert.assertEquals(0, index);
+		
+		Log.info(Log.FAC_TEST, "Completed testDescendingIteratorRemoveFirst");
 	}
 	
 	@Test
 	public void testDescendingIteratorRemoveLast() throws Exception {
+		Log.info(Log.FAC_TEST, "Started testDescendingIteratorRemoveLast");
+
 		TreeSet6<Integer> set = new TreeSet6<Integer>();
 		int count = 1000;
 		int [] truth = new int [count];
@@ -285,11 +325,14 @@ public class TreeSet6Test {
 			Assert.assertEquals(truth[index], test.intValue());
 		}
 		Assert.assertEquals(1, index);
-
+		
+		Log.info(Log.FAC_TEST, "Completed testDescendingIteratorRemoveLast");
 	}
 
 	@Test
 	public void testDescendingIteratorRemoveRandom() throws Exception {
+		Log.info(Log.FAC_TEST, "Started testDescendingIteratorRemoveRandom");
+
 		TreeSet6<Integer> set = new TreeSet6<Integer>();
 		int count = 1000;
 		int [] truth = new int [count];
@@ -328,7 +371,8 @@ public class TreeSet6Test {
 			index++;
 		}
 		Assert.assertEquals(afterremove.size(), index);
-
+		
+		Log.info(Log.FAC_TEST, "Completed testDescendingIteratorRemoveRandom");
 	}
 	
 	// =========================

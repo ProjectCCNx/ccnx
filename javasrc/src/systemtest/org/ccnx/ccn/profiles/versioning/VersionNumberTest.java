@@ -26,6 +26,7 @@ import java.util.TreeSet;
 
 import junit.framework.Assert;
 
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.versioning.VersionNumber;
 import org.ccnx.ccn.protocol.CCNTime;
@@ -83,21 +84,30 @@ public class VersionNumberTest {
 	// a new CCNTime.
 	@Test
 	public void testVersionNumber()  throws Exception {
+		Log.info(Log.FAC_TEST, "Started testVersionNumber");
+
 		VersionNumber vn = new VersionNumber();
 		CCNTime t = CCNTime.now();
 		Assert.assertTrue( t.getTime() - vn.getAsMillis() < 10);
+		
+		Log.info(Log.FAC_TEST, "Completed testVersionNumber");
 	}
 
 	@Test
 	public void testVersionNumberCCNTime() {
+		Log.info(Log.FAC_TEST, "Started testVersionNumberCCNTime");
+
 		CCNTime t = CCNTime.now();
 		VersionNumber vn = new VersionNumber(t);
 
 		Assert.assertTrue(t.equals(vn.getAsTime()));
+		
+		Log.info(Log.FAC_TEST, "Completed testVersionNumberCCNTime");
 	}
 
 	@Test
 	public void testVersionNumberLong() throws Exception {
+		Log.info(Log.FAC_TEST, "Started testVersionNumberLong");
 
 		for(int i = 0; i < 10000; i++) {
 			CCNTime t = CCNTime.now();
@@ -114,10 +124,14 @@ public class VersionNumberTest {
 			// to make sure we get different now() values
 			Thread.sleep(1);
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testVersionNumberLong");
 	}
 
 	@Test
 	public void testVersionNumberContentName()  throws Exception  {
+		Log.info(Log.FAC_TEST, "Started testVersionNumberContentName");
+
 		ContentName name = ContentName.fromNative("/hello/world");
 
 		for( int i = 0; i < 10000; i++ ) {
@@ -132,10 +146,14 @@ public class VersionNumberTest {
 			// to make sure we get different now() values
 			Thread.sleep(1);
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testVersionNumberContentName");
 	}
 
 	@Test
 	public void testVersionNumberByteArray() {
+		Log.info(Log.FAC_TEST, "Started testVersionNumberByteArray");
+
 		CCNTime now = CCNTime.now();
 		long t = now.toBinaryTimeAsLong();
 
@@ -150,6 +168,8 @@ public class VersionNumberTest {
 
 			Assert.assertTrue( Arrays.equals(truth, test));
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testVersionNumberByteArray");
 	}
 
 	@Test
@@ -162,6 +182,8 @@ public class VersionNumberTest {
 
 	@Test
 	public void testCompareTo() {
+		Log.info(Log.FAC_TEST, "Started testCompareTo");
+
 		int count = 100;
 		long [] values = new long [count];
 		CCNTime now = CCNTime.now();
@@ -195,10 +217,13 @@ public class VersionNumberTest {
 			}
 			prev = current;
 		}
+		Log.info(Log.FAC_TEST, "Completed testCompareTo");
 	}
 
 	@Test
 	public void testEqualsObject() {
+		Log.info(Log.FAC_TEST, "Started testEqualsObject");
+
 		CCNTime now = CCNTime.now();
 		long t = now.toBinaryTimeAsLong();
 		CCNTime prev = CCNTime.fromBinaryTimeAsLong(t);
@@ -215,6 +240,8 @@ public class VersionNumberTest {
 
 			prev = next;
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testEqualsObject");
 	}
 
 	@Test

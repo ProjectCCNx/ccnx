@@ -23,6 +23,7 @@ import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.profiles.versioning.InterestData;
 import org.ccnx.ccn.protocol.ContentName;
@@ -67,7 +68,7 @@ public class InterestAndFilterTestRepo {
 	 */
 	@Test
 	public void testInterest() throws Exception {
-		System.out.println("********* Running testInterest");
+		Log.info(Log.FAC_TEST, "Started testInterest");
 		
 		ContentName name = new ContentName(_prefix, "data");
 		int sendcount = 2;
@@ -86,7 +87,7 @@ public class InterestAndFilterTestRepo {
 		_userHandle.expressInterest(interest, listener);
 		
 		// =====================================
-		System.out.println("** Sending two objects 5 seconds apart");
+		Log.info(Log.FAC_TEST, "** Sending two objects 5 seconds apart");
 		
 		// Now send a few things and make sure we get them.  Space them 5 seconds
 		// apart to make sure we need to have re-expressed the interest
@@ -98,6 +99,8 @@ public class InterestAndFilterTestRepo {
 		// now reset the count
 		listener.cl.setValue(0);
 		listener.received.clear();
+		
+		Log.info(Log.FAC_TEST, "Completed testInterest");
 	}
 	
 	/**
@@ -107,7 +110,7 @@ public class InterestAndFilterTestRepo {
 	 */
 	@Test
 	public void testInterestAndFilter() throws Exception {
-		System.out.println("********* Running testInterestAndFilter");
+		Log.info(Log.FAC_TEST, "Started testInterestAndFilter");
 		
 		ContentName name = new ContentName(_prefix, "data");
 		int sendcount = 2;
@@ -126,7 +129,7 @@ public class InterestAndFilterTestRepo {
 		_userHandle.expressInterest(interest, listener);
 		
 		// =====================================
-		System.out.println("** Sending two objects 5 seconds apart");
+		Log.info(Log.FAC_TEST, "** Sending two objects 5 seconds apart");
 
 		// Now send a few things and make sure we get them.  Space them 5 seconds
 		// apart to make sure we need to have re-expressed the interest
@@ -140,36 +143,38 @@ public class InterestAndFilterTestRepo {
 		listener.received.clear();
 		
 		// =====================================
-		System.out.println("** Registering an Interest Filter on the same namespace");
+		Log.info(Log.FAC_TEST, "** Registering an Interest Filter on the same namespace");
 		
 		TestFilterListener filter = new TestFilterListener();
 		filter.debugOutput = true;
 		_userHandle.registerFilter(name, filter);
 		
-		System.out.println("** Sending two objects 5 seconds apart");
+		Log.info(Log.FAC_TEST, "** Sending two objects 5 seconds apart");
 		sendObjects(name, sendcount, 5000);
 		Assert.assertTrue( listener.run(_userHandle, sendcount, 10000) );
 		listener.cl.setValue(0);
 		listener.received.clear();
 		
 		// =====================================
-		System.out.println("** Removing filter and resending objects");
+		Log.info(Log.FAC_TEST, "** Removing filter and resending objects");
 		_userHandle.unregisterFilter(name, filter);
 		Thread.sleep(100);
 		
-		System.out.println("** Sending two objects 5 seconds apart");
+		Log.info(Log.FAC_TEST, "** Sending two objects 5 seconds apart");
 		sendObjects(name, sendcount, 5000);
 		Assert.assertTrue( listener.run(_userHandle, sendcount, 10000) );
 		
-		System.out.println("** Checking calls to WriteInterest");
+		Log.info(Log.FAC_TEST, "** Checking calls to WriteInterest");
 		long c0 = _userHandle.getNetworkManager().getStats().getCounter("WriteInterest");
 		Thread.sleep(10000);
 		long c1 = _userHandle.getNetworkManager().getStats().getCounter("WriteInterest");
 		
-		System.out.println(String.format("** c0 = %d, c1 = %d, delta = %d", c0, c1, c1 - c0));
+		Log.info(Log.FAC_TEST, String.format("** c0 = %d, c1 = %d, delta = %d", c0, c1, c1 - c0));
 		
 		// Over 10 seconds, there should be 2 or 3 interests (times 0, 4, 8)
 		Assert.assertTrue(2 <= (c1 - c0) && (c1 - c0) <= 3);
+		
+		Log.info(Log.FAC_TEST, "Completed testInterestAndFilter");
 	}
 	
 	// ===================================
