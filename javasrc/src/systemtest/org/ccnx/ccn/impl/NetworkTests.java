@@ -7,7 +7,7 @@ import org.junit.runners.Suite.SuiteClasses;
 @RunWith(Suite.class)
 @SuiteClasses({ CCNFlowControlTest.class,
 		CCNFlowServerTest.class, CCNNetworkTestRepo.class, CCNStatTest.class,
-		DeprecatedInterfaceTest.class, LogTest.class,
+		DeprecatedInterfaceTest.class,
 		NetworkTest.class})
 public class NetworkTests {
 

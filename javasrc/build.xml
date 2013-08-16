@@ -337,13 +337,13 @@
          * These rules apply to all contributions, by core team, or from
          community.
 	     -->
-	<target name="unittest" depends="init, test-all-units">
+	<target name="unittest" depends="init, jar, test-all-units">
 	</target>
 
 	<!-- test is for running all current system tests to validate code 
 	     IMPORTANT: test-repo must be run before any test that will start a repo because it
 	     requires that a repo *not* be running when it starts -->
-	<target name="test" depends="init, test-repo, test-protocol, test-impl, test-io, test-versioning, 
+	<target name="test" depends="unittest, test-repo, test-protocol, test-impl, test-io,
 				test-security, test-endtoend">
 	</target>
 
@@ -352,17 +352,16 @@
 
     <target name="test-all-units" depends="compile-test">
 		<mkdir dir="${testout}"/>
-        <junit printsummary="yes" fork="yes" haltonfailure="no">
+        <junit printsummary="yes" fork="yes" haltonfailure="no" showoutput="${showoutput}" dir="${testout}">
 			<classpath>
 				<path refid="classpath"/>
 		        <pathelement location="${build}"/>
 			</classpath>
 			<formatter type="xml" usefile="true"/>
-            <formatter type="plain" usefile="false"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
             <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
-            <test name="org.ccnx.ccn.AllTests"/>
+            <test name="org.ccnx.ccn.AllTests" todir="${testout}"/>
         </junit>
     </target>	
 

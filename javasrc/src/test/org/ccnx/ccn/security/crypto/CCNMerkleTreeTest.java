@@ -54,6 +54,8 @@ public class CCNMerkleTreeTest {
 	static PublisherPublicKeyDigest publisher = null;
 	static KeyLocator keyLoc = null;
 	
+	static final int [] sizes = new int[]{128,256,512,4096};
+	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		try {
@@ -72,27 +74,23 @@ public class CCNMerkleTreeTest {
 		}
 	}
 
+	@Test(expected=IllegalArgumentException.class)
+	public void testMerkleTree0() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testMerkleTree0");
+		testTree(0, sizes[0], false);
+		Log.info(Log.FAC_TEST, "Completec testMerkleTree0");
+	}
+	
+	@Test(expected=IllegalArgumentException.class)
+	public void testMerkleTree1() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testMerkleTree1");
+		testTree(1, sizes[0], false);
+		Log.info(Log.FAC_TEST, "Completec testMerkleTree1");	}
 	
 	@Test
 	public void testMerkleTree() throws Exception {
 		Log.info(Log.FAC_TEST, "Starting testMerkleTree");
-
-		int [] sizes = new int[]{128,256,512,4096};
 		
-		try {
-			testTree(0, sizes[0], false);
-			Assert.fail("CCNMerkleTree should throw an exception for tree sizes < 2.");
-		} catch (IllegalArgumentException e) {
-			// ok
-		}
-		
-		try {
-			testTree(1, sizes[0], false);
-			Assert.fail("CCNMerkleTree should throw an exception for tree sizes < 2.");
-		} catch (IllegalArgumentException e) {
-			// ok
-		}
-
 		System.out.println("Testing small trees, fixed block widths.");
 		for (int i=2; i < 515; ++i) {
 			testTree(i,sizes[i%sizes.length],false);
