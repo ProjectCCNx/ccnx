@@ -89,7 +89,7 @@ ccn_ccnbtoxml sw-c.ccnb | grep INFO >/dev/null || Fail expected INFO response
 SWCR=$PART1/$PART2/%C1.N%00`GenSym`/$PART4/$PART5
 echo SWCR is now $SWCR
 
-wait $PID || Fail check sw-c-libtest.out
+wait $PID || echo Status from wait $PID is $?
 
 # See if we have the expected pieces
 ccnnamelist sw-c-2/repoFile1 > sw-c-2.names.out
@@ -112,7 +112,7 @@ PID=$!
 SWCR=ccnx:/test-sw-c/unsegmented/%C1.R.sw-c/%C1.N%00`GenSym`/$UNIQ/=$USDIGEST
 echo SWCR is now $SWCR
 WithCCND 5 ccnpeek -c $SWCR > sw-c-us.ccnb || Fail no reply to $SWCR
-wait $PID || Fail ccnlibtest unsegmented.ccnb ...
+wait $PID || echo Status from wait $PID for ccnlibtest unsegmented.ccnb ... is $?
 ccnnamelist sw-c-2/repoFile1 > sw-c-2.names.out
 NAME=`ccnnamelist unsegmented.ccnb`
 grep -w $NAME sw-c-2.names.out >/dev/null || Fail did not store $NAME
