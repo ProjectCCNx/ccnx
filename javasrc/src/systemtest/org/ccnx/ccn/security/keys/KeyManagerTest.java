@@ -93,10 +93,11 @@ public class KeyManagerTest {
 		}
 
 		// now we try getting it back..
+		CCNHandle retrieveHandle = CCNHandle.open();
 		for (int i=0; i < SecurityBaseNoCcnd.KEY_COUNT; ++i) {
 			System.out.println("Attempting to retrieive key " + i + ":");
 			PublicKey pk = kr.getPublicKey(SecurityBaseNoCcnd.publishers[i], 
-					SecurityBaseNoCcnd.keyLocs[i], SystemConfiguration.getDefaultTimeout(), handle);
+					SecurityBaseNoCcnd.keyLocs[i], SystemConfiguration.getDefaultTimeout(), retrieveHandle);
 			Assert.assertNotNull(pk);
 			Assert.assertEquals(pk, SecurityBaseNoCcnd.pairs[i].getPublic());
 		}
