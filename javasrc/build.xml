@@ -247,9 +247,6 @@
 			<daemons>
                 <exec executable="${ccnr}" dir="${REPO_ROOT}" output="${testout}/TEST-ccnr-baselib.txt">
                     <env key="CCN_LOCAL_PORT" value="${TEST_PORT}"/>
-                    <env key="CCNR_CAP" value="${CCNR_CAP}"/>
-                    <env key="CCNR_DEBUG" value="${CCNR_DEBUG}"/>
-                    <env key="CCNR_GLOBAL_PREFIX" value="${REPO_GLOBAL}"/>
                 </exec>
 			</daemons>
             <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
