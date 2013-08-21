@@ -586,7 +586,26 @@ main(int argc, char *argv[])
         ccn_charbuf_destroy(&buffer);
         ccn_charbuf_destroy(&uri_out);
     } while (0);
-
+    printf("Empty component encoding test\n");
+    do {
+        const unsigned char expected_encoding[] = { 0xf2, 0xfa, 0x00, 0x00};
+        struct ccn_charbuf *name = ccn_charbuf_create();
+        ccn_name_from_uri(name, "ccnx:/...");
+        if (sizeof(expected_encoding) != name->length) {
+            printf("Failed: encoding length %u but expected %u\n", (unsigned) name->length,
+                   (unsigned)sizeof(expected_encoding));
+            result = 1;
+        }
+        for (i = 0; i < sizeof(expected_encoding); i++) {
+            if (expected_encoding[i] != name->buf[i]) {
+                printf("Failed: encoding mismatch at %d, got %d but expected %d\n",
+                       i, name->buf[i], expected_encoding[i]);
+                result = 1;
+            }
+        }
+        
+    } while (0);
+    
     printf("Timestamp tests\n");
     do {
         intmax_t sec;
