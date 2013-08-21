@@ -343,8 +343,10 @@
 	<!-- test is for running all current system tests to validate code 
 	     IMPORTANT: test-repo must be run before any test that will start a repo because it
 	     requires that a repo *not* be running when it starts -->
+	<!-- test-security-with-repo fails on some machines because they can't allocate enough memory
+	     so we are leaving it out for now -->
 	<target name="test" depends="unittest, test-repo, test-protocol, test-impl, test-io,
-				test-security, test-endtoend">
+				test-security-with-repo, test-endtoend">
 	</target>
 
 	<target name="test-protocol" depends="test-protocol-without-repo, test-protocol-with-repo">
