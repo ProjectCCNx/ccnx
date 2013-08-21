@@ -341,10 +341,7 @@ append_bf_all(struct ccn_charbuf *c)
     unsigned char bf_all[9] = { 3, 1, 'A', 0, 0, 0, 0, 0, 0xFF };
     const struct ccn_bloom_wire *b = ccn_bloom_validate_wire(bf_all, sizeof(bf_all));
     if (b == NULL) abort();
-    ccn_charbuf_append_tt(c, CCN_DTAG_Bloom, CCN_DTAG);
-    ccn_charbuf_append_tt(c, sizeof(bf_all), CCN_BLOB);
-    ccn_charbuf_append(c, bf_all, sizeof(bf_all));
-    ccn_charbuf_append_closer(c);
+    ccnb_append_tagged_blob(c, CCN_DTAG_Bloom, bf_all, sizeof(bf_all));
 }
 
 static struct ccn_charbuf *

@@ -55,13 +55,8 @@ ccn_name_append(struct ccn_charbuf *c, const void *component, size_t n)
         return(-1);
     c->length -= 1;
     ccn_charbuf_reserve(c, n + 8);
-    res = ccn_charbuf_append_tt(c, CCN_DTAG_Component, CCN_DTAG);
-    if (res == -1) return(res);
-    res = ccn_charbuf_append_tt(c, n, CCN_BLOB);
-    if (res == -1) return(res);
-    res = ccn_charbuf_append(c, component, n);
-    if (res == -1) return(res);
-    res = ccn_charbuf_append(c, closer, sizeof(closer));
+    res = ccnb_append_tagged_blob(c, CCN_DTAG_Component, component, n);
+    ccn_charbuf_append_closer(c);
     return(res);
 }
 

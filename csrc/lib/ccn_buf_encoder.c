@@ -63,17 +63,14 @@ ccn_signed_info_create(struct ccn_charbuf *c,
 
     res |= ccn_charbuf_append_tt(c, CCN_DTAG_SignedInfo, CCN_DTAG);
 
-    res |= ccn_charbuf_append_tt(c, CCN_DTAG_PublisherPublicKeyDigest, CCN_DTAG);
     if (publisher_key_id != NULL) {
-        res |= ccn_charbuf_append_tt(c, publisher_key_id_size, CCN_BLOB);
-        res |= ccn_charbuf_append(c, publisher_key_id, publisher_key_id_size);
+        res |= ccnb_append_tagged_blob(c, CCN_DTAG_PublisherPublicKeyDigest,
+                                       publisher_key_id, publisher_key_id_size);
     } else {
         /* XXX - obtain the default publisher key id and append it */
-        res |= ccn_charbuf_append_tt(c, sizeof(fakepubkeyid), CCN_BLOB);
-        res |= ccn_charbuf_append(c, fakepubkeyid, sizeof(fakepubkeyid));
+        res |= ccnb_append_tagged_blob(c, CCN_DTAG_PublisherPublicKeyDigest,
+                                       fakepubkeyid, sizeof(fakepubkeyid));
     }
-    res |= ccn_charbuf_append_closer(c);
-
     res |= ccn_charbuf_append_tt(c, CCN_DTAG_Timestamp, CCN_DTAG);
     if (timestamp != NULL)
         res |= ccn_charbuf_append_charbuf(c, timestamp);
@@ -130,18 +127,12 @@ ccn_encode_Signature(struct ccn_charbuf *buf,
     }
 
     if (witness != NULL) {
-        res |= ccn_charbuf_append_tt(buf, CCN_DTAG_Witness, CCN_DTAG);
-        res |= ccn_charbuf_append_tt(buf, witness_size, CCN_BLOB);
-        res |= ccn_charbuf_append(buf, witness, witness_size);
-        res |= ccn_charbuf_append_closer(buf);
+        res |= ccnb_append_tagged_blob(buf, CCN_DTAG_Witness, witness, witness_size);
     }
 
-    res |= ccn_charbuf_append_tt(buf, CCN_DTAG_SignatureBits, CCN_DTAG);
-    res |= ccn_charbuf_append_tt(buf, signature_size, CCN_BLOB);
-    res |= ccn_charbuf_append(buf, signature, signature_size);
-    res |= ccn_charbuf_append_closer(buf);
-    
-    res |= ccn_charbuf_append_closer(buf);
+    res |= ccnb_append_tagged_blob(buf, CCN_DTAG_SignatureBits, signature, signature_size);
+
+    res |= ccn_charbuf_append_closer(buf); // CCN_DTAG_Signature
 
     return(res == 0 ? 0 : -1);
 }

@@ -70,10 +70,7 @@ append_future_vcomp(struct ccn_charbuf *templ)
 {
     /* One beyond a distant future version stamp */
     const unsigned char b[7] = {CCN_MARKER_VERSION + 1, 0, 0, 0, 0, 0, 0};
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Component, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, sizeof(b), CCN_BLOB);
-    ccn_charbuf_append(templ, b, sizeof(b));
-    ccn_charbuf_append_closer(templ); /* </Component> */
+    ccnb_append_tagged_blob(templ, CCN_DTAG_Component, b, sizeof(b));
 }
 
 static struct ccn_charbuf *
@@ -93,16 +90,10 @@ resolve_templ(struct ccn_charbuf *templ, unsigned const char *vcomp,
     /* exclude: [%01,]*,lowver,highver,*     depending on allow_unversioned */
     ccn_charbuf_append_tt(templ, CCN_DTAG_Exclude, CCN_DTAG);
     if (allow_unversioned) {
-        ccn_charbuf_append_tt(templ, CCN_DTAG_Component, CCN_DTAG);
-        ccn_charbuf_append_tt(templ, 1, CCN_BLOB);
-        ccn_charbuf_append(templ, "\x01", 1);
-        ccn_charbuf_append_closer(templ); /* </Component> */
+        ccnb_append_tagged_blob(templ, CCN_DTAG_Component, "\x01", 1);
     }
     append_filter_all(templ);
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Component, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, size, CCN_BLOB);
-    ccn_charbuf_append(templ, vcomp, size);
-    ccn_charbuf_append_closer(templ); /* </Component> */
+    ccnb_append_tagged_blob(templ, CCN_DTAG_Component, vcomp, size);
     append_future_vcomp(templ);
     append_filter_all(templ);
     ccn_charbuf_append_closer(templ); /* </Exclude> */

@@ -2963,6 +2963,7 @@ ccn_sign_content(struct ccn *h,
             if (ncomp < 0)
                 res = NOTE_ERR(h, EINVAL);
             else {
+                // XXX - what would it mean for a 0-size final component?
                 finalblockid = ccn_charbuf_create();
                 ccn_name_comp_get(name_prefix->buf,
                                   ndx, ncomp - 1, &comp, &size);
