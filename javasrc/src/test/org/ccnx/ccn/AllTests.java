@@ -35,7 +35,7 @@ import org.junit.runners.Suite.SuiteClasses;
     org.ccnx.ccn.profiles.security.access.group.AllTests.class,
     org.ccnx.ccn.profiles.versioning.AllTests.class,
     org.ccnx.ccn.repo.AllTests.class,
-    org.ccnx.ccn.security.crypto.AllTests.class,
+    org.ccnx.ccn.security.crypto.AllTests.class
 })
 public class AllTests {
 }
