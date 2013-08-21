@@ -58,11 +58,11 @@ static struct ccn_charbuf *
 create_passive_templ(void)
 {
     struct ccn_charbuf *templ = ccn_charbuf_create();
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
-    ccn_charbuf_append_closer(templ); /* </Name> */
+    ccnb_element_begin(templ, CCN_DTAG_Interest);
+    ccnb_element_begin(templ, CCN_DTAG_Name);
+    ccnb_element_end(templ); /* </Name> */
     answer_passive(templ);
-    ccn_charbuf_append_closer(templ); /* </Interest> */
+    ccnb_element_end(templ); /* </Interest> */
     return(templ);
 }
 
@@ -258,10 +258,10 @@ express_my_interest(struct ccn *h,
     struct upcalldata *data = get_my_data(selfp);
 
     templ = ccn_charbuf_create();
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
-    ccn_charbuf_append_closer(templ); /* </Name> */
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Exclude, CCN_DTAG);
+    ccnb_element_begin(templ, CCN_DTAG_Interest);
+    ccnb_element_begin(templ, CCN_DTAG_Name);
+    ccnb_element_end(templ); /* </Name> */
+    ccnb_element_begin(templ, CCN_DTAG_Exclude);
     if ((data->flags & EXCLUDE_LOW) != 0)
         append_bf_all(templ);
     for (i = 0; i < data->n_excl; i++) {
@@ -271,9 +271,9 @@ express_my_interest(struct ccn *h,
     }
     if ((data->flags & EXCLUDE_HIGH) != 0)
         append_bf_all(templ);
-    ccn_charbuf_append_closer(templ); /* </Exclude> */
+    ccnb_element_end(templ); /* </Exclude> */
     answer_passive(templ);
-    ccn_charbuf_append_closer(templ); /* </Interest> */
+    ccnb_element_end(templ); /* </Interest> */
     if (templ->length + name->length > data->warn + 2) {
         fprintf(stderr, "*** Interest packet is %d bytes\n", (int)templ->length);
         data->warn = data->warn * 8 / 5;

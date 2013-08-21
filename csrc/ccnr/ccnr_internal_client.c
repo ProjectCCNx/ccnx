@@ -67,17 +67,17 @@ ccnr_init_service_ccnb(struct ccnr_handle *ccnr, struct ccn *h, const char *base
     ccn_name_append(name, keyid->buf, keyid->length);
     ccn_create_version(h, name, 0, ccnr->starttime, ccnr->starttime_usec * 1000);
     sp.template_ccnb = ccn_charbuf_create();
-    ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_SignedInfo, CCN_DTAG);
-    ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_KeyLocator, CCN_DTAG);
-    ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_KeyName, CCN_DTAG);
+    ccnb_element_begin(sp.template_ccnb, CCN_DTAG_SignedInfo);
+    ccnb_element_begin(sp.template_ccnb, CCN_DTAG_KeyLocator);
+    ccnb_element_begin(sp.template_ccnb, CCN_DTAG_KeyName);
     ccn_charbuf_append_charbuf(sp.template_ccnb, name);
-    ccn_charbuf_append_closer(sp.template_ccnb);
+    ccnb_element_end(sp.template_ccnb);
 //    ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_PublisherPublicKeyDigest,
 //                          CCN_DTAG);
 //    ccn_charbuf_append_charbuf(sp.template_ccnb, pubid);
-//    ccn_charbuf_append_closer(sp.template_ccnb);
-    ccn_charbuf_append_closer(sp.template_ccnb);
-    ccn_charbuf_append_closer(sp.template_ccnb);
+//    ccnb_element_end(sp.template_ccnb);
+    ccnb_element_end(sp.template_ccnb);
+    ccnb_element_end(sp.template_ccnb);
     sp.sp_flags |= CCN_SP_TEMPL_KEY_LOCATOR;
     ccn_name_from_uri(name, "%00");
     sp.sp_flags |= CCN_SP_FINAL_BLOCK;

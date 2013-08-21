@@ -75,12 +75,12 @@ append_bloom_element(struct ccn_charbuf *templ,
                      enum ccn_dtag dtag, struct ccn_bloom *b)
 {
         int i;
-        ccn_charbuf_append_tt(templ, dtag, CCN_DTAG);
+        ccnb_element_begin(templ, dtag);
         i = ccn_bloom_wiresize(b);
         ccn_charbuf_append_tt(templ, i, CCN_BLOB);
         ccn_bloom_store_wire(b, ccn_charbuf_reserve(templ, i), i);
         templ->length += i;
-        ccn_charbuf_append_closer(templ);
+        ccnb_element_end(templ);
 }
 
 /*
@@ -131,15 +131,15 @@ make_template(struct mydata *md, struct ccn_upcall_info *info, struct ccn_bloom 
     size_t start;
     size_t stop;
     
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
-    ccn_charbuf_append_closer(templ); /* </Name> */
+    ccnb_element_begin(templ, CCN_DTAG_Interest);
+    ccnb_element_begin(templ, CCN_DTAG_Name);
+    ccnb_element_end(templ); /* </Name> */
     // XXX - use pubid if possible
-    ccn_charbuf_append_tt(templ, CCN_DTAG_MaxSuffixComponents, CCN_DTAG);
+    ccnb_element_begin(templ, CCN_DTAG_MaxSuffixComponents);
     ccnb_append_number(templ, 2);
-    ccn_charbuf_append_closer(templ); /* </MaxSuffixComponents> */
+    ccnb_element_end(templ); /* </MaxSuffixComponents> */
     if (info != NULL) {
-        ccn_charbuf_append_tt(templ, CCN_DTAG_Exclude, CCN_DTAG);
+        ccnb_element_begin(templ, CCN_DTAG_Exclude);
         ib = info->interest_ccnb;
         cb = info->content_ccnb;
         cc = info->content_comps;
@@ -190,20 +190,20 @@ make_template(struct mydata *md, struct ccn_upcall_info *info, struct ccn_bloom 
             /* Use the supplied Bloom */
             append_bloom_element(templ, CCN_DTAG_Bloom, b);
         }
-        ccn_charbuf_append_closer(templ); /* </Exclude> */
+        ccnb_element_end(templ); /* </Exclude> */
     }
     else if (b != NULL) {
-        ccn_charbuf_append_tt(templ, CCN_DTAG_Exclude, CCN_DTAG);
+        ccnb_element_begin(templ, CCN_DTAG_Exclude);
         append_bloom_element(templ, CCN_DTAG_Bloom, b);
-        ccn_charbuf_append_closer(templ); /* </Exclude> */
+        ccnb_element_end(templ); /* </Exclude> */
     }
     if (md->allow_stale) {
-        ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
+        ccnb_element_begin(templ, CCN_DTAG_AnswerOriginKind);
         ccnb_append_number(templ,
                                                 CCN_AOK_DEFAULT | CCN_AOK_STALE);
-        ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
+        ccnb_element_end(templ); /* </AnswerOriginKind> */
     }
-    ccn_charbuf_append_closer(templ); /* </Interest> */
+    ccnb_element_end(templ); /* </Interest> */
     return(templ);
 }
 

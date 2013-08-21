@@ -458,11 +458,11 @@ express_interest(struct ccnxchat_state *st)
     struct ccn_charbuf *comp = NULL;
     int i;
     
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
+    ccnb_element_begin(templ, CCN_DTAG_Interest);
     ccn_charbuf_append(templ, st->basename->buf, st->basename->length);
     ccnb_tagged_putf(templ, CCN_DTAG_MinSuffixComponents, "%d", 3);
     ccnb_tagged_putf(templ, CCN_DTAG_MaxSuffixComponents, "%d", 3);
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Exclude, CCN_DTAG);
+    ccnb_element_begin(templ, CCN_DTAG_Exclude);
     if (st->n_ver > 1)
         ccnb_tagged_putf(templ, CCN_DTAG_Any, "");
     for (i = 0; i < st->n_ver; i++) {
@@ -471,10 +471,10 @@ express_interest(struct ccnxchat_state *st)
         ccn_charbuf_append(templ, comp->buf + 1, comp->length - 2);
     }
     ccnb_tagged_putf(templ, CCN_DTAG_Any, "");
-    ccn_charbuf_append_closer(templ); /* </Exclude> */
+    ccnb_element_end(templ); /* </Exclude> */
     if (st->prefer_newest)
         ccnb_tagged_putf(templ, CCN_DTAG_ChildSelector, "%d", 1);
-    ccn_charbuf_append_closer(templ); /* </Interest> */
+    ccnb_element_end(templ); /* </Interest> */
     ccn_express_interest(st->h, st->basename, st->cc, templ);
     ccn_charbuf_destroy(&templ);
 }

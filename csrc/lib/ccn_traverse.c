@@ -246,11 +246,11 @@ express_my_interest(struct ccn *h,
     struct ccn_traversal *data = get_my_data(selfp);
 
     templ = ccn_charbuf_create();
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
-    ccn_charbuf_append_closer(templ); /* </Name> */
+    ccnb_element_begin(templ, CCN_DTAG_Interest);
+    ccnb_element_begin(templ, CCN_DTAG_Name);
+    ccnb_element_end(templ); /* </Name> */
     if (data->n_excl != 0) {
-        ccn_charbuf_append_tt(templ, CCN_DTAG_Exclude, CCN_DTAG);
+        ccnb_element_begin(templ, CCN_DTAG_Exclude);
         if ((data->flags & EXCLUDE_LOW) != 0)
             append_Any_filter(templ);
         for (i = 0; i < data->n_excl; i++) {
@@ -260,12 +260,12 @@ express_my_interest(struct ccn *h,
         }
         if ((data->flags & EXCLUDE_HIGH) != 0)
             append_Any_filter(templ);
-        ccn_charbuf_append_closer(templ); /* </Exclude> */
+        ccnb_element_end(templ); /* </Exclude> */
     }
     answer_passive(templ, (data->flags & ALLOW_STALE) != 0);
     if ((data->flags & LOCAL_SCOPE) != 0)
         local_scope(templ);
-    ccn_charbuf_append_closer(templ); /* </Interest> */
+    ccnb_element_end(templ); /* </Interest> */
     if (templ->length + name->length > data->warn + 2) {
         fprintf(stderr, "*** Interest packet is %d bytes\n", (int)templ->length);
         data->warn = data->warn * 8 / 5;
@@ -327,8 +327,8 @@ split_my_excludes(struct ccn_closure *selfp)
 static void
 append_Any_filter(struct ccn_charbuf *c)
 {
-    ccn_charbuf_append_tt(c, CCN_DTAG_Any, CCN_DTAG);
-    ccn_charbuf_append_closer(c);
+    ccnb_element_begin(c, CCN_DTAG_Any);
+    ccnb_element_end(c);
 }
 
 static struct ccn_charbuf *

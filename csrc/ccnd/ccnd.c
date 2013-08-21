@@ -1910,7 +1910,7 @@ stuff_and_send(struct ccnd_handle *h, struct face *face,
     if ((face->flags & CCN_FACE_LINK) != 0) {
         c = charbuf_obtain(h);
         ccn_charbuf_reserve(c, size1 + size2 + 5 + 8);
-        ccn_charbuf_append_tt(c, CCN_DTAG_CCNProtocolDataUnit, CCN_DTAG);
+        ccnb_element_begin(c, CCN_DTAG_CCNProtocolDataUnit);
         ccn_charbuf_append(c, data1, size1);
         if (size2 != 0)
             ccn_charbuf_append(c, data2, size2);
@@ -1918,7 +1918,7 @@ stuff_and_send(struct ccnd_handle *h, struct face *face,
             ccnd_debug_ccnb(h, lineno, tag, face, c->buf + 4, c->length - 4);
         ccn_stuff_interest(h, face, c);
         ccn_append_link_stuff(h, face, c);
-        ccn_charbuf_append_closer(c);
+        ccnb_element_end(c);
     }
     else if (size2 != 0 || h->mtu > size1 + size2 ||
              (face->flags & (CCN_FACE_SEQOK | CCN_FACE_SEQPROBE)) != 0 ||
@@ -1970,11 +1970,11 @@ stuff_link_check(struct ccnd_handle *h,
     if (res < 0) goto Bail;
     ibuf = ccn_charbuf_create();
     if (ibuf == NULL) goto Bail;
-    ccn_charbuf_append_tt(ibuf, CCN_DTAG_Interest, CCN_DTAG);
+    ccnb_element_begin(ibuf, CCN_DTAG_Interest);
     ccn_charbuf_append(ibuf, name->buf, name->length);
     ccnb_tagged_putf(ibuf, CCN_DTAG_Scope, "2");
     // XXX - ought to generate a nonce
-    ccn_charbuf_append_closer(ibuf);
+    ccnb_element_end(ibuf);
     ccn_charbuf_append(c, ibuf->buf, ibuf->length);
     ccnd_meter_bump(h, face->meter[FM_INTO], 1);
     h->interests_stuffed++;
@@ -2035,7 +2035,7 @@ ccn_append_link_stuff(struct ccnd_handle *h,
 {
     if ((face->flags & (CCN_FACE_SEQOK | CCN_FACE_SEQPROBE)) == 0)
         return;
-    ccn_charbuf_append_tt(c, CCN_DTAG_SequenceNumber, CCN_DTAG);
+    ccnb_element_begin(c, CCN_DTAG_SequenceNumber);
     ccn_charbuf_append_tt(c, 2, CCN_BLOB);
     ccn_charbuf_append_value(c, face->pktseq, 2);
     ccnb_element_end(c);
@@ -3274,7 +3274,7 @@ send_interest(struct ccnd_handle *h, struct interest_entry *ie,
     noncesize = p->pfi_flags & CCND_PFI_NONCESZ;
     if (noncesize != 0)
         ccnb_append_tagged_blob(c, CCN_DTAG_Nonce, p->nonce, noncesize);
-    ccn_charbuf_append_closer(c);
+    ccnb_element_end(c);
     h->interests_sent += 1;
     p->pfi_flags |= CCND_PFI_UPENDING;
     p->pfi_flags &= ~(CCND_PFI_SENDUPST | CCND_PFI_UPHUNGRY);

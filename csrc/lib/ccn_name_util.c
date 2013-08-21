@@ -34,9 +34,9 @@ ccn_name_init(struct ccn_charbuf *c)
 {
     int res;
     c->length = 0;
-    res = ccn_charbuf_append_tt(c, CCN_DTAG_Name, CCN_DTAG);
+    res = ccnb_element_begin(c, CCN_DTAG_Name);
     if (res == -1) return(res);
-    res = ccn_charbuf_append_closer(c);
+    res = ccnb_element_end(c);
     return(res);
 }
 
@@ -56,7 +56,7 @@ ccn_name_append(struct ccn_charbuf *c, const void *component, size_t n)
     c->length -= 1;
     ccn_charbuf_reserve(c, n + 8);
     res = ccnb_append_tagged_blob(c, CCN_DTAG_Component, component, n);
-    ccn_charbuf_append_closer(c);
+    ccnb_element_end(c);
     return(res);
 }
 
@@ -134,7 +134,7 @@ ccn_name_append_components(struct ccn_charbuf *c,
     ccn_charbuf_reserve(c, stop - start + 1);
     res = ccn_charbuf_append(c, ccnb + start, stop - start);
     if (res == -1) return(res);
-    res = ccn_charbuf_append_closer(c);
+    res = ccnb_element_end(c);
     return(res);
 }
 

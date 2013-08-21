@@ -38,8 +38,8 @@
 static void
 append_filter_all(struct ccn_charbuf *c)
 {
-    ccn_charbuf_append_tt(c, CCN_DTAG_Any, CCN_DTAG);
-    ccn_charbuf_append_closer(c);
+    ccnb_element_begin(c, CCN_DTAG_Any);
+    ccnb_element_end(c);
 }
 
 /**
@@ -81,11 +81,11 @@ resolve_templ(struct ccn_charbuf *templ, unsigned const char *vcomp,
         return(NULL);
     }
     templ->length = 0;
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
-    ccn_charbuf_append_closer(templ); /* </Name> */
+    ccnb_element_begin(templ, CCN_DTAG_Interest);
+    ccnb_element_begin(templ, CCN_DTAG_Name);
+    ccnb_element_end(templ); /* </Name> */
     /* exclude: [%01,]*,lowver,highver,*     depending on allow_unversioned */
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Exclude, CCN_DTAG);
+    ccnb_element_begin(templ, CCN_DTAG_Exclude);
     if (allow_unversioned) {
         ccnb_append_tagged_blob(templ, CCN_DTAG_Component, "\x01", 1);
     }
@@ -93,7 +93,7 @@ resolve_templ(struct ccn_charbuf *templ, unsigned const char *vcomp,
     ccnb_append_tagged_blob(templ, CCN_DTAG_Component, vcomp, size);
     append_future_vcomp(templ);
     append_filter_all(templ);
-    ccn_charbuf_append_closer(templ); /* </Exclude> */
+    ccnb_element_end(templ); /* </Exclude> */
     answer_highest(templ);
     answer_passive(templ);
     if ((versioning_flags & CCN_V_SCOPE2) != 0)
@@ -104,7 +104,7 @@ resolve_templ(struct ccn_charbuf *templ, unsigned const char *vcomp,
         ccnb_tagged_putf(templ, CCN_DTAG_Scope, "%d", 0);
     if (lifetime > 0)
         ccnb_append_tagged_binary_number(templ, CCN_DTAG_InterestLifetime, lifetime);
-    ccn_charbuf_append_closer(templ); /* </Interest> */
+    ccnb_element_end(templ); /* </Interest> */
     return(templ);
 }
 
@@ -289,13 +289,13 @@ ccn_create_version(struct ccn *h, struct ccn_charbuf *name,
         goto Finish;
     name->length -= 1; /* Strip name closer */
     i = name->length;
-    myres |= ccn_charbuf_append_tt(name, CCN_DTAG_Component, CCN_DTAG);
+    myres |= ccnb_element_begin(name, CCN_DTAG_Component);
     if ((versioning_flags & CCN_V_NOW) != 0)
         myres |= ccnb_append_now_blob(name, CCN_MARKER_VERSION);
     else {
         myres |= ccnb_append_timestamp_blob(name, CCN_MARKER_VERSION, secs, nsecs);
     }
-    myres |= ccn_charbuf_append_closer(name); /* </Component> */
+    myres |= ccnb_element_end(name); /* </Component> */
     if (myres < 0) {
         name->length = i;
         goto CloseName;
@@ -316,7 +316,7 @@ ccn_create_version(struct ccn *h, struct ccn_charbuf *name,
         name->length -= lc;
     }
 CloseName:
-    myres |= ccn_charbuf_append_closer(name); /* </Name> */
+    myres |= ccnb_element_end(name); /* </Name> */
 Finish:
     myres = (myres < 0) ? -1 : 0;
     ccn_indexbuf_destroy(&nix);

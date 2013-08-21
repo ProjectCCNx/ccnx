@@ -683,7 +683,7 @@ r_proto_start_write(struct ccn_closure *selfp,
     end = info->interest_comps->buf[marker_comp - 1]; // not including version or marker
     name = ccn_charbuf_create();
     ccn_charbuf_append(name, info->interest_ccnb + start, end - start);
-    ccn_charbuf_append_closer(name);
+    ccnb_element_end(name);
     if (0 ==ccn_compare_names(name->buf, name->length,
                               ccnr->policy_name->buf, ccnr->policy_name->length))
         is_policy = 1;
@@ -693,7 +693,7 @@ r_proto_start_write(struct ccn_closure *selfp,
     end = info->interest_comps->buf[info->pi->prefix_comps];
     name->length = 0;
     ccn_charbuf_append(name, info->interest_ccnb + start, end - start);
-    ccn_charbuf_append_closer(name);
+    ccnb_element_end(name);
     msg = ccn_charbuf_create();
     reply_body = ccn_charbuf_create();
     r_proto_append_repo_info(ccnr, reply_body, NULL, NULL);
@@ -836,7 +836,7 @@ r_proto_start_write_checked(struct ccn_closure *selfp,
     end = info->interest_comps->buf[info->pi->prefix_comps];
     name->length = 0;
     ccn_charbuf_append(name, info->interest_ccnb + start, end - start);
-    ccn_charbuf_append_closer(name);
+    ccnb_element_end(name);
     sp.freshness = 12; /* Seconds */
     res = ccn_sign_content(info->h, msg, name, &sp,
                            reply_body->buf, reply_body->length);
@@ -1581,7 +1581,7 @@ r_proto_initiate_key_fetch(struct ccnr_handle *ccnr,
     ccn_charbuf_append(key_name, namestart, namelen);
     /* Construct an interest complete with Name so we can do lookup */
     templ = ccn_charbuf_create();
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
+    ccnb_element_begin(templ, CCN_DTAG_Interest);
     ccn_charbuf_append(templ, key_name->buf, key_name->length);
     ccnb_tagged_putf(templ, CCN_DTAG_MinSuffixComponents, "%d", 1);
     ccnb_tagged_putf(templ, CCN_DTAG_MaxSuffixComponents, "%d", 3);
@@ -1591,7 +1591,7 @@ r_proto_initiate_key_fetch(struct ccnr_handle *ccnr,
                            (pco->offset[CCN_PCO_E_KeyName_Pub] - 
                             pco->offset[CCN_PCO_B_KeyName_Pub]));
     }
-    ccn_charbuf_append_closer(templ); /* </Interest> */
+    ccnb_element_end(templ); /* </Interest> */
     /* See if we already have it - if so we declare we are done. */
     if (r_lookup(ccnr, templ, NULL) == 0) {
         res = 1;
