@@ -49,10 +49,7 @@ append_filter_all(struct ccn_charbuf *c)
 static void
 answer_passive(struct ccn_charbuf *templ)
 {
-    ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
-    ccn_charbuf_append(templ, "1", 1);
-    ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
+    ccnb_append_tagged_udata(templ, CCN_DTAG_AnswerOriginKind, "1", 1);
 }
 
 /**

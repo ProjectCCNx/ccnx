@@ -359,10 +359,7 @@ answer_passive(struct ccn_charbuf *templ, int allow_stale)
 static void
 local_scope(struct ccn_charbuf *templ)
 {
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Scope, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
-    ccn_charbuf_append(templ, "0", 1);
-    ccn_charbuf_append_closer(templ); /* </Scope> */
+    ccnb_append_tagged_udata(templ, CCN_DTAG_Scope, "0", 1);
 }
 
 /**

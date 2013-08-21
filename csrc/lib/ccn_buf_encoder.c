@@ -120,10 +120,8 @@ ccn_encode_Signature(struct ccn_charbuf *buf,
     res |= ccn_charbuf_append_tt(buf, CCN_DTAG_Signature, CCN_DTAG);
 
     if (digest_algorithm != NULL) {
-        res |= ccn_charbuf_append_tt(buf, CCN_DTAG_DigestAlgorithm, CCN_DTAG);
-        res |= ccn_charbuf_append_tt(buf, strlen(digest_algorithm), CCN_UDATA);
-        res |= ccn_charbuf_append_string(buf, digest_algorithm);
-        res |= ccn_charbuf_append_closer(buf);
+        res |= ccnb_append_tagged_udata(buf, CCN_DTAG_DigestAlgorithm,
+                                        digest_algorithm, strlen(digest_algorithm));
     }
 
     if (witness != NULL) {
@@ -413,7 +411,7 @@ ccnb_append_tagged_blob(struct ccn_charbuf *c,
                         size_t size)
 {
     int res;
-
+    
     res = ccn_charbuf_append_tt(c, dtag, CCN_DTAG);
     if (size != 0) {
         res |= ccn_charbuf_append_tt(c, size, CCN_BLOB);
@@ -445,9 +443,36 @@ ccnb_append_tagged_binary_number(struct ccn_charbuf *cb,
 }
 
 /**
+ * Append a tagged UDATA string
+ *
+ * This is a ccnb-encoded element containing the UDATA as content
+ * @param c is the buffer to append to.
+ * @param dtag is the element's dtab
+ * @param data points to the data
+ * @param size is the size of the data, in bytes
+ * @returns 0 for success or -1 for error.
+ */
+int
+ccnb_append_tagged_udata(struct ccn_charbuf *c,
+                         enum ccn_dtag dtag,
+                         const void *data,
+                         size_t size)
+{
+    int res;
+    
+    res = ccn_charbuf_append_tt(c, dtag, CCN_DTAG);
+    if (size != 0) {
+        res |= ccn_charbuf_append_tt(c, size, CCN_UDATA);
+        res |= ccn_charbuf_append(c, data, size);
+    }
+    res |= ccn_charbuf_append_closer(c);
+    return(res == 0 ? 0 : -1);
+}
+
+/**
  * Append a tagged UDATA string, with printf-style formatting
  *
- * This is a ccnb-encoded element with containing UDATA as content.
+ * This is a ccnb-encoded element containing UDATA as content.
  * @param c is the buffer to append to.
  * @param dtag is the element's dtab.
  * @param fmt is a printf-style format string, followed by its values
@@ -517,10 +542,7 @@ ccnb_append_Link(struct ccn_charbuf *buf,
     res |= ccn_charbuf_append_tt(buf, CCN_DTAG_Link, CCN_DTAG);
     res |= ccn_charbuf_append_charbuf(buf, name);
     if (label != NULL) {
-        res |= ccn_charbuf_append_tt(buf, CCN_DTAG_Label, CCN_DTAG);
-        res |= ccn_charbuf_append_tt(buf, strlen(label), CCN_UDATA);
-        res |= ccn_charbuf_append_string(buf, label);
-        res |= ccn_charbuf_append_closer(buf);
+        res |= ccnb_append_tagged_udata(buf, CCN_DTAG_Label, label, strlen(label));
     }
     if (linkAuthenticator != NULL) {
         res |= ccn_charbuf_append_charbuf(buf, linkAuthenticator);

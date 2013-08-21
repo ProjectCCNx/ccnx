@@ -1018,7 +1018,13 @@ int ccnb_append_tagged_blob(struct ccn_charbuf *c, enum ccn_dtag dtag,
  * Append a tagged binary number
  */
 int ccnb_append_tagged_binary_number(struct ccn_charbuf *cb, enum ccn_dtag dtag,
-                                      uintmax_t val);
+                                     uintmax_t val);
+
+/*
+ * Append a tagged UDATA string
+ */
+int ccnb_append_tagged_udata(struct ccn_charbuf *c, enum ccn_dtag dtag,
+                                     const void *data, size_t size);
 
 /*
  * Append a tagged UDATA string, with printf-style formatting

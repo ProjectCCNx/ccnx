@@ -128,10 +128,7 @@ incoming_content(
          * We can't rely on the Exclude filter to keep from seeing this, so 
          * say that we need at least one more name component.
          */
-        ccn_charbuf_append_tt(templ, CCN_DTAG_MinSuffixComponents, CCN_DTAG);
-        ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
-        ccn_charbuf_append(templ, "1", 1);
-        ccn_charbuf_append_closer(templ); /* </MinSuffixComponents> */
+        ccnb_append_tagged_udata(templ, CCN_DTAG_MinSuffixComponents, "1", 1);
     }
     else {
         data->excl = realloc(data->excl, (data->n_excl + 1) * sizeof(data->excl[0]));
