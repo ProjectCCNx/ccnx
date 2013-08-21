@@ -41,7 +41,7 @@ adjust_predicted_response(struct ccnd_handle *h,
  */
 void
 strategy0_callout(struct ccnd_handle *h,
-                  struct ccn_strategy *ie,
+                  struct ccn_strategy *strategy,
                   enum ccn_strategy_op op,
                   unsigned faceid)
 {
@@ -58,7 +58,7 @@ strategy0_callout(struct ccnd_handle *h,
     int usec;
     
     /* We will want access to the state for our prefix and its parent */
-    strategy_getstate(h, ie, sst, 2);
+    strategy_getstate(h, strategy, sst, 2);
     
     /* First get or initialize the parent nameprefix state */
     if (sst[1] == NULL)
@@ -89,7 +89,7 @@ strategy0_callout(struct ccnd_handle *h,
             if (best == CCN_NOFACEID)
                 best = npe->src = npe->osrc;
             /* Find our downstream; right now there should be just one. */
-            for (x = ie->pfl; x != NULL; x = x->next)
+            for (x = strategy->pfl; x != NULL; x = x->next)
                 if ((x->pfi_flags & CCND_PFI_DNSTREAM) != 0)
                     break;
             if (x == NULL || (x->pfi_flags & CCND_PFI_PENDING) == 0)
@@ -105,18 +105,18 @@ strategy0_callout(struct ccnd_handle *h,
                 randrange = (randlow + 1) / 2;
             }
             nleft = 0;
-            for (p = ie->pfl; p!= NULL; p = p->next) {
+            for (p = strategy->pfl; p!= NULL; p = p->next) {
                 if ((p->pfi_flags & CCND_PFI_UPSTREAM) != 0) {
                     if (p->faceid == best) {
                         /* we may have already sent in case of TAP */
                         if ((p->pfi_flags & CCND_PFI_UPENDING) == 0)
-                            p = send_interest(h, ie->ie, x, p);
-                        strategy_settimer(h, ie->ie, npe->usec, CCNST_TIMER);
+                            p = send_interest(h, strategy->ie, x, p);
+                        strategy_settimer(h, strategy->ie, npe->usec, CCNST_TIMER);
                     }
                     else if ((p->pfi_flags & CCND_PFI_UPENDING) != 0)
                         /* TAP interest has already been sent */;
                     else if (p->faceid == npe->osrc)
-                        pfi_set_expiry_from_micros(h, ie->ie, p, randlow);
+                        pfi_set_expiry_from_micros(h, strategy->ie, p, randlow);
                     else {
                         /* Want to preserve the order of the rest */
                         nleft++;
@@ -129,9 +129,9 @@ strategy0_callout(struct ccnd_handle *h,
                 amt = (2 * randrange + nleft - 1) / nleft;
                 if (amt == 0) amt = 1; /* paranoia - should never happen */
                 usec = randlow;
-                for (p = ie->pfl; p!= NULL; p = p->next) {
+                for (p = strategy->pfl; p!= NULL; p = p->next) {
                     if ((p->pfi_flags & CCND_PFI_SENDUPST) != 0) {
-                        pfi_set_expiry_from_micros(h, ie->ie, p, usec);
+                        pfi_set_expiry_from_micros(h, strategy->ie, p, usec);
                         usec += ccnd_random(h) % amt;
                     }
                 }
