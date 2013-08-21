@@ -112,6 +112,7 @@ struct ccn_strategy {
 /** Ops for strategy callout */
 enum ccn_strategy_op {
     CCNST_NOP,      /* no-operation */
+    CCNST_INIT,     /* initialize strategy, allocate instance state */
     CCNST_FIRST,    /* newly created interest entry (pit entry) */
 // additional downstream face
 // additional upstream face (e.g. new registration)
