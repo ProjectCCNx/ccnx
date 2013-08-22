@@ -220,4 +220,16 @@ void strategy0_callout(struct ccnd_handle *h,
                        enum ccn_strategy_op op,
                        unsigned faceid);
 
+void strategy1_callout(struct ccnd_handle *h,
+                       struct strategy_instance *instance,
+                       struct ccn_strategy *s,
+                       enum ccn_strategy_op op,
+                       unsigned faceid);
+
+void strategy2_callout(struct ccnd_handle *h,
+                       struct strategy_instance *instance,
+                       struct ccn_strategy *s,
+                       enum ccn_strategy_op op,
+                       unsigned faceid);
+
 #endif
