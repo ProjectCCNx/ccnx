@@ -588,18 +588,26 @@ main(int argc, char *argv[])
     } while (0);
     printf("Empty component encoding test\n");
     do {
-        const unsigned char expected_encoding[] = { 0xf2, 0xfa, 0x00, 0x00};
         struct ccn_charbuf *name = ccn_charbuf_create();
+        struct ccn_charbuf *expected_encoding = ccn_charbuf_create();
+        /* manually create an encoding of <Name><Component/></Name> to ensure
+         * that the regular encoders do not create a 0-length blob as part of
+         * the empty component.
+         */
+        ccnb_element_begin(expected_encoding, CCN_DTAG_Name);
+        ccnb_element_begin(expected_encoding, CCN_DTAG_Component);
+        ccnb_element_end(expected_encoding);
+        ccnb_element_end(expected_encoding);
         ccn_name_from_uri(name, "ccnx:/...");
-        if (sizeof(expected_encoding) != name->length) {
+        if (expected_encoding->length != name->length) {
             printf("Failed: encoding length %u but expected %u\n", (unsigned) name->length,
-                   (unsigned)sizeof(expected_encoding));
+                   (unsigned)expected_encoding->length);
             result = 1;
         }
-        for (i = 0; i < sizeof(expected_encoding); i++) {
-            if (expected_encoding[i] != name->buf[i]) {
+        for (i = 0; i < expected_encoding->length; i++) {
+            if (expected_encoding->buf[i] != name->buf[i]) {
                 printf("Failed: encoding mismatch at %d, got %d but expected %d\n",
-                       i, name->buf[i], expected_encoding[i]);
+                       i, name->buf[i], expected_encoding->buf[i]);
                 result = 1;
             }
         }
