@@ -340,7 +340,7 @@
 	     IMPORTANT: test-repo must be run before any test that will start a repo because it
 	     requires that a repo *not* be running when it starts -->
 	<target name="test" depends="init, test-repo, test-protocol, test-impl, test-io, test-versioning, 
-				test-security, test-endtoend">
+				test-security, test-udp, test-endtoend">
 	</target>
 
 	<target name="test-protocol" depends="test-protocol-without-repo, test-protocol-with-repo">
@@ -427,6 +427,26 @@
 			</batchtest>
 		</junit>
 	</target>
+	
+	<target name="test-udp" depends="jar, ccnd">
+			<mkdir dir="${testout}"/>
+			<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
+				<classpath>
+					<path refid="classpath-run"/>
+				</classpath>
+				<formatter type="xml" usefile="true"/>
+				<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+				<sysproperty key="org.ccnx.agent.protocol" value="UDP"/>
+				<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+				<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
+	            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
+				<batchtest todir="${testout}">
+					<fileset dir="${build}">
+						<include name="org/ccnx/ccn/impl/NetworkTest.class"/>
+					</fileset>
+				</batchtest>
+			</junit>
+		</target>
 	
 	<target name="test-impl-with-repo" depends="jar, ccnd, repo, test-enumerated-name-list">
 		<mkdir dir="${testout}"/>
