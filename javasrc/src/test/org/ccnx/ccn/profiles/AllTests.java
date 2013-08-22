@@ -22,7 +22,11 @@ import org.junit.runners.Suite;
 import org.junit.runners.Suite.SuiteClasses;
 
 @RunWith(Suite.class)
-@SuiteClasses({ SegmentationProfileUnitTest.class, VersioningProfileTest.class })
+@SuiteClasses({ SegmentationProfileUnitTest.class, VersioningProfileTest.class,
+	org.ccnx.ccn.profiles.ccnd.AllTests.class,
+	org.ccnx.ccn.profiles.security.access.group.AllTests.class,
+    org.ccnx.ccn.profiles.versioning.AllTests.class
+	})
 public class AllTests {
 
 }

@@ -21,7 +21,11 @@ import org.junit.runners.Suite;
 import org.junit.runners.Suite.SuiteClasses;
 
 @RunWith(Suite.class)
-@SuiteClasses({ InterestTableTest.class, LogTest.class })
+@SuiteClasses({
+	InterestTableTest.class, LogTest.class,
+	org.ccnx.ccn.impl.security.keys.AllTests.class,
+	org.ccnx.ccn.impl.support.AllTests.class
+	})
 public class AllTests {
 
 }
