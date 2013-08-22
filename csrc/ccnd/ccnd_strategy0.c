@@ -41,6 +41,7 @@ adjust_predicted_response(struct ccnd_handle *h,
  */
 void
 strategy0_callout(struct ccnd_handle *h,
+                  struct strategy_instance *instance,
                   struct ccn_strategy *strategy,
                   enum ccn_strategy_op op,
                   unsigned faceid)
@@ -153,6 +154,10 @@ strategy0_callout(struct ccnd_handle *h,
         case CCNST_TIMEOUT:
             /* Interest has not been satisfied or refreshed */
             break;
+        case CCNST_INIT:
+            break; /* No strategy private data needed */
+        case CCNST_FINALIZE:
+            break; /* Nothing to clean up */
     }
 }
 

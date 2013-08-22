@@ -63,7 +63,8 @@
 
 #include "ccnd_private.h"
 
-#define strategy_callout(h,i,j,f) strategy0_callout(h,&(i)->strategy,j,f)  // XXX - for now
+#define strategy_callout(h,i,j,f) \
+    strategy0_callout(h, NULL, &(i)->strategy,j,f)  // XXX - for now
 
 static void cleanup_at_exit(void);
 static void unlink_at_exit(const char *path);

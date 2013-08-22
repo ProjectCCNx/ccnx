@@ -29,6 +29,11 @@
 /* These types should remain opaque for strategy routines */
 struct ccnd_handle;
 struct interest_entry;
+struct nameprefix_entry;
+
+/* Forward struct defined later in this header */
+struct strategy_instance;
+
 
 #define CCN_UNINIT    (~0U)     /**< initial value of strategy vars */
 #define CCN_MAGIC_MASK 0x00FFFFFF /**< for magic number */
@@ -99,10 +104,12 @@ struct pit_face_item {
 
 /**
  * State for the strategy engine
+ *
+ * This is associated with each PIT entry, and keeps track of the associated
+ * upstream and downstream faces.
  */
 struct ccn_strategy {
     struct pit_face_item *pfl;      /**< upstream and downstream faces */
-    int stateA;
     ccn_wrappedtime birth;          /**< when interest entry was created */
     ccn_wrappedtime renewed;        /**< when interest entry was renewed */
     unsigned renewals;              /**< number of times renewed */
@@ -125,6 +132,7 @@ enum ccn_strategy_op {
     CCNST_TIMER,    /* wakeup used by strategy */
     CCNST_SATISFIED, /* matching content has arrived, pit entry will go away */
     CCNST_TIMEOUT,  /* all downstreams timed out, pit entry will go away */
+    CCNST_FINALIZE, /* destroy instance state */
 };
 
 /**
@@ -137,14 +145,31 @@ enum ccn_strategy_op {
  *
  */
 typedef void (*strategy_callout_proc)(struct ccnd_handle *h,
+                                      struct strategy_instance *instance,
                                       struct ccn_strategy *s,
                                       enum ccn_strategy_op op,
                                       unsigned faceid);
 
+struct strategy_class {
+    char id[16];                   /* The name of the strategy */
+    strategy_callout_proc callout; /* procedure implementing the strategy */
+};
+
+struct strategy_instance {
+    const struct strategy_class *sclass; /* strategy class */
+    void *data;                          /* strategy private data */
+    struct nameprefix_entry *npe;        /* where strategy is registered */
+};
+
 /**
  *  Forward an interest message
  *
- *  x is downstream (the interest came x).
+ *  The strategy routine may choose to call this directly, and/or
+ *  update the pfi entries so that the interest will be forwarded
+ *  on a schedule.  If send_interest is called, p is updated to
+ *  reflect the new state.
+ *
+ *  x is downstream (the interest came from x).
  *  p is upstream (the interest is to be forwarded to p).
  *  @returns p (or its reallocated replacement).
  */
@@ -166,6 +191,8 @@ pfi_set_expiry_from_micros(struct ccnd_handle *h, struct interest_entry *ie,
  * the name prefix of the given interest entry and up to k-1 parents.
  *
  * The sst array is filled in; NULL values are provided as needed.
+ * The item sst[0] corresponds with the name inside the interest, and is
+ * never NULL.  The remaining entries are for successively shorter prefixes.
  */
 void strategy_getstate(struct ccnd_handle *h, struct ccn_strategy *s,
                        struct nameprefix_state **sst, int k);
@@ -188,6 +215,7 @@ uint32_t ccnd_random(struct ccnd_handle *);
 
 // Replace later with a strategy registry of some flavor.
 void strategy0_callout(struct ccnd_handle *h,
+                       struct strategy_instance *instance,
                        struct ccn_strategy *s,
                        enum ccn_strategy_op op,
                        unsigned faceid);
