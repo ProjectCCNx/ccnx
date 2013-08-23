@@ -208,8 +208,68 @@ The association of a strategy with a prefix is created or updated by means of a 
 registration protocol, described here.
 Routing protocols (or manual configuration tools) may use this protocol to coordinate the strategies that are in use on communicating nodes.
 
-Whenever no explicit strategy is associated with a non-empty prefix, the associated strategy that of the parent prefix (obtained by removing the last component).
-The empty prefix, if no explicit association is made, is associated with the default strategy (named "default", with an empty parameter string).
-Note that if no strategy selections have been made, the association with this default is inherited by all prefixes.
+Whenever no explicit strategy is associated with a non-empty prefix, the
+associated strategy is that of the parent prefix (obtained by removing
+the last component).
+The empty prefix, if no explicit association is made, is associated with
+the default strategy (named "default", with an empty parameter string).
+Note that if no strategy selections have been made, the association with
+this default is inherited by all prefixes.
 
+.......................................................
+StrategySelection ::= Action?
+                      Name?
+                      PublisherPublicKeyDigest?
+                      StrategyID?
+                      StrategyParameters?
+                      FreshnessSeconds?
 
+Action                   ::= ("setstrategy" | "getstrategy" | "removestrategy")
+Name                     ::= the associated name prefix
+PublisherPublicKeyDigest ::= SHA-256 digest of the ccnd's public key (CCNDID)
+StrategyID               ::= string
+StrategyParameters       ::= string
+FreshnessSeconds         ::= nonNegativeInteger
+.......................................................
+
+=== Action
+When StrategySelection is used as a request, the Action must be specified.
+It will not be present in a response.
+
+- `setstrategy` - Associate the strategy with the named prefix.
+- `getstrategy` - Get the strategy associated with the named prefix.
+- `removestrategy` - Remove the association with the named prefix.
+
+For successful requests, the response will be the applicable association for
+the given prefix, after taking the requested action.
+If the prefix in the request has no explicit association, the response will
+have a shortened prefix that does have an association.
+
+=== PublisherPublicKeyDigest
+Identifies the ccnd that the information is relevant for.
+It is optional in a request (the name in the requesting interest has
+already addressed the appropriate node).
+PublisherPublicKeyDigest is always present in a response.
+
+=== StrategyID
+Is a strategy identifier.
+It is limited to 15 characters, chosen from the set of characters that are
+legal in a c language identifier.
+
+=== StrategyParameters
+Consists of a UTF-8 string that will be passed to the strategy initialization
+procedure.
+The format of this string may differ by strategy, but it is recommended that
+a form similar to the query portion of a URI be used.
+Documentation for individual strategies should specify what this string may contain.
+
+=== FreshnessSeconds
+FreshnessSeconds is optional in a request.
+In a `setstrategy` request, this requests that the association remain
+in force for at least the specified time.
+In a response, FreshnessSeconds specifies the remaining lifetime of the
+association.
+
+For unsuccessful StrategySelection requests, depending upon the kind of error,
+either no response is given, or a NACK object containing a StatusResponse message
+is returned.
