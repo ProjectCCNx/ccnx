@@ -252,7 +252,7 @@ already addressed the appropriate node).
 PublisherPublicKeyDigest is always present in a response.
 
 === StrategyID
-Is a strategy identifier.
+Is a strategy identifier.  Present in responses and in `setstrategy` requests.
 It is limited to 15 characters, chosen from the set of characters that are
 legal in a c language identifier.
 
@@ -262,6 +262,7 @@ procedure.
 The format of this string may differ by strategy, but it is recommended that
 a form similar to the query portion of a URI be used.
 Documentation for individual strategies should specify what this string may contain.
+May be present in responses and in `setstrategy` requests.
 
 === FreshnessSeconds
 FreshnessSeconds is optional in a request.
