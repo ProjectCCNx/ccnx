@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -130,6 +130,9 @@ static const struct ccn_dict_entry ccn_tagdict[] = {
     {CCN_DTAG_SyncConfigSliceList, "SyncConfigSliceList"},
     {CCN_DTAG_SyncConfigSliceOp, "SyncConfigSliceOp"},
     {CCN_DTAG_SyncNodeDeltas, "SyncNodeDeltas"},
+    {CCN_DTAG_StrategySelection, "StrategySelection"},
+    {CCN_DTAG_StrategyID, "StrategyID"},
+    {CCN_DTAG_StrategyParameters, "StrategyParameters"},
     {CCN_DTAG_SequenceNumber, "SequenceNumber"},
     {CCN_DTAG_CCNProtocolDataUnit, "CCNProtocolDataUnit"},
     {0, 0}
