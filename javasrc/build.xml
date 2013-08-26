@@ -339,7 +339,7 @@
 	<!-- test is for running all current system tests to validate code 
 	     IMPORTANT: test-repo must be run before any test that will start a repo because it
 	     requires that a repo *not* be running when it starts -->
-	<target name="test" depends="init, test-repo, test-protocol, test-impl, test-io, test-versioning, 
+	<target name="test" depends="init, test-repo, test-protocol, test-impl, test-io, 
 				test-security, test-udp, test-endtoend">
 	</target>
 
@@ -927,7 +927,8 @@
 		<!-- <delete dir="${REPO_ROOT}"/> -->
 	</target>
 
-	<!-- test versioning -->
+	<!-- test versioning per Michael - these tests run very slowly on older, slower machines so it is purposely not
+	     included in standard testing -->
 	<target name="test-versioning" depends="jar, ccnd, repo">
 		<mkdir dir="${testout}"/>
 		<junit printsummary="yes" fork="on" forkmode="perTest" haltonfailure="no" dir="${testout}" showoutput="${showoutput}">
