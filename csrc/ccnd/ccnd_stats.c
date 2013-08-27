@@ -189,7 +189,7 @@ ccnd_collect_stats(struct ccnd_handle *h, struct ccnd_stats *ans)
         for (ll = head->next; ll != head; ll = ll->next) {
             struct interest_entry *ie = (struct interest_entry *)ll;
             struct pit_face_item *p;
-            for (p = ie->pfl; p != NULL; p = p->next)
+            for (p = ie->strategy.pfl; p != NULL; p = p->next)
                 if ((p->pfi_flags & CCND_PFI_PENDING) != 0)
                     if (ccnd_face_from_faceid(h, p->faceid) != NULL)
                         sum += 1;

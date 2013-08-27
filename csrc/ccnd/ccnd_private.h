@@ -38,6 +38,9 @@
 #include <ccn/schedule.h>
 #include <ccn/seqwriter.h>
 
+/* For strategy API */
+#include "ccnd_strategy.h"
+
 /*
  * These are defined in other ccn headers, but the incomplete types suffice
  * for the purposes of this header.
@@ -56,17 +59,7 @@ struct content_entry;
 struct nameprefix_entry;
 struct interest_entry;
 struct guest_entry;
-struct pit_face_item;
 struct ccn_forwarding;
-struct ccn_strategy;
-
-/**
- * Used for keeping track of interest expiry.
- *
- * Modulo 2**32, time units and origin are abitrary and private.
- */
-typedef uint32_t ccn_wrappedtime;
-
 typedef int (*ccnd_logger)(void *loggerdata, const char *format, va_list ap);
 
 /* see nonce_entry */
@@ -252,7 +245,6 @@ struct face {
 #define CCN_FACE_BC    (1 << 20) /** Needs SO_BROADCAST to send */
 #define CCN_FACE_NBC   (1 << 21) /** Don't use SO_BROADCAST to send */
 #define CCN_FACE_ADJ   (1 << 22) /** Adjacency guid has been negotiatied */
-#define CCN_NOFACEID    (~0U)    /** denotes no face */
 
 /**
  * Content table entry
@@ -277,19 +269,6 @@ struct content_entry {
  */
 #define CCN_CONTENT_ENTRY_SLOWSEND  1
 
-/**
- * State for the strategy engine
- *
- * This is still quite embryonic.
- */
-struct ccn_strategy {
-    struct ccn_scheduled_event *ev; /**< for time-based strategy event */
-    int state;
-    ccn_wrappedtime birth;          /**< when interest entry was created */
-    ccn_wrappedtime renewed;        /**< when interest entry was renewed */
-    unsigned renewals;              /**< number of times renewed */
-};
-
 struct ielinks;
 struct ielinks {
     struct ielinks *next;           /**< next in list */
@@ -307,8 +286,8 @@ struct ielinks {
 struct interest_entry {
     struct ielinks ll;
     struct ccn_strategy strategy;   /**< state of strategy engine */
-    struct pit_face_item *pfl;      /**< upstream and downstream faces */
-    struct ccn_scheduled_event *ev; /**< next interest timeout */
+    struct ccn_scheduled_event *stev; /**< for time-based strategy event */
+    struct ccn_scheduled_event *ev; /**< next interest timeout */    
     const unsigned char *interest_msg; /**< pending interest message */
     unsigned size;                  /**< size of interest message */
     unsigned serial;                /**< used for logging */
@@ -335,33 +314,6 @@ struct guest_entry {
     struct ccn_charbuf *cob;
 };
 
-#define TYPICAL_NONCE_SIZE 12       /**< actual allocated size may differ */
-/**
- * Per-face PIT information
- *
- * This is used to track the pending interest info that is specific to
- * a face.  The list may contain up to two entries for a given face - one
- * to track the most recent arrival on that face (the downstream), and
- * one to track the most recently sent (the upstream).
- */
-struct pit_face_item {
-    struct pit_face_item *next;     /**< next in list */
-    unsigned faceid;                /**< face id */
-    ccn_wrappedtime renewed;        /**< when entry was last refreshed */
-    ccn_wrappedtime expiry;         /**< when entry expires */
-    unsigned pfi_flags;             /**< CCND_PFI_x */
-    unsigned char nonce[TYPICAL_NONCE_SIZE]; /**< nonce bytes */
-};
-#define CCND_PFI_NONCESZ  0x00FF    /**< Mask for actual nonce size */
-#define CCND_PFI_UPSTREAM 0x0100    /**< Tracks upstream (sent interest) */
-#define CCND_PFI_UPENDING 0x0200    /**< Has been sent upstream */
-#define CCND_PFI_SENDUPST 0x0400    /**< Should be sent upstream */
-#define CCND_PFI_UPHUNGRY 0x0800    /**< Upstream hungry, cupboard bare */
-#define CCND_PFI_DNSTREAM 0x1000    /**< Tracks downstream (recvd interest) */
-#define CCND_PFI_PENDING  0x2000    /**< Pending for immediate data */
-#define CCND_PFI_SUPDATA  0x4000    /**< Suppressed data reply */
-#define CCND_PFI_DCFACE  0x10000    /**< This upstream is a DC face */
-
 /**
  * The nameprefix hash table is keyed by the Component elements of
  * the Name prefix.
@@ -375,9 +327,7 @@ struct nameprefix_entry {
     int children;                /**< number of children */
     unsigned flags;              /**< CCN_FORW_* flags about namespace */
     int fgen;                    /**< used to decide when forward_to is stale */
-    unsigned src;                /**< faceid of recent content source */
-    unsigned osrc;               /**< and of older matching content */
-    unsigned usec;               /**< response-time prediction */
+    struct nameprefix_state sst; /**< used by strategy layer */
 };
 
 /**
