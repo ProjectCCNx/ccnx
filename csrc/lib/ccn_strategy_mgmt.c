@@ -26,39 +26,44 @@
 #include <ccn/charbuf.h>
 #include <ccn/strategy_mgmt.h>
 
+#define STRATEGY_ID_MAX_SIZE 16
+
 struct ccn_strategy_selection *
 ccn_strategy_selection_parse(const unsigned char *p, size_t size)
 {
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d = ccn_buf_decoder_start(&decoder, p, size);
-    struct ccn_charbuf *store = ccn_charbuf_create();
     struct ccn_strategy_selection *result;
-    const unsigned char *val;
+    struct ccn_charbuf *store = NULL;
+    const unsigned char *val = NULL;
     size_t sz;
     size_t start;
     size_t end;
     int action_off = -1;
     int ccnd_id_off = -1;
+    int strategyid_off = -1;
+    int parameters_off = -1;
     
-    if (store == NULL)
-        return(NULL);
     result = calloc(1, sizeof(*result));
-    if (result == NULL) {
-        ccn_charbuf_destroy(&store);
+    if (result == NULL)
+        return(NULL);
+    result->name_prefix = ccn_charbuf_create();
+    result->store = store = ccn_charbuf_create();
+    if (result->name_prefix == NULL || result->store == NULL) {
+        ccn_strategy_selection_destroy(&result);
         return(NULL);
     }
     if (ccn_buf_match_dtag(d, CCN_DTAG_StrategySelection)) {
         ccn_buf_advance(d);
         action_off = ccn_parse_tagged_string(d, CCN_DTAG_Action, store);
         if (ccn_buf_match_dtag(d, CCN_DTAG_Name)) {
-            result->name_prefix = ccn_charbuf_create();
             start = d->decoder.token_index;
             ccn_parse_Name(d, NULL);
             end = d->decoder.token_index;
             ccn_charbuf_append(result->name_prefix, p + start, end - start);
         }
         else
-            result->name_prefix = NULL;
+            ccn_charbuf_destroy(&result->name_prefix);
         if (ccn_buf_match_dtag(d, CCN_DTAG_PublisherPublicKeyDigest)) {
             ccn_buf_advance(d);
             if (ccn_buf_match_blob(d, &val, &sz)) {
@@ -73,24 +78,23 @@ ccn_strategy_selection_parse(const unsigned char *p, size_t size)
                 result->ccnd_id_size = sz;
             }
         }
-//        result->strategyid = ccn_parse_optional_tagged_udata(d, CCN_DTAG_StrategyID);
-//        result->parameters = ccn_parse_optional_tagged_udata(d, CCN_DTAG_StrategyParameters);
+        strategyid_off = ccn_parse_tagged_string(d, CCN_DTAG_StrategyID, store);
+        parameters_off = ccn_parse_tagged_string(d, CCN_DTAG_StrategyParameters, store);
         result->lifetime = ccn_parse_optional_tagged_nonNegativeInteger(d, CCN_DTAG_FreshnessSeconds);
         ccn_buf_check_close(d);
     }
     else
         d->decoder.state = -__LINE__;
     
-    if (d->decoder.index != size || !CCN_FINAL_DSTATE(d->decoder.state) ||
-        store->length > sizeof(result->store))
+    if (d->decoder.index != size || !CCN_FINAL_DSTATE(d->decoder.state))
         ccn_strategy_selection_destroy(&result);
     else {
-        char *b = (char *)result->store;
-        memcpy(b, store->buf, store->length);
+        const char *b = (const char *)result->store->buf;
         result->action = (action_off == -1) ? NULL : b + action_off;
-        result->ccnd_id = (ccnd_id_off == -1) ? NULL : result->store + ccnd_id_off;
+        result->ccnd_id = (ccnd_id_off == -1) ? NULL : result->store->buf + ccnd_id_off;
+        result->strategyid = (strategyid_off == -1) ? NULL : b + strategyid_off;
+        result->parameters = (parameters_off == -1) ? NULL : b + parameters_off;
     }
-    ccn_charbuf_destroy(&store);
     return(result);
 }
 
@@ -98,51 +102,56 @@ ccn_strategy_selection_parse(const unsigned char *p, size_t size)
  * Destroy the result of ccn_strategy_selection_parse().
  */
 void
-ccn_strategy_selection_destroy(struct ccn_strategy_selection **pfe)
+ccn_strategy_selection_destroy(struct ccn_strategy_selection **pss)
 {
-    if (*pfe == NULL)
+    if (*pss == NULL)
         return;
-    ccn_charbuf_destroy(&(*pfe)->name_prefix);
-    free(*pfe);
-    *pfe = NULL;
+    ccn_charbuf_destroy(&(*pss)->name_prefix);
+    ccn_charbuf_destroy(&(*pss)->store);
+    free(*pss);
+    *pss = NULL;
 }
 
 int
 ccnb_append_strategy_selection(struct ccn_charbuf *c,
-                               const struct ccn_strategy_selection *fe)
+                               const struct ccn_strategy_selection *ss)
 {
+    int ch;
+    int i;
+    int len;
     int res;
+    
     res = ccnb_element_begin(c, CCN_DTAG_StrategySelection);
-    if (fe->action != NULL)
+    if (ss->action != NULL)
         res |= ccnb_tagged_putf(c, CCN_DTAG_Action, "%s",
-                                   fe->action);
-    if (fe->name_prefix != NULL && fe->name_prefix->length > 0)
-        res |= ccn_charbuf_append(c, fe->name_prefix->buf,
-                                     fe->name_prefix->length);
-    if (fe->ccnd_id_size != 0)
+                                   ss->action);
+    if (ss->name_prefix != NULL && ss->name_prefix->length > 0)
+        res |= ccn_charbuf_append(c, ss->name_prefix->buf,
+                                     ss->name_prefix->length);
+    if (ss->ccnd_id_size != 0)
         res |= ccnb_append_tagged_blob(c, CCN_DTAG_PublisherPublicKeyDigest,
-                                          fe->ccnd_id, fe->ccnd_id_size);
-    if (fe->strategyid != NULL) {
-        len = strlen(fe->strategyid);
+                                          ss->ccnd_id, ss->ccnd_id_size);
+    if (ss->strategyid != NULL) {
+        len = strlen(ss->strategyid);
         for (i = 0; i < len; i++) {
-            ch = fe->strategyid[i];
+            ch = ss->strategyid[i];
             if (!(('A' <= ch && ch <= 'Z') || ('a' <= ch && ch <= 'z') ||
                   ('0' <= ch && ch <= '9') || (ch == '_')))
                 res |= -1;
         }
         if (len > 0) {
             res |= ccnb_tagged_putf(c, CCN_DTAG_StrategyID, "%.15s",
-                                       fe->strategyid);
-            if (len > 15)
+                                       ss->strategyid);
+            if (len >= STRATEGY_ID_MAX_SIZE)
                 res |= -1;
         }
     }
-    if (fe->parameters >= 0)
+    if (ss->parameters != NULL)
         res |= ccnb_tagged_putf(c, CCN_DTAG_StrategyParameters, "%s",
-                                   fe->parameters);
-    if (fe->lifetime >= 0)
+                                   ss->parameters);
+    if (ss->lifetime >= 0)
         res |= ccnb_tagged_putf(c, CCN_DTAG_FreshnessSeconds, "%d",
-                                   fe->lifetime);
+                                   ss->lifetime);
     res |= ccnb_element_end(c);
     return(res);
 }
