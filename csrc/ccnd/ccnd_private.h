@@ -80,6 +80,7 @@ struct ccnd_handle {
     struct hashtb *nameprefix_tab;  /**< keyed by name prefix components */
     struct hashtb *interest_tab;    /**< keyed by interest msg sans Nonce */
     struct hashtb *guest_tab;       /**< keyed by faceid */
+    struct ccn_nametree *strategy_tab; /**< keyed by strategyid/parameters */
     unsigned forward_to_gen;        /**< for forward_to updates */
     unsigned face_gen;              /**< faceid generation number */
     unsigned face_rover;            /**< for faceid allocation */
@@ -326,7 +327,9 @@ struct nameprefix_entry {
     struct nameprefix_entry *parent; /**< link to next-shorter prefix */
     int children;                /**< number of children */
     unsigned flags;              /**< CCN_FORW_* flags about namespace */
-    int fgen;                    /**< used to decide when forward_to is stale */
+    short strategy_ix;           /**< index of strategy to use */
+    short strategy_up;           /**< how far up tree is strategy definer */
+    int fgen;                    /**< to decide when cached fields are stale */
     struct nameprefix_state sst; /**< used by strategy layer */
 };
 

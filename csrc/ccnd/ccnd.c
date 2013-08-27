@@ -2994,6 +2994,8 @@ Finish:
  *
  * Recomputes the contents of npe->forward_to and npe->flags
  * from forwarding lists of npe and all of its ancestors.
+ * 
+ * Also updates the tap, strategy_ix, and strategy_up fields of npe.
  */
 static void
 update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
@@ -3007,6 +3009,8 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
     unsigned moreflags;
     unsigned lastfaceid;
     unsigned namespace_flags;
+    int strategy_ix;
+    int strategy_up;
 
     x = npe->forward_to;
     if (x == NULL)
@@ -3044,11 +3048,26 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
     if (lastfaceid != CCN_NOFACEID)
         ccn_indexbuf_move_to_end(x, lastfaceid);
     npe->flags = namespace_flags;
-    npe->fgen = h->forward_to_gen;
     if (x->n == 0)
         ccn_indexbuf_destroy(&npe->forward_to);
     ccn_indexbuf_destroy(&npe->tap);
     npe->tap = tap;
+    /* Update the active strategy index */
+    /* XXX revisit whether strategy_up is a worthwhile optimization */
+    strategy_ix = 0;
+    strategy_up = 0;
+    for (p = npe; p != NULL; p = p->parent) {
+        if (p->strategy_up == 0) {
+            strategy_ix = p->strategy_ix;
+            break;
+        }
+        strategy_up++;
+    }
+    for (p = npe; strategy_up != 0; p = p->parent) {
+        p->strategy_ix = strategy_ix;
+        p->strategy_up = strategy_up--;
+    }
+    npe->fgen = h->forward_to_gen;
 }
 
 /**
