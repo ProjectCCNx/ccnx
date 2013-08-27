@@ -84,6 +84,18 @@ typedef uint32_t ccn_wrappedtime;
  * to track the most recent arrival on that face (the downstream), and
  * one to track the most recently sent (the upstream).
  */
+/* On the CCNST_FIRST call for an Interest to a given prefix,
+ * there will be one face marked downstream, and the eligible faces
+ * are those which are neither DCFACE nor DNSTREAM.
+ * Calling send_interest() manages the flag settings.
+ *
+ * Once the CCNST_ADDDNSTRM (additional downstream) operation is added, 
+ * on that call there will be multiple downstream faces in the
+ * PFI list and there will be a non-downstream face entry for any face(s)
+ * that were previously downstream.
+ * 
+ */
+
 struct pit_face_item {
     struct pit_face_item *next;     /**< next in list */
     unsigned faceid;                /**< face id */
@@ -94,13 +106,14 @@ struct pit_face_item {
 };
 #define CCND_PFI_NONCESZ  0x00FF    /**< Mask for actual nonce size */
 #define CCND_PFI_UPSTREAM 0x0100    /**< Tracks upstream (sent interest) */
-#define CCND_PFI_UPENDING 0x0200    /**< Has been sent upstream */
-#define CCND_PFI_SENDUPST 0x0400    /**< Should be sent upstream */
-#define CCND_PFI_UPHUNGRY 0x0800    /**< Upstream hungry, cupboard bare */
+#define CCND_PFI_UPENDING 0x0200    /**< Has been sent upstream (initially cleared, set for tap face) */
+#define CCND_PFI_SENDUPST 0x0400    /**< Should be sent upstream (send upstream at expiry) */
+#define CCND_PFI_UPHUNGRY 0x0800    /**< Upstream hungry, cupboard bare (upstream expired, no unexpired downstream to refresh) */
 #define CCND_PFI_DNSTREAM 0x1000    /**< Tracks downstream (recvd interest) */
 #define CCND_PFI_PENDING  0x2000    /**< Pending for immediate data */
 #define CCND_PFI_SUPDATA  0x4000    /**< Suppressed data reply */
-#define CCND_PFI_DCFACE  0x10000    /**< This upstream is a DC face */
+#define CCND_PFI_DCFACE  0x10000    /**< This upstream is a Direct Control face (gets data if unanswered for a long time) */
+
 
 /**
  * State for the strategy engine
@@ -121,8 +134,8 @@ enum ccn_strategy_op {
     CCNST_NOP,      /* no-operation */
     CCNST_INIT,     /* initialize strategy, allocate instance state */
     CCNST_FIRST,    /* newly created interest entry (pit entry) */
-// additional downstream face
-// additional upstream face (e.g. new registration)
+// CCNST_ADDDNSTRM additional downstream face (same interest arrived from another face)
+// CCNST_ADDUPSTRM additional upstream face (e.g. new registration)
 // refresh
 // notification
 // expiry of upstream
