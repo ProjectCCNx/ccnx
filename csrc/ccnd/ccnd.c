@@ -2168,9 +2168,6 @@ check_nameprefix_entries(struct ccnd_handle *h)
         check_forward_to(h, &npe->forward_to);
         check_forward_to(h, &npe->tap);
         npe->sst.s[0] |= CCN_AGED;
-// XXX - this should happen within the strategy
- //       npe->sst.osrc = npe->sst.src;
- //       npe->sst.src = CCN_NOFACEID;
         hashtb_next(e);
     }
     hashtb_end(e);
@@ -3906,6 +3903,7 @@ nameprefix_seek(struct ccnd_handle *h, struct hashtb_enumerator *e,
             npe->forwarding = NULL;
             npe->fgen = h->forward_to_gen - 1;
             npe->forward_to = NULL;
+            npe->strategy_up = -1; /* anything nonzero is good here */
             if (parent != NULL) {
                 parent->children++;
                 npe->flags = parent->flags;
@@ -4149,6 +4147,70 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
     }
     indexbuf_release(h, comps);
     ccn_charbuf_destroy(&flatname);
+}
+
+struct strategy_instance *
+create_strategy_instance(struct ccnd_handle *h, struct nameprefix_entry *npe,
+                         const struct strategy_class *sclass,
+                         const char *parameters)
+{
+    struct strategy_instance *si = NULL;
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    short strategy_ix;
+    int res;
+    
+    hashtb_start(h->strategy_instance_tab, e);
+    if (npe->strategy_up == 0) {
+        /* We want to replace an existing strategy; reuse the index */
+        strategy_ix = npe->strategy_ix;
+        res = hashtb_seek(e, &strategy_ix, sizeof(strategy_ix), 0);
+        if (res >= 0)
+            hashtb_delete(e);
+    }
+    else {
+        strategy_ix = h->next_strategy_ix++;
+        if (h->next_strategy_ix > SHRT_MAX) {
+            /* oops, out of strategies. */
+            strategy_ix = 0;
+        }
+    }
+    res = hashtb_seek(e, &strategy_ix, sizeof(strategy_ix), 0);
+    if (res == HT_NEW_ENTRY) {
+        si = e->data;
+        si->sclass = sclass;
+        if (parameters != NULL)
+            parameters = strdup(parameters);
+        si->parameters = parameters;
+        si->npe = npe;
+        npe->strategy_ix = strategy_ix;
+        npe->strategy_up = 0;
+        h->forward_to_gen++;
+    }
+    hashtb_end(e);
+    if (si == NULL)
+        return(NULL);
+    (si->sclass->callout)(h, si, NULL, CCNST_INIT, CCN_NOFACEID);
+    return(si);
+}
+
+static void
+finalize_strategy_instance(struct hashtb_enumerator *e)
+{
+    struct strategy_instance *si = e->data;
+    struct ccnd_handle *h = hashtb_get_param(e->ht, NULL);
+    
+    (si->sclass->callout)(h, si, NULL, CCNST_FINALIZE, CCN_NOFACEID);
+    if (si->data != NULL) abort();  /* callout should have cleaned this */
+    if (si->parameters != NULL) {
+        free((void *)si->parameters);
+        si->parameters = NULL;
+    }
+    if (si->npe != NULL) {
+        si->npe->strategy_up = -1;
+        h->forward_to_gen++;
+        si->npe = NULL;
+    }
 }
 
 /**
@@ -5432,6 +5494,8 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->interest_tab = hashtb_create(sizeof(struct interest_entry), &param);
     param.finalize = &finalize_guest;
     h->guest_tab = hashtb_create(sizeof(struct guest_entry), &param);
+    param.finalize = &finalize_strategy_instance;
+    h->strategy_instance_tab = hashtb_create(sizeof(struct strategy_instance), &param);
     param.finalize = 0;
     h->headx = calloc(1, sizeof(*h->headx));
     h->headx->staletime = -1;
@@ -5598,6 +5662,7 @@ ccnd_destroy(struct ccnd_handle **pccnd)
     hashtb_destroy(&h->interest_tab);
     hashtb_destroy(&h->nameprefix_tab);
     hashtb_destroy(&h->guest_tab);
+    hashtb_destroy(&h->strategy_instance_tab);
     if (h->fds != NULL) {
         free(h->fds);
         h->fds = NULL;

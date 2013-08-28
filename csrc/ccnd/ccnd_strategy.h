@@ -157,6 +157,7 @@ struct strategy_class {
 
 struct strategy_instance {
     const struct strategy_class *sclass; /* strategy class */
+    const char *parameters;              /* passed in from outside */
     void *data;                          /* strategy private data */
     struct nameprefix_entry *npe;        /* where strategy is registered */
 };

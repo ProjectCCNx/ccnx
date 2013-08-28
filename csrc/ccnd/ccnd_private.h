@@ -80,11 +80,12 @@ struct ccnd_handle {
     struct hashtb *nameprefix_tab;  /**< keyed by name prefix components */
     struct hashtb *interest_tab;    /**< keyed by interest msg sans Nonce */
     struct hashtb *guest_tab;       /**< keyed by faceid */
-    struct ccn_nametree *strategy_tab; /**< keyed by strategyid/parameters */
+    struct hashtb *strategy_instance_tab; /**< keyed by strategy_ix */
     unsigned forward_to_gen;        /**< for forward_to updates */
     unsigned face_gen;              /**< faceid generation number */
     unsigned face_rover;            /**< for faceid allocation */
     unsigned face_limit;            /**< current number of face slots */
+    unsigned next_strategy_ix;      /**< next available strategy index */
     struct face **faces_by_faceid;  /**< array with face_limit elements */
     struct ncelinks ncehead;        /**< list head for expiry-sorted nonces */
     struct ccn_scheduled_event *reaper;
