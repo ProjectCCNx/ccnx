@@ -6,7 +6,8 @@
  * routines can be compiled separately.
  *
  * Part of ccnd - the CCNx Daemon.
- *
+ */
+/*
  * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
@@ -80,12 +81,10 @@ struct ccnd_handle {
     struct hashtb *nameprefix_tab;  /**< keyed by name prefix components */
     struct hashtb *interest_tab;    /**< keyed by interest msg sans Nonce */
     struct hashtb *guest_tab;       /**< keyed by faceid */
-    struct hashtb *strategy_instance_tab; /**< keyed by strategy_ix */
     unsigned forward_to_gen;        /**< for forward_to updates */
     unsigned face_gen;              /**< faceid generation number */
     unsigned face_rover;            /**< for faceid allocation */
     unsigned face_limit;            /**< current number of face slots */
-    unsigned next_strategy_ix;      /**< next available strategy index */
     struct face **faces_by_faceid;  /**< array with face_limit elements */
     struct ncelinks ncehead;        /**< list head for expiry-sorted nonces */
     struct ccn_scheduled_event *reaper;
@@ -328,9 +327,8 @@ struct nameprefix_entry {
     struct nameprefix_entry *parent; /**< link to next-shorter prefix */
     int children;                /**< number of children */
     unsigned flags;              /**< CCN_FORW_* flags about namespace */
-    short strategy_ix;           /**< index of strategy to use */
-    short strategy_up;           /**< how far up tree is strategy definer */
     int fgen;                    /**< to decide when cached fields are stale */
+    struct strategy_instance *si;/**< explicit strategy for this prefix */
     struct nameprefix_state sst; /**< used by strategy layer */
 };
 
@@ -374,7 +372,6 @@ uintmax_t ccnd_meter_total(struct ccnd_meter *m);
 #define CCN_FORW_PFXO (CCN_FORW_ADVERTISE | CCN_FORW_CAPTURE | CCN_FORW_LOCAL)
 #define CCN_FORW_REFRESHED      (1 << 16) /**< private to ccnd */
 
- 
 /**
  * Determines how frequently we age our forwarding entries
  */
@@ -421,6 +418,14 @@ int ccnd_req_selfreg(struct ccnd_handle *h,
                      const unsigned char *msg, size_t size,
                      struct ccn_charbuf *reply_body);
 
+/*
+ * The internal client calls this with the argument portion ARG of
+ * a strategy selection request (e.g. /ccnx/CCNDID/setstrategy/ARG)
+ */
+int ccnd_req_strategy(struct ccnd_handle *h,
+                      const unsigned char *msg, size_t size,
+                      struct ccn_charbuf *reply_body);
+
 /**
  * URIs for prefixes served by the internal client
  */
@@ -442,11 +447,17 @@ int ccnd_reg_uri(struct ccnd_handle *h,
                  int expires);
 
 const struct strategy_class *strategy_class_from_id(const char *id);
-struct strategy_instance * create_strategy_instance(
-        struct ccnd_handle *h,
-        struct nameprefix_entry *npe,
-        const struct strategy_class *sclass,
-        const char *parameters);
+struct strategy_instance *
+    create_strategy_instance(struct ccnd_handle *h,
+                             struct nameprefix_entry *npe,
+                             const struct strategy_class *sclass,
+                             const char *parameters);
+struct strategy_instance *
+    get_strategy_instance(struct ccnd_handle *h,
+                          struct nameprefix_entry *npe);
+
+void remove_strategy_instance(struct ccnd_handle *h,
+                              struct nameprefix_entry *npe);
 
 void ccnd_generate_face_guid(struct ccnd_handle *h, struct face *face, int size,
                              const unsigned char *lo, const unsigned char *hi);
