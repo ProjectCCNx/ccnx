@@ -18,7 +18,7 @@ CCNLIBDIR = ../lib
 INSTALLED_PROGRAMS = ccnd ccndsmoketest 
 PROGRAMS = $(INSTALLED_PROGRAMS)
 DEBRIS = anything.ccnb contentobjecthash.ccnb contentmishash.ccnb \
-         contenthash.ccnb
+         contenthash.ccnb ccnd_stregistry.h
 
 BROKEN_PROGRAMS = 
 CSRC = ccnd_main.c ccnd.c ccnd_msg.c ccnd_stats.c ccnd_internal_client.c ccnd_strategy0.c ccndsmoketest.c
@@ -43,6 +43,11 @@ ccnd_built.sh:
 
 ccndsmoketest: ccndsmoketest.o
 	$(CC) $(CFLAGS) -o $@ ccndsmoketest.o $(LDLIBS)
+
+ccnd_stregistry.h: $(CSRC)
+	sh gen_stregistry.sh $(CSRC)
+
+depend: ccnd_stregistry.h
 
 clean:
 	rm -f *.o *.a $(PROGRAMS) $(BROKEN_PROGRAMS) depend

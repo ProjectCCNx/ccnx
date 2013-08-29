@@ -63,9 +63,6 @@
 
 #include "ccnd_private.h"
 
-#define strategy_callout(h,i,j,f) \
-    strategy0_callout(h, NULL, &(i)->strategy,j,f)  // XXX - for now
-
 static void cleanup_at_exit(void);
 static void unlink_at_exit(const char *path);
 static int create_local_listener(struct ccnd_handle *h, const char *sockname, int backlog);
@@ -139,6 +136,10 @@ pfi_set_expiry_from_lifetime(struct ccnd_handle *h, struct interest_entry *ie,
 static struct pit_face_item *
 pfi_seek(struct ccnd_handle *h, struct interest_entry *ie,
          unsigned faceid, unsigned pfi_flag);
+static void strategy_callout(struct ccnd_handle *h,
+                             struct interest_entry *ie,
+                             enum ccn_strategy_op op,
+                             unsigned faceid);
 
 /**
  * Frequency of wrapped timer
@@ -3058,6 +3059,15 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
             strategy_ix = p->strategy_ix;
             break;
         }
+        if (p->parent == NULL) {
+            /* Supply the default strategy on the root. */
+            create_strategy_instance(h, p,
+                                     strategy_class_from_id("default"), NULL);
+            if (p->strategy_up != 0)
+                abort();
+            strategy_ix = p->strategy_ix;
+            break;
+        }
         strategy_up++;
     }
     for (p = npe; strategy_up != 0; p = p->parent) {
@@ -3286,10 +3296,11 @@ void
 strategy_getstate(struct ccnd_handle *h, struct ccn_strategy *s,
                   struct nameprefix_state **sst, int k)
 {
-    struct nameprefix_entry *npe;
+    struct nameprefix_entry *npe = NULL;
     int i;
     
-    npe = s->ie->ll.npe;
+    if (s != NULL)
+        npe = s->ie->ll.npe;
     for (i = 0; i < k && npe != NULL; i++, npe = npe->parent)
         sst[i] = &npe->sst;
     while (i < k)
@@ -4149,6 +4160,20 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
     ccn_charbuf_destroy(&flatname);
 }
 
+const struct strategy_class *
+strategy_class_from_id(const char *id)
+{
+    const struct strategy_class *sclass;
+    int i;
+    
+    sclass = ccnd_strategy_classes;
+    for (i = 0; sclass[i].id[0] != 0; i++) {
+        if (strncmp(id, sclass[i].id, sizeof(sclass[i].id)) == 0)
+            return(&(sclass[0]));
+    }
+    return(NULL);
+}
+
 struct strategy_instance *
 create_strategy_instance(struct ccnd_handle *h, struct nameprefix_entry *npe,
                          const struct strategy_class *sclass,
@@ -4211,6 +4236,26 @@ finalize_strategy_instance(struct hashtb_enumerator *e)
         h->forward_to_gen++;
         si->npe = NULL;
     }
+}
+
+/**
+ * Call the strategy routine
+ */
+static void
+strategy_callout(struct ccnd_handle *h,
+                 struct interest_entry *ie,
+                 enum ccn_strategy_op op,
+                 unsigned faceid)
+{
+    struct strategy_instance *si;
+    struct nameprefix_entry *npe = ie->ll.npe;
+    
+    if (npe->fgen != h->forward_to_gen)
+        update_forward_to(h, npe);
+    si = hashtb_lookup(h->strategy_instance_tab,
+                       &npe->strategy_ix, sizeof(npe->strategy_ix));
+    if (si == NULL) { ccnd_msg(h, "urp - no strategy"); return; }
+    (si->sclass->callout)(h, si, &ie->strategy, op, faceid);
 }
 
 /**
@@ -5695,3 +5740,6 @@ ccnd_destroy(struct ccnd_handle **pccnd)
     free(h);
     *pccnd = NULL;
 }
+
+/* Pull in the strategy class definitions */
+#include "ccnd_stregistry.h"
