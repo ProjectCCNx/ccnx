@@ -4287,12 +4287,10 @@ const struct strategy_class *
 strategy_class_from_id(const char *id)
 {
     const struct strategy_class *sclass;
-    int i;
-    
-    sclass = ccnd_strategy_classes;
-    for (i = 0; sclass[i].id[0] != 0; i++) {
-        if (strncmp(id, sclass[i].id, sizeof(sclass[i].id)) == 0)
-            return(&(sclass[i]));
+
+    for (sclass = ccnd_strategy_classes; sclass->id[0] != 0; sclass++) {
+        if (strncmp(id, sclass->id, sizeof(sclass->id)) == 0)
+            return(sclass);
     }
     return(NULL);
 }
