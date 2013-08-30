@@ -59,12 +59,10 @@
 #include <ccn/nametree.h>
 #include <ccn/schedule.h>
 #include <ccn/reg_mgmt.h>
+#include <ccn/strategy_mgmt.h>
 #include <ccn/uri.h>
 
 #include "ccnd_private.h"
-
-#define strategy_callout(h,i,j,f) \
-    strategy0_callout(h, NULL, &(i)->strategy,j,f)  // XXX - for now
 
 static void cleanup_at_exit(void);
 static void unlink_at_exit(const char *path);
@@ -139,6 +137,10 @@ pfi_set_expiry_from_lifetime(struct ccnd_handle *h, struct interest_entry *ie,
 static struct pit_face_item *
 pfi_seek(struct ccnd_handle *h, struct interest_entry *ie,
          unsigned faceid, unsigned pfi_flag);
+static void strategy_callout(struct ccnd_handle *h,
+                             struct interest_entry *ie,
+                             enum ccn_strategy_op op,
+                             unsigned faceid);
 
 /**
  * Frequency of wrapped timer
@@ -954,6 +956,8 @@ finalize_nameprefix(struct hashtb_enumerator *e)
         npe->forwarding = f->next;
         free(f);
     }
+    if (npe->si != NULL)
+        remove_strategy_instance(h, npe);
 }
 
 /**
@@ -2147,13 +2151,14 @@ check_nameprefix_entries(struct ccnd_handle *h)
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     struct ielinks *head;
-    struct nameprefix_entry *npe;    
+    struct nameprefix_entry *npe;
     
     hashtb_start(h->nameprefix_tab, e);
     for (npe = e->data; npe != NULL; npe = e->data) {
         if ( (npe->sst.s[0] & CCN_AGED) != 0 &&
               npe->children == 0 &&
-              npe->forwarding == NULL) {
+              npe->forwarding == NULL &&
+              npe->si == NULL) {
             head = &npe->ie_head;
             if (head == head->next) {
                 count += 1;
@@ -2168,9 +2173,6 @@ check_nameprefix_entries(struct ccnd_handle *h)
         check_forward_to(h, &npe->forward_to);
         check_forward_to(h, &npe->tap);
         npe->sst.s[0] |= CCN_AGED;
-// XXX - this should happen within the strategy
- //       npe->sst.osrc = npe->sst.src;
- //       npe->sst.src = CCN_NOFACEID;
         hashtb_next(e);
     }
     hashtb_end(e);
@@ -2492,8 +2494,10 @@ ccnd_nack(struct ccnd_handle *h, struct ccn_charbuf *reply_body,
     int res;
     reply_body->length = 0;
     res = ccn_encode_StatusResponse(reply_body, errcode, errtext);
-    if (res == 0)
+    if (res == 0) {
         res = CCN_CONTENT_NACK;
+        ccnd_msg(h, "nack status_code %d - %s", errcode, errtext);
+    }
     return(res);
 }
 
@@ -2990,10 +2994,155 @@ Finish:
 }
 
 /**
+ * Process a strategy selection request
+ *
+ * This is a request to set, remove, or get the strategy associated
+ * with a prefix.
+ */
+int
+ccnd_req_strategy(struct ccnd_handle *h,
+                  const unsigned char *msg, size_t size,
+                  const char *action,
+                  struct ccn_charbuf *reply_body)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct ccn_parsed_ContentObject pco = {0};
+    int reason = 0;
+    int res;
+    const unsigned char *req;
+    size_t req_size;
+    struct ccn_strategy_selection *strategy_selection = NULL;
+    struct strategy_instance *si = NULL;
+    const struct strategy_class *sclass = NULL;
+    struct nameprefix_entry *npe = NULL;
+    struct nameprefix_entry *p = NULL;
+    struct face *reqface = NULL;
+    struct ccn_indexbuf *comps = NULL;
+    int n = 0;
+    int nackallowed = 0;
+    
+    reason = __LINE__;
+    res = ccn_parse_ContentObject(msg, size, &pco, NULL);
+    if (res < 0)
+        goto Finish;
+    res = ccn_content_get_value(msg, size, &pco, &req, &req_size);
+    if (res < 0)
+        goto Finish;
+    res = -1;
+    reason = __LINE__;
+    strategy_selection = ccn_strategy_selection_parse(req, req_size);
+    if (strategy_selection == NULL || strategy_selection->action == NULL)
+        goto Finish;
+    /* consider the source ... */
+    reqface = face_from_faceid(h, h->interest_faceid);
+    if (reqface == NULL)
+        goto Finish;
+    if ((reqface->flags & (CCN_FACE_GG | CCN_FACE_REGOK)) == 0)
+        goto Finish;
+    nackallowed = 1;
+    
+    if (strategy_selection->name_prefix == NULL) {
+        reason = __LINE__;
+        goto Finish;
+    }
+    if (strategy_selection->ccnd_id_size == sizeof(h->ccnd_id)) {
+        if (memcmp(strategy_selection->ccnd_id,
+                   h->ccnd_id, sizeof(h->ccnd_id)) != 0) {
+            reason = __LINE__;
+            goto Finish;
+        }
+    }
+    else if (strategy_selection->ccnd_id_size != 0) {
+        reason = __LINE__;
+        goto Finish;
+    }
+    if (strcmp(strategy_selection->action, action) != 0) {
+        reason = __LINE__;
+        goto Finish;
+    }
+    /* All requests need a prefix to operate on; set it up here */
+    comps = ccn_indexbuf_create();
+    n = ccn_name_split(strategy_selection->name_prefix, comps);
+    if (n < 0) {
+        reason = __LINE__;
+        goto Finish;
+    }
+    reason = __LINE__;
+    hashtb_start(h->nameprefix_tab, e);
+    res = nameprefix_seek(h, e, strategy_selection->name_prefix->buf, comps, n);
+    npe = e->data;
+    hashtb_end(e);
+    if (npe == NULL || res < 0) {
+        reason = __LINE__;
+        goto Finish;
+    }
+    /* Handle the specific command */
+    if (strcmp(action, "setstrategy") == 0) {
+        if (strategy_selection->strategyid == NULL) {
+            reason = __LINE__;
+            goto Finish;
+        }
+        sclass = strategy_class_from_id(strategy_selection->strategyid);
+        if (sclass == NULL) {
+            reason = __LINE__;
+            goto Finish;
+        }
+        reason = __LINE__;
+        si = create_strategy_instance(h, npe, sclass,
+                                      strategy_selection->parameters);
+    }
+    else if (strcmp(action, "getstrategy") == 0) {
+        reason = __LINE__;
+        si = get_strategy_instance(h, npe);
+    }
+    else if (strcmp(action, "removestrategy") == 0) {
+        reason = __LINE__;
+        remove_strategy_instance(h, npe);
+        si = get_strategy_instance(h, npe);
+    }
+    else abort(); /* bug in caller, not request */
+    if (si == NULL)
+        goto Finish;
+    /* We need to trim the prefix in the reply */
+    for (p = npe; p != NULL && n > 0; p = p->parent) {
+        if (p->si == si)
+            break;
+        n--;
+    }
+    res = ccn_name_chop(strategy_selection->name_prefix, comps, n);
+    if (res < 0) {
+        reason = __LINE__;
+        goto Finish;
+    }
+    strategy_selection->action = NULL;
+    strategy_selection->ccnd_id = h->ccnd_id;
+    strategy_selection->ccnd_id_size = sizeof(h->ccnd_id);
+    strategy_selection->strategyid = si->sclass->id;
+    strategy_selection->parameters = si->parameters;
+    strategy_selection->lifetime = -1; /* NYI */
+    res = ccnb_append_strategy_selection(reply_body, strategy_selection);
+    if (res > 0)
+        res = 0;
+Finish:
+    ccn_strategy_selection_destroy(&strategy_selection);
+    ccn_indexbuf_destroy(&comps);
+    if (nackallowed && si == NULL) {
+        struct ccn_charbuf *msg = ccn_charbuf_create();
+        ccn_charbuf_putf(msg, "could not process strategy req (l.%d)", reason);
+        res = ccnd_nack(h, reply_body, 504, ccn_charbuf_as_string(msg));
+        ccn_charbuf_destroy(&msg);
+    }
+    return((nackallowed || res <= 0) ? res : -1);
+}
+
+/**
  * Set up forward_to list for a name prefix entry.
  *
  * Recomputes the contents of npe->forward_to and npe->flags
  * from forwarding lists of npe and all of its ancestors.
+ * 
+ * Also updates the tap, strategy_ix, and strategy_up fields of npe.
  */
 static void
 update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
@@ -3044,11 +3193,11 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
     if (lastfaceid != CCN_NOFACEID)
         ccn_indexbuf_move_to_end(x, lastfaceid);
     npe->flags = namespace_flags;
-    npe->fgen = h->forward_to_gen;
     if (x->n == 0)
         ccn_indexbuf_destroy(&npe->forward_to);
     ccn_indexbuf_destroy(&npe->tap);
     npe->tap = tap;
+    npe->fgen = h->forward_to_gen;
 }
 
 /**
@@ -3270,10 +3419,11 @@ void
 strategy_getstate(struct ccnd_handle *h, struct ccn_strategy *s,
                   struct nameprefix_state **sst, int k)
 {
-    struct nameprefix_entry *npe;
+    struct nameprefix_entry *npe = NULL;
     int i;
     
-    npe = s->ie->ll.npe;
+    if (s != NULL)
+        npe = s->ie->ll.npe;
     for (i = 0; i < k && npe != NULL; i++, npe = npe->parent)
         sst[i] = &npe->sst;
     while (i < k)
@@ -3887,6 +4037,7 @@ nameprefix_seek(struct ccnd_handle *h, struct hashtb_enumerator *e,
             npe->forwarding = NULL;
             npe->fgen = h->forward_to_gen - 1;
             npe->forward_to = NULL;
+            npe->si = NULL;
             if (parent != NULL) {
                 parent->children++;
                 npe->flags = parent->flags;
@@ -4130,6 +4281,100 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
     }
     indexbuf_release(h, comps);
     ccn_charbuf_destroy(&flatname);
+}
+
+const struct strategy_class *
+strategy_class_from_id(const char *id)
+{
+    const struct strategy_class *sclass;
+
+    for (sclass = ccnd_strategy_classes; sclass->id[0] != 0; sclass++) {
+        if (strncmp(id, sclass->id, sizeof(sclass->id)) == 0)
+            return(sclass);
+    }
+    return(NULL);
+}
+
+struct strategy_instance *
+create_strategy_instance(struct ccnd_handle *h, struct nameprefix_entry *npe,
+                         const struct strategy_class *sclass,
+                         const char *parameters)
+{
+    struct strategy_instance *si = NULL;
+    char *space = NULL;
+    size_t size;
+    
+    if (parameters == NULL)
+        parameters = "";
+    size = strlen(parameters) + 1;
+    if (npe->si != NULL &&
+        npe->si->sclass == sclass &&
+        strcmp(npe->si->parameters, parameters) == 0)
+        return(npe->si); /* no change */
+    /* Use one allocation for si and parameters */
+    space = calloc(1, sizeof(*si) + size);
+    if (space == NULL)
+        return(NULL);
+    si = (void *)space;
+    memcpy(space + sizeof(*si), parameters, size);
+    if (npe->si != NULL)
+        remove_strategy_instance(h, npe);
+    si->sclass = sclass;
+    si->parameters = space + sizeof(*si);
+    si->npe = npe;
+    npe->si = si;
+    (si->sclass->callout)(h, si, NULL, CCNST_INIT, CCN_NOFACEID);
+    return(si);
+}
+
+void
+remove_strategy_instance(struct ccnd_handle *h,
+                         struct nameprefix_entry *npe)
+{
+    struct strategy_instance *si;
+    
+    si = npe->si;
+    if (si == NULL)
+        return;
+    if (si->npe != npe) abort();
+    (si->sclass->callout)(h, si, NULL, CCNST_FINALIZE, CCN_NOFACEID);
+    npe->si = NULL;
+    if (si->data != NULL) abort();  /* callout should have cleaned this */
+    free(si);
+}
+
+/**
+ * Search the nameprefix tree to find the strategy that is in effect.
+ */
+struct strategy_instance *
+get_strategy_instance(struct ccnd_handle *h,
+                      struct nameprefix_entry *npe)
+{
+    struct nameprefix_entry *p;
+    
+    for (p = npe; p != NULL; p = p->parent)
+        if (p->si != NULL)
+            return(p->si);
+    /* rarely, we need to provide the default on the root */
+    while (npe->parent != NULL)
+        npe = npe->parent;
+    return(create_strategy_instance(h, npe,
+               strategy_class_from_id("default"), NULL));
+}
+
+/**
+ * Call the strategy routine
+ */
+static void
+strategy_callout(struct ccnd_handle *h,
+                 struct interest_entry *ie,
+                 enum ccn_strategy_op op,
+                 unsigned faceid)
+{
+    struct strategy_instance *si;
+    
+    si = get_strategy_instance(h, ie->ll.npe);
+    (si->sclass->callout)(h, si, &ie->strategy, op, faceid);
 }
 
 /**
@@ -5611,3 +5856,6 @@ ccnd_destroy(struct ccnd_handle **pccnd)
     free(h);
     *pccnd = NULL;
 }
+
+/* Pull in the strategy class definitions */
+#include "ccnd_stregistry.h"

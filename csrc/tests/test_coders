@@ -4,7 +4,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -14,7 +14,7 @@
 # FOR A PARTICULAR PURPOSE.
 #
 
-for i in 14 15 18; do
+for i in 14 15 18 23; do
   test -f ../../schema/validation/ccn-test$i.xml || SkipTest missing source
   ccn_xmltoccnb -w - <../../schema/validation/ccn-test$i.xml > test_coders_$i.ccnb
   basicparsetest < test_coders_$i.ccnb || Fail test_coders_$i.ccnb

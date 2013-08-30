@@ -36,15 +36,13 @@ adjust_predicted_response(struct ccnd_handle *h,
 
 /**
  * This implements the default strategy.
- *
- * Eventually there will be a way to have other strategies.
  */
 void
-strategy0_callout(struct ccnd_handle *h,
-                  struct strategy_instance *instance,
-                  struct ccn_strategy *strategy,
-                  enum ccn_strategy_op op,
-                  unsigned faceid)
+ccnd_default_strategy_impl(struct ccnd_handle *h,
+                           struct strategy_instance *instance,
+                           struct ccn_strategy *strategy,
+                           enum ccn_strategy_op op,
+                           unsigned faceid)
 {
     struct pit_face_item *x = NULL;
     struct pit_face_item *p = NULL;
@@ -58,30 +56,31 @@ strategy0_callout(struct ccnd_handle *h,
     unsigned amt;
     int usec;
     
-    /* We will want access to the state for our prefix and its parent */
-    strategy_getstate(h, strategy, sst, 2);
-    
-    /* First get or initialize the parent nameprefix state */
-    if (sst[1] == NULL)
-        parent = &dummy;
-    else if (sst[1]->s[0] == CCN_UNINIT) {
-        parent = (struct strategy_state *)sst[1]->s;
-        *parent = dummy;
+    if (strategy != NULL) {
+        /* We will want access to the state for our prefix and its parent */
+        strategy_getstate(h, strategy, sst, 2);
+        
+        /* First get or initialize the parent nameprefix state */
+        if (sst[1] == NULL)
+            parent = &dummy;
+        else if (sst[1]->s[0] == CCN_UNINIT) {
+            parent = (struct strategy_state *)sst[1]->s;
+            *parent = dummy;
+        }
+        else if ((sst[1]->s[0] & CCN_MAGIC_MASK) == MINE)
+            parent = (struct strategy_state *)sst[1]->s;
+        
+        /* Now get the state for the longer prefix */
+        npe = (struct strategy_state *)sst[0]->s; /* This one should not be NULL */
+        if ((npe->magic & CCN_AGED) != 0) {
+            if ((npe->magic & CCN_MAGIC_MASK) != MINE)
+                *npe = *parent;
+            else
+                npe->magic = MINE;
+        }
+        if (npe->magic != MINE)
+            npe = &dummy; /* do not walk on somebody else's state */
     }
-    else if ((sst[1]->s[0] & CCN_MAGIC_MASK) == MINE)
-        parent = (struct strategy_state *)sst[1]->s;
-    
-    /* Now get the state for the longer prefix */
-    npe = (struct strategy_state *)sst[0]->s; /* This one should not be NULL */
-    if ((npe->magic & CCN_AGED) != 0) {
-        if ((npe->magic & CCN_MAGIC_MASK) != MINE)
-            *npe = *parent;
-        else
-            npe->magic = MINE;
-    }
-    if (npe->magic != MINE)
-        npe = &dummy; /* do not walk on somebody else's state */
-    
     switch (op) {
         case CCNST_NOP:
             break;
@@ -198,4 +197,18 @@ adjust_predicted_response(struct ccnd_handle *h,
         s->osrc = s->src;
         s->src = faceid;
     }
+}
+
+/**
+ * A null strategy for testing purposes
+ *
+ * The main logic should still work even if the strategy does nothing.
+ */
+void
+ccnd_null_strategy_impl(struct ccnd_handle *h,
+                        struct strategy_instance *instance,
+                        struct ccn_strategy *strategy,
+                        enum ccn_strategy_op op,
+                        unsigned faceid)
+{
 }

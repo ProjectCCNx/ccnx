@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -15,7 +15,6 @@ AFTER : test_single_ccnd test_ccndid
 BEFORE : test_single_ccnd_teardown
 
 ccndsmoketest || SkipTest no ccnd
-test -f newface-response.ccnb || SkipTest missing newface-response.ccnb, need to run test_newface first
 
 # Create the body of a selfreg request.
 ccn_xmltoccnb -w - <<EOF >selfreg.ccnb

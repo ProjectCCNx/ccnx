@@ -170,6 +170,7 @@ struct strategy_class {
 
 struct strategy_instance {
     const struct strategy_class *sclass; /* strategy class */
+    const char *parameters;              /* passed in from outside */
     void *data;                          /* strategy private data */
     struct nameprefix_entry *npe;        /* where strategy is registered */
 };
@@ -205,7 +206,8 @@ pfi_set_expiry_from_micros(struct ccnd_handle *h, struct interest_entry *ie,
  *
  * The sst array is filled in; NULL values are provided as needed.
  * The item sst[0] corresponds with the name inside the interest, and is
- * never NULL.  The remaining entries are for successively shorter prefixes.
+ * never NULL unless s is NULL.
+ * The remaining entries are for successively shorter prefixes.
  */
 void strategy_getstate(struct ccnd_handle *h, struct ccn_strategy *s,
                        struct nameprefix_state **sst, int k);
@@ -226,12 +228,7 @@ strategy_settimer(struct ccnd_handle *h, struct interest_entry *ie,
 /** A PRNG returning 31-bit pseudo-random numbers */
 uint32_t ccnd_random(struct ccnd_handle *);
 
-// Replace later with a strategy registry of some flavor.
-void strategy0_callout(struct ccnd_handle *h,
-                       struct strategy_instance *instance,
-                       struct ccn_strategy *s,
-                       enum ccn_strategy_op op,
-                       unsigned faceid);
+extern const struct strategy_class ccnd_strategy_classes[];
 
 void strategy1_callout(struct ccnd_handle *h,
                        struct strategy_instance *instance,

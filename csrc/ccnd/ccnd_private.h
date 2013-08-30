@@ -6,7 +6,8 @@
  * routines can be compiled separately.
  *
  * Part of ccnd - the CCNx Daemon.
- *
+ */
+/*
  * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
@@ -326,7 +327,8 @@ struct nameprefix_entry {
     struct nameprefix_entry *parent; /**< link to next-shorter prefix */
     int children;                /**< number of children */
     unsigned flags;              /**< CCN_FORW_* flags about namespace */
-    int fgen;                    /**< used to decide when forward_to is stale */
+    int fgen;                    /**< to decide when cached fields are stale */
+    struct strategy_instance *si;/**< explicit strategy for this prefix */
     struct nameprefix_state sst; /**< used by strategy layer */
 };
 
@@ -370,7 +372,6 @@ uintmax_t ccnd_meter_total(struct ccnd_meter *m);
 #define CCN_FORW_PFXO (CCN_FORW_ADVERTISE | CCN_FORW_CAPTURE | CCN_FORW_LOCAL)
 #define CCN_FORW_REFRESHED      (1 << 16) /**< private to ccnd */
 
- 
 /**
  * Determines how frequently we age our forwarding entries
  */
@@ -417,6 +418,15 @@ int ccnd_req_selfreg(struct ccnd_handle *h,
                      const unsigned char *msg, size_t size,
                      struct ccn_charbuf *reply_body);
 
+/*
+ * The internal client calls this with the argument portion ARG of
+ * a strategy selection request (e.g. /ccnx/CCNDID/setstrategy/ARG)
+ */
+int ccnd_req_strategy(struct ccnd_handle *h,
+                      const unsigned char *msg, size_t size,
+                      const char *action,
+                      struct ccn_charbuf *reply_body);
+
 /**
  * URIs for prefixes served by the internal client
  */
@@ -436,6 +446,20 @@ int ccnd_reg_uri(struct ccnd_handle *h,
                  unsigned faceid,
                  int flags,
                  int expires);
+
+const struct strategy_class *
+    strategy_class_from_id(const char *id);
+struct strategy_instance *
+    create_strategy_instance(struct ccnd_handle *h,
+                             struct nameprefix_entry *npe,
+                             const struct strategy_class *sclass,
+                             const char *parameters);
+struct strategy_instance *
+    get_strategy_instance(struct ccnd_handle *h,
+                          struct nameprefix_entry *npe);
+
+void remove_strategy_instance(struct ccnd_handle *h,
+                              struct nameprefix_entry *npe);
 
 void ccnd_generate_face_guid(struct ccnd_handle *h, struct face *face, int size,
                              const unsigned char *lo, const unsigned char *hi);

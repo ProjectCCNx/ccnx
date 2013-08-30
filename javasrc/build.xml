@@ -474,7 +474,7 @@
 	
 	<target name="test-impl-with-repo" depends="jar, ccnd, repo">
 		<mkdir dir="${testout}"/>
-		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}" maxmemory="1g">
+		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
@@ -499,7 +499,7 @@
 	<target name="test-sync-without-repo" depends="jar, ccnd">
 		<mkdir dir="${testout}"/>
 		
-		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}" maxmemory="1g">
+		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
@@ -523,7 +523,7 @@
 	<target name="test-sync-with-repo" depends="jar, ccnd, repo" if="${repo2}">
 			<mkdir dir="${testout}"/>
 			
-			<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}" maxmemory="1g">
+			<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
 				<classpath>
 					<path refid="classpath-run"/>
 				</classpath>
@@ -547,7 +547,7 @@
 	<target name="test-flow-control-extra" depends="jar, ccnd, repo">
 	        <mkdir dir="${testout}"/>
 	        <bunzip2 src="testBigFile.bz2" dest="${testout}/testBigFile" />
-	        <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}" maxmemory="1g">
+	        <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
 	            <classpath>
 	                <path refid="classpath-run"/>
 	            </classpath>
@@ -988,7 +988,7 @@
 	<target name="test-security-without-repo" depends="jar, ccnd">
 		<!-- Security tests that don't need a repo running -->
 		<mkdir dir="${testout}"/>
-		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" maxmemory="${JAVA_MEMORY}" showoutput="${showoutput}">
+		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
@@ -1081,7 +1081,7 @@
 	<!-- test versioning -->
 	<target name="test-versioning" depends="jar, ccnd, repo">
 		<mkdir dir="${testout}"/>
-		<junit printsummary="yes" fork="on" forkmode="perTest" haltonfailure="no" dir="${testout}" showoutput="${showoutput}" maxmemory="2048m">
+		<junit printsummary="yes" fork="on" forkmode="perTest" haltonfailure="no" dir="${testout}" showoutput="${showoutput}">
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>

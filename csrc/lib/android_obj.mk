@@ -32,6 +32,7 @@ CCNLIBOBJ := \
     ccn_signing.o \
     ccn_sockaddrutil.o \
     ccn_sockcreate.o \
+    ccn_strategy_mgmt.o \
     ccn_traverse.o \
     ccn_uri.o \
     ccn_versioning.o \
