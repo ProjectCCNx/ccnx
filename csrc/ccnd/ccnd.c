@@ -2493,8 +2493,10 @@ ccnd_nack(struct ccnd_handle *h, struct ccn_charbuf *reply_body,
     int res;
     reply_body->length = 0;
     res = ccn_encode_StatusResponse(reply_body, errcode, errtext);
-    if (res == 0)
+    if (res == 0) {
         res = CCN_CONTENT_NACK;
+        ccnd_msg(h, "nack status_code %d - %s", errcode, errtext);
+    }
     return(res);
 }
 
@@ -3019,6 +3021,7 @@ ccnd_req_strategy(struct ccnd_handle *h,
     int n = 0;
     int nackallowed = 0;
     
+    reason = __LINE__;
     res = ccn_parse_ContentObject(msg, size, &pco, NULL);
     if (res < 0)
         goto Finish;
@@ -3026,6 +3029,7 @@ ccnd_req_strategy(struct ccnd_handle *h,
     if (res < 0)
         goto Finish;
     res = -1;
+    reason = __LINE__;
     strategy_selection = ccn_strategy_selection_parse(req, req_size);
     if (strategy_selection == NULL || strategy_selection->action == NULL)
         goto Finish;
@@ -3113,6 +3117,8 @@ ccnd_req_strategy(struct ccnd_handle *h,
     strategy_selection->action = NULL;
     strategy_selection->ccnd_id = h->ccnd_id;
     strategy_selection->ccnd_id_size = sizeof(h->ccnd_id);
+    strategy_selection->strategyid = si->sclass->id;
+    strategy_selection->parameters = si->parameters;
     strategy_selection->lifetime = -1; /* NYI */
     res = ccnb_append_strategy_selection(reply_body, strategy_selection);
     if (res > 0)
@@ -3123,7 +3129,7 @@ Finish:
     if (nackallowed && si == NULL) {
         struct ccn_charbuf *msg = ccn_charbuf_create();
         ccn_charbuf_putf(msg, "could not process strategy req (l.%d)", reason);
-        res = ccnd_nack(h, reply_body, 450, ccn_charbuf_as_string(msg));
+        res = ccnd_nack(h, reply_body, 504, ccn_charbuf_as_string(msg));
         ccn_charbuf_destroy(&msg);
     }
     return((nackallowed || res <= 0) ? res : -1);
