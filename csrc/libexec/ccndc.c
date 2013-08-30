@@ -1064,12 +1064,12 @@ parse_ccn_strategy_selection(struct ccndc_data *self,
     
     if (cmd_strategy != NULL) {
         off_strategy = strategy->store->length;
-        res = ccn_charbuf_append_string(strategy->store, cmd_strategy);
+        res = ccn_charbuf_append(strategy->store, cmd_strategy, 1+strlen(cmd_strategy));
     }
     
     if (cmd_params != NULL) {
         off_params = strategy->store->length;
-        res = ccn_charbuf_append_string(strategy->store, cmd_params);
+        res = ccn_charbuf_append(strategy->store, cmd_params, 1+strlen(cmd_params));
     }
     if (off_strategy >= 0)
         strategy->strategyid = (const char *)(strategy->store->buf + off_strategy);
