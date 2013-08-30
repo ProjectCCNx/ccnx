@@ -1071,9 +1071,9 @@ parse_ccn_strategy_selection(struct ccndc_data *self,
         off_params = strategy->store->length;
         res = ccn_charbuf_append_string(strategy->store, cmd_params);
     }
-    if (off_strategy > 0)
+    if (off_strategy >= 0)
         strategy->strategyid = (const char *)(strategy->store->buf + off_strategy);
-    if (off_params > 0)
+    if (off_params >= 0)
         strategy->parameters = (const char *)(strategy->store->buf + off_params);
     strategy->lifetime = freshness;
     return (strategy);
