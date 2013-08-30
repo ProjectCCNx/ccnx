@@ -198,3 +198,17 @@ adjust_predicted_response(struct ccnd_handle *h,
         s->src = faceid;
     }
 }
+
+/**
+ * A null strategy for testing purposes
+ *
+ * The main logic should still work even if the strategy does nothing.
+ */
+void
+ccnd_null_strategy_impl(struct ccnd_handle *h,
+                        struct strategy_instance *instance,
+                        struct ccn_strategy *strategy,
+                        enum ccn_strategy_op op,
+                        unsigned faceid)
+{
+}
