@@ -2157,7 +2157,8 @@ check_nameprefix_entries(struct ccnd_handle *h)
     for (npe = e->data; npe != NULL; npe = e->data) {
         if ( (npe->sst.s[0] & CCN_AGED) != 0 &&
               npe->children == 0 &&
-              npe->forwarding == NULL) {
+              npe->forwarding == NULL &&
+              npe->si == NULL) {
             head = &npe->ie_head;
             if (head == head->next) {
                 count += 1;
