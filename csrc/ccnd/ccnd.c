@@ -2151,7 +2151,7 @@ check_nameprefix_entries(struct ccnd_handle *h)
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     struct ielinks *head;
-    struct nameprefix_entry *npe;    
+    struct nameprefix_entry *npe;
     
     hashtb_start(h->nameprefix_tab, e);
     for (npe = e->data; npe != NULL; npe = e->data) {
@@ -4292,7 +4292,7 @@ strategy_class_from_id(const char *id)
     sclass = ccnd_strategy_classes;
     for (i = 0; sclass[i].id[0] != 0; i++) {
         if (strncmp(id, sclass[i].id, sizeof(sclass[i].id)) == 0)
-            return(&(sclass[0]));
+            return(&(sclass[i]));
     }
     return(NULL);
 }
