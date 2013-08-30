@@ -447,7 +447,8 @@ int ccnd_reg_uri(struct ccnd_handle *h,
                  int flags,
                  int expires);
 
-const struct strategy_class *strategy_class_from_id(const char *id);
+const struct strategy_class *
+    strategy_class_from_id(const char *id);
 struct strategy_instance *
     create_strategy_instance(struct ccnd_handle *h,
                              struct nameprefix_entry *npe,

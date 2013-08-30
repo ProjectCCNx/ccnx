@@ -59,6 +59,7 @@
 #include <ccn/nametree.h>
 #include <ccn/schedule.h>
 #include <ccn/reg_mgmt.h>
+#include <ccn/strategy_mgmt.h>
 #include <ccn/uri.h>
 
 #include "ccnd_private.h"
@@ -2986,6 +2987,145 @@ Finish:
     ccn_indexbuf_destroy(&comps);
     if (nackallowed && res < 0)
         res = ccnd_nack(h, reply_body, 450, "could not unregister prefix");
+    return((nackallowed || res <= 0) ? res : -1);
+}
+
+/**
+ * Process a strategy selection request
+ *
+ * This is a request to set, remove, or get the strategy associated
+ * with a prefix.
+ */
+int
+ccnd_req_strategy(struct ccnd_handle *h,
+                  const unsigned char *msg, size_t size,
+                  const char *action,
+                  struct ccn_charbuf *reply_body)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct ccn_parsed_ContentObject pco = {0};
+    int reason = 0;
+    int res;
+    const unsigned char *req;
+    size_t req_size;
+    struct ccn_strategy_selection *strategy_selection = NULL;
+    struct strategy_instance *si = NULL;
+    const struct strategy_class *sclass = NULL;
+    struct nameprefix_entry *npe = NULL;
+    struct nameprefix_entry *p = NULL;
+    struct face *reqface = NULL;
+    struct ccn_indexbuf *comps = NULL;
+    int n = 0;
+    int nackallowed = 0;
+    
+    res = ccn_parse_ContentObject(msg, size, &pco, NULL);
+    if (res < 0)
+        goto Finish;
+    res = ccn_content_get_value(msg, size, &pco, &req, &req_size);
+    if (res < 0)
+        goto Finish;
+    res = -1;
+    strategy_selection = ccn_strategy_selection_parse(req, req_size);
+    if (strategy_selection == NULL || strategy_selection->action == NULL)
+        goto Finish;
+    /* consider the source ... */
+    reqface = face_from_faceid(h, h->interest_faceid);
+    if (reqface == NULL)
+        goto Finish;
+    if ((reqface->flags & (CCN_FACE_GG | CCN_FACE_REGOK)) == 0)
+        goto Finish;
+    nackallowed = 1;
+    
+    if (strategy_selection->name_prefix == NULL) {
+        reason = __LINE__;
+        goto Finish;
+    }
+    if (strategy_selection->ccnd_id_size == sizeof(h->ccnd_id)) {
+        if (memcmp(strategy_selection->ccnd_id,
+                   h->ccnd_id, sizeof(h->ccnd_id)) != 0) {
+            reason = __LINE__;
+            goto Finish;
+        }
+    }
+    else if (strategy_selection->ccnd_id_size != 0) {
+        reason = __LINE__;
+        goto Finish;
+    }
+    if (strcmp(strategy_selection->action, action) != 0) {
+        reason = __LINE__;
+        goto Finish;
+    }
+    /* All requests need a prefix to operate on; set it up here */
+    comps = ccn_indexbuf_create();
+    n = ccn_name_split(strategy_selection->name_prefix, comps);
+    if (n < 0) {
+        reason = __LINE__;
+        goto Finish;
+    }
+    reason = __LINE__;
+    hashtb_start(h->nameprefix_tab, e);
+    res = nameprefix_seek(h, e, strategy_selection->name_prefix->buf, comps, n);
+    npe = e->data;
+    hashtb_end(e);
+    if (npe == NULL || res < 0) {
+        reason = __LINE__;
+        goto Finish;
+    }
+    /* Handle the specific command */
+    if (strcmp(action, "setstrategy") == 0) {
+        if (strategy_selection->strategyid == NULL) {
+            reason = __LINE__;
+            goto Finish;
+        }
+        sclass = strategy_class_from_id(strategy_selection->strategyid);
+        if (sclass == NULL) {
+            reason = __LINE__;
+            goto Finish;
+        }
+        reason = __LINE__;
+        si = create_strategy_instance(h, npe, sclass,
+                                      strategy_selection->parameters);
+    }
+    else if (strcmp(action, "getstrategy") == 0) {
+        reason = __LINE__;
+        si = get_strategy_instance(h, npe);
+    }
+    else if (strcmp(action, "removestrategy") == 0) {
+        reason = __LINE__;
+        remove_strategy_instance(h, npe);
+        si = get_strategy_instance(h, npe);
+    }
+    else abort(); /* bug in caller, not request */
+    if (si == NULL)
+        goto Finish;
+    /* We need to trim the prefix in the reply */
+    for (p = npe; p != NULL && n > 0; p = p->parent) {
+        if (p->si == si)
+            break;
+        n--;
+    }
+    res = ccn_name_chop(strategy_selection->name_prefix, comps, n);
+    if (res < 0) {
+        reason = __LINE__;
+        goto Finish;
+    }
+    strategy_selection->action = NULL;
+    strategy_selection->ccnd_id = h->ccnd_id;
+    strategy_selection->ccnd_id_size = sizeof(h->ccnd_id);
+    strategy_selection->lifetime = -1; /* NYI */
+    res = ccnb_append_strategy_selection(reply_body, strategy_selection);
+    if (res > 0)
+        res = 0;
+Finish:
+    ccn_strategy_selection_destroy(&strategy_selection);
+    ccn_indexbuf_destroy(&comps);
+    if (nackallowed && si == NULL) {
+        struct ccn_charbuf *msg = ccn_charbuf_create();
+        ccn_charbuf_putf(msg, "could not process strategy req (l.%d)", reason);
+        res = ccnd_nack(h, reply_body, 450, ccn_charbuf_as_string(msg));
+        ccn_charbuf_destroy(&msg);
+    }
     return((nackallowed || res <= 0) ? res : -1);
 }
 
