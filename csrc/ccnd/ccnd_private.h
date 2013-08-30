@@ -424,6 +424,7 @@ int ccnd_req_selfreg(struct ccnd_handle *h,
  */
 int ccnd_req_strategy(struct ccnd_handle *h,
                       const unsigned char *msg, size_t size,
+                      const char *action,
                       struct ccn_charbuf *reply_body);
 
 /**
