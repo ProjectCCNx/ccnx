@@ -152,8 +152,30 @@ ccndc_create(struct ccndc_data *self,
  */
 int
 ccndc_destroy(struct ccndc_data *self,
-          int check_only,
-          const char *cmd);
+              int check_only,
+              const char *cmd);
+
+/**
+ * @brief Set/Get/Remove strategy for a prefix
+ *
+ * cmd format:
+ *   <prefix> <strategy> <parameters> <freshness>
+ *
+ * @param self          data pointer to "this"
+ * @param check_only    flag indicating that only command checking is requested (no operations will be performed)
+ * @param cmd           action (set/get/remove strategy)
+ * @param options       command without leading action component
+ * @returns 0 on success
+ */
+enum strat_cmd {
+    STRAT_SET, STRAT_GET, STRAT_REMOVE
+};
+
+int
+ccndc_strategy(struct ccndc_data *self,
+               int check_only,
+               enum strat_cmd cmd,
+               const char *options);
 
 /**
  * brief Add (and if exists recreated) FIB entry based on guess from SRV records for a specified domain
@@ -220,6 +242,10 @@ ccndc_do_prefix_action(struct ccndc_data *self,
                        struct ccn_forwarding_entry *forwarding_entry);
 
 
+struct ccn_strategy_selection *
+ccndc_do_strategy_action(struct ccndc_data *self,
+                         const char *action,
+                         struct ccn_strategy_selection *strategy_selection);
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
@@ -241,5 +267,11 @@ parse_ccn_face_instance(struct ccndc_data *self,
 struct ccn_face_instance *
 parse_ccn_face_instance_from_face(struct ccndc_data *self,
                                   const char *cmd_faceid);
+struct ccn_strategy_selection *
+parse_ccn_strategy_selection(struct ccndc_data *self,
+                             const char *cmd_prefix,
+                             const char *cmd_strategy,
+                             const char *cmd_params,
+                             int freshness);
 
 #endif
