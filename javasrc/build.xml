@@ -830,7 +830,11 @@
 		</parallel>
 	</target>
 
-	<target name="test-security" depends="test-security-without-repo, test-security-with-repo" >
+	<!-- Don't run this by default because it takes too much memory on some systems -->
+	<target name="test-security-with-memory" depends="test-security-without-repo, test-security-with-repo" >
+	</target>
+	
+	<target name="test-security" depends="test-security-with-repo">
 	</target>
 	
 	<target name="test-security-without-repo" depends="jar, ccnd">
