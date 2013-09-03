@@ -163,6 +163,8 @@ ccnd_default_strategy_impl(struct ccnd_handle *h,
             break;
         case CCNST_EXPDN:
             break;
+        case CCNST_REFRESH:
+            break;
         case CCNST_FINALIZE:
             break; /* Nothing to clean up */
     }

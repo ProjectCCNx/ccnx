@@ -140,10 +140,8 @@ enum ccn_strategy_op {
                        (similar interest arrived from a new face) */
     CCNST_EXPUP,    /* upstream is expiring */
     CCNST_EXPDN,    /* downstream is expiring */
-    // refresh
+    CCNST_REFRESH,  /* downstream refreshed */
 // notification
-// expiry of upstream
-// expiry of downstream
 // removal of upstream
 // removal of downstream
     CCNST_TIMER,    /* wakeup used by strategy */

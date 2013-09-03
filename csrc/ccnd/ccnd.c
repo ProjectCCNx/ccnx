@@ -3523,14 +3523,11 @@ do_propagate(struct ccn_schedule *sched,
             if (d[i]->faceid != p->faceid)
                 break;
         if (i < n) {
-            p = send_interest(h, ie, d[i], p);
-            if (ie->ev != NULL)
-                ccn_schedule_cancel(h->sched, ie->ev);
-            upstreams++;
-            rem = p->expiry - now;
-            if (rem < mn)
-                mn = rem;
+            p->pfi_flags |= CCND_PFI_SENDUPST;
+            strategy_callout(h, ie, CCNST_EXPUP, p->faceid);
         }
+        if ((p->pfi_flags & CCND_PFI_SENDUPST) != 0)
+            upstreams++;
         else {
             /* Upstream expired, but we have nothing to feed it. */
             p->pfi_flags |= CCND_PFI_UPHUNGRY;
@@ -3540,6 +3537,22 @@ do_propagate(struct ccn_schedule *sched,
         strategy_callout(h, ie, CCNST_TIMEOUT, CCN_NOFACEID);
         consume_interest(h, ie);
         return(0);
+    }
+    for (p = ie->strategy.pfl; p != NULL; p = next) {
+        next = p->next;
+        if ((p->pfi_flags & CCND_PFI_SENDUPST) == 0)
+            continue;
+        for (i = 0; i < n; i++)
+            if (d[i]->faceid != p->faceid)
+                break;
+        if (i < n) {
+            p = send_interest(h, ie, d[i], p);
+            if (ie->ev != NULL)
+                ccn_schedule_cancel(h->sched, ie->ev);
+            rem = p->expiry - now;
+            if (rem < mn)
+                mn = rem;
+        }
     }
     /* Determine when we need to run again */
     if (mn == 0) abort();
@@ -3915,19 +3928,21 @@ propagate_interest(struct ccnd_handle *h,
     }
     p = pfi_seek(h, ie, faceid, CCND_PFI_DNSTREAM, res == HT_OLD_ENTRY);
     p = pfi_set_nonce(h, ie, p, nonce, noncesize);
+    pfi_set_expiry_from_lifetime(h, ie, p, lifetime);
     if (nonce == cb || pfi_unique_nonce(h, ie, p)) {
         ie->strategy.renewed = h->wtnow;
         ie->strategy.renewals += 1;
         if ((p->pfi_flags & CCND_PFI_PENDING) == 0) {
             p->pfi_flags |= CCND_PFI_PENDING;
             face->pending_interests += 1;
+            if (res == HT_OLD_ENTRY)
+                strategy_callout(h, ie, CCNST_REFRESH, faceid);
         }
     }
     else {
         /* Nonce has been seen before; do not forward. */
         p->pfi_flags |= CCND_PFI_SUPDATA;
     }
-    pfi_set_expiry_from_lifetime(h, ie, p, lifetime);
     for (i = 0; i < outbound->n; i++) {
         p = pfi_seek(h, ie, outbound->buf[i], CCND_PFI_UPSTREAM, res == HT_OLD_ENTRY);
         if (wt_compare(p->expiry, h->wtnow) < 0) {
