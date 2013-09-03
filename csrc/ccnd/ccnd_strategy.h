@@ -134,12 +134,14 @@ enum ccn_strategy_op {
     CCNST_NOP,      /* no-operation */
     CCNST_INIT,     /* initialize strategy, allocate instance state */
     CCNST_FIRST,    /* newly created interest entry (pit entry) */
-// CCNST_ADDDNSTRM additional downstream face (same interest arrived from another face)
-// CCNST_ADDUPSTRM additional upstream face (e.g. new registration)
-// refresh
+    CCNST_NEWUP,    /* additional upstream face
+                       (new registration, etc.) */
+    CCNST_NEWDN,    /* additional downstream face
+                       (similar interest arrived from a new face) */
+    CCNST_EXPUP,    /* upstream is expiring */
+    CCNST_EXPDN,    /* downstream is expiring */
+    CCNST_REFRESH,  /* downstream refreshed */
 // notification
-// expiry of upstream
-// expiry of downstream
 // removal of upstream
 // removal of downstream
     CCNST_TIMER,    /* wakeup used by strategy */
