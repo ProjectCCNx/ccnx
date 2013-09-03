@@ -155,6 +155,14 @@ ccnd_default_strategy_impl(struct ccnd_handle *h,
             break;
         case CCNST_INIT:
             break; /* No strategy private data needed */
+        case CCNST_NEWUP:
+            break;
+        case CCNST_NEWDN:
+            break;
+        case CCNST_EXPUP:
+            break;
+        case CCNST_EXPDN:
+            break;
         case CCNST_FINALIZE:
             break; /* Nothing to clean up */
     }

@@ -136,7 +136,7 @@ pfi_set_expiry_from_lifetime(struct ccnd_handle *h, struct interest_entry *ie,
                              struct pit_face_item *p, intmax_t lifetime);
 static struct pit_face_item *
 pfi_seek(struct ccnd_handle *h, struct interest_entry *ie,
-         unsigned faceid, unsigned pfi_flag);
+         unsigned faceid, unsigned pfi_flag, int docallout);
 static void strategy_callout(struct ccnd_handle *h,
                              struct interest_entry *ie,
                              enum ccn_strategy_op op,
@@ -3468,6 +3468,7 @@ do_propagate(struct ccn_schedule *sched,
         next = p->next;
         if ((p->pfi_flags & CCND_PFI_DNSTREAM) != 0) {
             if (wt_compare(p->expiry, now) <= 0) {
+                strategy_callout(h, ie, CCNST_EXPDN, p->faceid);
                 if (h->debug & 2)
                     ccnd_debug_ccnb(h, __LINE__, "interest_expiry",
                                     face_from_faceid(h, p->faceid),
@@ -3668,7 +3669,7 @@ pfi_destroy(struct ccnd_handle *h, struct interest_entry *ie,
  */
 static struct pit_face_item *
 pfi_seek(struct ccnd_handle *h, struct interest_entry *ie,
-         unsigned faceid, unsigned pfi_flag)
+         unsigned faceid, unsigned pfi_flag, int docallout)
 {
     struct pit_face_item *p;
     struct pit_face_item **pp;
@@ -3683,6 +3684,12 @@ pfi_seek(struct ccnd_handle *h, struct interest_entry *ie,
         p->pfi_flags = pfi_flag;
         p->expiry = h->wtnow;
         *pp = p;
+    }
+    if (docallout) {
+        if ((p->pfi_flags & CCND_PFI_UPSTREAM) != 0)
+            strategy_callout(h, ie, CCNST_NEWUP, faceid);
+        if ((p->pfi_flags & CCND_PFI_DNSTREAM) != 0)
+            strategy_callout(h, ie, CCNST_NEWDN, faceid);
     }
     return(p);
 }
@@ -3906,7 +3913,7 @@ propagate_interest(struct ccnd_handle *h,
         nonce = cb;
         nonce_ok(h, face, msg, pi, nonce, noncesize);
     }
-    p = pfi_seek(h, ie, faceid, CCND_PFI_DNSTREAM);
+    p = pfi_seek(h, ie, faceid, CCND_PFI_DNSTREAM, res == HT_OLD_ENTRY);
     p = pfi_set_nonce(h, ie, p, nonce, noncesize);
     if (nonce == cb || pfi_unique_nonce(h, ie, p)) {
         ie->strategy.renewed = h->wtnow;
@@ -3922,7 +3929,7 @@ propagate_interest(struct ccnd_handle *h,
     }
     pfi_set_expiry_from_lifetime(h, ie, p, lifetime);
     for (i = 0; i < outbound->n; i++) {
-        p = pfi_seek(h, ie, outbound->buf[i], CCND_PFI_UPSTREAM);
+        p = pfi_seek(h, ie, outbound->buf[i], CCND_PFI_UPSTREAM, res == HT_OLD_ENTRY);
         if (wt_compare(p->expiry, h->wtnow) < 0) {
             p->expiry = h->wtnow + 1; // ZZZZ - the +1 may be overkill here.
             p->pfi_flags &= ~CCND_PFI_UPHUNGRY;
@@ -3982,7 +3989,8 @@ update_npe_children(struct ccnd_handle *h, struct nameprefix_entry *npe, unsigne
                                             &pi, ie->ll.npe);
                     for (i = 0; i < ob->n; i++) {
                         if (ob->buf[i] == faceid) {
-                            p = pfi_seek(h, ie, faceid, CCND_PFI_UPSTREAM);
+                            p = pfi_seek(h, ie, faceid, CCND_PFI_UPSTREAM, 1);
+                            // XXX - strategy callout should be able to control what happens next.
                             if ((p->pfi_flags & CCND_PFI_UPENDING) == 0) {
                                 p->expiry = h->wtnow + usec / (1000000 / WTHZ);
                                 usec += 200;
