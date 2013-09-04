@@ -1,5 +1,5 @@
 /*
- * @file ccnd/ccnd_strategy0.c
+ * @file ccnd/ccnd_strategy1.c
  *
  * Part of ccnd - the CCNx Daemon
  *
@@ -19,25 +19,14 @@
 
 #include "ccnd_strategy.h"
 
-#define MINE 0x7baca2 // hint: openssl rand -hex 3
-
-struct strategy_state {
-    unsigned magic;              /**< MINE to mark our stuff */
-    unsigned src;                /**< faceid of recent content source */
-    unsigned osrc;               /**< and of older matching content */
-    unsigned usec;               /**< response-time prediction */
-};
-
-CCN_STATESIZECHECK(X_strategy_state, struct strategy_state);
-
-
 /**
- * This implements a new strategy.
- *
- * Eventually there will be a way to have other strategies.
+ * This implements a strategy which sends an interest in parallel to all
+ * eligible upstream faces.  This is expected to result in better performance
+ * when there are multiple independent sources at the expense of increased
+ * network traffic.
  */
 void
-strategy1_callout(struct ccnd_handle *h,
+ccnd_parallel_strategy_impl(struct ccnd_handle *h,
                   struct strategy_instance *instance,
                   struct ccn_strategy *strategy,
                   enum ccn_strategy_op op,
@@ -49,7 +38,12 @@ strategy1_callout(struct ccnd_handle *h,
     switch (op) {
         case CCNST_NOP:
             break;
+        case CCNST_INIT:
+            break; /* No strategy private data needed */
         case CCNST_FIRST:
+            /* clear any default timing information */
+            for (x = strategy->pfl; x != NULL; x = x->next)
+                x->expiry = 0;
             /* Find our downstream; right now there should be just one. */
             for (x = strategy->pfl; x != NULL; x = x->next)
                 if ((x->pfi_flags & CCND_PFI_DNSTREAM) != 0)
@@ -64,7 +58,16 @@ strategy1_callout(struct ccnd_handle *h,
                             p = send_interest(h, strategy->ie, x, p);
                 }
             }
-            
+            break;
+        case CCNST_NEWUP:
+            break;
+        case CCNST_NEWDN:
+            break;
+        case CCNST_EXPUP:
+            break;
+        case CCNST_EXPDN:
+            break;
+        case CCNST_REFRESH:
             break;
         case CCNST_TIMER:
             break;
@@ -73,8 +76,6 @@ strategy1_callout(struct ccnd_handle *h,
         case CCNST_TIMEOUT:
             /* Interest has not been satisfied or refreshed */
             break;
-        case CCNST_INIT:
-            break; /* No strategy private data needed */
         case CCNST_FINALIZE:
             break; /* Nothing to clean up */
     }
