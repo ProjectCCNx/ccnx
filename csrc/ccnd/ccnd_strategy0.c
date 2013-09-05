@@ -222,3 +222,56 @@ ccnd_null_strategy_impl(struct ccnd_handle *h,
                         unsigned faceid)
 {
 }
+
+/**
+ * A trace strategy for testing purposes
+ *
+ * Useful for debugging.
+ */
+void
+ccnd_trace_strategy_impl(struct ccnd_handle *h,
+                         struct strategy_instance *instance,
+                         struct ccn_strategy *strategy,
+                         enum ccn_strategy_op op,
+                         unsigned faceid)
+{    
+    switch (op) {
+        case CCNST_INIT:
+            ccnd_msg(h, "trace CCNST_INIT - %#p", (void *)instance);
+            break;
+        case CCNST_NOP:
+            ccnd_msg(h, "trace CCNST_NOP %u %#p,%#p", faceid, (void *)instance, (void *)strategy);
+            break;
+        case CCNST_FIRST:
+            ccnd_msg(h, "trace CCNST_FIRST %u %#p,%#p", faceid, (void *)instance, (void *)strategy);
+            break;
+        case CCNST_TIMER:
+            ccnd_msg(h, "trace CCNST_TIMER %u %#p,%#p", faceid, (void *)instance, (void *)strategy);
+            break;
+        case CCNST_SATISFIED:
+            ccnd_msg(h, "trace CCNST_SATISFIED %u %#p,%#p", faceid, (void *)instance, (void *)strategy);
+            break;
+        case CCNST_TIMEOUT:
+            ccnd_msg(h, "trace CCNST_TIMEOUT %u %#p,%#p", faceid, (void *)instance, (void *)strategy);
+            break;
+        case CCNST_NEWUP:
+            ccnd_msg(h, "trace CCNST_NEWUP %u %#p,%#p", faceid, (void *)instance, (void *)strategy);
+            break;
+        case CCNST_NEWDN:
+            ccnd_msg(h, "trace CCNST_NEWDN %u %#p,%#p", faceid, (void *)instance, (void *)strategy);
+            break;
+        case CCNST_EXPUP:
+            ccnd_msg(h, "trace CCNST_EXPUP %u %#p,%#p", faceid, (void *)instance, (void *)strategy);
+            break;
+        case CCNST_EXPDN:
+            ccnd_msg(h, "trace CCNST_EXPDN %u %#p,%#p", faceid, (void *)instance, (void *)strategy);
+            break;
+        case CCNST_REFRESH:
+            ccnd_msg(h, "trace CCNST_REFRESH %u %#p,%#p", faceid, (void *)instance, (void *)strategy);
+            break;
+        case CCNST_FINALIZE:
+            ccnd_msg(h, "trace CCNST_FINALIZE %#p", (void *)instance);
+            break;
+    }
+    ccnd_default_strategy_impl(h, instance, strategy, op, faceid);
+}
