@@ -27,7 +27,6 @@
 
 #include <stddef.h>
 #include <ccn/charbuf.h>
-#include <ccn/sockcreate.h>
 
 /**
  * Internal representation of a strategy selection message
