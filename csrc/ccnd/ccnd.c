@@ -3319,7 +3319,7 @@ ie_next_usec(struct ccnd_handle *h, struct interest_entry *ie,
 /**
  *  Forward an interest message
  *
- *  x is downstream (the interest came x).
+ *  x is downstream (the interest came from x).
  *  p is upstream (the interest is to be forwarded to p).
  *  @returns p (or its reallocated replacement).
  */
