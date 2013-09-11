@@ -92,8 +92,7 @@ ccn_sockaddrutil.o: ccn_sockaddrutil.c ../include/ccn/charbuf.h \
 ccn_sockcreate.o: ccn_sockcreate.c ../include/ccn/sockcreate.h
 ccn_strategy_mgmt.o: ccn_strategy_mgmt.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/strategy_mgmt.h \
-  ../include/ccn/sockcreate.h
+  ../include/ccn/indexbuf.h ../include/ccn/strategy_mgmt.h
 ccn_traverse.o: ccn_traverse.c ../include/ccn/bloom.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h

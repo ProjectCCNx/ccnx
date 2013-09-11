@@ -129,7 +129,98 @@ struct ccn_strategy {
     struct interest_entry *ie;      /**< associated interest entry */
 };
 
-/** Ops for strategy callout */
+/**
+ * Ops for strategy callout
+ *
+ * These are passed to the strategy callout to inform it of the current
+ * situation.
+ *
+ * CCNST_NOP        is useful as an argument to pass to strategy_settimer()
+ *                  when the callout wishes to cancel a pending strategy
+ *                  timer.  CCNST_NOP is not expected to actually be passed
+ *                  to a callout, but if it is, the strategy should take
+ *                  no action that changes forwarding behavior.
+ *
+ * CCNST_INIT       provides an opportunity for the callout to allocate
+ *                  and initialize any private instance state that it may
+ *                  require.  This happens when a new strategy is attached to
+ *                  a givien prefix.  If the strategy uses parameters, this
+ *                  call is the appropriate time to parse them and save the
+ *                  resulting values in the private instance state for
+ *                  rapid access in the more time-critical calls.
+   XXX - we need a way to indicate a bad parameter string.
+ *
+ * CCNST_FIRST      indicates the creation of a new PIT entry due to an
+ *                  arriving interest.  Since there was no existing state
+ *                  for similar interests, there will be exactly one
+ *                  downstream in the pfi list.  The upstreams in the list
+ *                  are those that the FIB has indicated are eligible to
+ *                  receive the interests.  The strategy callout should
+ *                  examine each upstream that has the CCND_PFI_SENDUPST
+    XXX - premarking is NYI
+ *                  bit set, and either clear the bit to avoid sending
+ *                  the interest on that face, or set the expiry time
+ *                  according to when the interest should be sent.
+ *                  The expiry times are initially set to the current time,
+ *                  so if the strategy callout does nothing, the interest
+ *                  will be sent to the marked upstreams as soon as the
+ *                  callout returns.
+ *                  At the time of the CCNST_FIRST call, some upstreams may have
+ *                  already been fed (such as those with the TAP forwarding
+ *                  flag).  These will have CCND_PFI_SENDUPST clear and
+ *                  CCND_PFI_UPENDING set.  The strategy callout should
+ *                  generally ignore such entries.
+ *                  The faceid indicates the initial downstream face.
+ *
+ * CCNST_NEWUP      indicates a new upstream has been added.  This may be
+ *                  because of a new prefix registration, or because
+ *                  a second downstream has made the initial upstream
+ *                  eligible.  The new upstream will have CCND_PFI_SENDUPST
+ *                  set and an expriry in the near future, similar to the
+ *                  situation for CCNST_FIRST.  The strategy should adjust
+ *                  these as appropriate.
+ *                  The faceid indicates the new upstream face.
+ *
+ * CCNST_NEWDN      a new downstream has been added, due to the arrival of
+ *                  similar interest on a new face.
+ *                  The faceid indicates the new downstream face.
+ *
+ * CCNST_EXPUP      indicates an upstream is eligible to receive a new
+ *                  copy of the interest, because any previously sent
+ *                  interest has expired and an unexpired downsream is
+ *                  available.  The processing of CCND_PFI_SENDUPST and
+ *                  the expiry are similar to the CCNST_NEWUP case.
+ *                  The faceid indicates the affected upstream face.
+ *
+ * CCNST_EXPDN      indicates the downstream is expiring.
+ *                  The faceid indicates the expiring downstream face.
+ *
+ * CCNST_REFRESH    indicates a new, similar, interest message has arrived on
+ *                  a previously existing downstream face.  Its expiry
+ *                  will have been updated accordingly.  The strategy
+ *                  likely does not need to do anything special with this
+ *                  case, because it will get separate calls for each of
+ *                  the upstreams when their respective expiries occur.
+ *                  The faceid indicates the refreshed downstream face.
+ *
+ * CCNST_TIMER      is intended as an argument for strategy_settimer()
+ *                  so that the strategy callout can get control at a time
+ *                  that does not need to correspond with the expiry of
+ *                  an upstream or downstream.
+ *                  The value of faceid is not interesting.
+ *
+ * CCNST_SATISFIED  indicates the arrival of a matching content object.
+ *                  The faceid indicates the source of the matching content.
+ *
+ * CCNST_TIMEOUT    indicates that all downstreams and upstreams have expired.
+ *                  The PIT entry will go away as soon as the callout returns.
+ *                  The value of faceid is not interesting.
+ *
+ * CCNST_FINALIZE   indicates the strategy instance is about to go away.
+ *                  The strategy callout should deallocate any
+ *                  strategy-private memory.
+ *                  The value of faceid is not interesting.
+ */
 enum ccn_strategy_op {
     CCNST_NOP,      /* no-operation */
     CCNST_INIT,     /* initialize strategy, allocate instance state */
