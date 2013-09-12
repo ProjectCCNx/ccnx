@@ -71,10 +71,10 @@ The components are required, and represent the name prefix of the content to be 
 *'<nonce>'* is required, and is as described in the Nonce (Namespace N) section of link:NameConventions.html[CCNx Basic Name Conventions].
 
 ==== *'<segment>'*
-*'<segment>'* is required, and is the sequence component of the first segment to be stored. For consecutive numbering, this is typically +%00+.
+*'<segment>'* is required.  If the segment represents a consecutive numbering (starts with the marker +%00+) then the repository will retrieve segments consecutively, starting at this segment, until the final segment is reached. If the segment does not represent a consecutive numbering only the single indicated segment will be retrieved.
 
 ==== *'<digest>'*
-*'<digest>'* is required, and is the SHA-256 digest of the entire ccnb-encoded link:ContentObject.html[Content Object]. (This is the implicit digest component of the name of any Content Object. The combination of *'<segment>'* and *'<digest>'* precisely identify the first segment of the content to be stored.)
+*'<digest>'* is required, and is the SHA-256 digest of the entire ccnb-encoded link:ContentObject.html[Content Object]. (This is the implicit digest component of the name of any Content Object. The combination of *'<segment>'* and *'<digest>'* precisely identify the first (or only) segment of the content to be stored.)
 
 ==== Response
 If the object is 'not' present, the Repository responds with a Content Object containing a +RepositoryInfo+ object of type "INFO" as described in link:RepositoryInfoObject.html[CCNx RepositoryInfo Object], the same as for Start Write. The Repository then begins fetching content from the writer using normal CCNx protocol messages. Retrieval is asynchronous.

@@ -114,7 +114,8 @@ the remaining bytes of the segment name hold the sequence number in
 big-endian binary, using the minimum number of bytes.  Thus sequence
 number 0 is encoded in just one byte, for example in consecutive
 numbering the name of segment 0 is `%00` and the name of segment 1 is 
-`%00%01`. 
+`%00%01`. The encoding of segments is typically limited to 9 bytes
+including the marker byte.
 
 Note that this encoding is not quite dense - `%00%00` is unused, as
 are other components that start with these two bytes. 
@@ -187,7 +188,7 @@ Checked Start Write Command::
    present.  The repository responds in either case.  Following the 
    command component is a nonce component, a segment name component,
    and an explicit digest component, the last two identifying precisely
-   the first segment of the stream to be stored.
+   the first (or only) segment of the stream to be stored.
 
 === Nonce (Namespace `N`)
 
