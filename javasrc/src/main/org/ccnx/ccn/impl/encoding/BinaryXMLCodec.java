@@ -459,9 +459,7 @@ public final class BinaryXMLCodec implements XMLCodec {
 		}
 		
 		encodeTypeAndVal(XML_BLOB, length, ostream);
-		if (null != blob) {
-			ostream.write(blob, offset, length);
-		}
+		ostream.write(blob, offset, length);
 	}
 
 	
