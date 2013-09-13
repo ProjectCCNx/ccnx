@@ -144,11 +144,11 @@ struct ccn_strategy {
  * CCNST_INIT       provides an opportunity for the callout to allocate
  *                  and initialize any private instance state that it may
  *                  require.  This happens when a new strategy is attached to
- *                  a givien prefix.  If the strategy uses parameters, this
+ *                  a given prefix.  If the strategy uses parameters, this
  *                  call is the appropriate time to parse them and save the
  *                  resulting values in the private instance state for
  *                  rapid access in the more time-critical calls.
-   XXX - we need a way to indicate a bad parameter string.
+    XXX - we need a way to indicate a bad parameter string.
  *
  * CCNST_FIRST      indicates the creation of a new PIT entry due to an
  *                  arriving interest.  Since there was no existing state
@@ -172,25 +172,27 @@ struct ccn_strategy {
  *                  generally ignore such entries.
  *                  The faceid indicates the initial downstream face.
  *
- * CCNST_NEWUP      indicates a new upstream has been added.  This may be
+ * CCNST_NEWUP      indicates an upstream is eligible to receive a new
+ *                  copy of the interest, because any previously sent
+ *                  interest has expired and an unexpired downsream is
+ *                  available; or a new upstream has been added,
  *                  because of a new prefix registration, or because
  *                  a second downstream has made the initial upstream
- *                  eligible.  The new upstream will have CCND_PFI_SENDUPST
- *                  set and an expriry in the near future, similar to the
+ *                  eligible.  The upstream will have CCND_PFI_SENDUPST
+ *                  set and an expiry in the near future, similar to the
  *                  situation for CCNST_FIRST.  The strategy should adjust
  *                  these as appropriate.
- *                  The faceid indicates the new upstream face.
+ *                  The faceid indicates the affected upstream face.
  *
  * CCNST_NEWDN      a new downstream has been added, due to the arrival of
  *                  similar interest on a new face.
  *                  The faceid indicates the new downstream face.
  *
- * CCNST_EXPUP      indicates an upstream is eligible to receive a new
- *                  copy of the interest, because any previously sent
- *                  interest has expired and an unexpired downsream is
- *                  available.  The processing of CCND_PFI_SENDUPST and
- *                  the expiry are similar to the CCNST_NEWUP case.
- *                  The faceid indicates the affected upstream face.
+ * CCNST_EXPUP      indicates an upstream is expiring. This happens when and
+ *                  only when an interest has been sent to the upstream face
+ *                  and the associated lifetime has elapsed without the
+ *                  receipt of matching content.
+ *                  The faceid indicates the expiring upstream face.
  *
  * CCNST_EXPDN      indicates the downstream is expiring.
  *                  The faceid indicates the expiring downstream face.
@@ -210,6 +212,10 @@ struct ccn_strategy {
  *                  The value of faceid is not interesting.
  *
  * CCNST_SATISFIED  indicates the arrival of a matching content object.
+ *                  After the strategy callout returns, all of the
+ *                  downstreams that have CCND_PFI_PENDING set will
+ *                  be sent copies of the data, and the PIT entry will
+ *                  be removed.
  *                  The faceid indicates the source of the matching content.
  *
  * CCNST_TIMEOUT    indicates that all downstreams and upstreams have expired.
@@ -232,9 +238,6 @@ enum ccn_strategy_op {
     CCNST_EXPUP,    /* upstream is expiring */
     CCNST_EXPDN,    /* downstream is expiring */
     CCNST_REFRESH,  /* downstream refreshed */
-// notification
-// removal of upstream
-// removal of downstream
     CCNST_TIMER,    /* wakeup used by strategy */
     CCNST_SATISFIED, /* matching content has arrived, pit entry will go away */
     CCNST_TIMEOUT,  /* all downstreams timed out, pit entry will go away */
