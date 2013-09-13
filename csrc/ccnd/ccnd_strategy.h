@@ -157,7 +157,6 @@ struct ccn_strategy {
  *                  are those that the FIB has indicated are eligible to
  *                  receive the interests.  The strategy callout should
  *                  examine each upstream that has the CCND_PFI_SENDUPST
-    XXX - premarking is NYI
  *                  bit set, and either clear the bit to avoid sending
  *                  the interest on that face, or set the expiry time
  *                  according to when the interest should be sent.

@@ -223,6 +223,25 @@ ccnd_null_strategy_impl(struct ccnd_handle *h,
 {
 }
 
+
+static void
+format_pfi(struct ccnd_handle *h, struct pit_face_item *p, struct ccn_charbuf *c)
+{
+    ccn_charbuf_putf(c, " %s%s%s%s%s%s%u@%u",
+                     (p->pfi_flags & CCND_PFI_UPSTREAM) ? "u" :
+                      (p->pfi_flags & CCND_PFI_DNSTREAM) ? "d" : "?",
+                     (p->pfi_flags & (CCND_PFI_PENDING|CCND_PFI_UPENDING)) ? "p" : "",
+                     (p->pfi_flags & CCND_PFI_UPHUNGRY) ? "h" : "",
+                     (p->pfi_flags & CCND_PFI_SENDUPST) ? "s" : "",
+                     (p->pfi_flags & CCND_PFI_SUPDATA) ? "x" : "",
+                     (p->pfi_flags & CCND_PFI_DCFACE) ? "c" : "",
+                     (unsigned)p->faceid,
+                     (unsigned)(p->expiry - h->wtnow));
+}
+
+/* Set this pointer if you want to trace a different strategy. */
+strategy_callout_proc ccnd_traced_strategy = &ccnd_default_strategy_impl;
+
 /**
  * A trace strategy for testing purposes
  *
@@ -234,44 +253,71 @@ ccnd_trace_strategy_impl(struct ccnd_handle *h,
                          struct ccn_strategy *strategy,
                          enum ccn_strategy_op op,
                          unsigned faceid)
-{    
+{
+    unsigned serial = 0;
+    struct pit_face_item *p = NULL;
+    struct ccn_charbuf *c = ccn_charbuf_create();
+    
+    if (strategy != NULL) {
+        serial = strategy->ie->serial;
+        ccn_charbuf_reset(c);
+        for (p = strategy->pfl; p!= NULL; p = p->next)
+            format_pfi(h, p, c);
+    }
+    /* Call through to the traced strategy. */
+    ccnd_traced_strategy(h, instance, strategy, op, faceid);
+    if (strategy != NULL) {
+        ccn_charbuf_putf(c, " ///");
+        for (p = strategy->pfl; p!= NULL; p = p->next)
+            format_pfi(h, p, c);
+    }
     switch (op) {
         case CCNST_INIT:
             ccnd_msg(h, "trace CCNST_INIT - %#p", (void *)instance);
             break;
         case CCNST_NOP:
-            ccnd_msg(h, "trace CCNST_NOP %u %#p,%#p", faceid, (void *)instance, (void *)strategy);
+            ccnd_msg(h, "trace CCNST_NOP %u %#p,i=%u", faceid,
+                     (void *)instance, serial);
             break;
         case CCNST_FIRST:
-            ccnd_msg(h, "trace CCNST_FIRST %u %#p,%#p", faceid, (void *)instance, (void *)strategy);
+            ccnd_msg(h, "trace CCNST_FIRST %u %#p,i=%u%s", faceid,
+                     (void *)instance, serial, ccn_charbuf_as_string(c));
             break;
         case CCNST_TIMER:
-            ccnd_msg(h, "trace CCNST_TIMER %u %#p,%#p", faceid, (void *)instance, (void *)strategy);
+            ccnd_msg(h, "trace CCNST_TIMER %u %#p,i=%u%s", faceid,
+                     (void *)instance, serial, ccn_charbuf_as_string(c));
             break;
         case CCNST_SATISFIED:
-            ccnd_msg(h, "trace CCNST_SATISFIED %u %#p,%#p", faceid, (void *)instance, (void *)strategy);
+            ccnd_msg(h, "trace CCNST_SATISFIED %u %#p,i=%u%s", faceid,
+                     (void *)instance, serial, ccn_charbuf_as_string(c));
             break;
         case CCNST_TIMEOUT:
-            ccnd_msg(h, "trace CCNST_TIMEOUT %u %#p,%#p", faceid, (void *)instance, (void *)strategy);
+            ccnd_msg(h, "trace CCNST_TIMEOUT %u %#p,i=%u%s", faceid,
+                     (void *)instance, serial, ccn_charbuf_as_string(c));
             break;
         case CCNST_NEWUP:
-            ccnd_msg(h, "trace CCNST_NEWUP %u %#p,%#p", faceid, (void *)instance, (void *)strategy);
+            ccnd_msg(h, "trace CCNST_NEWUP %u %#p,i=%u%s", faceid,
+                     (void *)instance, serial, ccn_charbuf_as_string(c));
             break;
         case CCNST_NEWDN:
-            ccnd_msg(h, "trace CCNST_NEWDN %u %#p,%#p", faceid, (void *)instance, (void *)strategy);
+            ccnd_msg(h, "trace CCNST_NEWDN %u %#p,i=%u%s", faceid,
+                     (void *)instance, serial, ccn_charbuf_as_string(c));
             break;
         case CCNST_EXPUP:
-            ccnd_msg(h, "trace CCNST_EXPUP %u %#p,%#p", faceid, (void *)instance, (void *)strategy);
+            ccnd_msg(h, "trace CCNST_EXPUP %u %#p,i=%u%s", faceid,
+                     (void *)instance, serial, ccn_charbuf_as_string(c));
             break;
         case CCNST_EXPDN:
-            ccnd_msg(h, "trace CCNST_EXPDN %u %#p,%#p", faceid, (void *)instance, (void *)strategy);
+            ccnd_msg(h, "trace CCNST_EXPDN %u %#p,i=%u%s", faceid,
+                     (void *)instance, serial, ccn_charbuf_as_string(c));
             break;
         case CCNST_REFRESH:
-            ccnd_msg(h, "trace CCNST_REFRESH %u %#p,%#p", faceid, (void *)instance, (void *)strategy);
+            ccnd_msg(h, "trace CCNST_REFRESH %u %#p,i=%u%s", faceid,
+                     (void *)instance, serial, ccn_charbuf_as_string(c));
             break;
         case CCNST_FINALIZE:
             ccnd_msg(h, "trace CCNST_FINALIZE %#p", (void *)instance);
             break;
     }
-    ccnd_default_strategy_impl(h, instance, strategy, op, faceid);
+    ccn_charbuf_destroy(&c);
 }
