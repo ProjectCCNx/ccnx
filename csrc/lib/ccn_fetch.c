@@ -834,6 +834,9 @@ ccn_fetch_open(struct ccn_fetch *f,
         struct ccn_fetch_stream **streams;
         streams = realloc(f->streams, sizeof(*(f->streams)) * nMax);
         if (streams == NULL) {
+            ccn_charbuf_destroy(&fs->name);
+            freeString(fs->id);
+            free(fs);            
             return (NULL); // TBD: should this be handled differently?
         }
         f->streams = streams;
