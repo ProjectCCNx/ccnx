@@ -524,14 +524,14 @@ static struct ccn_charbuf *
 make_prefetch_template()
 {
     struct ccn_charbuf *templ = ccn_charbuf_create_n(16);
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
-    ccn_charbuf_append_closer(templ); /* </Name> */
-    ccn_charbuf_append_tt(templ, CCN_DTAG_MaxSuffixComponents, CCN_DTAG);
+    ccnb_element_begin(templ, CCN_DTAG_Interest);
+    ccnb_element_begin(templ, CCN_DTAG_Name);
+    ccnb_element_end(templ); /* </Name> */
+    ccnb_element_begin(templ, CCN_DTAG_MaxSuffixComponents);
     ccnb_append_number(templ, 1);
-    ccn_charbuf_append_closer(templ); /* </MaxSuffixComponents> */
+    ccnb_element_end(templ); /* </MaxSuffixComponents> */
     ccnb_append_tagged_binary_number(templ, CCN_DTAG_InterestLifetime, CCN_PREFETCH_LIFETIME);
-    ccn_charbuf_append_closer(templ); /* </Interest> */
+    ccnb_element_end(templ); /* </Interest> */
     return(templ);
 }
 
@@ -539,14 +539,14 @@ static struct ccn_charbuf *
 make_data_template()
 {
     struct ccn_charbuf *templ = ccn_charbuf_create_n(16);
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
-    ccn_charbuf_append_closer(templ); /* </Name> */
-    ccn_charbuf_append_tt(templ, CCN_DTAG_MaxSuffixComponents, CCN_DTAG);
+    ccnb_element_begin(templ, CCN_DTAG_Interest);
+    ccnb_element_begin(templ, CCN_DTAG_Name);
+    ccnb_element_end(templ); /* </Name> */
+    ccnb_element_begin(templ, CCN_DTAG_MaxSuffixComponents);
     ccnb_append_number(templ, 1);
-    ccn_charbuf_append_closer(templ); /* </MaxSuffixComponents> */
+    ccnb_element_end(templ); /* </MaxSuffixComponents> */
     ccnb_append_tagged_binary_number(templ, CCN_DTAG_InterestLifetime, CCN_DATA_LIFETIME);
-    ccn_charbuf_append_closer(templ); /* </Interest> */
+    ccnb_element_end(templ); /* </Interest> */
     return(templ);
 }
 

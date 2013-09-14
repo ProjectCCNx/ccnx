@@ -119,7 +119,7 @@ incoming_content(
         printf("%s%s\n", ccn_charbuf_as_string(uri) + 1,
                kind == CCN_UPCALL_CONTENT ? " [verified]" : " [unverified]");
     }
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
+    ccnb_element_begin(templ, CCN_DTAG_Interest);
     ccn_charbuf_append(templ, c->buf, c->length); /* Name */
     if (matched_comps == comps->n) {
         /* The interest supplied the digest component */
@@ -128,10 +128,7 @@ incoming_content(
          * We can't rely on the Exclude filter to keep from seeing this, so 
          * say that we need at least one more name component.
          */
-        ccn_charbuf_append_tt(templ, CCN_DTAG_MinSuffixComponents, CCN_DTAG);
-        ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
-        ccn_charbuf_append(templ, "1", 1);
-        ccn_charbuf_append_closer(templ); /* </MinSuffixComponents> */
+        ccnb_append_tagged_udata(templ, CCN_DTAG_MinSuffixComponents, "1", 1);
     }
     else {
         data->excl = realloc(data->excl, (data->n_excl + 1) * sizeof(data->excl[0]));
@@ -139,18 +136,18 @@ incoming_content(
         comp = NULL;
     }
     qsort(data->excl, data->n_excl, sizeof(data->excl[0]), &namecompare);
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Exclude, CCN_DTAG);
+    ccnb_element_begin(templ, CCN_DTAG_Exclude);
     for (i = 0; i < data->n_excl; i++) {
         comp = data->excl[i];
         if (comp->length < 4) abort();
         ccn_charbuf_append(templ, comp->buf + 1, comp->length - 2);
     }
     comp = NULL;
-    ccn_charbuf_append_closer(templ); /* </Exclude> */
+    ccnb_element_end(templ); /* </Exclude> */
     ccnb_tagged_putf(templ, CCN_DTAG_AnswerOriginKind, "%d", CCN_AOK_CS);
     if (data->scope > -1)
        ccnb_tagged_putf(templ, CCN_DTAG_Scope, "%d", data->scope);
-    ccn_charbuf_append_closer(templ); /* </Interest> */
+    ccnb_element_end(templ); /* </Interest> */
     if (templ->length > data->warn) {
         fprintf(stderr, "*** Interest packet is %d bytes\n", (int)templ->length);
         data->warn = data->warn * 8 / 5;
@@ -222,11 +219,11 @@ main(int argc, char **argv)
     cl->data = data;
     if (data->scope > -1) {
         templ = ccn_charbuf_create();
-        ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
-        ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
-        ccn_charbuf_append_closer(templ); /* </Name> */
+        ccnb_element_begin(templ, CCN_DTAG_Interest);
+        ccnb_element_begin(templ, CCN_DTAG_Name);
+        ccnb_element_end(templ); /* </Name> */
         ccnb_tagged_putf(templ, CCN_DTAG_Scope, "%d", data->scope);
-        ccn_charbuf_append_closer(templ); /* </Interest> */
+        ccnb_element_end(templ); /* </Interest> */
     }
     ccn_express_interest(ccn, c, cl, templ);
     ccn_charbuf_destroy(&templ);

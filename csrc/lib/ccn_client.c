@@ -666,7 +666,7 @@ ccn_construct_interest(struct ccn *h,
 
     dest->lifetime_us = CCN_INTEREST_LIFETIME_MICROSEC;
     c->length = 0;
-    ccn_charbuf_append_tt(c, CCN_DTAG_Interest, CCN_DTAG);
+    ccnb_element_begin(c, CCN_DTAG_Interest);
     ccn_charbuf_append(c, name_prefix->buf, name_prefix->length);
     res = 0;
     if (interest_template != NULL) {
@@ -691,7 +691,7 @@ ccn_construct_interest(struct ccn *h,
         else
             NOTE_ERR(h, EINVAL);
     }
-    ccn_charbuf_append_closer(c);
+    ccnb_element_end(c);
     replace_interest_msg(dest, (res >= 0 ? c : NULL));
 }
 
@@ -1571,12 +1571,12 @@ handle_key(struct ccn_closure *selfp,
                 if (res < 0)
                     return (CCN_UPCALL_RESULT_ERR);
                 templ = ccn_charbuf_create();
-                ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
-                ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
-                ccn_charbuf_append_closer(templ); /* </Name> */
+                ccnb_element_begin(templ, CCN_DTAG_Interest);
+                ccnb_element_begin(templ, CCN_DTAG_Name);
+                ccnb_element_end(templ); /* </Name> */
                 ccnb_tagged_putf(templ, CCN_DTAG_MinSuffixComponents, "%d", 1);
                 ccnb_tagged_putf(templ, CCN_DTAG_MaxSuffixComponents, "%d", 3);
-                ccn_charbuf_append_closer(templ); /* </Interest> */
+                ccnb_element_end(templ); /* </Interest> */
                 name = ccn_charbuf_create();
                 res = ccn_append_link_name(name, data, data_size);
                 if (res < 0) {
@@ -1656,9 +1656,9 @@ ccn_initiate_key_fetch(struct ccn *h,
                              msg + pco->offset[CCN_PCO_B_KeyName_Name],
                              namelen);
     templ = ccn_charbuf_create();
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
-    ccn_charbuf_append_closer(templ); /* </Name> */
+    ccnb_element_begin(templ, CCN_DTAG_Interest);
+    ccnb_element_begin(templ, CCN_DTAG_Name);
+    ccnb_element_end(templ); /* </Name> */
     ccnb_tagged_putf(templ, CCN_DTAG_MinSuffixComponents, "%d", 1);
     ccnb_tagged_putf(templ, CCN_DTAG_MaxSuffixComponents, "%d", 3);
     if (pco->offset[CCN_PCO_B_KeyName_Pub] < pco->offset[CCN_PCO_E_KeyName_Pub]) {
@@ -1667,7 +1667,7 @@ ccn_initiate_key_fetch(struct ccn *h,
                            (pco->offset[CCN_PCO_E_KeyName_Pub] - 
                             pco->offset[CCN_PCO_B_KeyName_Pub]));
     }
-    ccn_charbuf_append_closer(templ); /* </Interest> */
+    ccnb_element_end(templ); /* </Interest> */
     res = ccn_express_interest(h, key_name, key_closure, templ);
     ccn_charbuf_destroy(&key_name);
     ccn_charbuf_destroy(&templ);
@@ -2945,12 +2945,12 @@ ccn_sign_content(struct ccn *h,
         if (keylocator == NULL && (p.sp_flags & CCN_SP_OMIT_KEY_LOCATOR) == 0) {
             /* Construct a key locator containing the key itself */
             keylocator = ccn_charbuf_create();
-            ccn_charbuf_append_tt(keylocator, CCN_DTAG_KeyLocator, CCN_DTAG);
-            ccn_charbuf_append_tt(keylocator, CCN_DTAG_Key, CCN_DTAG);
+            ccnb_element_begin(keylocator, CCN_DTAG_KeyLocator);
+            ccnb_element_begin(keylocator, CCN_DTAG_Key);
             res = ccn_append_pubkey_blob(keylocator,
                                          ccn_keystore_public_key(keystore));
-            ccn_charbuf_append_closer(keylocator); /* </Key> */
-            ccn_charbuf_append_closer(keylocator); /* </KeyLocator> */
+            ccnb_element_end(keylocator); /* </Key> */
+            ccnb_element_end(keylocator); /* </KeyLocator> */
         }
         if (res >= 0 && (p.sp_flags & CCN_SP_FINAL_BLOCK) != 0) {
             int ncomp;
@@ -2963,6 +2963,7 @@ ccn_sign_content(struct ccn *h,
             if (ncomp < 0)
                 res = NOTE_ERR(h, EINVAL);
             else {
+                // XXX - what would it mean for a 0-size final component?
                 finalblockid = ccn_charbuf_create();
                 ccn_name_comp_get(name_prefix->buf,
                                   ndx, ncomp - 1, &comp, &size);
@@ -2986,7 +2987,7 @@ ccn_sign_content(struct ccn *h,
                 signed_info->buf[signed_info->length - 1] == 0) {
                 signed_info->length -= 1; /* remove closer */
                 ccn_charbuf_append_charbuf(signed_info, extopt);
-                ccn_charbuf_append_closer(signed_info);
+                ccnb_element_end(signed_info);
             }
             else
                 NOTE_ERR(h, -1);
@@ -3104,11 +3105,11 @@ ccn_guest_prefix(struct ccn *h, struct ccn_charbuf *result, int ms)
     templ = ccn_charbuf_create();
     if (templ == NULL)
         goto Bail;
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
-    ccn_charbuf_append_closer(templ); /* </Name> */
+    ccnb_element_begin(templ, CCN_DTAG_Interest);
+    ccnb_element_begin(templ, CCN_DTAG_Name);
+    ccnb_element_end(templ); /* </Name> */
     ccnb_tagged_putf(templ, CCN_DTAG_Scope, "%d", 2);
-    ccn_charbuf_append_closer(templ); /* </Interest> */
+    ccnb_element_end(templ); /* </Interest> */
     res = ccn_resolve_version(h, name, CCN_V_HIGHEST, ms);
     if (res < 0)
         goto Bail;

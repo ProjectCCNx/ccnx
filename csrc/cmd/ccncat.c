@@ -58,22 +58,22 @@ struct ccn_charbuf *
 make_template(int allow_stale, int scope)
 {
     struct ccn_charbuf *templ = ccn_charbuf_create();
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
-    ccn_charbuf_append_closer(templ); /* </Name> */
+    ccnb_element_begin(templ, CCN_DTAG_Interest);
+    ccnb_element_begin(templ, CCN_DTAG_Name);
+    ccnb_element_end(templ); /* </Name> */
     // XXX - use pubid if possible
-    ccn_charbuf_append_tt(templ, CCN_DTAG_MaxSuffixComponents, CCN_DTAG);
+    ccnb_element_begin(templ, CCN_DTAG_MaxSuffixComponents);
     ccnb_append_number(templ, 1);
-    ccn_charbuf_append_closer(templ); /* </MaxSuffixComponents> */
+    ccnb_element_end(templ); /* </MaxSuffixComponents> */
     if (allow_stale) {
-        ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
+        ccnb_element_begin(templ, CCN_DTAG_AnswerOriginKind);
         ccnb_append_number(templ, CCN_AOK_DEFAULT | CCN_AOK_STALE);
-        ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
+        ccnb_element_end(templ); /* </AnswerOriginKind> */
     }
     if (scope >= 0 && scope <= 2) {
         ccnb_tagged_putf(templ, CCN_DTAG_Scope, "%d", scope);
     }
-    ccn_charbuf_append_closer(templ); /* </Interest> */
+    ccnb_element_end(templ); /* </Interest> */
     return(templ);
 }
 

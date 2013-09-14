@@ -10,6 +10,7 @@ A Name element represents a hierarchical name for CCNx content.
 It simply contains a sequence of *Component* elements.
 Each Component element contains a sequence of zero or more bytes.
 There are no restrictions on what byte sequences may be used.
+The encoding of a zero byte Component omits the zero length BLOB.
 
 The Name element in an *Interest* is often referred to with the
 term 'name prefix' or simply 'prefix'.
