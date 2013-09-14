@@ -41,9 +41,6 @@ ccnd_parallel_strategy_impl(struct ccnd_handle *h,
         case CCNST_INIT:
             break; /* No strategy private data needed */
         case CCNST_FIRST:
-            /* clear any default timing information */
-            for (x = strategy->pfl; x != NULL; x = x->next)
-                x->expiry = 0;
             /* Find our downstream; right now there should be just one. */
             for (x = strategy->pfl; x != NULL; x = x->next)
                 if ((x->pfi_flags & CCND_PFI_DNSTREAM) != 0)
@@ -55,15 +52,21 @@ ccnd_parallel_strategy_impl(struct ccnd_handle *h,
                 if ((p->pfi_flags & CCND_PFI_UPSTREAM) != 0) {
                         /* we may have already sent in case of TAP */
                         if ((p->pfi_flags & CCND_PFI_UPENDING) == 0)
-                            p = send_interest(h, strategy->ie, x, p);
+                            p->pfi_flags |= CCND_PFI_SENDUPST;
                 }
             }
             break;
         case CCNST_NEWUP:
+        case CCNST_EXPUP:
+            for (p = strategy->pfl; p!= NULL; p = p->next) {
+                if (p->faceid == faceid) {
+                    /* we may have already sent in case of TAP */
+                    if ((p->pfi_flags & CCND_PFI_UPENDING) == 0)
+                        p->pfi_flags |= CCND_PFI_SENDUPST;
+                }
+            }
             break;
         case CCNST_NEWDN:
-            break;
-        case CCNST_EXPUP:
             break;
         case CCNST_EXPDN:
             break;
