@@ -322,7 +322,8 @@ r_proto_append_repo_info(struct ccnr_handle *ccnr,
 }
 
 static struct ccn_charbuf *
-r_proto_mktemplate(struct ccnr_expect_content *md, struct ccn_upcall_info *info)
+r_proto_mktemplate(struct ccnr_expect_content *md, struct ccn_upcall_info *info,
+                   int maxsuffix)
 {
     struct ccn_charbuf *templ = ccn_charbuf_create();
     ccnb_element_begin(templ, CCN_DTAG_Interest); // same structure as Name
@@ -330,8 +331,7 @@ r_proto_mktemplate(struct ccnr_expect_content *md, struct ccn_upcall_info *info)
     ccnb_element_end(templ); /* </Name> */
     // XXX - use pubid if possible
     // XXX - if start-write was scoped, use scope here?
-    ccnb_tagged_putf(templ, CCN_DTAG_MinSuffixComponents, "%d", 1);
-    ccnb_tagged_putf(templ, CCN_DTAG_MaxSuffixComponents, "%d", 1);
+    ccnb_tagged_putf(templ, CCN_DTAG_MaxSuffixComponents, "%d", maxsuffix);
     ccnb_element_end(templ); /* </Interest> */
     return(templ);
 }
@@ -345,8 +345,7 @@ r_proto_expect_content(struct ccn_closure *selfp,
     struct ccn_charbuf *templ = NULL;
     const unsigned char *ccnb = NULL;
     size_t ccnb_size = 0;
-    const unsigned char *ib = NULL; /* info->interest_ccnb */
-    struct ccn_indexbuf *ic = NULL;
+    struct ccn_indexbuf *cc = NULL;
     int res;
     struct ccnr_expect_content *md = selfp->data;
     struct ccnr_handle *ccnr = NULL;
@@ -398,8 +397,7 @@ r_proto_expect_content(struct ccn_closure *selfp,
     
     ccnb = info->content_ccnb;
     ccnb_size = info->pco->offset[CCN_PCO_E];
-    ib = info->interest_ccnb;
-    ic = info->interest_comps;
+    cc = info->content_comps;
     
     content = process_incoming_content(ccnr, r_io_fdholder_from_fd(ccnr, ccn_get_connection_fd(info->h)),
                                        (void *)ccnb, ccnb_size, NULL);
@@ -412,7 +410,7 @@ r_proto_expect_content(struct ccn_closure *selfp,
                                r_store_content_cookie(ccnr, content));
     
     md->tries = 0;
-    segment = r_util_segment_from_component(ib, ic->buf[ic->n - 2], ic->buf[ic->n - 1]);
+    segment = r_util_segment_from_component(ccnb, cc->buf[cc->n - 2], cc->buf[cc->n - 1]);
 
     if (ccn_is_final_block(info) == 1)
         md->final = segment;
@@ -461,13 +459,13 @@ r_proto_expect_content(struct ccn_closure *selfp,
     }
 
     name = ccn_charbuf_create();
-    if (ic->n < 2) abort();    
-    templ = r_proto_mktemplate(md, info);
+    if (cc->n < 2) abort();    
+    templ = r_proto_mktemplate(md, info, 1);
     /* fill the pipeline with new requests */
     for (i = 0; i < CCNR_PIPELINE; i++) {
         if (md->outstanding[i] == -1) {
             ccn_name_init(name);
-            res = ccn_name_append_components(name, ib, ic->buf[0], ic->buf[ic->n - 2]);
+            res = ccn_name_append_components(name, ccnb, cc->buf[0], cc->buf[cc->n - 2]);
             if (res < 0) abort();
             ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, ++(selfp->intdata));
             res = ccn_express_interest(info->h, name, selfp, templ);
@@ -660,6 +658,7 @@ r_proto_start_write(struct ccn_closure *selfp,
     int start = 0;
     int end = 0;
     int is_policy = 0;
+    intmax_t segment;
     int i;
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     
@@ -712,7 +711,7 @@ r_proto_start_write(struct ccn_closure *selfp,
         goto Bail;
     }
 
-    /* Send an interest for segment 0 */
+    /* Send an interest for the content */
     expect_content = calloc(1, sizeof(*expect_content));
     if (expect_content == NULL)
         goto Bail;
@@ -730,12 +729,27 @@ r_proto_start_write(struct ccn_closure *selfp,
         goto Bail;
     incoming->p = &r_proto_expect_content;
     incoming->data = expect_content;
-    templ = r_proto_mktemplate(expect_content, NULL);
     ic = info->interest_comps;
     ccn_name_init(name);
     ccn_name_append_components(name, info->interest_ccnb, ic->buf[0], ic->buf[marker_comp]);
-    ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, 0);
-    expect_content->outstanding[0] = 0;
+    /* when invoked from start-write-checked we have nonce, starting segment, and hash
+     * the max suffix components is 0 since we have the hash
+     */
+    if (0 == r_util_name_comp_compare(info->interest_ccnb, info->interest_comps,
+                                      marker_comp, REPO_SWC, strlen(REPO_SWC))) {
+        segment = r_util_segment_from_component(info->interest_ccnb, ic->buf[marker_comp + 2], ic->buf[marker_comp + 3]);
+        ccn_name_append_components(name, info->interest_ccnb, ic->buf[marker_comp + 2], ic->buf[marker_comp + 4]);
+        templ = r_proto_mktemplate(expect_content, NULL, 0);
+    } else {
+        /* start-write does not specify starting segment, start at segment 0 */
+        segment = 0;
+        ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, segment);
+        templ = r_proto_mktemplate(expect_content, NULL, 1);
+    }
+    if (segment >= 0) {
+        expect_content->outstanding[segment % CCNR_PIPELINE] = segment;
+        incoming->intdata = segment;
+    }
     res = ccn_express_interest(info->h, name, incoming, templ);
     if (res >= 0) {
         /* upcall will free these when it is done. */
