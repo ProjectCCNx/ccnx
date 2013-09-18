@@ -1,11 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
-<<<<<<< HEAD
- * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
-=======
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
->>>>>>> 0f1ce5d4dba1b9f769b4a2edcbf8583543643287
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
