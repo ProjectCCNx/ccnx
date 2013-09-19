@@ -32,54 +32,17 @@ ccnd_parallel_strategy_impl(struct ccnd_handle *h,
                   enum ccn_strategy_op op,
                   unsigned faceid)
 {
-    struct pit_face_item *x = NULL;
-    struct pit_face_item *p = NULL;
+    struct pit_face_item *p;
 
-    switch (op) {
-        case CCNST_NOP:
-            break;
-        case CCNST_INIT:
-            break; /* No strategy private data needed */
-        case CCNST_FIRST:
-            /* Find our downstream; right now there should be just one. */
-            for (x = strategy->pfl; x != NULL; x = x->next)
-                if ((x->pfi_flags & CCND_PFI_DNSTREAM) != 0)
-                    break;
-            if (x == NULL || (x->pfi_flags & CCND_PFI_PENDING) == 0)
-                return;
-
-            for (p = strategy->pfl; p!= NULL; p = p->next) {
-                if ((p->pfi_flags & CCND_PFI_UPSTREAM) != 0) {
-                        /* we may have already sent in case of TAP */
-                        if ((p->pfi_flags & CCND_PFI_UPENDING) == 0)
-                            p->pfi_flags |= CCND_PFI_SENDUPST;
-                }
+    /* expiry times do not need to be adjusted if we want things sent "now" */
+    if (op == CCNST_UPDATE) {
+        /* Just go ahead and send as prompted */
+        for (p = strategy->pfl; p!= NULL; p = p->next) {
+            if ((p->pfi_flags & CCND_PFI_ATTENTION) != 0) {
+                p->pfi_flags &= ~CCND_PFI_ATTENTION;
+                p->pfi_flags |= CCND_PFI_SENDUPST;
             }
-            break;
-        case CCNST_NEWUP:
-        case CCNST_EXPUP:
-            for (p = strategy->pfl; p!= NULL; p = p->next) {
-                if (p->faceid == faceid) {
-                    /* we may have already sent in case of TAP */
-                    if ((p->pfi_flags & CCND_PFI_UPENDING) == 0)
-                        p->pfi_flags |= CCND_PFI_SENDUPST;
-                }
-            }
-            break;
-        case CCNST_NEWDN:
-            break;
-        case CCNST_EXPDN:
-            break;
-        case CCNST_REFRESH:
-            break;
-        case CCNST_TIMER:
-            break;
-        case CCNST_SATISFIED:
-            break;
-        case CCNST_TIMEOUT:
-            /* Interest has not been satisfied or refreshed */
-            break;
-        case CCNST_FINALIZE:
-            break; /* Nothing to clean up */
+        }
     }
 }
+

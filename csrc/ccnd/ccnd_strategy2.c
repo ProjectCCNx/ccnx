@@ -54,13 +54,13 @@ ccnd_loadsharing_strategy_impl(struct ccnd_handle *h,
                                enum ccn_strategy_op op,
                                unsigned faceid)
 {
-    struct pit_face_item *x = NULL;
     struct pit_face_item *p = NULL;
     struct face_state *face_state = (struct face_state *)instance->data;
     unsigned i, count;
     int best;
     unsigned smallestq;
     unsigned pending;
+    unsigned upending;
     
     switch (op) {
         case CCNST_NOP:
@@ -77,57 +77,63 @@ ccnd_loadsharing_strategy_impl(struct ccnd_handle *h,
             face_state->items = calloc(N_FACESTATE, sizeof(*face_state->items));
             instance->data = face_state;
             break;
-        case CCNST_FIRST:  /* newly created interest entry */
-            /* Find our downstream; right now there should be just one. */
-            for (x = strategy->pfl; x != NULL; x = x->next)
-                if ((x->pfi_flags & CCND_PFI_DNSTREAM) != 0)
-                    break;
-            if (x == NULL || (x->pfi_flags & CCND_PFI_PENDING) == 0)
-                return;
-            
+        case CCNST_FIRST:
+            break;
+        case CCNST_UPDATE:
             /* Ensure that we have a face state entry for every face in the pfl
              */
             count = 0;
             smallestq = INT_MAX;
+            upending = 0;
             for (p = strategy->pfl; p!= NULL; p = p->next) {
-                /* avoid messing with any downstream faces */
-                if ((p->pfi_flags & CCND_PFI_DNSTREAM) != 0 ||
-                    (p->pfi_flags & CCND_PFI_UPENDING) != 0)
-                    continue;
-                /* we will make the send upstream decision */
-                p->pfi_flags &= ~CCND_PFI_SENDUPST;
-                for (i = 0; i < face_state->n; i++) {
-                    if (face_state->items[i].faceid == p->faceid) {
-                        face_state->items[i].pfi = p;
-                        // ccnd_msg(h, "loadsharing: found face %u at index %u flags 0x%x", p->faceid, i, p->pfi_flags);
-                        pending = face_state->items[i].pending << face_state->items[i].timedout;
-                        if (pending < smallestq) {
-                            count = 1;
-                            smallestq = pending;
-                        } else if (pending == smallestq) {
-                            count++;
+                if ((p->pfi_flags & CCND_PFI_UPENDING) != 0)
+                    upending++;
+            }
+            if (upending == 0) {
+                for (p = strategy->pfl; p!= NULL; p = p->next) {
+                    if ((p->pfi_flags & CCND_PFI_ATTENTION) == 0)
+                        continue;
+                    /* we will make the send upstream decision */
+                    for (i = 0; i < face_state->n; i++) {
+                        if (face_state->items[i].faceid == p->faceid) {
+                            face_state->items[i].pfi = p;
+                            if ((face_state->items[i].pfi->pfi_flags & CCND_PFI_DNSTREAM) != 0) abort();
+                            // ccnd_msg(h, "loadsharing: found face %u at index %u flags 0x%x", p->faceid, i, p->pfi_flags);
+                            pending = face_state->items[i].pending << face_state->items[i].timedout;
+                            if (pending < smallestq) {
+                                count = 1;
+                                smallestq = pending;
+                            } else if (pending == smallestq) {
+                                count++;
+                            }
+                            break;
                         }
-                        break;
                     }
-                }
-                if (i == face_state->n) {
-                    /* there was no entry for this face, make one. */
-                    if (i < N_FACESTATE) {
-                        // ccnd_msg(h, "loadsharing: adding face %u", p->faceid);
-                        face_state->items[i].faceid = p->faceid;
-                        face_state->items[i].pending = 0;
-                        face_state->items[i].timedout = 0;
-                        face_state->items[i].pfi = p;
-                        face_state->n++;
-                        if (smallestq > 0) {
-                            smallestq = 0;
-                            count = 1;
-                        } else {
-                            count++;
+                    if (i == face_state->n) {
+                        /* there was no entry for this face, make one. */
+                        if (i < N_FACESTATE) {
+                            // ccnd_msg(h, "loadsharing: adding face %u", p->faceid);
+                            face_state->items[i].faceid = p->faceid;
+                            face_state->items[i].pending = 0;
+                            face_state->items[i].timedout = 0;
+                            face_state->items[i].pfi = p;
+                            if ((face_state->items[i].pfi->pfi_flags & CCND_PFI_DNSTREAM) != 0) abort();
+                            face_state->n++;
+                            if (smallestq > 0) {
+                                smallestq = 0;
+                                count = 1;
+                            } else {
+                                count++; 
+                            }
                         }
                     }
                 }
             }
+            
+            for (p = strategy->pfl; p!= NULL; p = p->next) {
+                p->pfi_flags &= ~CCND_PFI_ATTENTION;
+            }
+            
             /* no eligible faces, so nothing to do */
             if (count == 0)
                 return;
@@ -135,10 +141,11 @@ ccnd_loadsharing_strategy_impl(struct ccnd_handle *h,
             best = ccnd_random(h) % count;
             // ccnd_msg(h, "loadsharing: smallestq %u count %u best %u", smallestq, count, best);
             for (i = 0; i < face_state->n; i++) {
-                if (face_state->items[i].pending == smallestq &&
+                if (face_state->items[i].pending  << face_state->items[i].timedout == smallestq &&
                     face_state->items[i].pfi != NULL) {
                     if (best == 0) {
                         face_state->items[i].pfi->pfi_flags |= CCND_PFI_SENDUPST;
+                        if ((face_state->items[i].pfi->pfi_flags & CCND_PFI_DNSTREAM) != 0) abort();
                         ccnd_msg(h, "loadsharing: selecting face %u pending %u", face_state->items[i].pfi->faceid,
                                  face_state->items[i].pending);
                         face_state->items[i].pending++;
@@ -147,22 +154,10 @@ ccnd_loadsharing_strategy_impl(struct ccnd_handle *h,
                     best--;
                 }
             }
-            for (i = 0; i < face_state->n; i++) {
-                // if (face_state->items[i].pfi)
-                    // ccnd_msg(h, "loadsharing: done face %u flags 0x%x pending %u",
-                    //         face_state->items[i].pfi->faceid,
-                    //         face_state->items[i].pfi->pfi_flags,
-                    //         face_state->items[i].pending);
+            for (i = 0; i < face_state->n; i++)
+                ccnd_msg(h, "loadsharing: face %u pending %u timedout %u", face_state->items[i].faceid,
+                         face_state->items[i].pending, face_state->items[i].timedout);
                 face_state->items[i].pfi = NULL;
-            }
-            break;
-        case CCNST_NEWUP:
-            for (p = strategy->pfl; p!= NULL; p = p->next) {
-                if (p->faceid == faceid) break;
-            }
-            p->pfi_flags &= ~CCND_PFI_SENDUPST;
-            break;
-        case CCNST_NEWDN:
             break;
         case CCNST_EXPUP:
             /*
@@ -171,11 +166,6 @@ ccnd_loadsharing_strategy_impl(struct ccnd_handle *h,
              * a timeout so that the face selection can penalize non-responding
              * faces.
              */
-            for (p = strategy->pfl; p!= NULL; p = p->next) {
-                if (p->faceid == faceid) break;
-            }
-            p->pfi_flags &= ~CCND_PFI_SENDUPST;
-            p->pfi_flags &= ~CCND_PFI_UPENDING;
             for (i = 0; i < face_state->n; i++)
                 if (face_state->items[i].faceid == faceid) {
                     if (face_state->items[i].pending > 0) {
@@ -192,11 +182,6 @@ ccnd_loadsharing_strategy_impl(struct ccnd_handle *h,
         case CCNST_TIMER:
             break;
         case CCNST_SATISFIED:
-            for (p = strategy->pfl; p!= NULL; p = p->next) {
-                if (p->faceid == faceid) break;
-            }
-            p->pfi_flags &= ~CCND_PFI_SENDUPST;
-            p->pfi_flags &= ~CCND_PFI_UPENDING;
             /* Decrement the pending count on the face (faceid) that responded */
             for (i = 0; i < face_state->n; i++)
                 if (face_state->items[i].faceid == faceid) {
@@ -212,9 +197,9 @@ ccnd_loadsharing_strategy_impl(struct ccnd_handle *h,
         case CCNST_FINALIZE:
             /* Free the strategy per registration point private data */
             for (i = 0; i < face_state->n; i++) {
-                    ccnd_msg(h, "loadsharing: finalize face %u pending %u",
-                             face_state->items[i].faceid,
-                             face_state->items[i].pending);
+                ccnd_msg(h, "loadsharing: finalize face %u pending %u",
+                         face_state->items[i].faceid,
+                         face_state->items[i].pending);
             }
             free(face_state->items);
             free(face_state);
