@@ -137,6 +137,14 @@ ccnd_default_strategy_impl(struct ccnd_handle *h,
                 }
             }
             break;
+        case CCNST_UPDATE:
+            /* Just go ahead and send as prompted */
+           for (p = strategy->pfl; p!= NULL; p = p->next) {
+               if ((p->pfi_flags & CCND_PFI_ATTENTION) != 0) {
+                   p->pfi_flags &= ~CCND_PFI_ATTENTION;
+                   p->pfi_flags |= CCND_PFI_SENDUPST;
+               }
+           }
         case CCNST_TIMER:
             /*
              * Our best choice has not responded in time.
@@ -155,10 +163,6 @@ ccnd_default_strategy_impl(struct ccnd_handle *h,
             break;
         case CCNST_INIT:
             break; /* No strategy private data needed */
-        case CCNST_NEWUP:
-            break;
-        case CCNST_NEWDN:
-            break;
         case CCNST_EXPUP:
             break;
         case CCNST_EXPDN:
@@ -212,7 +216,8 @@ adjust_predicted_response(struct ccnd_handle *h,
 /**
  * A null strategy for testing purposes
  *
- * The main logic should still work even if the strategy does nothing.
+ * This does nothing except for servicing CCNST_UPDATE by sending
+ * everything to all permitted upstreams.
  */
 void
 ccnd_null_strategy_impl(struct ccnd_handle *h,
@@ -221,6 +226,17 @@ ccnd_null_strategy_impl(struct ccnd_handle *h,
                         enum ccn_strategy_op op,
                         unsigned faceid)
 {
+    struct pit_face_item *p;
+    
+    if (op == CCNST_UPDATE) {
+        /* Just go ahead and send as prompted */
+        for (p = strategy->pfl; p!= NULL; p = p->next) {
+            if ((p->pfi_flags & CCND_PFI_ATTENTION) != 0) {
+                p->pfi_flags &= ~CCND_PFI_ATTENTION;
+                p->pfi_flags |= CCND_PFI_SENDUPST;
+            }
+        }
+    }
 }
 
 
@@ -233,6 +249,7 @@ format_pfi(struct ccnd_handle *h, struct pit_face_item *p, struct ccn_charbuf *c
                      (p->pfi_flags & (CCND_PFI_PENDING|CCND_PFI_UPENDING)) ? "p" : "",
                      (p->pfi_flags & CCND_PFI_UPHUNGRY) ? "h" : "",
                      (p->pfi_flags & CCND_PFI_SENDUPST) ? "s" : "",
+                     (p->pfi_flags & CCND_PFI_ATTENTION) ? "a" : "",
                      (p->pfi_flags & CCND_PFI_SUPDATA) ? "x" : "",
                      (p->pfi_flags & CCND_PFI_DCFACE) ? "c" : "",
                      (unsigned)p->faceid,
@@ -283,6 +300,10 @@ ccnd_trace_strategy_impl(struct ccnd_handle *h,
             ccnd_msg(h, "trace CCNST_FIRST %u %#p,i=%u%s", faceid,
                      (void *)instance, serial, ccn_charbuf_as_string(c));
             break;
+        case CCNST_UPDATE:
+            ccnd_msg(h, "trace CCNST_UPDATE - %#p,i=%u%s",
+                     (void *)instance, serial, ccn_charbuf_as_string(c));
+            break;
         case CCNST_TIMER:
             ccnd_msg(h, "trace CCNST_TIMER %u %#p,i=%u%s", faceid,
                      (void *)instance, serial, ccn_charbuf_as_string(c));
@@ -293,14 +314,6 @@ ccnd_trace_strategy_impl(struct ccnd_handle *h,
             break;
         case CCNST_TIMEOUT:
             ccnd_msg(h, "trace CCNST_TIMEOUT %u %#p,i=%u%s", faceid,
-                     (void *)instance, serial, ccn_charbuf_as_string(c));
-            break;
-        case CCNST_NEWUP:
-            ccnd_msg(h, "trace CCNST_NEWUP %u %#p,i=%u%s", faceid,
-                     (void *)instance, serial, ccn_charbuf_as_string(c));
-            break;
-        case CCNST_NEWDN:
-            ccnd_msg(h, "trace CCNST_NEWDN %u %#p,i=%u%s", faceid,
                      (void *)instance, serial, ccn_charbuf_as_string(c));
             break;
         case CCNST_EXPUP:

@@ -112,8 +112,8 @@ struct pit_face_item {
 #define CCND_PFI_DNSTREAM 0x1000    /**< Tracks downstream (recvd interest) */
 #define CCND_PFI_PENDING  0x2000    /**< Pending for immediate data */
 #define CCND_PFI_SUPDATA  0x4000    /**< Suppressed data reply */
-#define CCND_PFI_DCFACE  0x10000    /**< This upstream is a Direct Control face (gets data if unanswered for a long time) */
-
+#define CCND_PFI_ATTENTION 0x10000  /**< Upstream needs attention from strategy */
+#define CCND_PFI_DCFACE 0x100000    /**< This upstream is a Direct Control face (gets data if unanswered for a long time) */
 
 /**
  * State for the strategy engine
@@ -155,37 +155,30 @@ struct ccn_strategy {
  *                  for similar interests, there will be exactly one
  *                  downstream in the pfi list.  The upstreams in the list
  *                  are those that the FIB has indicated are eligible to
- *                  receive the interests.  The strategy callout should
- *                  examine each upstream that has the CCND_PFI_SENDUPST
- *                  bit set, and either clear the bit to avoid sending
- *                  the interest on that face, or set the expiry time
- *                  according to when the interest should be sent.
+ *                  receive the interests.
  *                  The expiry times are initially set to the current time,
- *                  so if the strategy callout does nothing, the interest
- *                  will be sent to the marked upstreams as soon as the
- *                  callout returns.
+ *                  so if the strategy callout sets CCND_PFI_SENDUPST on,
+ *                  an upstream, the interest will be sent to the marked
+ *                  upstreams as soon as the callout returns.
  *                  At the time of the CCNST_FIRST call, some upstreams may have
  *                  already been fed (such as those with the TAP forwarding
- *                  flag).  These will have CCND_PFI_SENDUPST clear and
- *                  CCND_PFI_UPENDING set.  The strategy callout should
- *                  generally ignore such entries.
+ *                  flag).  These will have CCND_PFI_UPENDING set.
+ *                  The strategy callout should generally ignore such entries.
  *                  The faceid indicates the initial downstream face.
  *
- * CCNST_NEWUP      indicates an upstream is eligible to receive a new
- *                  copy of the interest, because any previously sent
- *                  interest has expired and an unexpired downsream is
+ * CCNST_UPDATE     indicates at least one upstream has become eligible
+ *                  receive a new copy of the interest, because any previously
+ *                  sent interest has expired and an unexpired downsream is
  *                  available; or a new upstream has been added,
  *                  because of a new prefix registration, or because
  *                  a second downstream has made the initial upstream
- *                  eligible.  The upstream will have CCND_PFI_SENDUPST
- *                  set and an expiry in the near future, similar to the
- *                  situation for CCNST_FIRST.  The strategy should adjust
- *                  these as appropriate.
- *                  The faceid indicates the affected upstream face.
- *
- * CCNST_NEWDN      a new downstream has been added, due to the arrival of
- *                  similar interest on a new face.
- *                  The faceid indicates the new downstream face.
+ *                  eligible.  The affected upstreams will have
+ *                  CCND_PFI_ATTENTION set and an expiry in the near future.
+ *                  For these entries, the strategy must
+ *                  clear CCND_PFI_ATTENTION and may choose to set
+ *                  CCND_PFI_SENDUPST on the subset of the affected upstreams
+ *                  that it selects.
+ *                  The value of faceid is not interesting.
  *
  * CCNST_EXPUP      indicates an upstream is expiring. This happens when and
  *                  only when an interest has been sent to the upstream face
@@ -196,9 +189,9 @@ struct ccn_strategy {
  * CCNST_EXPDN      indicates the downstream is expiring.
  *                  The faceid indicates the expiring downstream face.
  *
- * CCNST_REFRESH    indicates a new, similar, interest message has arrived on
+ * CCNST_REFRESH    indicates a new, similar, interest message has arrived.
  *                  a previously existing downstream face.  Its expiry
- *                  will have been updated accordingly.  The strategy
+ *                  Its expiry will have been updated accordingly.  The strategy
  *                  likely does not need to do anything special with this
  *                  case, because it will get separate calls for each of
  *                  the upstreams when their respective expiries occur.
@@ -230,10 +223,7 @@ enum ccn_strategy_op {
     CCNST_NOP,      /* no-operation */
     CCNST_INIT,     /* initialize strategy, allocate instance state */
     CCNST_FIRST,    /* newly created interest entry (pit entry) */
-    CCNST_NEWUP,    /* additional upstream face
-                       (new registration, etc.) */
-    CCNST_NEWDN,    /* additional downstream face
-                       (similar interest arrived from a new face) */
+    CCNST_UPDATE,   /* select upstreams to feed */
     CCNST_EXPUP,    /* upstream is expiring */
     CCNST_EXPDN,    /* downstream is expiring */
     CCNST_REFRESH,  /* downstream refreshed */
