@@ -3450,7 +3450,7 @@ do_propagate(struct ccn_schedule *sched,
     int i;
     int n;
     int pending;
-    int upstreams;
+    int changes;
     unsigned life;
     unsigned mn;
     unsigned rem;
@@ -3494,8 +3494,8 @@ do_propagate(struct ccn_schedule *sched,
                 n++;
         }
     }
-    /* Send the interests out */
-    upstreams = 0; /* Count unexpired upstreams */
+    /* Check the upstreams */
+    changes = 0;
     for (p = ie->strategy.pfl; p != NULL; p = next) {
         next = p->next;
         if ((p->pfi_flags & CCND_PFI_UPSTREAM) == 0)
@@ -3516,37 +3516,40 @@ do_propagate(struct ccn_schedule *sched,
             rem = p->expiry - now;
             if (rem < mn)
                 mn = rem;
-            if ((p->pfi_flags & CCND_PFI_UPENDING) != 0)
-                upstreams++;
             continue;
         }
         if ((p->pfi_flags & CCND_PFI_UPENDING) != 0) {
             p->pfi_flags &= ~CCND_PFI_UPENDING;
             strategy_callout(h, ie, CCNST_EXPUP, p->faceid);
         }
+        if ((p->pfi_flags & CCND_PFI_SENDUPST) != 0)
+            continue; /* strategy has already asked to send */
         for (i = 0; i < n; i++)
             if (d[i]->faceid != p->faceid)
                 break;
-        if (i < n && (p->pfi_flags & CCND_PFI_SENDUPST) == 0) {
-            p->pfi_flags |= CCND_PFI_SENDUPST;
-            strategy_callout(h, ie, CCNST_NEWUP, p->faceid);
+        if (i < n) {
+            /* Strategy needs to make the decision, so mark it. */
+            changes++;
+            p->pfi_flags |= CCND_PFI_ATTENTION;
+            p->pfi_flags &= ~CCND_PFI_UPHUNGRY;
         }
-        if ((p->pfi_flags & CCND_PFI_SENDUPST) != 0)
-            upstreams++;
         else {
             /* Upstream expired, but we have nothing to feed it. */
             p->pfi_flags |= CCND_PFI_UPHUNGRY;
         }
     }
-    if (pending == 0 && upstreams == 0) {
-        strategy_callout(h, ie, CCNST_TIMEOUT, CCN_NOFACEID);
-        consume_interest(h, ie);
-        return(0);
-    }
-    for (p = ie->strategy.pfl; p != NULL; p = next) {
-        next = p->next;
+    if (changes != 0)
+        strategy_callout(h, ie, CCNST_UPDATE, CCN_NOFACEID);
+    for (p = ie->strategy.pfl; p != NULL; p = p->next) {
+        if ((p->pfi_flags & CCND_PFI_ATTENTION) != 0) {
+            ccnd_msg(h, "BUG: ccnd_%s_strategy_impl failed to clear "
+                        "CCND_PFI_ATTENTION",
+                        get_strategy_instance(h, ie->ll.npe)->sclass->id);
+            p->pfi_flags &= ~CCND_PFI_ATTENTION;
+        }
         if ((p->pfi_flags & CCND_PFI_SENDUPST) == 0)
             continue;
+        /* select a legitimate downstream */
         for (i = 0; i < n; i++)
             if (d[i]->faceid != p->faceid)
                 break;
@@ -3558,6 +3561,16 @@ do_propagate(struct ccn_schedule *sched,
             if (rem < mn)
                 mn = rem;
         }
+    }
+    /* if we have some pending upstreams, stick around even if no downstreams */
+    for (p = ie->strategy.pfl; pending == 0 && p != NULL; p = p->next) {
+        if ((p->pfi_flags & CCND_PFI_UPENDING) != 0)
+            pending++;
+    }
+    if (pending == 0) {
+        strategy_callout(h, ie, CCNST_TIMEOUT, CCN_NOFACEID);
+        consume_interest(h, ie);
+        return(0);
     }
     /* Determine when we need to run again */
     if (mn == 0) abort();
@@ -3934,9 +3947,9 @@ propagate_interest(struct ccnd_handle *h,
         if ((p->pfi_flags & CCND_PFI_PENDING) == 0) {
             p->pfi_flags |= CCND_PFI_PENDING;
             face->pending_interests += 1;
-            if (res == HT_OLD_ENTRY)
-                strategy_callout(h, ie, CCNST_REFRESH, faceid);
         }
+        if (res == HT_OLD_ENTRY)
+            strategy_callout(h, ie, CCNST_REFRESH, faceid);
     }
     else {
         /* Nonce has been seen before; do not forward. */
@@ -3947,21 +3960,16 @@ propagate_interest(struct ccnd_handle *h,
         if ((p->pfi_flags & CCND_PFI_UPENDING) == 0) {
             p->expiry = h->wtnow;
             p->pfi_flags &= ~CCND_PFI_UPHUNGRY;
-            if (p->faceid == faceid && (p->pfi_flags & CCND_PFI_SENDUPST) == 0){
-                p->pfi_flags |= CCND_PFI_SENDUPST;
-                if (res == HT_OLD_ENTRY)
-                    strategy_callout(h, ie, CCNST_NEWUP, faceid);
-            }
+//            if (p->faceid != faceid && (p->pfi_flags & CCND_PFI_SENDUPST) == 0){
+//                p->pfi_flags |= CCND_PFI_SENDUPST;
+//                if (res == HT_OLD_ENTRY)
+//                    strategy_callout(h, ie, CCNST_NEWUP, p->faceid);
+//            }
         }
     }
     if (res == HT_NEW_ENTRY) {
         send_tap_interests(h, ie);
         strategy_callout(h, ie, CCNST_FIRST, faceid);
-    }
-    for (p = ie->strategy.pfl; p != NULL; p = p->next) {
-        if ((p->pfi_flags & CCND_PFI_SENDUPST) != 0) {
-            // XXX do we need to send here, or do we just pick it up in do_propagate?
-        }
     }
     usec = ie_next_usec(h, ie, &expiry);
     if (ie->ev != NULL && wt_compare(expiry + 2, ie->ev->evint) < 0)
