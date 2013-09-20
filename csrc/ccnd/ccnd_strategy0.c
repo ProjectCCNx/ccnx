@@ -139,12 +139,13 @@ ccnd_default_strategy_impl(struct ccnd_handle *h,
             break;
         case CCNST_UPDATE:
             /* Just go ahead and send as prompted */
-           for (p = strategy->pfl; p!= NULL; p = p->next) {
-               if ((p->pfi_flags & CCND_PFI_ATTENTION) != 0) {
-                   p->pfi_flags &= ~CCND_PFI_ATTENTION;
-                   p->pfi_flags |= CCND_PFI_SENDUPST;
-               }
-           }
+            for (p = strategy->pfl; p!= NULL; p = p->next) {
+                if ((p->pfi_flags & CCND_PFI_ATTENTION) != 0) {
+                    p->pfi_flags &= ~CCND_PFI_ATTENTION;
+                    p->pfi_flags |= CCND_PFI_SENDUPST;
+                }
+            }
+            break;
         case CCNST_TIMER:
             /*
              * Our best choice has not responded in time.
