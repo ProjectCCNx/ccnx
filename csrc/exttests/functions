@@ -86,7 +86,7 @@ CappedCCNDStart () {
   [ ${1:-missing} -ge 0 ] || Fail argument missing or invalid: $1
   WHICHCCND=${CCN_LOCAL_PORT:-9695}
   ccndsmoketest kill 2>/dev/null
-  env CCND_DEBUG=7 CCND_CAP=$1 ccnd 2>>ccnd$((WHICHCCND % 10))-capped-$1.out &
+  (${VLIMITFORCAP:-:} $1; env CCND_DEBUG=7 CCND_CAP=$1 ccnd 2>>ccnd$((WHICHCCND % 10))-capped-$1.out; )&
   ccndsmoketest -u localhost -t 50 recv >/dev/null
   ccndsmoketest >/dev/null
 }
