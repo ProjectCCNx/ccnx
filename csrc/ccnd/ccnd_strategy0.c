@@ -244,17 +244,29 @@ ccnd_null_strategy_impl(struct ccnd_handle *h,
 static void
 format_pfi(struct ccnd_handle *h, struct pit_face_item *p, struct ccn_charbuf *c)
 {
-    ccn_charbuf_putf(c, " %s%s%s%s%s%s%u@%u",
-                     (p->pfi_flags & CCND_PFI_UPSTREAM) ? "u" :
-                      (p->pfi_flags & CCND_PFI_DNSTREAM) ? "d" : "?",
+    struct face *face;
+    unsigned delta;
+    
+    face = ccnd_face_from_faceid(h, p->faceid);
+    ccn_charbuf_putf(c, " %s%s%s%s%s%s%s%u",
+                     ((p->pfi_flags & CCND_PFI_UPSTREAM) ? "u" :
+                      (p->pfi_flags & CCND_PFI_DNSTREAM) ? "d" : "?"),
                      (p->pfi_flags & (CCND_PFI_PENDING|CCND_PFI_UPENDING)) ? "p" : "",
                      (p->pfi_flags & CCND_PFI_UPHUNGRY) ? "h" : "",
                      (p->pfi_flags & CCND_PFI_SENDUPST) ? "s" : "",
                      (p->pfi_flags & CCND_PFI_ATTENTION) ? "a" : "",
                      (p->pfi_flags & CCND_PFI_SUPDATA) ? "x" : "",
                      (p->pfi_flags & CCND_PFI_DCFACE) ? "c" : "",
-                     (unsigned)p->faceid,
-                     (unsigned)(p->expiry - h->wtnow));
+                     (unsigned)p->faceid);
+    if (face != NULL) {
+        if ((p->pfi_flags & CCND_PFI_DNSTREAM) != 0)
+            ccn_charbuf_putf(c, "-%d", (int)face->pending_interests);
+        else
+            ccn_charbuf_putf(c, "+%d", (int)face->outstanding_interests);
+    }
+    delta = p->expiry - h->wtnow; /* uses wrapping arithmetic */
+    if (delta <= 0xffffff)
+        ccn_charbuf_putf(c, "@%u", delta);
 }
 
 /* Set this pointer if you want to trace a different strategy. */

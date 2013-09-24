@@ -214,7 +214,8 @@ struct face {
     struct ccn_charbuf *outbuf;
     const struct sockaddr *addr;
     socklen_t addrlen;
-    int pending_interests;
+    int pending_interests;      /**< received and not yet consumed */
+    int outstanding_interests;  /**< sent and not yet consumed */
     unsigned rrun;
     uintmax_t rseq;
     struct ccnd_meter *meter[CCND_FACE_METER_N];
