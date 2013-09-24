@@ -923,6 +923,21 @@ content_preremove(struct ccn_nametree *ntree, struct ccny *y)
 }
 
 /**
+ *  Finalize content, freeing the raw ccnb before the content_entry is freed.
+ */
+static void
+content_finalize(struct ccn_nametree *ntree, struct ccny *y)
+{
+    struct content_entry *content = NULL;
+
+    content = ccny_payload(y);
+    if (content == NULL)
+        return;
+    free(content->ccnb);
+    content->ccnb = NULL;
+}
+
+/**
  * Consume an interest.
  */
 static void
@@ -4358,7 +4373,6 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
                      obj.magic);
         }
     }
-    f = charbuf_obtain(h);
     ccn_flatname_append_from_ccnb(f, msg, size, 0, -1);
     ccn_flatname_append_component(f, obj.digest, obj.digest_bytes);
     y = ccny_create(nrand48(h->seed), sizeof(*content));
@@ -5575,6 +5589,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->content_tree = ccn_nametree_create(cap);
     h->content_tree->data = h;
     h->content_tree->pre_remove = &content_preremove;
+    h->content_tree->finalize = &content_finalize;
     h->mtu = 0;
     mtu = getenv("CCND_MTU");
     if (mtu != NULL && mtu[0] != 0) {

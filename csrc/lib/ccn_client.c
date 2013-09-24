@@ -484,11 +484,12 @@ ccn_disconnect(struct ccn *h)
         }
         hashtb_end(e);
     }
-
-    res = close(h->sock);
-    h->sock = -1;
-    if (res == -1)
-        return(NOTE_ERRNO(h));
+    if (h->sock != -1) {
+        res = close(h->sock);
+        h->sock = -1;
+        if (res == -1)
+            return(NOTE_ERRNO(h));
+    }
     return(0);
 }
 
