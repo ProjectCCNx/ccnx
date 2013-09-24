@@ -92,6 +92,23 @@ CappedCCNDStart () {
 }
 
 ##
+# Conditionally define $VLIMITFORCAP
+#
+# Assuming the platform supports "ulimit -v kilobytes" to set the virtual
+# memory limit, setting CCN_TEST_CCND_BASE_VLIMIT to a value in kilobytes
+# will limit the capped ccnd's use of virtual memory (it is augmented by
+# 8 kilobytes per content object to allow for the variable space usage).
+# An appropriate value for CCN_TEST_CCND_BASE_VLIMIT must be determined
+# empirically on a case by case basis, so the default is no limit.
+#
+if [ -z "$VLIMITFORCAP"] && [ "${CCN_TEST_CCND_BASE_VLIMIT:-0}" -gt 0 ]; then
+  VLIMITFORCAP=SetVirtLimitForCap
+fi
+SetVirtLimitForCap () {
+  ulimit -v $((CCN_TEST_CCND_BASE_VLIMIT + 8 * $1))
+}
+
+##
 # Create a repo containing a file of the requested size
 GenerateRepoTestData () { (
   [ ${1:-missing} -ge 1000 ] || Fail argument missing or invalid: $1
