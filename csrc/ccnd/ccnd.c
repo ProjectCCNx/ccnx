@@ -1004,6 +1004,11 @@ finalize_interest(struct hashtb_enumerator *e)
             if (face != NULL)
                 face->pending_interests -= 1;
         }
+        if ((p->pfi_flags & CCND_PFI_UPENDING) != 0) {
+            face = face_from_faceid(h, p->faceid);
+            if (face != NULL)
+                face->outstanding_interests -= 1;
+        }
         free(p);
     }
     ie->strategy.pfl = NULL;
@@ -3353,7 +3358,10 @@ send_interest(struct ccnd_handle *h, struct interest_entry *ie,
         ccnb_append_tagged_blob(c, CCN_DTAG_Nonce, p->nonce, noncesize);
     ccn_charbuf_append_closer(c);
     h->interests_sent += 1;
-    p->pfi_flags |= CCND_PFI_UPENDING;
+    if ((p->pfi_flags & CCND_PFI_UPENDING) == 0) {
+        p->pfi_flags |= CCND_PFI_UPENDING;
+        face->outstanding_interests += 1;
+    }
     p->pfi_flags &= ~(CCND_PFI_SENDUPST | CCND_PFI_UPHUNGRY);
     ccnd_meter_bump(h, face->meter[FM_INTO], 1);
     stuff_and_send(h, face, ie->interest_msg, ie->size - 1, c->buf, c->length, (h->debug & 2) ? "interest_to" : NULL, __LINE__);
@@ -3520,6 +3528,7 @@ do_propagate(struct ccn_schedule *sched,
         }
         if ((p->pfi_flags & CCND_PFI_UPENDING) != 0) {
             p->pfi_flags &= ~CCND_PFI_UPENDING;
+            face->outstanding_interests -= 1;
             strategy_callout(h, ie, CCNST_EXPUP, p->faceid);
         }
         if ((p->pfi_flags & CCND_PFI_SENDUPST) != 0)
@@ -3687,6 +3696,11 @@ pfi_destroy(struct ccnd_handle *h, struct interest_entry *ie,
         face = face_from_faceid(h, p->faceid);
         if (face != NULL)
             face->pending_interests -= 1;
+    }
+    if ((p->pfi_flags & CCND_PFI_UPENDING) != 0) {
+        face = face_from_faceid(h, p->faceid);
+        if (face != NULL)
+            face->outstanding_interests -= 1;
     }
     *pp = p->next;
     free(p);
@@ -3960,11 +3974,6 @@ propagate_interest(struct ccnd_handle *h,
         if ((p->pfi_flags & CCND_PFI_UPENDING) == 0) {
             p->expiry = h->wtnow;
             p->pfi_flags &= ~CCND_PFI_UPHUNGRY;
-//            if (p->faceid != faceid && (p->pfi_flags & CCND_PFI_SENDUPST) == 0){
-//                p->pfi_flags |= CCND_PFI_SENDUPST;
-//                if (res == HT_OLD_ENTRY)
-//                    strategy_callout(h, ie, CCNST_NEWUP, p->faceid);
-//            }
         }
     }
     if (res == HT_NEW_ENTRY) {
