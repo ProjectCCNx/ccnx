@@ -26,8 +26,6 @@
 #include <ccn/ccn.h>
 #include <ccn/seqwriter.h>
 
-#define MAX_DATA_SIZE 4096
-
 struct ccn_seqwriter {
     struct ccn_closure cl;
     struct ccn *h;
@@ -171,7 +169,7 @@ ccn_seqw_create(struct ccn *h, struct ccn_charbuf *name)
     w->seqnum = 0;
     w->interests_possibly_pending = 1;
     w->blockminsize = 0;
-    w->blockmaxsize = MAX_DATA_SIZE;
+    w->blockmaxsize = CCN_MAX_CONTENT_PAYLOAD;
     w->freshness = -1;
     w->digestlen = 0;
     res = ccn_set_interest_filter(h, nb, &(w->cl));
@@ -287,7 +285,7 @@ ccn_seqw_set_block_limits(struct ccn_seqwriter *w, int l, int h)
 {
     if (w == NULL || w->cl.data != w || w->closed)
         return(-1);
-    if (l < 0 || l > MAX_DATA_SIZE || h < 0 || h > MAX_DATA_SIZE || l > h)
+    if (l < 0 || l > CCN_MAX_CONTENT_PAYLOAD || h < 0 || h > CCN_MAX_CONTENT_PAYLOAD || l > h)
         return(-1);
     w->blockminsize = l;
     w->blockmaxsize = h;
