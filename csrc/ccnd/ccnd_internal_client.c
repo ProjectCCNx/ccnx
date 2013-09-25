@@ -583,7 +583,7 @@ ccnd_answer_by_guid(struct ccnd_handle *ccnd, struct ccn_upcall_info *info)
 }
 
 /**
- * Handle the data comming back from an adjacency offer or commit request.
+ * Handle the data coming back from an adjacency offer or commit request.
  */
 static enum ccn_upcall_res
 incoming_adjacency(struct ccn_closure *selfp,

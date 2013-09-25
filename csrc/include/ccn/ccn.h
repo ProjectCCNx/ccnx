@@ -141,12 +141,6 @@ struct ccn_closure {
 
 /**
  * Additional information provided in the upcall.
- *
- * The client is responsible for managing this piece of memory and the
- * data therein. The refcount should be initially zero, and is used by the
- * library to keep to track of multiple registrations of the same closure.
- * When the count drops back to 0, the closure will be called with
- * kind = CCN_UPCALL_FINAL so that it has an opportunity to clean up.
  */
 struct ccn_upcall_info {
     struct ccn *h;              /**< The ccn library handle */
