@@ -1,3 +1,19 @@
+Changes between 0.8.0 and 0.8.1:
+--------------------------------
+This highlights some important changes since the most recent numbered release.
+Refer to http://redmine.ccnx.org/versions/20 for more details on CCNx 0.8.1.
+
+- This release fixes a number of bugs, including a serious memory leak in ccnd.
+
+	* Bug #101029: unbounded test log file growth
+	* Bug #101032: ccnr should start at specified segment on checked start write
+	* Bug #101034: No obvious documentation for how to start ccnr exists on website
+	* Bug #101035: small leak in ccn_fetch should a realloc() fail
+	* Bug #101038: Inconsistent encoding of zero-length name components
+	* Bug #101043: ccnr r_store_lookup_backwards can fail
+	* Bug #101044: valgrind reports memory leak in 0.8.0 ccnd
+	* Support #101045 Prepare for ccnx-0.8.1 release
+
 Changes between 0.7.2 and 0.8.0:
 --------------------------------
 This highlights some important changes since the most recent numbered release.

@@ -5,7 +5,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -140,14 +140,14 @@ main(int argc, char **argv)
     }
 	if (allow_stale || lifetime_l12 != lifetime_default || scope != -1) {
         templ = ccn_charbuf_create();
-        ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
-        ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
-        ccn_charbuf_append_closer(templ); /* </Name> */
+        ccnb_element_begin(templ, CCN_DTAG_Interest);
+        ccnb_element_begin(templ, CCN_DTAG_Name);
+        ccnb_element_end(templ); /* </Name> */
 		if (allow_stale) {
-			ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
+			ccnb_element_begin(templ, CCN_DTAG_AnswerOriginKind);
 			ccnb_append_number(templ,
 							   CCN_AOK_DEFAULT | CCN_AOK_STALE);
-			ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
+			ccnb_element_end(templ); /* </AnswerOriginKind> */
 		}
         if (scope != -1) {
             ccnb_tagged_putf(templ, CCN_DTAG_Scope, "%d", scope);
@@ -163,7 +163,7 @@ main(int argc, char **argv)
 				buf[i] = lifetime_l12 & 0xff;
 			ccnb_append_tagged_blob(templ, CCN_DTAG_InterestLifetime, buf, sizeof(buf));
 		}
-        ccn_charbuf_append_closer(templ); /* </Interest> */
+        ccnb_element_end(templ); /* </Interest> */
     }
     resultbuf = ccn_charbuf_create();
     if (resolve_version != 0) {

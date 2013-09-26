@@ -61,40 +61,37 @@ ccn_signed_info_create(struct ccn_charbuf *c,
     if (publisher_key_id != NULL && publisher_key_id_size != 32)
         return(-1);
 
-    res |= ccn_charbuf_append_tt(c, CCN_DTAG_SignedInfo, CCN_DTAG);
+    res |= ccnb_element_begin(c, CCN_DTAG_SignedInfo);
 
-    res |= ccn_charbuf_append_tt(c, CCN_DTAG_PublisherPublicKeyDigest, CCN_DTAG);
     if (publisher_key_id != NULL) {
-        res |= ccn_charbuf_append_tt(c, publisher_key_id_size, CCN_BLOB);
-        res |= ccn_charbuf_append(c, publisher_key_id, publisher_key_id_size);
+        res |= ccnb_append_tagged_blob(c, CCN_DTAG_PublisherPublicKeyDigest,
+                                       publisher_key_id, publisher_key_id_size);
     } else {
         /* XXX - obtain the default publisher key id and append it */
-        res |= ccn_charbuf_append_tt(c, sizeof(fakepubkeyid), CCN_BLOB);
-        res |= ccn_charbuf_append(c, fakepubkeyid, sizeof(fakepubkeyid));
+        res |= ccnb_append_tagged_blob(c, CCN_DTAG_PublisherPublicKeyDigest,
+                                       fakepubkeyid, sizeof(fakepubkeyid));
     }
-    res |= ccn_charbuf_append_closer(c);
-
-    res |= ccn_charbuf_append_tt(c, CCN_DTAG_Timestamp, CCN_DTAG);
+    res |= ccnb_element_begin(c, CCN_DTAG_Timestamp);
     if (timestamp != NULL)
         res |= ccn_charbuf_append_charbuf(c, timestamp);
     else
         res |= ccnb_append_now_blob(c, CCN_MARKER_NONE);
-    res |= ccn_charbuf_append_closer(c);
+    res |= ccnb_element_end(c);
 
     if (type != CCN_CONTENT_DATA) {
-        res |= ccn_charbuf_append_tt(c, CCN_DTAG_Type, CCN_DTAG);
+        res |= ccnb_element_begin(c, CCN_DTAG_Type);
         res |= ccn_charbuf_append_tt(c, 3, CCN_BLOB);
         res |= ccn_charbuf_append_value(c, type, 3);
-        res |= ccn_charbuf_append_closer(c);
+        res |= ccnb_element_end(c);
     }
 
     if (freshness >= 0)
         res |= ccnb_tagged_putf(c, CCN_DTAG_FreshnessSeconds, "%d", freshness);
 
     if (finalblockid != NULL) {
-        res |= ccn_charbuf_append_tt(c, CCN_DTAG_FinalBlockID, CCN_DTAG);
+        res |= ccnb_element_begin(c, CCN_DTAG_FinalBlockID);
         res |= ccn_charbuf_append_charbuf(c, finalblockid);
-        res |= ccn_charbuf_append_closer(c);
+        res |= ccnb_element_end(c);
     }
 
     if (key_locator != NULL) {
@@ -102,7 +99,7 @@ ccn_signed_info_create(struct ccn_charbuf *c,
 	res |= ccn_charbuf_append_charbuf(c, key_locator);
     }
     
-    res |= ccn_charbuf_append_closer(c);
+    res |= ccnb_element_end(c);
 
     return(res == 0 ? 0 : -1);
 }
@@ -120,28 +117,20 @@ ccn_encode_Signature(struct ccn_charbuf *buf,
     if (signature == NULL)
         return(-1);
 
-    res |= ccn_charbuf_append_tt(buf, CCN_DTAG_Signature, CCN_DTAG);
+    res |= ccnb_element_begin(buf, CCN_DTAG_Signature);
 
     if (digest_algorithm != NULL) {
-        res |= ccn_charbuf_append_tt(buf, CCN_DTAG_DigestAlgorithm, CCN_DTAG);
-        res |= ccn_charbuf_append_tt(buf, strlen(digest_algorithm), CCN_UDATA);
-        res |= ccn_charbuf_append_string(buf, digest_algorithm);
-        res |= ccn_charbuf_append_closer(buf);
+        res |= ccnb_append_tagged_udata(buf, CCN_DTAG_DigestAlgorithm,
+                                        digest_algorithm, strlen(digest_algorithm));
     }
 
     if (witness != NULL) {
-        res |= ccn_charbuf_append_tt(buf, CCN_DTAG_Witness, CCN_DTAG);
-        res |= ccn_charbuf_append_tt(buf, witness_size, CCN_BLOB);
-        res |= ccn_charbuf_append(buf, witness, witness_size);
-        res |= ccn_charbuf_append_closer(buf);
+        res |= ccnb_append_tagged_blob(buf, CCN_DTAG_Witness, witness, witness_size);
     }
 
-    res |= ccn_charbuf_append_tt(buf, CCN_DTAG_SignatureBits, CCN_DTAG);
-    res |= ccn_charbuf_append_tt(buf, signature_size, CCN_BLOB);
-    res |= ccn_charbuf_append(buf, signature, signature_size);
-    res |= ccn_charbuf_append_closer(buf);
-    
-    res |= ccn_charbuf_append_closer(buf);
+    res |= ccnb_append_tagged_blob(buf, CCN_DTAG_SignatureBits, signature, signature_size);
+
+    res |= ccnb_element_end(buf); // CCN_DTAG_Signature
 
     return(res == 0 ? 0 : -1);
 }
@@ -175,11 +164,11 @@ ccn_encode_ContentObject(struct ccn_charbuf *buf,
     size_t closer_start;
 
     content_header = ccn_charbuf_create();
-    res |= ccn_charbuf_append_tt(content_header, CCN_DTAG_Content, CCN_DTAG);
+    res |= ccnb_element_begin(content_header, CCN_DTAG_Content);
     if (size != 0)
         res |= ccn_charbuf_append_tt(content_header, size, CCN_BLOB);
     closer_start = content_header->length;
-    res |= ccn_charbuf_append_closer(content_header);
+    res |= ccnb_element_end(content_header);
     if (res < 0) {
 	res = -1;
 	goto Bail;
@@ -224,13 +213,13 @@ ccn_encode_ContentObject(struct ccn_charbuf *buf,
 	res = -1;
 	goto Bail;
     }
-    res |= ccn_charbuf_append_tt(buf, CCN_DTAG_ContentObject, CCN_DTAG);
+    res |= ccnb_element_begin(buf, CCN_DTAG_ContentObject);
     res |= ccn_encode_Signature(buf, digest_algorithm,
                                 NULL, 0, signature, signature_size);
     res |= ccn_charbuf_append_charbuf(buf, Name);
     res |= ccn_charbuf_append_charbuf(buf, SignedInfo);
     res |= ccnb_append_tagged_blob(buf, CCN_DTAG_Content, data, size);
-    res |= ccn_charbuf_append_closer(buf);
+    res |= ccnb_element_end(buf);
 Bail:
     if (sig_ctx != NULL)
         ccn_sigc_destroy(&sig_ctx);
@@ -256,11 +245,11 @@ ccn_encode_StatusResponse(struct ccn_charbuf *buf,
     int res = 0;
     if (errcode < 100 || errcode > 999)
         return(-1);
-    res |= ccn_charbuf_append_tt(buf, CCN_DTAG_StatusResponse, CCN_DTAG);
+    res |= ccnb_element_begin(buf, CCN_DTAG_StatusResponse);
     res |= ccnb_tagged_putf(buf, CCN_DTAG_StatusCode, "%d", errcode);
     if (errtext != NULL && errtext[0] != 0)
         res |= ccnb_tagged_putf(buf, CCN_DTAG_StatusText, "%s", errtext);
-    res |= ccn_charbuf_append_closer(buf);
+    res |= ccnb_element_end(buf);
     return(res);
 }
 
@@ -422,13 +411,13 @@ ccnb_append_tagged_blob(struct ccn_charbuf *c,
                         size_t size)
 {
     int res;
-
-    res = ccn_charbuf_append_tt(c, dtag, CCN_DTAG);
+    
+    res = ccnb_element_begin(c, dtag);
     if (size != 0) {
         res |= ccn_charbuf_append_tt(c, size, CCN_BLOB);
         res |= ccn_charbuf_append(c, data, size);
     }
-    res |= ccn_charbuf_append_closer(c);
+    res |= ccnb_element_end(c);
     return(res == 0 ? 0 : -1);
 }
 /**
@@ -454,9 +443,36 @@ ccnb_append_tagged_binary_number(struct ccn_charbuf *cb,
 }
 
 /**
+ * Append a tagged UDATA string
+ *
+ * This is a ccnb-encoded element containing the UDATA as content
+ * @param c is the buffer to append to.
+ * @param dtag is the element's dtab
+ * @param data points to the data
+ * @param size is the size of the data, in bytes
+ * @returns 0 for success or -1 for error.
+ */
+int
+ccnb_append_tagged_udata(struct ccn_charbuf *c,
+                         enum ccn_dtag dtag,
+                         const void *data,
+                         size_t size)
+{
+    int res;
+    
+    res = ccnb_element_begin(c, dtag);
+    if (size != 0) {
+        res |= ccn_charbuf_append_tt(c, size, CCN_UDATA);
+        res |= ccn_charbuf_append(c, data, size);
+    }
+    res |= ccnb_element_end(c);
+    return(res == 0 ? 0 : -1);
+}
+
+/**
  * Append a tagged UDATA string, with printf-style formatting
  *
- * This is a ccnb-encoded element with containing UDATA as content.
+ * This is a ccnb-encoded element containing UDATA as content.
  * @param c is the buffer to append to.
  * @param dtag is the element's dtab.
  * @param fmt is a printf-style format string, followed by its values
@@ -471,7 +487,7 @@ ccnb_tagged_putf(struct ccn_charbuf *c,
     va_list ap;
     char *ptr;
     
-    res = ccn_charbuf_append_tt(c, dtag, CCN_DTAG);
+    res = ccnb_element_begin(c, dtag);
     if (res < 0)
         return(-1);
     ptr = (char *)ccn_charbuf_reserve(c, strlen(fmt) + 20);
@@ -502,7 +518,7 @@ ccnb_tagged_putf(struct ccn_charbuf *c,
             c->length += size;
         }
     }
-    res |= ccn_charbuf_append_closer(c);
+    res |= ccnb_element_end(c);
     return(res == 0 ? 0 : -1);    
 }
 
@@ -523,18 +539,15 @@ ccnb_append_Link(struct ccn_charbuf *buf,
 {
     int res = 0;
     
-    res |= ccn_charbuf_append_tt(buf, CCN_DTAG_Link, CCN_DTAG);
+    res |= ccnb_element_begin(buf, CCN_DTAG_Link);
     res |= ccn_charbuf_append_charbuf(buf, name);
     if (label != NULL) {
-        res |= ccn_charbuf_append_tt(buf, CCN_DTAG_Label, CCN_DTAG);
-        res |= ccn_charbuf_append_tt(buf, strlen(label), CCN_UDATA);
-        res |= ccn_charbuf_append_string(buf, label);
-        res |= ccn_charbuf_append_closer(buf);
+        res |= ccnb_append_tagged_udata(buf, CCN_DTAG_Label, label, strlen(label));
     }
     if (linkAuthenticator != NULL) {
         res |= ccn_charbuf_append_charbuf(buf, linkAuthenticator);
     }
-    res |= ccn_charbuf_append_closer(buf);
+    res |= ccnb_element_end(buf);
     return(res == 0 ? 0 : -1);
 }
 

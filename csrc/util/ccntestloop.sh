@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2010-2012 Palo Alto Research Center, Inc.
+# Copyright (C) 2010-2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -66,7 +66,7 @@ cat << EOF
 # Control the overall log level of the java tests.
 CCN_LOG_LEVEL_ALL=WARNING
 
-# These may be used to contol which tests are run.
+# These may be used to control which tests are run.
 # Leave empty for the default set. Say NO for none.
 CCN_CTESTS=
 CCN_JAVATESTS=

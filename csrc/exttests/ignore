@@ -27,6 +27,8 @@ seeds
 staged.*
 stats?.txt
 stems
+sw-c/
+sw-c-2/
 testdata.txt
 testdriver
 testfile

@@ -84,17 +84,6 @@ typedef uint32_t ccn_wrappedtime;
  * to track the most recent arrival on that face (the downstream), and
  * one to track the most recently sent (the upstream).
  */
-/* On the CCNST_FIRST call for an Interest to a given prefix,
- * there will be one face marked downstream, and the eligible faces
- * are those which are neither DCFACE nor DNSTREAM.
- * Calling send_interest() manages the flag settings.
- *
- * Once the CCNST_ADDDNSTRM (additional downstream) operation is added, 
- * on that call there will be multiple downstream faces in the
- * PFI list and there will be a non-downstream face entry for any face(s)
- * that were previously downstream.
- * 
- */
 
 struct pit_face_item {
     struct pit_face_item *next;     /**< next in list */

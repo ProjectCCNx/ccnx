@@ -4,7 +4,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -294,14 +294,14 @@ main(int argc, char **argv)
     if (expire >= 0) {
         if (sp.template_ccnb == NULL) {
             sp.template_ccnb = ccn_charbuf_create();
-            ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_SignedInfo, CCN_DTAG);
+            ccnb_element_begin(sp.template_ccnb, CCN_DTAG_SignedInfo);
         }
         else if (sp.template_ccnb->length > 0) {
             sp.template_ccnb->length--;
         }
         ccnb_tagged_putf(sp.template_ccnb, CCN_DTAG_FreshnessSeconds, "%ld", expire);
         sp.sp_flags |= CCN_SP_TEMPL_FRESHNESS;
-        ccn_charbuf_append_closer(sp.template_ccnb);
+        ccnb_element_end(sp.template_ccnb);
     }
     
     /* Set key locator, if supplied */
@@ -314,25 +314,25 @@ main(int argc, char **argv)
         }
         if (sp.template_ccnb == NULL) {
             sp.template_ccnb = ccn_charbuf_create();
-            ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_SignedInfo, CCN_DTAG);
+            ccnb_element_begin(sp.template_ccnb, CCN_DTAG_SignedInfo);
         }
         else if (sp.template_ccnb->length > 0) {
             sp.template_ccnb->length--;
         }
-        ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_KeyLocator, CCN_DTAG);
-        ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_KeyName, CCN_DTAG);
+        ccnb_element_begin(sp.template_ccnb, CCN_DTAG_KeyLocator);
+        ccnb_element_begin(sp.template_ccnb, CCN_DTAG_KeyName);
         ccn_charbuf_append(sp.template_ccnb, c->buf, c->length);
-        ccn_charbuf_append_closer(sp.template_ccnb);
-        ccn_charbuf_append_closer(sp.template_ccnb);
+        ccnb_element_end(sp.template_ccnb);
+        ccnb_element_end(sp.template_ccnb);
         sp.sp_flags |= CCN_SP_TEMPL_KEY_LOCATOR;
-        ccn_charbuf_append_closer(sp.template_ccnb);
+        ccnb_element_end(sp.template_ccnb);
         ccn_charbuf_destroy(&c);
     }
 
     if (extopt != NULL && extopt->length > 0) {
         if (sp.template_ccnb == NULL) {
             sp.template_ccnb = ccn_charbuf_create();
-            ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_SignedInfo, CCN_DTAG);
+            ccnb_element_begin(sp.template_ccnb, CCN_DTAG_SignedInfo);
         }
         else if (sp.template_ccnb->length > 0) {
             sp.template_ccnb->length--;
@@ -340,7 +340,7 @@ main(int argc, char **argv)
         ccnb_append_tagged_blob(sp.template_ccnb, CCN_DTAG_ExtOpt,
                                 extopt->buf, extopt->length);
         sp.sp_flags |= CCN_SP_TEMPL_EXT_OPT;
-        ccn_charbuf_append_closer(sp.template_ccnb);
+        ccnb_element_end(sp.template_ccnb);
     }
     
     /* Create the signed content object, ready to go */

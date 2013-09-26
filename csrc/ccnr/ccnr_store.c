@@ -941,6 +941,7 @@ r_store_lookup_backwards(struct ccnr_handle *h,
     int ndx;
     int res;
     int rnc;
+    int backing;
     
     size = pi->offset[CCN_PI_E];
     f = ccn_charbuf_create_n(pi->offset[CCN_PI_E_Name]);
@@ -956,7 +957,7 @@ r_store_lookup_backwards(struct ccnr_handle *h,
     res = ccn_btree_lookup(h->btree, f->buf, f->length, &leaf);
     if (res < 0) { errline = __LINE__; goto Done; };
     ndx = CCN_BT_SRCH_INDEX(res);
-    for (try = 1;; try++) {
+    for (try = 1, backing = 1; backing; try++) {
         if (ndx == 0) {
             res = ccn_btree_prev_leaf(h->btree, leaf, &leaf);
             if (res != 1) goto Done;
@@ -977,6 +978,13 @@ r_store_lookup_backwards(struct ccnr_handle *h,
             res = ccn_btree_lookup(h->btree, f->buf, f->length, &leaf);
             if (res < 0) { errline = __LINE__; goto Done; };
             ndx = CCN_BT_SRCH_INDEX(res);
+            if (ndx >= ccn_btree_node_nent(leaf)) {
+                res = ccn_btree_next_leaf(h->btree, leaf, &leaf);
+                if (res != 1) { errline = __LINE__; goto Done; }
+                ndx = 0;
+                /* avoid backing up from here as we just took a step forward */
+                backing = 0;
+            }
         }
         else if (f->length < fsz) { errline = __LINE__; goto Done; }
         res = ccn_btree_match_interest(leaf, ndx, interest_msg, pi, f);

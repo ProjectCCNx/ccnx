@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -207,14 +207,14 @@ express_bulkdata_interest(struct ccn *h, struct pending *p)
     (*b->seqfunc)(p->x, b->seqfunc_param, seq);
     ccn_name_append(name, seq->buf, seq->length);
     
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
+    ccnb_element_begin(templ, CCN_DTAG_Interest);
 
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
-    ccn_charbuf_append_closer(templ); /* </Name> */
+    ccnb_element_begin(templ, CCN_DTAG_Name);
+    ccnb_element_end(templ); /* </Name> */
 
     // XXX - may want to set Min/MaxSuffixComponents
     
-    ccn_charbuf_append_closer(templ); /* </Interest> */
+    ccnb_element_end(templ); /* </Interest> */
     res = ccn_express_interest(h, name, &p->closure, templ);
     assert(res >= 0); // XXX - handle this better
     ccn_charbuf_destroy(&name);

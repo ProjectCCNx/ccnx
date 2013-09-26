@@ -37,7 +37,7 @@
  * Thus CCN_API_VERSION=1000 would have corresponded to the first public
  * release (0.1.0), but that version did not have this macro defined.
  */
-#define CCN_API_VERSION 8000
+#define CCN_API_VERSION 8001
 
 #if !defined(DEPRECATED)
 /*
@@ -141,12 +141,6 @@ struct ccn_closure {
 
 /**
  * Additional information provided in the upcall.
- *
- * The client is responsible for managing this piece of memory and the
- * data therein. The refcount should be initially zero, and is used by the
- * library to keep to track of multiple registrations of the same closure.
- * When the count drops back to 0, the closure will be called with
- * kind = CCN_UPCALL_FINAL so that it has an opportunity to clean up.
  */
 struct ccn_upcall_info {
     struct ccn *h;              /**< The ccn library handle */
@@ -1018,7 +1012,13 @@ int ccnb_append_tagged_blob(struct ccn_charbuf *c, enum ccn_dtag dtag,
  * Append a tagged binary number
  */
 int ccnb_append_tagged_binary_number(struct ccn_charbuf *cb, enum ccn_dtag dtag,
-                                      uintmax_t val);
+                                     uintmax_t val);
+
+/*
+ * Append a tagged UDATA string
+ */
+int ccnb_append_tagged_udata(struct ccn_charbuf *c, enum ccn_dtag dtag,
+                                     const void *data, size_t size);
 
 /*
  * Append a tagged UDATA string, with printf-style formatting

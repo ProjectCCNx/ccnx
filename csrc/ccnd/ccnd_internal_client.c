@@ -84,13 +84,13 @@ ccnd_init_service_ccnb(struct ccnd_handle *ccnd, const char *baseuri, int freshn
     ccn_name_append(name, keyid->buf, keyid->length);
     ccn_create_version(h, name, 0, ccnd->starttime, ccnd->starttime_usec * 1000);
     sp.template_ccnb = ccn_charbuf_create();
-    ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_SignedInfo, CCN_DTAG);
-    ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_KeyLocator, CCN_DTAG);
-    ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_KeyName, CCN_DTAG);
+    ccnb_element_begin(sp.template_ccnb, CCN_DTAG_SignedInfo);
+    ccnb_element_begin(sp.template_ccnb, CCN_DTAG_KeyLocator);
+    ccnb_element_begin(sp.template_ccnb, CCN_DTAG_KeyName);
     ccn_charbuf_append_charbuf(sp.template_ccnb, name);
-    ccn_charbuf_append_closer(sp.template_ccnb);
-    ccn_charbuf_append_closer(sp.template_ccnb);
-    ccn_charbuf_append_closer(sp.template_ccnb);
+    ccnb_element_end(sp.template_ccnb);
+    ccnb_element_end(sp.template_ccnb);
+    ccnb_element_end(sp.template_ccnb);
     sp.sp_flags |= CCN_SP_TEMPL_KEY_LOCATOR;
     ccn_name_from_uri(name, "%00");
     sp.sp_flags |= CCN_SP_FINAL_BLOCK;
@@ -583,7 +583,7 @@ ccnd_answer_by_guid(struct ccnd_handle *ccnd, struct ccn_upcall_info *info)
 }
 
 /**
- * Handle the data comming back from an adjacency offer or commit request.
+ * Handle the data coming back from an adjacency offer or commit request.
  */
 static enum ccn_upcall_res
 incoming_adjacency(struct ccn_closure *selfp,
@@ -917,7 +917,7 @@ ccnd_req_guest(struct ccn_closure *selfp,
     start = info->pi->offset[CCN_PI_B_Name];
     end = info->interest_comps->buf[info->pi->prefix_comps];
     ccn_charbuf_append(name, info->interest_ccnb + start, end - start);
-    ccn_charbuf_append_closer(name);
+    ccnb_element_end(name);
     ccn_create_version(info->h, name, CCN_V_NOW, 0, 0);
     ccn_name_from_uri(name, "%00");
     sp.sp_flags = CCN_SP_FINAL_BLOCK;
@@ -1210,7 +1210,7 @@ ccnd_answer_req(struct ccn_closure *selfp,
     start = info->pi->offset[CCN_PI_B_Name];
     end = info->interest_comps->buf[info->pi->prefix_comps];
     ccn_charbuf_append(name, info->interest_ccnb + start, end - start);
-    ccn_charbuf_append_closer(name);
+    ccnb_element_end(name);
     res = ccn_sign_content(info->h, msg, name, &sp,
                            reply_body->buf, reply_body->length);
     if (res < 0)

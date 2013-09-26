@@ -30,8 +30,10 @@ CCNx Binary Encoding (ccnb)
      Arbitrary binary value, arbitrary length (including 0), no alignment requirements
      * number value is length in octets
      * Value will encoded as base 64 when converted to text XML
+     * Unless otherwise specified a zero-length BLOB will be omitted.
    UDATA(TT=6):: 
      same as BLOB but value restricted to valid UTF-8 sequences
+     * Unless otherwise specified (see ATTR), a zero-length UDATA will be omitted.
    TAG(TT=1):: 
      XML element tag name in UTF-8 encoding
      * number value is length in octets of UTF-8 encoding of tag name - 1 (minimum tag name length is 1)

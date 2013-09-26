@@ -6,6 +6,7 @@ encodedecodetest
 hashtbtest
 libccn.a
 matrixtest
+nametreetest
 signbenchtest
 skel_decode_test
 test.aeskeystore

@@ -4,7 +4,7 @@
  * Part of CCNx Sync.
  */
 /*
- * Copyright (C) 2011-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -791,10 +791,10 @@ SyncAppendRandomBytes(struct ccn_charbuf *cb, int n) {
 // appends a random hash code as a ContentHash
 extern int
 SyncAppendRandomHash(struct ccn_charbuf *cb, int n) {
-    int res = ccn_charbuf_append_tt(cb, CCN_DTAG_SyncContentHash, CCN_DTAG);
+    int res = ccnb_element_begin(cb, CCN_DTAG_SyncContentHash);
     res |= ccn_charbuf_append_tt(cb, n, CCN_BLOB);
     res |= SyncAppendRandomBytes(cb, n);
-    res |= ccn_charbuf_append_closer(cb);
+    res |= ccnb_element_end(cb);
     return res;
 }
 
@@ -802,8 +802,8 @@ SyncAppendRandomHash(struct ccn_charbuf *cb, int n) {
 extern int
 SyncAppendRandomName(struct ccn_charbuf *cb, int nComp, int maxCompLen) {
     struct ccn_charbuf *rb = ccn_charbuf_create();
-    int res = ccn_charbuf_append_tt(cb, CCN_DTAG_Name, CCN_DTAG);
-    res |= ccn_charbuf_append_closer(cb);
+    int res = ccnb_element_begin(cb, CCN_DTAG_Name);
+    res |= ccnb_element_end(cb);
     while (nComp > 0 && res == 0) {
         unsigned nb = random();
         nb = (nb % (maxCompLen+1));
@@ -832,8 +832,8 @@ SyncAppendElementInner(struct ccn_charbuf *cb, struct ccn_buf_decoder *d) {
     int src = 0;
     if (ccn_buf_match_dtag(d, CCN_DTAG_Name)) {
         ccn_buf_advance(d);
-        int res = ccn_charbuf_append_tt(cb, CCN_DTAG_Name, CCN_DTAG);
-        res |= ccn_charbuf_append_closer(cb);
+        int res = ccnb_element_begin(cb, CCN_DTAG_Name);
+        res |= ccnb_element_end(cb);
         while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
             const unsigned char *cPtr = NULL;
             size_t cSize = 0;
@@ -1199,7 +1199,7 @@ static int
 appendExclusions(struct ccn_charbuf *cb, struct SyncNameAccum *excl) {
     if (excl != NULL) {
         int i = 0;
-        ccn_charbuf_append_tt(cb, CCN_DTAG_Exclude, CCN_DTAG);
+        ccnb_element_begin(cb, CCN_DTAG_Exclude);
         for (i = 0; i < excl->len; i++) {
             struct ccn_charbuf *name = excl->ents[i].name;
             // append just the first component
@@ -1219,7 +1219,7 @@ appendExclusions(struct ccn_charbuf *cb, struct SyncNameAccum *excl) {
             }
             if (cSize == 0) return -__LINE__;
         }
-        ccn_charbuf_append_closer(cb); /* </Exclude> */
+        ccnb_element_end(cb); /* </Exclude> */
         return 1;
     }
     return 0;
@@ -1230,11 +1230,11 @@ SyncGenInterest(struct ccn_charbuf *name,
                 int scope, int lifetime, int maxSuffix, int childPref,
                 struct SyncNameAccum *excl) {
     struct ccn_charbuf *cb = ccn_charbuf_create();
-    ccn_charbuf_append_tt(cb, CCN_DTAG_Interest, CCN_DTAG);
+    ccnb_element_begin(cb, CCN_DTAG_Interest);
     int res = 0;
     if (name == NULL) {
-        res |= ccn_charbuf_append_tt(cb, CCN_DTAG_Name, CCN_DTAG);
-        res |= ccn_charbuf_append_closer(cb); /* </Name> */
+        res |= ccnb_element_begin(cb, CCN_DTAG_Name);
+        res |= ccnb_element_end(cb); /* </Name> */
     } else {
         ccn_charbuf_append_charbuf(cb, name);
     }
@@ -1248,7 +1248,7 @@ SyncGenInterest(struct ccn_charbuf *name,
         ccnb_tagged_putf(cb, CCN_DTAG_Scope, "%d", scope);
     if (lifetime > 0)
         appendLifetime(cb, lifetime);
-    ccn_charbuf_append_closer(cb); /* </Interest> */
+    ccnb_element_end(cb); /* </Interest> */
     if (res < 0) {
         ccn_charbuf_destroy(&cb);
     }
@@ -1319,10 +1319,10 @@ SyncSignBuf(struct SyncBaseStruct *base,
     
     if (fresh > 0 && fresh <= freshLimit) {
         sp.template_ccnb = ccn_charbuf_create();
-        ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_SignedInfo, CCN_DTAG);
+        ccnb_element_begin(sp.template_ccnb, CCN_DTAG_SignedInfo);
         ccnb_tagged_putf(sp.template_ccnb, CCN_DTAG_FreshnessSeconds, "%ld", fresh);
         sp.sp_flags |= CCN_SP_TEMPL_FRESHNESS;
-        ccn_charbuf_append_closer(sp.template_ccnb);
+        ccnb_element_end(sp.template_ccnb);
     }
     
     int res = ccn_sign_content(base->sd->ccn,
