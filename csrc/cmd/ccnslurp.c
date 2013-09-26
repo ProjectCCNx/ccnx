@@ -4,7 +4,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -58,11 +58,11 @@ static struct ccn_charbuf *
 create_passive_templ(void)
 {
     struct ccn_charbuf *templ = ccn_charbuf_create();
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
-    ccn_charbuf_append_closer(templ); /* </Name> */
+    ccnb_element_begin(templ, CCN_DTAG_Interest);
+    ccnb_element_begin(templ, CCN_DTAG_Name);
+    ccnb_element_end(templ); /* </Name> */
     answer_passive(templ);
-    ccn_charbuf_append_closer(templ); /* </Interest> */
+    ccnb_element_end(templ); /* </Interest> */
     return(templ);
 }
 
@@ -240,10 +240,7 @@ incoming_content(
 static void
 answer_passive(struct ccn_charbuf *templ)
 {
-    ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
-    ccn_charbuf_append(templ, "1", 1);
-    ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
+    ccnb_append_tagged_udata(templ, CCN_DTAG_AnswerOriginKind, "1", 1);
 }
 
 /*
@@ -261,10 +258,10 @@ express_my_interest(struct ccn *h,
     struct upcalldata *data = get_my_data(selfp);
 
     templ = ccn_charbuf_create();
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
-    ccn_charbuf_append_closer(templ); /* </Name> */
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Exclude, CCN_DTAG);
+    ccnb_element_begin(templ, CCN_DTAG_Interest);
+    ccnb_element_begin(templ, CCN_DTAG_Name);
+    ccnb_element_end(templ); /* </Name> */
+    ccnb_element_begin(templ, CCN_DTAG_Exclude);
     if ((data->flags & EXCLUDE_LOW) != 0)
         append_bf_all(templ);
     for (i = 0; i < data->n_excl; i++) {
@@ -274,9 +271,9 @@ express_my_interest(struct ccn *h,
     }
     if ((data->flags & EXCLUDE_HIGH) != 0)
         append_bf_all(templ);
-    ccn_charbuf_append_closer(templ); /* </Exclude> */
+    ccnb_element_end(templ); /* </Exclude> */
     answer_passive(templ);
-    ccn_charbuf_append_closer(templ); /* </Interest> */
+    ccnb_element_end(templ); /* </Interest> */
     if (templ->length + name->length > data->warn + 2) {
         fprintf(stderr, "*** Interest packet is %d bytes\n", (int)templ->length);
         data->warn = data->warn * 8 / 5;
@@ -341,10 +338,7 @@ append_bf_all(struct ccn_charbuf *c)
     unsigned char bf_all[9] = { 3, 1, 'A', 0, 0, 0, 0, 0, 0xFF };
     const struct ccn_bloom_wire *b = ccn_bloom_validate_wire(bf_all, sizeof(bf_all));
     if (b == NULL) abort();
-    ccn_charbuf_append_tt(c, CCN_DTAG_Bloom, CCN_DTAG);
-    ccn_charbuf_append_tt(c, sizeof(bf_all), CCN_BLOB);
-    ccn_charbuf_append(c, bf_all, sizeof(bf_all));
-    ccn_charbuf_append_closer(c);
+    ccnb_append_tagged_blob(c, CCN_DTAG_Bloom, bf_all, sizeof(bf_all));
 }
 
 static struct ccn_charbuf *

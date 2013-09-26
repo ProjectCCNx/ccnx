@@ -4,7 +4,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -55,19 +55,19 @@ struct ccn_charbuf *
 make_template(struct mydata *md, struct ccn_upcall_info *info)
 {
     struct ccn_charbuf *templ = ccn_charbuf_create();
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
-    ccn_charbuf_append_closer(templ); /* </Name> */
+    ccnb_element_begin(templ, CCN_DTAG_Interest);
+    ccnb_element_begin(templ, CCN_DTAG_Name);
+    ccnb_element_end(templ); /* </Name> */
     // XXX - use pubid if possible
-    ccn_charbuf_append_tt(templ, CCN_DTAG_MinSuffixComponents, CCN_DTAG);
+    ccnb_element_begin(templ, CCN_DTAG_MinSuffixComponents);
     ccnb_append_number(templ, 1);
-    ccn_charbuf_append_closer(templ); /* </MinSuffixComponents> */
+    ccnb_element_end(templ); /* </MinSuffixComponents> */
     if (md->allow_stale) {
-        ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
+        ccnb_element_begin(templ, CCN_DTAG_AnswerOriginKind);
         ccnb_append_number(templ, CCN_AOK_DEFAULT | CCN_AOK_STALE);
-        ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
+        ccnb_element_end(templ); /* </AnswerOriginKind> */
     }
-    ccn_charbuf_append_closer(templ); /* </Interest> */
+    ccnb_element_end(templ); /* </Interest> */
     return(templ);
 }
 

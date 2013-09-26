@@ -163,13 +163,13 @@ make_data_template(int maxSuffix) {
 	// creates a template for interests that only have a name
 	// and a segment number
 	struct ccn_charbuf *cb = ccn_charbuf_create();
-    ccn_charbuf_append_tt(cb, CCN_DTAG_Interest, CCN_DTAG);
-    ccn_charbuf_append_tt(cb, CCN_DTAG_Name, CCN_DTAG);
-    ccn_charbuf_append_closer(cb); /* </Name> */
-    ccn_charbuf_append_tt(cb, CCN_DTAG_MaxSuffixComponents, CCN_DTAG);
+    ccnb_element_begin(cb, CCN_DTAG_Interest);
+    ccnb_element_begin(cb, CCN_DTAG_Name);
+    ccnb_element_end(cb); /* </Name> */
+    ccnb_element_begin(cb, CCN_DTAG_MaxSuffixComponents);
     ccnb_append_number(cb, maxSuffix);
-    ccn_charbuf_append_closer(cb); /* </MaxSuffixComponents> */
-    ccn_charbuf_append_closer(cb); /* </Interest> */
+    ccnb_element_end(cb); /* </MaxSuffixComponents> */
+    ccnb_element_end(cb); /* </Interest> */
     return(cb);
 }
 
@@ -834,6 +834,9 @@ ccn_fetch_open(struct ccn_fetch *f,
         struct ccn_fetch_stream **streams;
         streams = realloc(f->streams, sizeof(*(f->streams)) * nMax);
         if (streams == NULL) {
+            ccn_charbuf_destroy(&fs->name);
+            freeString(fs->id);
+            free(fs);            
             return (NULL); // TBD: should this be handled differently?
         }
         f->streams = streams;

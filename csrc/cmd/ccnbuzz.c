@@ -75,12 +75,12 @@ append_bloom_element(struct ccn_charbuf *templ,
                      enum ccn_dtag dtag, struct ccn_bloom *b)
 {
         int i;
-        ccn_charbuf_append_tt(templ, dtag, CCN_DTAG);
+        ccnb_element_begin(templ, dtag);
         i = ccn_bloom_wiresize(b);
         ccn_charbuf_append_tt(templ, i, CCN_BLOB);
         ccn_bloom_store_wire(b, ccn_charbuf_reserve(templ, i), i);
         templ->length += i;
-        ccn_charbuf_append_closer(templ);
+        ccnb_element_end(templ);
 }
 
 /*
@@ -93,10 +93,7 @@ append_bf_all(struct ccn_charbuf *c)
     unsigned char bf_all[9] = { 3, 1, 'A', 0, 0, 0, 0, 0, 0xFF };
     const struct ccn_bloom_wire *b = ccn_bloom_validate_wire(bf_all, sizeof(bf_all));
     if (b == NULL) abort();
-    ccn_charbuf_append_tt(c, CCN_DTAG_Bloom, CCN_DTAG);
-    ccn_charbuf_append_tt(c, sizeof(bf_all), CCN_BLOB);
-    ccn_charbuf_append(c, bf_all, sizeof(bf_all));
-    ccn_charbuf_append_closer(c);
+    ccnb_append_tagged_blob(c, CCN_DTAG_Bloom, bf_all, sizeof(bf_all));
 }
 
 static struct ccn_bloom *
@@ -134,15 +131,15 @@ make_template(struct mydata *md, struct ccn_upcall_info *info, struct ccn_bloom 
     size_t start;
     size_t stop;
     
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
-    ccn_charbuf_append_closer(templ); /* </Name> */
+    ccnb_element_begin(templ, CCN_DTAG_Interest);
+    ccnb_element_begin(templ, CCN_DTAG_Name);
+    ccnb_element_end(templ); /* </Name> */
     // XXX - use pubid if possible
-    ccn_charbuf_append_tt(templ, CCN_DTAG_MaxSuffixComponents, CCN_DTAG);
+    ccnb_element_begin(templ, CCN_DTAG_MaxSuffixComponents);
     ccnb_append_number(templ, 2);
-    ccn_charbuf_append_closer(templ); /* </MaxSuffixComponents> */
+    ccnb_element_end(templ); /* </MaxSuffixComponents> */
     if (info != NULL) {
-        ccn_charbuf_append_tt(templ, CCN_DTAG_Exclude, CCN_DTAG);
+        ccnb_element_begin(templ, CCN_DTAG_Exclude);
         ib = info->interest_ccnb;
         cb = info->content_ccnb;
         cc = info->content_comps;
@@ -193,20 +190,20 @@ make_template(struct mydata *md, struct ccn_upcall_info *info, struct ccn_bloom 
             /* Use the supplied Bloom */
             append_bloom_element(templ, CCN_DTAG_Bloom, b);
         }
-        ccn_charbuf_append_closer(templ); /* </Exclude> */
+        ccnb_element_end(templ); /* </Exclude> */
     }
     else if (b != NULL) {
-        ccn_charbuf_append_tt(templ, CCN_DTAG_Exclude, CCN_DTAG);
+        ccnb_element_begin(templ, CCN_DTAG_Exclude);
         append_bloom_element(templ, CCN_DTAG_Bloom, b);
-        ccn_charbuf_append_closer(templ); /* </Exclude> */
+        ccnb_element_end(templ); /* </Exclude> */
     }
     if (md->allow_stale) {
-        ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
+        ccnb_element_begin(templ, CCN_DTAG_AnswerOriginKind);
         ccnb_append_number(templ,
                                                 CCN_AOK_DEFAULT | CCN_AOK_STALE);
-        ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
+        ccnb_element_end(templ); /* </AnswerOriginKind> */
     }
-    ccn_charbuf_append_closer(templ); /* </Interest> */
+    ccnb_element_end(templ); /* </Interest> */
     return(templ);
 }
 
