@@ -495,7 +495,7 @@ ccndc_strategy(struct ccndc_data *self,
         goto Cleanup;
     
     if (!check_only) {
-        char *action;
+        char *action = NULL;
         switch (cmd) {
             case STRAT_SET:
                 action = "setstrategy";
