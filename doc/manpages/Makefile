@@ -56,7 +56,7 @@ PAGE_NAMES =        		\
 	ccninitaeskeystore 	\
 
 
-PROJECT_NUMBER = 0.8.1
+PROJECT_NUMBER = 0.8.2
 SRC_TXT     = $(PAGE_NAMES:=.1.txt)
 DERIVED_HTML= $(PAGE_NAMES:=.1.html)
 DERIVED_PDF = $(PAGE_NAMES:=.1.pdf)
