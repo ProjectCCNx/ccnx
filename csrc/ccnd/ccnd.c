@@ -5920,6 +5920,3 @@ ccnd_destroy(struct ccnd_handle **pccnd)
     free(h);
     *pccnd = NULL;
 }
-
-/* Pull in the strategy class definitions */
-#include "ccnd_stregistry.h"

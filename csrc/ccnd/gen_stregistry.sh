@@ -85,6 +85,7 @@ EOF
 # Open the array declaration
 StartArray () {
 cat << EOF
+#ifdef DEFINE_STRATEGY_CLASSES
 /* strategy class table */
 const struct strategy_class ccnd_strategy_classes[] = {
 EOF
@@ -106,7 +107,13 @@ ArrayItem () {
 # Close off the end of the array declaration
 EndArray () {
 cat << EOF
-    {"", 0 }};
+    {"", 0},	/* provide space for a few dynamic slots */
+    {"", 0},
+    {"", 0},
+    {"", 0},
+    {"", 0},
+    {"", 0}};
+#endif
 EOF
 }
 
