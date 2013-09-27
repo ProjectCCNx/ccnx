@@ -23,6 +23,7 @@ import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.Link.LinkObject;
@@ -38,6 +39,8 @@ public class QueueOfLinksTestRepo {
 	
 	@Test
 	public void testLinkQueue() throws Exception {
+		Log.info(Log.FAC_TEST, "Started testLinkQueue");
+
 		String prefix = String.format("/repotest/test_%016X", rnd.nextLong());
 		String queuenamestring = prefix + "/queue";
 		String objnamestring = prefix + "/obj";
@@ -79,5 +82,7 @@ public class QueueOfLinksTestRepo {
 		CCNStringObject so2 = new CCNStringObject(co.name(), recvhandle);
 		
 		Assert.assertEquals(so, so2);
+		
+		Log.info(Log.FAC_TEST, "Completed testLinkQueue");
 	}
 }

@@ -756,7 +756,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 			//}
 		} catch (IOException e) {
 			if (Log.isLoggable(Log.FAC_PIPELINE, Level.WARNING))
-				Log.warning(Log.FAC_PIPELINE, "failed to express interest for CCNAbstractInputStream pipeline");
+				Log.warning(Log.FAC_PIPELINE, "failed to express interest for CCNAbstractInputStream pipeline: {0}", e.getMessage());
 		}
 	}
 
