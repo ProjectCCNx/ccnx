@@ -4329,7 +4329,7 @@ Finish:
  *
  * Find the matching pending interests in the PIT and consume them,
  * queueing the ContentObject to be sent on the associated faces.
- * If no matches were found and the content object was new, discard remove it
+ * If no matches were found and the content object was new, remove it
  * from the store.
  *
  * XXX - the change to staleness should also not happen if there was no
