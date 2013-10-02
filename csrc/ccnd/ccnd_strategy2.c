@@ -79,12 +79,10 @@ ccnd_loadsharing_strategy_impl(struct ccnd_handle *h,
                     for (p = strategy->pfl; p!= NULL; p = p->next) {
                         if ((p->pfi_flags & CCND_PFI_ATTENTION) == 0)
                             continue;
-                        ccnd_msg(h, "loadsharing checking face %u", p->faceid);
                         face = ccnd_face_from_faceid(h, p->faceid);
                         if (face->outstanding_interests == smallestq && ((p->pfi_flags & CCND_PFI_UPSTREAM) != 0)) {
                             if (best == 0) {
                                 p->pfi_flags |= CCND_PFI_SENDUPST;
-                                ccnd_msg(h, "loadsharing chose face %u outstanding %d", p->faceid, smallestq);
                                 break;
                             }
                             best--;
