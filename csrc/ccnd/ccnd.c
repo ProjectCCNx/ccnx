@@ -4344,7 +4344,7 @@ content_tree_trim(struct ccnd_handle *h) {
     struct content_entry *c;
     struct content_entry *nextx;
     
-    if (h->content_tree->n < h->capacity)
+    if (h->content_tree->n <= h->capacity)
         return;
     
     tries = 30;
@@ -4352,7 +4352,7 @@ content_tree_trim(struct ccnd_handle *h) {
         nextx = c->nextx;
         if (c->refs == 0 || c->staletime < h->sec - h->starttime) {
             remove_content(h, c);
-            if (h->content_tree->n < h->capacity)
+            if (h->content_tree->n <= h->capacity)
                 return;
         }
         if (--tries <= 0)
