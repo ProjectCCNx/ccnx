@@ -97,9 +97,9 @@ WANT=$((NSEG-3))
 NSEG=`grep -c $PREFIX/ sw-c-2.names.out`
 [ $((NSEG)) -eq $((WANT)) ] || Fail expecting $((WANT)) segments, got $((NSEG)).
 NAME=`ccnnamelist sw-c/repoFile1-00004.ccnb`
-grep -w $NAME sw-c-2.names.out >/dev/null || Fail did not store $NAME
+grep \^$NAME\$ sw-c-2.names.out >/dev/null || Fail did not store $NAME
 NAME=`ccnnamelist sw-c/repoFile1-00003.ccnb`
-grep -w $NAME sw-c-2.names.out >/dev/null && Fail oops, stored $NAME
+grep \^$NAME\$ sw-c-2.names.out >/dev/null && Fail oops, stored $NAME
 
 # Now we need to do it again, but this time it should be there
 WithCCND 5 ccnpeek -c $SWCR > sw-c-2.ccnb || Fail no reply to $SWCR
@@ -115,7 +115,7 @@ WithCCND 5 ccnpeek -c $SWCR > sw-c-us.ccnb || Fail no reply to $SWCR
 wait $PID || echo Status from wait $PID for ccnlibtest unsegmented.ccnb ... is $?
 ccnnamelist sw-c-2/repoFile1 > sw-c-2.names.out
 NAME=`ccnnamelist unsegmented.ccnb`
-grep -w $NAME sw-c-2.names.out >/dev/null || Fail did not store $NAME
+grep \^$NAME\$ sw-c-2.names.out >/dev/null || Fail did not store $NAME
 
 # Stop ccnd and ccnr
 WithCCND 5 ccndstop
