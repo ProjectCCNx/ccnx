@@ -1696,9 +1696,11 @@ face_send_queue_insert(struct ccnd_handle *h,
 {
     int ans;
     int delay;
+    int n;
     enum cq_delay_class c;
     enum cq_delay_class k;
     struct content_queue *q;
+    
     if (face == NULL || content == NULL || (face->flags & CCN_FACE_NOSEND) != 0)
         return(-1);
     c = choose_content_delay_class(h, face->faceid, content->flags);
@@ -1719,8 +1721,10 @@ face_send_queue_insert(struct ccnd_handle *h,
             }
         }
     }
-    content->refs++;
+    n = q->send_queue->n;
     ans = ccn_indexbuf_set_insert(q->send_queue, content->accession);
+    if (n != q->send_queue->n)
+        content->refs++;
     if (q->sender == NULL) {
         delay = randomize_content_delay(h, q);
         q->ready = q->send_queue->n;
