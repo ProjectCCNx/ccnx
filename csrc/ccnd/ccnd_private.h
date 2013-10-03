@@ -263,7 +263,8 @@ struct face {
 struct content_entry {
     ccn_cookie accession;       /**< for associated nametree entry */
     unsigned arrival_faceid;    /**< the faceid of first arrival */
-    int ncomps;                 /**< Number of name components plus one */
+    short refs;                 /**< number of queues we are on */
+    short ncomps;               /**< Number of name components plus one */
     int flags;                  /**< see defines below */
     unsigned char *ccnb;        /**< ccnb-encoded ContentObject */
     int size;                   /**< Size of ContentObject */

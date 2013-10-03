@@ -89,6 +89,8 @@ static void do_deferred_write(struct ccnd_handle *h, int fd);
 static struct face *get_dgram_source(struct ccnd_handle *h, struct face *face,
                                      struct sockaddr *addr, socklen_t addrlen,
                                      int why);
+static struct content_entry *content_from_accession(struct ccnd_handle *h,
+                                                    ccn_cookie accession);
 static int is_stale(struct ccnd_handle *h, struct content_entry *content);
 static void mark_stale(struct ccnd_handle *h,
                        struct content_entry *content);
@@ -397,8 +399,20 @@ static void
 content_queue_destroy(struct ccnd_handle *h, struct content_queue **pq)
 {
     struct content_queue *q;
+    struct ccn_indexbuf *s;
+    struct content_entry *c;
+    int i;
+    
     if (*pq != NULL) {
         q = *pq;
+        s = q->send_queue;
+        if (s != NULL) {
+            for (i = 0; i < s->n; i++) {
+                c = content_from_accession(h, s->buf[i]);
+                if (c != NULL)
+                    c->refs--;
+            }
+        }
         ccn_indexbuf_destroy(&q->send_queue);
         if (q->sender != NULL) {
             ccn_schedule_cancel(h->sched, q->sender);
@@ -1623,6 +1637,7 @@ content_sender(struct ccn_schedule *sched,
             q->nrun = 0;
         else {
             send_content(h, face, content);
+            content->refs--;
             /* face may have vanished, bail out if it did */
             if (face_from_faceid(h, faceid) == NULL)
                 goto Bail;
@@ -1704,6 +1719,7 @@ face_send_queue_insert(struct ccnd_handle *h,
             }
         }
     }
+    content->refs++;
     ans = ccn_indexbuf_set_insert(q->send_queue, content->accession);
     if (q->sender == NULL) {
         delay = randomize_content_delay(h, q);
@@ -2317,7 +2333,9 @@ remove_content(struct ccnd_handle *h, struct content_entry *content)
     y = ccny_from_cookie(h->content_tree, content->accession);
     if (y == NULL)
         return(-1);
-    if (h->debug & 4)
+    if (content->refs != 0)
+        ccnd_debug_content(h, __LINE__, "remove_queued_content", NULL, content);
+    else if (h->debug & 4)
         ccnd_debug_content(h, __LINE__, "remove", NULL, content);
     ccny_remove(h->content_tree, y);
     content = NULL;
@@ -4318,6 +4336,35 @@ Finish:
 }
 
 /**
+ * Discard content as needed to enforce capacity limit
+ */
+void
+content_tree_trim(struct ccnd_handle *h) {
+    int tries;
+    struct content_entry *c;
+    struct content_entry *nextx;
+    
+    if (h->content_tree->n < h->capacity)
+        return;
+    
+    tries = 30;
+    for (c = h->headx->nextx; c != h->headx; c = nextx) {
+        nextx = c->nextx;
+        if (c->refs == 0 || c->staletime < h->sec - h->starttime) {
+            remove_content(h, c);
+            if (h->content_tree->n < h->capacity)
+                return;
+        }
+        if (--tries <= 0)
+            break;
+    }
+    /* we've tried and failed to preserve queued content */
+    c = h->headx->nextx;
+    if (c != h->headx)
+        remove_content(h, c); /* logs remove_queued_content */
+}
+
+/**
  * Process an arriving ContentObject.
  *
  * Parse the ContentObject and discard if it is not well-formed.
@@ -4373,6 +4420,10 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
                      obj.magic);
         }
     }
+    if (h->content_tree->n >= h->content_tree->limit) {
+        if (h->content_tree->limit < h->capacity)
+            ccn_nametree_grow(h->content_tree);
+    }
     ccn_flatname_append_from_ccnb(f, msg, size, 0, -1);
     ccn_flatname_append_component(f, obj.digest, obj.digest_bytes);
     y = ccny_create(nrand48(h->seed), sizeof(*content));
@@ -4380,12 +4431,6 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
     if (res < 0) {
         res = -__LINE__;
         goto Bail;
-    }
-    if (h->content_tree->n >= h->capacity) {
-        /* Remove entry with the earliest staletime */
-        content = h->headx->nextx;
-        if (content != h->headx)
-            remove_content(h, content);
     }
     content = ccny_payload(y); /* Allocated by ccny_create */
     ocookie = ccny_enroll(h->content_tree, y);
@@ -4412,6 +4457,7 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
     else if (ccny_cookie(y) == 0) {
         /* Reporting and cleanup happens below */
         res = -__LINE__;
+        content = NULL;
     }
     else {
         res = -__LINE__;
@@ -4427,10 +4473,6 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         h->accessioned++;
         if (h->debug & 4)
             ccnd_debug_content(h, __LINE__, "content_from", face, content);
-        if (h->content_tree->n >= h->content_tree->limit) {
-            if (h->content_tree->limit < h->capacity)
-                ccn_nametree_grow(h->content_tree);
-        }
         res = 1;
     }
 Bail:
@@ -4471,9 +4513,11 @@ Bail:
                     if (h->debug & 8)
                         ccnd_debug_ccnb(h, __LINE__, "content_nosend", face, msg, size);
                     q->send_queue->buf[i] = 0;
+                    content->refs--;
                 }
             }
         }
+        content_tree_trim(h);
     }
 }
 
@@ -4984,6 +5028,9 @@ ccnd_send(struct ccnd_handle *h,
         ccnd_msg(h, "sendto short");
         return;
     }
+    if (h->debug & 8)
+        ccnd_msg(h, "output_blocked %u residual=%jd",
+                 face->faceid, (intmax_t)(size - res));
     face->outbufindex = 0;
     face->outbuf = ccn_charbuf_create();
     if (face->outbuf == NULL) {
@@ -5022,6 +5069,8 @@ do_deferred_write(struct ccnd_handle *h, int fd)
                 shutdown_client_fd(h, fd);
                 return;
             }
+            if (h->debug & 8)
+               ccnd_msg(h, "deferred_send %u bytes=%jd", face->faceid, (intmax_t)res);
             if (res == sendlen) {
                 face->outbufindex = 0;
                 ccn_charbuf_destroy(&face->outbuf);
