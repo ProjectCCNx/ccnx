@@ -4346,22 +4346,30 @@ content_tree_trim(struct ccnd_handle *h) {
     
     if (h->content_tree->n <= h->capacity)
         return;
-    
     tries = 30;
     for (c = h->headx->nextx; c != h->headx; c = nextx) {
         nextx = c->nextx;
-        if (c->refs == 0 || c->staletime < h->sec - h->starttime) {
+        if (c->refs == 0) {
             remove_content(h, c);
             if (h->content_tree->n <= h->capacity)
                 return;
         }
-        if (--tries <= 0)
+        else if (!is_stale(h, c)) {
+            /* add to no new queues so it will drain eventually */
+            mark_stale(h, c);
+            if (h->debug & 4)
+                ccnd_debug_content(h, __LINE__, "force_stale", NULL, c);
+            break;
+        }
+        else if (--tries <= 0)
             break;
     }
-    /* we've tried and failed to preserve queued content */
-    c = h->headx->nextx;
-    if (c != h->headx)
-        remove_content(h, c); /* logs remove_queued_content */
+    if (0) {
+        /* we've tried and failed to preserve queued content */
+        c = h->headx->nextx;
+        if (c != h->headx)
+            remove_content(h, c); /* logs remove_queued_content */
+    }
 }
 
 /**
