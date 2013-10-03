@@ -164,6 +164,11 @@ static void strategy_callout(struct ccnd_handle *h,
 #define WTHZ 500U
 
 /**
+ * Allow a few extra entries in the cache to allow for output queuing
+ */
+#define CACHE_MARGIN 10
+
+/**
  * Name of our unix-domain listener
  *
  * This tiny bit of global state is needed so that the unix-domain listener
@@ -4368,7 +4373,7 @@ content_tree_trim(struct ccnd_handle *h) {
         else if (--tries <= 0)
             break;
     }
-    if (0) {
+    if (h->content_tree->n > h->content_tree->limit) {
         /* we've tried and failed to preserve queued content */
         c = h->headx->nextx;
         if (c != h->headx)
@@ -4433,7 +4438,7 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         }
     }
     if (h->content_tree->n >= h->content_tree->limit) {
-        if (h->content_tree->limit < h->capacity)
+        if (h->content_tree->limit < h->capacity + CACHE_MARGIN)
             ccn_nametree_grow(h->content_tree);
     }
     ccn_flatname_append_from_ccnb(f, msg, size, 0, -1);
