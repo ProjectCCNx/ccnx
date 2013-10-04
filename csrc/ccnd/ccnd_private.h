@@ -142,7 +142,6 @@ struct ccnd_handle {
     int mtu;                        /**< Target size for stuffing interests */
     int flood;                      /**< Internal control for auto-reg */
     struct ccn_charbuf *autoreg;    /**< URIs to auto-register */
-    int force_zero_freshness;       /**< Simulate freshness=0 on all content */
     unsigned interest_faceid;       /**< for self_reg internal client */
     const char *progname;           /**< our name, for locating helpers */
     struct ccn *internal_client;    /**< internal client */

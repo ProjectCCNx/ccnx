@@ -4327,8 +4327,8 @@ set_content_timer(struct ccnd_handle *h, struct content_entry *content,
     int seconds = 0;
     size_t start = pco->offset[CCN_PCO_B_FreshnessSeconds];
     size_t stop  = pco->offset[CCN_PCO_E_FreshnessSeconds];
-    if (h->force_zero_freshness)
-        goto Finish;
+    if (h->capacity == 0)
+        goto Finish;        /* force zero freshness */
     if (start == stop)
         seconds = h->tts_default;
     else
@@ -5642,13 +5642,8 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->portstr = portstr;
     entrylimit = getenv("CCND_CAP");
     h->capacity = (~0U)/2;
-    if (entrylimit != NULL && entrylimit[0] != 0) {
-        h->capacity = atol(entrylimit);
-        if (h->capacity == 0)
-            h->force_zero_freshness = 1;
-        if (h->capacity <= 0)
-            h->capacity = 10;
-    }
+    if (entrylimit != NULL && entrylimit[0] != 0)
+        h->capacity = strtoul(entrylimit, NULL, 10);
     ccnd_msg(h, "CCND_DEBUG=%d CCND_CAP=%lu", h->debug, h->capacity);
     cap = 100000; /* Don't try to allocate an insanely high number */
     cap = h->capacity < cap ? h->capacity : cap;
