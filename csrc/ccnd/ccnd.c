@@ -154,6 +154,11 @@ static void strategy_callout(struct ccnd_handle *h,
 #define WTHZ 500U
 
 /**
+ * Allow a few extra entries in the cache to allow for output queuing
+ */
+#define CACHE_MARGIN 10
+
+/**
  * Name of our unix-domain listener
  *
  * This tiny bit of global state is needed so that the unix-domain listener
@@ -1700,9 +1705,11 @@ face_send_queue_insert(struct ccnd_handle *h,
 {
     int ans;
     int delay;
+    int n;
     enum cq_delay_class c;
     enum cq_delay_class k;
     struct content_queue *q;
+    
     if (face == NULL || content == NULL || (face->flags & CCN_FACE_NOSEND) != 0)
         return(-1);
     c = choose_content_delay_class(h, face->faceid, content->flags);
@@ -1723,8 +1730,10 @@ face_send_queue_insert(struct ccnd_handle *h,
             }
         }
     }
-    content->refs++;
+    n = q->send_queue->n;
     ans = ccn_indexbuf_set_insert(q->send_queue, content->accession);
+    if (n != q->send_queue->n)
+        content->refs++;
     if (q->sender == NULL) {
         delay = randomize_content_delay(h, q);
         q->ready = q->send_queue->n;
@@ -4494,8 +4503,8 @@ set_content_timer(struct ccnd_handle *h, struct content_entry *content,
     int seconds = 0;
     size_t start = pco->offset[CCN_PCO_B_FreshnessSeconds];
     size_t stop  = pco->offset[CCN_PCO_E_FreshnessSeconds];
-    if (h->force_zero_freshness)
-        goto Finish;
+    if (h->capacity == 0)
+        goto Finish;        /* force zero freshness */
     if (start == stop)
         seconds = h->tts_default;
     else
@@ -4520,24 +4529,32 @@ content_tree_trim(struct ccnd_handle *h) {
     struct content_entry *c;
     struct content_entry *nextx;
     
-    if (h->content_tree->n < h->capacity)
+    if (h->content_tree->n <= h->capacity)
         return;
-    
     tries = 30;
     for (c = h->headx->nextx; c != h->headx; c = nextx) {
         nextx = c->nextx;
-        if (c->refs == 0 || c->staletime < h->sec - h->starttime) {
+        if (c->refs == 0) {
             remove_content(h, c);
-            if (h->content_tree->n < h->capacity)
+            if (h->content_tree->n <= h->capacity)
                 return;
         }
-        if (--tries <= 0)
+        else if (!is_stale(h, c)) {
+            /* add to no new queues so it will drain eventually */
+            mark_stale(h, c);
+            if (h->debug & 4)
+                ccnd_debug_content(h, __LINE__, "force_stale", NULL, c);
+            break;
+        }
+        else if (--tries <= 0)
             break;
     }
-    /* we've tried and failed to preserve queued content */
-    c = h->headx->nextx;
-    if (c != h->headx)
-        remove_content(h, c); /* logs remove_queued_content */
+    if (h->content_tree->n > h->content_tree->limit) {
+        /* we've tried and failed to preserve queued content */
+        c = h->headx->nextx;
+        if (c != h->headx)
+            remove_content(h, c); /* logs remove_queued_content */
+    }
 }
 
 /**
@@ -4597,7 +4614,7 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         }
     }
     if (h->content_tree->n >= h->content_tree->limit) {
-        if (h->content_tree->limit < h->capacity)
+        if (h->content_tree->limit < h->capacity + CACHE_MARGIN)
             ccn_nametree_grow(h->content_tree);
     }
     ccn_flatname_append_from_ccnb(f, msg, size, 0, -1);
@@ -5801,13 +5818,8 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->portstr = portstr;
     entrylimit = getenv("CCND_CAP");
     h->capacity = (~0U)/2;
-    if (entrylimit != NULL && entrylimit[0] != 0) {
-        h->capacity = atol(entrylimit);
-        if (h->capacity == 0)
-            h->force_zero_freshness = 1;
-        if (h->capacity <= 0)
-            h->capacity = 10;
-    }
+    if (entrylimit != NULL && entrylimit[0] != 0)
+        h->capacity = strtoul(entrylimit, NULL, 10);
     ccnd_msg(h, "CCND_DEBUG=%d CCND_CAP=%lu", h->debug, h->capacity);
     cap = 100000; /* Don't try to allocate an insanely high number */
     cap = h->capacity < cap ? h->capacity : cap;
