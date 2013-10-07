@@ -77,7 +77,7 @@ WithCCND 5 ccndlogging med
 WithCCND 5 env CCNR_DEBUG=FINEST CCNR_DIRECTORY=sw-c-2 ccnr 2>ccnr5.out &
 
 # Prep to store just some of the segments.
-WithCCND 5 ccnlibtest -v sw-c/repoFile1-*.ccnb prefix $PART1 run 1000 mincob 4 maxcob 4 > sw-c-libtest.out &
+WithCCND 5 ccnlibtest -v sw-c/repoFile1-*.ccnb prefix $PART1 run 2000 mincob 4 maxcob 4 > sw-c-libtest.out &
 PID=$!
 # Issue the request, save the response.
 WithCCND 5 ccnpeek -c $SWCR > sw-c.ccnb || Fail no reply to $SWCR
@@ -97,9 +97,9 @@ WANT=$((NSEG-3))
 NSEG=`grep -c $PREFIX/ sw-c-2.names.out`
 [ $((NSEG)) -eq $((WANT)) ] || Fail expecting $((WANT)) segments, got $((NSEG)).
 NAME=`ccnnamelist sw-c/repoFile1-00004.ccnb`
-grep -w $NAME sw-c-2.names.out >/dev/null || Fail did not store $NAME
+grep \^$NAME\$ sw-c-2.names.out >/dev/null || Fail did not store $NAME
 NAME=`ccnnamelist sw-c/repoFile1-00003.ccnb`
-grep -w $NAME sw-c-2.names.out >/dev/null && Fail oops, stored $NAME
+grep \^$NAME\$ sw-c-2.names.out >/dev/null && Fail oops, stored $NAME
 
 # Now we need to do it again, but this time it should be there
 WithCCND 5 ccnpeek -c $SWCR > sw-c-2.ccnb || Fail no reply to $SWCR
@@ -107,7 +107,7 @@ WithCCND 5 ccnpeek -c $SWCR > sw-c-2.ccnb || Fail no reply to $SWCR
 ccn_ccnbtoxml sw-c-2.ccnb | grep DATA >/dev/null || Fail expected DATA response
 
 # Next comes the test for unsegmented data.
-WithCCND 5 ccnlibtest unsegmented.ccnb prefix ccnx:/test-sw-c/unsegmented run 500 maxcob 0 &
+WithCCND 5 ccnlibtest unsegmented.ccnb prefix ccnx:/test-sw-c/unsegmented run 2000 maxcob 0 &
 PID=$!
 SWCR=ccnx:/test-sw-c/unsegmented/%C1.R.sw-c/%C1.N%00`GenSym`/$UNIQ/=$USDIGEST
 echo SWCR is now $SWCR
@@ -115,7 +115,7 @@ WithCCND 5 ccnpeek -c $SWCR > sw-c-us.ccnb || Fail no reply to $SWCR
 wait $PID || echo Status from wait $PID for ccnlibtest unsegmented.ccnb ... is $?
 ccnnamelist sw-c-2/repoFile1 > sw-c-2.names.out
 NAME=`ccnnamelist unsegmented.ccnb`
-grep -w $NAME sw-c-2.names.out >/dev/null || Fail did not store $NAME
+grep \^$NAME\$ sw-c-2.names.out >/dev/null || Fail did not store $NAME
 
 # Stop ccnd and ccnr
 WithCCND 5 ccndstop
