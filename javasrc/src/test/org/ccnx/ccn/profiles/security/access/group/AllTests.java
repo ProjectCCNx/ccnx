@@ -14,22 +14,15 @@
  * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02
  */
-package org.ccnx.ccn;
+
+package org.ccnx.ccn.profiles.security.access.group;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 import org.junit.runners.Suite.SuiteClasses;
 
 @RunWith(Suite.class)
-
-@SuiteClasses({
-	org.ccnx.ccn.encoding.AllTests.class,
-	org.ccnx.ccn.impl.AllTests.class,
-    org.ccnx.ccn.protocol.AllTests.class,
-    org.ccnx.ccn.io.AllTests.class,
-    org.ccnx.ccn.profiles.AllTests.class,
-    org.ccnx.ccn.repo.AllTests.class,
-    org.ccnx.ccn.security.crypto.AllTests.class
-})
+@SuiteClasses({ ACLTest.class, NodeKeyTest.class })
 public class AllTests {
+
 }

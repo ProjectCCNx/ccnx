@@ -17,25 +17,14 @@
 
 package org.ccnx.ccn.profiles.ccnd;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-
+import org.ccnx.ccn.LibraryTestBase;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.content.ContentDecodingException;
-import org.ccnx.ccn.io.content.ContentEncodingException;
-import org.ccnx.ccn.profiles.ccnd.CCNDaemonException;
-import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager;
-import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager.ActionType;
 import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager.ForwardingEntry;
-import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
-import org.ccnx.ccn.LibraryTestBase;
-import org.ccnx.ccn.impl.encoding.XMLEncodableTester;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -103,109 +92,6 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 	@After
 	public void tearDown() throws Exception {
 	}
-	
-	/**
-	 * Test method for org.ccnx.ccn.profiles.VersioningProfile#addVersion(org.ccnx.ccn.protocol.ContentName, long).
-	 */
-	@Test
-	public void testEncodeOutputStream() {
-		Log.info(Log.FAC_TEST, "Starting testEncodeOutputStream");
-
-		System.out.println();
-		System.out.println("PrefixRegistrationManagerTest.testEncodeOutputStream:");
-		ForwardingEntry entryToEncode = new ForwardingEntry(ActionType.Register, contentNameToUse, null, new Integer(42), new Integer(3), new Integer(149));
-		System.out.println("Encoding: " + entryToEncode);
-		assertNotNull("EncodeOutputStream", entryToEncode);
-		
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		try {
-			entryToEncode.encode(baos);
-		} catch (ContentEncodingException e) {
-			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
-			e.printStackTrace();
-		}
-		System.out.println("Encoded: " );
-		System.out.println(Component.printURI(baos.toString().getBytes()));
-		System.out.println();
-		
-		Log.info(Log.FAC_TEST, "Completed testEncodeOutputStream");
-	}
-
-	@Test
-	public void testDecodeInputStream() {
-		Log.info(Log.FAC_TEST, "Starting testDecodeInputStream");
-
-		System.out.println();
-		System.out.println("PrefixRegistrationManagerTest.testDecodeInputStream:");
-		ForwardingEntry entryToEncode = new ForwardingEntry(ActionType.Register, contentNameToUse, null, new Integer(42), new Integer(3), new Integer(149));
-		System.out.println("Encoding: " + entryToEncode);
-		assertNotNull("DecodeOutputStream", entryToEncode);
-		
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		try {
-			entryToEncode.encode(baos);
-		} catch (ContentEncodingException e) {
-			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
-			e.printStackTrace();
-		}
-		System.out.println("Encoded: " );
-		System.out.println(Component.printURI(baos.toString().getBytes()));
-		
-		System.out.println("Decoding: ");
-		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
-		ForwardingEntry entryToDecodeTo = new ForwardingEntry();  /* We need an empty one to decode into */
-		try {
-			entryToDecodeTo.decode(bais);
-		} catch (ContentDecodingException e) {
-			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
-			e.printStackTrace();
-		}
-		System.out.println("Decoded: " + entryToDecodeTo);
-		assertEquals("DecodeOutputStream", entryToEncode, entryToDecodeTo);
-		System.out.println();
-		
-		Log.info(Log.FAC_TEST, "Completed testDecodeInputStream");
-	}
-	
-	@Test
-	public void testEncodingDecoding() {
-		Log.info(Log.FAC_TEST, "Starting testEncodingDecoding");
-
-		System.out.println();
-		System.out.println("PrefixRegistrationManagerTest.testEncodingDecoding:");
-		ForwardingEntry entryToEncode = new ForwardingEntry(ActionType.Register, contentNameToUse, null, new Integer(42), new Integer(3), new Integer(149));
-		System.out.println("Encoding: " + entryToEncode);
-
-		ForwardingEntry  textEntryToDecodeInto = new ForwardingEntry();
-		assertNotNull("EncodeDecodeOutput", textEntryToDecodeInto);
-		ForwardingEntry  binaryEntryToDecodeInto = new ForwardingEntry();
-		assertNotNull("EncodeDecodeOutput", binaryEntryToDecodeInto);
-		XMLEncodableTester.encodeDecodeTest("EncodeDecodeOutput", entryToEncode, textEntryToDecodeInto, binaryEntryToDecodeInto);
-		System.out.println();
-		
-		Log.info(Log.FAC_TEST, "Completed testEncodingDecoding");
-	}
-
-	
-	@Test
-	public void testEncodingDecodingSubclass() {
-		Log.info(Log.FAC_TEST, "Starting testEncodingDecodingSubclass");
-
-		System.out.println();
-		System.out.println("PrefixRegistrationManagerTest.testEncodingDecodingSubclass:");
-		ForwardingEntry entryToEncode = new ForwardingEntry(ActionType.Register, notReallyAContentNameToUse, null, new Integer(42), new Integer(3), new Integer(149));
-		System.out.println("Encoding: " + entryToEncode);
-
-		ForwardingEntry  textEntryToDecodeInto = new ForwardingEntry();
-		assertNotNull("EncodeDecodeOutput", textEntryToDecodeInto);
-		ForwardingEntry  binaryEntryToDecodeInto = new ForwardingEntry();
-		assertNotNull("EncodeDecodeOutput", binaryEntryToDecodeInto);
-		XMLEncodableTester.encodeDecodeTest("EncodeDecodeOutput", entryToEncode, textEntryToDecodeInto, binaryEntryToDecodeInto);
-		System.out.println();
-		
-		Log.info(Log.FAC_TEST, "Completed testEncodingDecodingSubclass");
-	}
-
 	
 	@Test
 	public void testCreation() {
