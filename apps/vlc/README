@@ -46,3 +46,22 @@ so you must set VLCAPP to where the VLC app has been installed
 VLC source is present (e.g., /Users/example/Software/vlc-2.0.3)
 
 Note that to VLC, a CCN URI must start ccnx:/// (because of the URI parser in VLC).
+
+In order to build VLC for Android with the CCNx access module, build CCNx for
+Android, then follow the VLC instructions for building for Android and
+ensure that you can do this without error before you:
+
+	Modify vlc-android/jni/Android.mk to add "-lccnx -lcrypto" to the
+		LOCAL_LDLIBS definition
+	and place a copy of libccn.a and libcrypto.a built for Android
+	as part of the CCNx build in the $(VLC_CONTRIB)/lib directory.
+	Modify vlc/modules/access/Modules.am to add the following
+		SOURCES_access_ccn = ccn.c
+		CFLAGS_access_ccn = -I/var/tmp/ccnx/csrc/include -DVLCPLUGINVER=20200
+		LIBS_access_ccn = -lccnx -lcrypto
+		libvlc_LTLIBRARIES += libaccess_ccn_plugin.la
+	near the other SOURCES_access_xxx definitions.
+	Place a copy of ccnx/apps/vlc/ccn.c in the VLC source modules/access/
+	directory.
+	Redo the VLC android build (sh compile.sh) which should now incorporate
+	the CCNx code.
