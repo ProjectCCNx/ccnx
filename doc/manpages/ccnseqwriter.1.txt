@@ -25,8 +25,8 @@ OPTIONS
 	Print usage to stderr and exit.
 
 *-b* 'blocksize'::
-	Use given blocksize instead of the default (1024 bytes).
-	The maximum size allowed is 4096 bytes.
+	Use given blocksize instead of the default (4096 bytes).
+	The maximum size allowed is 8192 bytes.
 
 *-r*::
 	Generate a start-write request to a repository.
