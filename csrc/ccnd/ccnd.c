@@ -1254,7 +1254,7 @@ init_face_flags(struct ccnd_handle *h, struct face *face, int setflags)
         }
     }
     else if (addr->sa_family == AF_UNIX)
-        face->flags |= (CCN_FACE_GG | CCN_FACE_LOCAL);
+        face->flags |= CCN_FACE_LOCAL;
     face->flags |= setflags;
 }
 
@@ -1303,13 +1303,14 @@ record_connection(struct ccnd_handle *h, int fd,
  * @returns fd of new socket, or -1 for an error.
  */
 static int
-accept_connection(struct ccnd_handle *h, int listener_fd)
+accept_connection(struct ccnd_handle *h, int listener_fd, int listener_flags)
 {
     struct sockaddr_storage who;
     socklen_t wholen = sizeof(who);
     int fd;
     struct face *face;
 
+    listener_flags &= (CCN_FACE_LOCAL | CCN_FACE_INET | CCN_FACE_INET6);
     fd = accept(listener_fd, (struct sockaddr *)&who, &wholen);
     if (fd == -1) {
         ccnd_msg(h, "accept: %s", strerror(errno));
@@ -1317,7 +1318,7 @@ accept_connection(struct ccnd_handle *h, int listener_fd)
     }
     face = record_connection(h, fd,
                             (struct sockaddr *)&who, wholen,
-                            CCN_FACE_UNDECIDED);
+                            CCN_FACE_UNDECIDED | listener_flags);
     if (face == NULL)
         close_fd(&fd);
     else
@@ -2699,7 +2700,7 @@ ccnd_req_newface(struct ccnd_handle *h,
     /* consider the source ... */
     reqface = face_from_faceid(h, h->interest_faceid);
     if (reqface == NULL ||
-        (reqface->flags & (CCN_FACE_LOOPBACK | CCN_FACE_LOCAL)) == 0)
+        (reqface->flags & CCN_FACE_GG) == 0)
         goto Finish;
     nackallowed = 1;
     res = check_face_instance_ccndid(h, face_instance, reply_body);
@@ -4555,7 +4556,7 @@ process_input_message(struct ccnd_handle *h, struct face *face,
     
     if ((face->flags & CCN_FACE_UNDECIDED) != 0) {
         face->flags &= ~CCN_FACE_UNDECIDED;
-        if ((face->flags & CCN_FACE_LOOPBACK) != 0)
+        if ((face->flags & (CCN_FACE_LOOPBACK | CCN_FACE_LOCAL)) != 0)
             face->flags |= CCN_FACE_GG;
         /* YYY This is the first place that we know that an inbound stream face is speaking CCNx protocol. */
         register_new_face(h, face);
@@ -4775,7 +4776,7 @@ process_input(struct ccnd_handle *h, int fd)
     if (face == NULL)
         return;
     if ((face->flags & (CCN_FACE_DGRAM | CCN_FACE_PASSIVE)) == CCN_FACE_PASSIVE) {
-        accept_connection(h, fd);
+        accept_connection(h, fd, face->flags);
         check_comm_file(h);
         return;
     }
@@ -5716,7 +5717,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
         face = calloc(1, sizeof(*face));
         face->recv_fd = -1;
         face->sendface = 0;
-        face->flags = (CCN_FACE_GG | CCN_FACE_LOCAL);
+        face->flags = CCN_FACE_GG;
         h->face0 = face;
     }
     enroll_face(h, h->face0);
