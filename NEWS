@@ -12,6 +12,7 @@ Refer to http://redmine.ccnx.org/versions/20 for more details on CCNx 0.8.1.
 	* Bug #101038: Inconsistent encoding of zero-length name components
 	* Bug #101043: ccnr r_store_lookup_backwards can fail
 	* Bug #101044: valgrind reports memory leak in 0.8.0 ccnd
+	* Bug #101049: ccnd can remove newly arrived content too quickly
 	* Support #101045 Prepare for ccnx-0.8.1 release
 
 Changes between 0.7.2 and 0.8.0:
