@@ -57,8 +57,9 @@
 	<property name="repo2" value="true"/>
 	<property name="USE_KEY_CONFIG_KEY" value="org.ccnx.config.UseKeyConfiguration"/>
 	<property name="USE_KEY_CONFIG_VAL" value="false"/>
-	<!-- to allow extra noisy logging for sync while we test it better -->
-    <property name="SYNC_NOISY" value="FINEST"/>
+	<!-- to allow extra noisy logging for sync while we test it better (now switched
+	  back to a normal value but left in in case it is needed) -->
+    <property name="SYNC_NOISY" value="INFO"/>
 	<!-- To enable remote debugging, the incantation is 
 	"-Xdebug -Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=n" -->
 	<property name="DEBUG_OPTIONS" value=""/>
