@@ -37,7 +37,11 @@ ccnd_strategy0.o: ccnd_strategy0.c ccnd_strategy.h ccnd_private.h \
   ../include/ccn/nametree.h ../include/ccn/reg_mgmt.h \
   ../include/ccn/charbuf.h ../include/ccn/schedule.h \
   ../include/ccn/seqwriter.h
+ccnd_strategy1.o: ccnd_strategy1.c ccnd_strategy.h
+ccnd_strategy2.o: ccnd_strategy2.c ccnd_strategy.h ccnd_private.h \
+  ../include/ccn/ccn_private.h ../include/ccn/coding.h \
+  ../include/ccn/nametree.h ../include/ccn/reg_mgmt.h \
+  ../include/ccn/charbuf.h ../include/ccn/schedule.h \
+  ../include/ccn/seqwriter.h
 ccndsmoketest.o: ccndsmoketest.c ../include/ccn/ccnd.h \
   ../include/ccn/ccn_private.h
-ccnd_strategy1.o: ccnd_strategy1.c ccnd_strategy.h
-ccnd_strategy2.o: ccnd_strategy2.c ccnd_strategy.h
