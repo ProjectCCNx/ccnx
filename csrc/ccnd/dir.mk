@@ -25,7 +25,7 @@ CSRC = ccnd_main.c ccnd.c ccnd_msg.c ccnd_stats.c ccnd_internal_client.c ccnd_st
 	ccnd_strategy1.c ccnd_strategy2.c
 HSRC = ccnd_private.h ccnd_strategy.h
 SCRIPTSRC = testbasics fortunes.ccnb contentobjecthash.ref anything.ref \
-            minsuffix.ref
+            minsuffix.ref gen_stregistry.sh
  
 default: $(PROGRAMS)
 
