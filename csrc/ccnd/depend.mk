@@ -32,11 +32,17 @@ ccnd_internal_client.o: ccnd_internal_client.c ../include/ccn/ccn.h \
   ../include/ccn/uri.h ccnd_private.h ../include/ccn/nametree.h \
   ../include/ccn/reg_mgmt.h ../include/ccn/seqwriter.h ccnd_strategy.h
 ccnd_stregistry.o: ccnd_stregistry.c ccnd_stregistry.h ccnd_strategy.h
-ccnd_strategy0.o: ccnd_strategy0.c ccnd_strategy.h ccnd_private.h \
+default_strategy.o: default_strategy.c ccnd_strategy.h ccnd_private.h \
   ../include/ccn/ccn_private.h ../include/ccn/coding.h \
   ../include/ccn/nametree.h ../include/ccn/reg_mgmt.h \
   ../include/ccn/charbuf.h ../include/ccn/schedule.h \
   ../include/ccn/seqwriter.h
+null_strategy.o: null_strategy.c ccnd_strategy.h
+trace_strategy.o: trace_strategy.c ../include/ccn/charbuf.h \
+  ccnd_strategy.h ccnd_private.h ../include/ccn/ccn_private.h \
+  ../include/ccn/coding.h ../include/ccn/nametree.h \
+  ../include/ccn/reg_mgmt.h ../include/ccn/schedule.h \
+  ../include/ccn/seqwriter.h ccnd_stregistry.h
 ccnd_strategy1.o: ccnd_strategy1.c ccnd_strategy.h
 ccnd_strategy2.o: ccnd_strategy2.c ccnd_strategy.h ccnd_private.h \
   ../include/ccn/ccn_private.h ../include/ccn/coding.h \

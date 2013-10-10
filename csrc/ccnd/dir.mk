@@ -30,7 +30,8 @@ SCRIPTSRC = testbasics fortunes.ccnb contentobjecthash.ref anything.ref \
             minsuffix.ref gen_stregistry.sh
 
 # To add a strategy, list its source here, and then make depend.
-STRATEGYSRC = ccnd_strategy0.c ccnd_strategy1.c ccnd_strategy2.c
+STRATEGYSRC = default_strategy.c null_strategy.c trace_strategy.c \
+              ccnd_strategy1.c ccnd_strategy2.c
 
 default: $(PROGRAMS)
 
