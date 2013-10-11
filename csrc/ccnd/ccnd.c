@@ -298,6 +298,33 @@ ccnd_face_from_faceid(struct ccnd_handle *h, unsigned faceid)
     return(face_from_faceid(h, faceid));
 }
 
+/** Accessor for faceid */
+unsigned
+face_faceid(struct face *face)
+{
+    if (face == NULL)
+        return(CCN_NO_FACEID);
+    return(face->faceid);
+}
+
+/** Accessor for number of pending interests received on a face */
+int
+face_pending_interests(struct face *face)
+{
+    if (face == NULL)
+        return(0);
+    return(face->pending_interests);
+}
+
+/** Accessor for number of outstanding interests sent on a face */
+int
+face_outstanding_interests(struct face *face)
+{
+    if (face == NULL)
+        return(0);
+    return(face->outstanding_interests);
+}
+
 /**
  * Assigns the faceid for a nacent face,
  * calls register_new_face() if successful.

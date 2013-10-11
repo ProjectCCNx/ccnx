@@ -23,8 +23,6 @@
 #include <limits.h>
 #include "ccnd_strategy.h"
 
-#include "ccnd_private.h" // XXX - should work to remove this by extending strategy API
-
 /**
  * This implements a distribution by performance strategy.
  *
@@ -41,11 +39,12 @@ ccnd_loadsharing_strategy_impl(struct ccnd_handle *h,
                                unsigned faceid)
 {
     struct pit_face_item *p = NULL;
+    struct face *face = NULL;
     unsigned count;
     int best;
     unsigned smallestq;
     unsigned upending;
-    struct face *face;
+    unsigned outstanding;
     
     switch (op) {
         case CCNST_NOP:
@@ -67,10 +66,11 @@ ccnd_loadsharing_strategy_impl(struct ccnd_handle *h,
                     if ((p->pfi_flags & CCND_PFI_ATTENTION) == 0)
                         continue;
                     face = ccnd_face_from_faceid(h, p->faceid);
-                    if (face->outstanding_interests < smallestq) {
+                    outstanding = face_outstanding_interests(face);
+                    if (outstanding < smallestq) {
                         count = 1;
-                        smallestq = face->outstanding_interests;
-                    } else if (face->outstanding_interests == smallestq) {
+                        smallestq = outstanding;
+                    } else if (outstanding == smallestq) {
                         count++;
                     }
                 }
@@ -81,7 +81,8 @@ ccnd_loadsharing_strategy_impl(struct ccnd_handle *h,
                         if ((p->pfi_flags & CCND_PFI_ATTENTION) == 0)
                             continue;
                         face = ccnd_face_from_faceid(h, p->faceid);
-                        if (face->outstanding_interests == smallestq &&
+                        outstanding = face_outstanding_interests(face);
+                        if (outstanding == smallestq &&
                             ((p->pfi_flags & CCND_PFI_UPSTREAM) != 0)) {
                             if (best == 0) {
                                 p->pfi_flags |= CCND_PFI_SENDUPST;

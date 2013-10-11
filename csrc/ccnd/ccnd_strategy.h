@@ -29,6 +29,7 @@
 /* These types should remain opaque for strategy routines */
 struct ccnd_handle;
 struct interest_entry;
+struct face;
 struct nameprefix_entry;
 
 /* Forward struct defined later in this header */
@@ -295,25 +296,29 @@ void strategy_getstate(struct ccnd_handle *h, struct ccn_strategy *s,
  * Any previously scheduled wakeup will be cancelled.
  * To just cancel any existing wakeup, pass CCNST_NOP.
  */
-void
-strategy_settimer(struct ccnd_handle *h, struct interest_entry *ie,
-                  int usec, enum ccn_strategy_op op);
+void strategy_settimer(struct ccnd_handle *h, struct interest_entry *ie,
+                       int usec, enum ccn_strategy_op op);
+
+/**
+ * Get the face handle for a given faceid
+ *
+ * Strategy routines should use the accessors provided.
+ *
+ * @returns NULL if face does not exist.
+ */
+struct face *ccnd_face_from_faceid(struct ccnd_handle *, unsigned);
+
+/** Accessors for things a strategy might want to know about a face. */
+unsigned face_faceid(struct face *);
+int face_pending_interests(struct face *);
+int face_outstanding_interests(struct face *);
+
+/** For debugging */
+void ccnd_msg(struct ccnd_handle *, const char *, ...);
 
 /** A PRNG returning 31-bit pseudo-random numbers */
 uint32_t ccnd_random(struct ccnd_handle *);
 
 extern const struct strategy_class ccnd_strategy_classes[];
-
-void strategy1_callout(struct ccnd_handle *h,
-                       struct strategy_instance *instance,
-                       struct ccn_strategy *s,
-                       enum ccn_strategy_op op,
-                       unsigned faceid);
-
-void strategy2_callout(struct ccnd_handle *h,
-                       struct strategy_instance *instance,
-                       struct ccn_strategy *s,
-                       enum ccn_strategy_op op,
-                       unsigned faceid);
 
 #endif
