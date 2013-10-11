@@ -31,7 +31,7 @@ SCRIPTSRC = testbasics fortunes.ccnb contentobjecthash.ref anything.ref \
 
 # To add a strategy, list its source here, and then make depend.
 STRATEGYSRC = default_strategy.c null_strategy.c trace_strategy.c \
-              ccnd_strategy1.c ccnd_strategy2.c
+              parallel_strategy.c loadsharing_strategy.c
 
 default: $(PROGRAMS)
 
