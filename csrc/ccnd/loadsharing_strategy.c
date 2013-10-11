@@ -1,9 +1,9 @@
 /*
- * @file ccnd/ccnd_strategy2.c
+ * @file ccnd/loadsharing_strategy.c
  *
  * Part of ccnd - the CCNx Daemon
  *
- * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
+ * Copyright (C) 2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -22,7 +22,8 @@
 #include <stdio.h>
 #include <limits.h>
 #include "ccnd_strategy.h"
-#include "ccnd_private.h" /* for logging, should be exposed rather than private */
+
+#include "ccnd_private.h" // XXX - should work to remove this by extending strategy API
 
 /**
  * This implements a distribution by performance strategy.
@@ -80,13 +81,15 @@ ccnd_loadsharing_strategy_impl(struct ccnd_handle *h,
                         if ((p->pfi_flags & CCND_PFI_ATTENTION) == 0)
                             continue;
                         face = ccnd_face_from_faceid(h, p->faceid);
-                        if (face->outstanding_interests == smallestq && ((p->pfi_flags & CCND_PFI_UPSTREAM) != 0)) {
+                        if (face->outstanding_interests == smallestq &&
+                            ((p->pfi_flags & CCND_PFI_UPSTREAM) != 0)) {
                             if (best == 0) {
                                 p->pfi_flags |= CCND_PFI_SENDUPST;
                                 break;
                             }
                             best--;
-                        }                }
+                        }
+                    }
                 }
             }
             for (p = strategy->pfl; p!= NULL; p = p->next) {
