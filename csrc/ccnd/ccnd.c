@@ -151,7 +151,7 @@ static void strategy_callout(struct ccnd_handle *h,
  * maximum supported interest lifetime, and making it too small makes the
  * timekeeping too coarse.
  */
-#define WTHZ 500U
+#define WTHZ 1000U
 
 /**
  * Allow a few extra entries in the cache to allow for output queuing
@@ -3816,7 +3816,7 @@ pfi_set_expiry_from_lifetime(struct ccnd_handle *h, struct interest_entry *ie,
 {
     ccn_wrappedtime delta;
     ccn_wrappedtime odelta;
-    int minlifetime = 4096 / 4;
+    int minlifetime = 4096 / 8;
     unsigned maxlifetime = 7 * 24 * 3600 * 4096U; /* one week */
     
     if (lifetime < minlifetime)
