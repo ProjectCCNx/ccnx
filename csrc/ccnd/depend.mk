@@ -44,10 +44,6 @@ trace_strategy.o: trace_strategy.c ../include/ccn/charbuf.h \
   ../include/ccn/reg_mgmt.h ../include/ccn/schedule.h \
   ../include/ccn/seqwriter.h ccnd_stregistry.h
 parallel_strategy.o: parallel_strategy.c ccnd_strategy.h
-loadsharing_strategy.o: loadsharing_strategy.c ccnd_strategy.h \
-  ccnd_private.h ../include/ccn/ccn_private.h ../include/ccn/coding.h \
-  ../include/ccn/nametree.h ../include/ccn/reg_mgmt.h \
-  ../include/ccn/charbuf.h ../include/ccn/schedule.h \
-  ../include/ccn/seqwriter.h
+loadsharing_strategy.o: loadsharing_strategy.c ccnd_strategy.h
 ccndsmoketest.o: ccndsmoketest.c ../include/ccn/ccnd.h \
   ../include/ccn/ccn_private.h
