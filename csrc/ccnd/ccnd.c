@@ -3300,8 +3300,13 @@ ccnd_req_strategy(struct ccnd_handle *h,
             goto Finish;
         }
         reason = __LINE__;
+        if (h->errbuf != NULL) abort();
         si = create_strategy_instance(h, npe, sclass,
                                       strategy_selection->parameters);
+        if (h->errbuf != NULL) {
+            remove_strategy_instance(h, npe);
+            si = NULL;
+        }
     }
     else if (strcmp(action, "getstrategy") == 0) {
         reason = __LINE__;
@@ -3341,10 +3346,29 @@ Finish:
     if (nackallowed && si == NULL) {
         struct ccn_charbuf *msg = ccn_charbuf_create();
         ccn_charbuf_putf(msg, "could not process strategy req (l.%d)", reason);
+        if (h->errbuf != NULL)
+            ccn_charbuf_putf(msg, ": %s", ccn_charbuf_as_string(h->errbuf));
         res = ccnd_nack(h, reply_body, 504, ccn_charbuf_as_string(msg));
         ccn_charbuf_destroy(&msg);
     }
+    ccn_charbuf_destroy(&h->errbuf);
     return((nackallowed || res <= 0) ? res : -1);
+}
+
+/**
+ * Report a strategy initialization failure
+ */
+void
+strategy_init_error(struct ccnd_handle *h,
+                    struct strategy_instance *instance,
+                    const char *message)
+{
+    if (h->errbuf == NULL)
+        h->errbuf = ccn_charbuf_create();
+    else
+        ccn_charbuf_putf(h->errbuf, " / ");
+    ccn_charbuf_putf(h->errbuf, "%s", message);
+    ccnd_msg(h, "strategy_init_error.%d - %s", __LINE__, message);
 }
 
 /**

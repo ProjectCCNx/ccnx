@@ -108,6 +108,7 @@ struct ccnd_handle {
     unsigned starttime_usec;        /**< ccnd start time fractional part */
     unsigned iserial;               /**< interest serial number (for logs) */
     struct ccn_schedule *sched;     /**< our schedule */
+    struct ccn_charbuf *errbuf;     /**< for strategy error reporting */
     struct ccn_charbuf *send_interest_scratch; /**< for use by send_interest */
     struct ccn_charbuf *scratch_charbuf; /**< one-slot scratch cache */
     struct ccn_indexbuf *scratch_indexbuf; /**< one-slot scratch cache */

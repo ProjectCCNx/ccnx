@@ -45,5 +45,6 @@ trace_strategy.o: trace_strategy.c ../include/ccn/charbuf.h \
   ../include/ccn/seqwriter.h ccnd_stregistry.h
 parallel_strategy.o: parallel_strategy.c ccnd_strategy.h
 loadsharing_strategy.o: loadsharing_strategy.c ccnd_strategy.h
+faceattr_strategy.o: faceattr_strategy.c ccnd_strategy.h
 ccndsmoketest.o: ccndsmoketest.c ../include/ccn/ccnd.h \
   ../include/ccn/ccn_private.h

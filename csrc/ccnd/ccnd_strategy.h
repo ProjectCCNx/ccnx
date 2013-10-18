@@ -1,3 +1,5 @@
+
+
 /**
  * @file ccnd_strategy.h
  *
@@ -138,7 +140,8 @@ struct ccn_strategy {
  *                  call is the appropriate time to parse them and save the
  *                  resulting values in the private instance state for
  *                  rapid access in the more time-critical calls.
-    XXX - we need a way to indicate a bad parameter string.
+ *                  The callout should use strategy_init_error() to report
+ *                  problems with the parameter string.
  *
  * CCNST_FIRST      indicates the creation of a new PIT entry due to an
  *                  arriving interest.  Since there was no existing state
@@ -250,6 +253,18 @@ struct strategy_instance {
     struct nameprefix_entry *npe;        /* where strategy is registered */
 };
 
+/**
+ *  Note a strategy initialization error
+ *
+ * A call to this during the CCNST_INIT callout will do appropriate
+ * logging and error reporting, and cause the instance to be removed after
+ * the termination of the intialization callout.
+ *
+ * Do not call from other contexts.
+ */
+void strategy_init_error(struct ccnd_handle *h,
+                         struct strategy_instance *instance,
+                         const char *message);
 /**
  *  Forward an interest message
  *
