@@ -240,7 +240,7 @@ ccndc_add(struct ccndc_data *self,
         if (0 != strcasecmp(cmd_proto, "face")) {
             newface = ccndc_do_face_action(self, "newface", face);
             if (newface == NULL) {
-                ccndc_warn(__LINE__, "Cannot create/lookup face");
+                ccndc_warn(__LINE__, "Cannot create/lookup face\n");
                 goto Cleanup;
             }
             prefix->faceid = newface->faceid;
@@ -310,7 +310,7 @@ ccndc_del(struct ccndc_data *self,
         if (0 != strcasecmp(cmd_proto, "face")) {
             newface = ccndc_do_face_action(self, "newface", face);
             if (newface == NULL) {
-                ccndc_warn(__LINE__, "Cannot create/lookup face");
+                ccndc_warn(__LINE__, "Cannot create/lookup face\n");
                 goto Cleanup;
             }
             prefix->faceid = newface->faceid;
@@ -376,7 +376,7 @@ ccndc_create(struct ccndc_data *self,
     if (!check_only) {
         newface = ccndc_do_face_action(self, "newface", face);
         if (newface == NULL) {
-            ccndc_warn(__LINE__, "Cannot create/lookup face");
+            ccndc_warn(__LINE__, "Cannot create/lookup face\n");
             goto Cleanup;
         }
         ccn_face_instance_destroy(&newface);
@@ -434,7 +434,7 @@ ccndc_destroy(struct ccndc_data *self,
         if (0 != strcasecmp(cmd_proto, "face")) {
             newface = ccndc_do_face_action(self, "newface", face);
             if (newface == NULL) {
-                ccndc_warn(__LINE__, "Cannot create/lookup face");
+                ccndc_warn(__LINE__, "Cannot create/lookup face\n");
                 goto Cleanup;
             }
             face->faceid = newface->faceid;
@@ -585,7 +585,7 @@ ccndc_renew(struct ccndc_data *self,
         // look up the old face ("queryface" would be useful)
         newface = ccndc_do_face_action(self, "newface", face);
         if (newface == NULL) {
-            ccndc_warn(__LINE__, "Cannot create/lookup face");
+            ccndc_warn(__LINE__, "Cannot create/lookup face\n");
             goto Cleanup;
         }
         face->faceid = newface->faceid;
@@ -600,7 +600,7 @@ ccndc_renew(struct ccndc_data *self,
         // recreate the face
         newface = ccndc_do_face_action(self, "newface", face);
         if (newface == NULL) {
-            ccndc_warn(__LINE__, "Cannot create/lookup face");
+            ccndc_warn(__LINE__, "Cannot create/lookup face\n");
             goto Cleanup;
         }
         prefix->faceid = newface->faceid;
@@ -717,7 +717,7 @@ ccndc_srv(struct ccndc_data *self,
     
     newface = ccndc_do_face_action(self, "newface", face);
     if (newface == NULL) {
-        ccndc_warn(__LINE__, "Cannot create/lookup face");
+        ccndc_warn(__LINE__, "Cannot create/lookup face\n");
         res = -1;
         goto Cleanup;
     }
@@ -727,14 +727,14 @@ ccndc_srv(struct ccndc_data *self,
     
     newface = ccndc_do_face_action(self, "destroyface", face);
     if (newface == NULL) {
-        ccndc_warn(__LINE__, "Cannot destroy face");
+        ccndc_warn(__LINE__, "Cannot destroy face\n");
     } else {
         ccn_face_instance_destroy(&newface);
     }
     
     newface = ccndc_do_face_action(self, "newface", face);
     if (newface == NULL) {
-        ccndc_warn(__LINE__, "Cannot create/lookup face");
+        ccndc_warn(__LINE__, "Cannot create/lookup face\n");
         res = -1;
         goto Cleanup;
     }
@@ -784,13 +784,13 @@ parse_ccn_forwarding_entry(struct ccndc_data *self,
     
     entry= calloc(1, sizeof(*entry));
     if (entry == NULL) {
-        ccndc_warn(__LINE__, "Fatal error: memory allocation failed");
+        ccndc_warn(__LINE__, "Fatal error: memory allocation failed\n");
         goto ExitOnError;
     }
     
     entry->name_prefix = ccn_charbuf_create();
     if (entry->name_prefix == NULL) {
-        ccndc_warn(__LINE__, "Fatal error: memory allocation failed");
+        ccndc_warn(__LINE__, "Fatal error: memory allocation failed\n");
         goto ExitOnError;
     }
     
@@ -852,13 +852,13 @@ parse_ccn_face_instance(struct ccndc_data *self,
     
     entry = calloc(1, sizeof(*entry));
     if (entry == NULL) {
-        ccndc_warn(__LINE__, "Fatal error: memory allocation failed");
+        ccndc_warn(__LINE__, "Fatal error: memory allocation failed\n");
         goto ExitOnError;
     }
     // allocate storage for Face data
     entry->store = ccn_charbuf_create();
     if (entry->store == NULL) {
-        ccndc_warn(__LINE__, "Fatal error: memory allocation failed");
+        ccndc_warn(__LINE__, "Fatal error: memory allocation failed\n");
         goto ExitOnError;
     }
     // copy static info
@@ -917,14 +917,14 @@ parse_ccn_face_instance(struct ccndc_data *self,
     off_address = entry->store->length;
     res = ccn_charbuf_append(entry->store, rhostnamebuf, strlen(rhostnamebuf)+1);
     if (res != 0) {
-        ccndc_warn(__LINE__, "Cannot append to charbuf");
+        ccndc_warn(__LINE__, "Cannot append to charbuf\n");
         goto ExitOnError;
     }
     
     off_port = entry->store->length;
     res = ccn_charbuf_append(entry->store, rhostportbuf, strlen(rhostportbuf)+1);
     if (res != 0) {
-        ccndc_warn(__LINE__, "Cannot append to charbuf");
+        ccndc_warn(__LINE__, "Cannot append to charbuf\n");
         goto ExitOnError;
     }
     
@@ -942,7 +942,7 @@ parse_ccn_face_instance(struct ccndc_data *self,
     if (cmd_mcastif != NULL) {
         res = getaddrinfo(cmd_mcastif, NULL, &mcasthints, &mcastifaddrinfo);
         if (res != 0) {
-            ccndc_warn(__LINE__, "command error, incorrect multicat interface [%s]: "
+            ccndc_warn(__LINE__, "command error, incorrect multicast interface [%s]: "
                        "mcastifaddr getaddrinfo: %s\n", cmd_mcastif, gai_strerror(res));
             goto ExitOnError;
         }
@@ -960,7 +960,7 @@ parse_ccn_face_instance(struct ccndc_data *self,
         off_source_address = entry->store->length;
         res = ccn_charbuf_append(entry->store, rhostnamebuf, strlen(rhostnamebuf)+1);
         if (res != 0) {
-            ccndc_warn(__LINE__, "Cannot append to charbuf");
+            ccndc_warn(__LINE__, "Cannot append to charbuf\n");
             goto ExitOnError;
         }
     }
@@ -1029,14 +1029,14 @@ parse_ccn_strategy_selection(struct ccndc_data *self,
     
     strategy= calloc(1, sizeof(*strategy));
     if (strategy == NULL) {
-        ccndc_warn(__LINE__, "Fatal error: memory allocation failed");
+        ccndc_warn(__LINE__, "Fatal error: memory allocation failed\n");
         goto ExitOnError;
     }
     
     // allocate storage for strategy data
     strategy->store = ccn_charbuf_create();
     if (strategy->store == NULL) {
-        ccndc_warn(__LINE__, "Fatal error: memory allocation failed");
+        ccndc_warn(__LINE__, "Fatal error: memory allocation failed\n");
         goto ExitOnError;
     }
     
@@ -1052,7 +1052,7 @@ parse_ccn_strategy_selection(struct ccndc_data *self,
     
     strategy->name_prefix = ccn_charbuf_create();
     if (strategy->name_prefix == NULL) {
-        ccndc_warn(__LINE__, "Fatal error: memory allocation failed");
+        ccndc_warn(__LINE__, "Fatal error: memory allocation failed\n");
         goto ExitOnError;
     }
     
@@ -1110,14 +1110,14 @@ ccndc_get_ccnd_id(struct ccndc_data *self)
     
     resultbuf = ccn_charbuf_create();
     if (resultbuf == NULL) {
-        ccndc_warn(__LINE__, "Unable to allocate storage for result charbuf");
+        ccndc_warn(__LINE__, "Unable to allocate storage for result charbuf\n");
         res = -1;
         goto Cleanup;
     }
     
     res = ccn_name_from_uri(name, ccndid_uri);
     if (res < 0) {
-        ccndc_warn(__LINE__, "Unable to parse service locator URI for ccnd key");
+        ccndc_warn(__LINE__, "Unable to parse service locator URI for ccnd key\n");
         goto Cleanup;
     }
     
@@ -1126,7 +1126,7 @@ ccndc_get_ccnd_id(struct ccndc_data *self)
                   self->local_scope_template,
                   4500, resultbuf, &pcobuf, NULL, 0);
     if (res < 0) {
-        ccndc_warn(__LINE__, "Unable to get key from ccnd");
+        ccndc_warn(__LINE__, "Unable to get key from ccnd\n");
         goto Cleanup;
     }
     
@@ -1136,13 +1136,13 @@ ccndc_get_ccnd_id(struct ccndc_data *self)
                                pcobuf.offset[CCN_PCO_E_PublisherPublicKeyDigest],
                                &ccndid_result, &self->ccnd_id_size);
     if (res < 0) {
-        ccndc_warn(__LINE__, "Unable to parse ccnd response for ccnd id");
+        ccndc_warn(__LINE__, "Unable to parse ccnd response for ccnd id\n");
         goto Cleanup;
     }
     
     if (self->ccnd_id_size > sizeof (self->ccnd_id))
     {
-        ccndc_warn(__LINE__, "Incorrect size for ccnd id in response");
+        ccndc_warn(__LINE__, "Incorrect size for ccnd id in response\n");
         goto Cleanup;
     }
     
@@ -1167,6 +1167,8 @@ ccndc_do_face_action(struct ccndc_data *self,
     struct ccn_charbuf *resultbuf = NULL;
     struct ccn_parsed_ContentObject pcobuf = {0};
     struct ccn_face_instance *new_face_instance = NULL;
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
     const unsigned char *ptr = NULL;
     size_t length = 0;
     int res = 0;
@@ -1198,6 +1200,16 @@ ccndc_do_face_action(struct ccndc_data *self,
     ON_ERROR_CLEANUP(res);
     
     ON_ERROR_CLEANUP(ccn_content_get_value(resultbuf->buf, resultbuf->length, &pcobuf, &ptr, &length));
+    d = ccn_buf_decoder_start(&decoder, ptr, length);
+    if (ccn_buf_match_dtag(d, CCN_DTAG_StatusResponse)) {
+        unsigned errcode;
+        struct ccn_charbuf *msg = ccn_charbuf_create();
+        ccn_buf_advance(d);
+        errcode = ccn_parse_optional_tagged_nonNegativeInteger(d, CCN_DTAG_StatusCode);
+        res = ccn_parse_tagged_string(d, CCN_DTAG_StatusText, msg);
+        ccndc_warn(__LINE__, "Status %d: %s\n", errcode, ccn_charbuf_as_string(msg));
+        ccn_charbuf_destroy(&msg);
+    }
     new_face_instance = ccn_face_instance_parse(ptr, length);
     ON_NULL_CLEANUP(new_face_instance);
     ccn_charbuf_destroy(&newface);
@@ -1229,7 +1241,8 @@ ccndc_do_prefix_action(struct ccndc_data *self,
     struct ccn_charbuf *prefixreg = NULL;
     struct ccn_parsed_ContentObject pcobuf = {0};
     struct ccn_forwarding_entry *new_forwarding_entry = NULL;
-    
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
     const unsigned char *ptr = NULL;
     size_t length = 0;
     int res;
@@ -1254,6 +1267,16 @@ ccndc_do_prefix_action(struct ccndc_data *self,
     res = ccn_get(self->ccn_handle, name, self->local_scope_template, 1000, resultbuf, &pcobuf, NULL, 0);
     ON_ERROR_CLEANUP(res);
     ON_ERROR_CLEANUP(ccn_content_get_value(resultbuf->buf, resultbuf->length, &pcobuf, &ptr, &length));
+    d = ccn_buf_decoder_start(&decoder, ptr, length);
+    if (ccn_buf_match_dtag(d, CCN_DTAG_StatusResponse)) {
+        unsigned errcode;
+        struct ccn_charbuf *msg = ccn_charbuf_create();
+        ccn_buf_advance(d);
+        errcode = ccn_parse_optional_tagged_nonNegativeInteger(d, CCN_DTAG_StatusCode);
+        res = ccn_parse_tagged_string(d, CCN_DTAG_StatusText, msg);
+        ccndc_warn(__LINE__, "Status %d: %s\n", errcode, ccn_charbuf_as_string(msg));
+        ccn_charbuf_destroy(&msg);
+    }
     new_forwarding_entry = ccn_forwarding_entry_parse(ptr, length);
     ON_NULL_CLEANUP(new_forwarding_entry);
     
@@ -1293,6 +1316,8 @@ ccndc_do_strategy_action(struct ccndc_data *self,
     struct ccn_charbuf *resultbuf = NULL;
     struct ccn_parsed_ContentObject pcobuf = {0};
     struct ccn_strategy_selection *new_strategy_selection = NULL;
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
     const unsigned char *ptr = NULL;
     size_t length = 0;
     int res = 0;
@@ -1324,6 +1349,16 @@ ccndc_do_strategy_action(struct ccndc_data *self,
     ON_ERROR_CLEANUP(res);
     
     ON_ERROR_CLEANUP(ccn_content_get_value(resultbuf->buf, resultbuf->length, &pcobuf, &ptr, &length));
+    d = ccn_buf_decoder_start(&decoder, ptr, length);
+    if (ccn_buf_match_dtag(d, CCN_DTAG_StatusResponse)) {
+        unsigned errcode;
+        struct ccn_charbuf *msg = ccn_charbuf_create();
+        ccn_buf_advance(d);
+        errcode = ccn_parse_optional_tagged_nonNegativeInteger(d, CCN_DTAG_StatusCode);
+        res = ccn_parse_tagged_string(d, CCN_DTAG_StatusText, msg);
+        ccndc_warn(__LINE__, "Status %d: %s\n", errcode, ccn_charbuf_as_string(msg));
+        ccn_charbuf_destroy(&msg);
+    }
     new_strategy_selection = ccn_strategy_selection_parse(ptr, length);
     ON_NULL_CLEANUP(new_strategy_selection);
     ccn_charbuf_destroy(&strategy);
