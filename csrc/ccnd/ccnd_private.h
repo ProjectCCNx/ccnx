@@ -222,8 +222,8 @@ struct face {
     unsigned rrun;
     uintmax_t rseq;
     unsigned faceattr_packed;   /**< First 32 face attributes (single bits) */
-    int nlfaceattr;              /**< number of large face attributes */
-    uintmax_t *lfaceattrs;       /**< storage for large face attributes */
+    int nlfaceattr;             /**< number of large face attributes */
+    unsigned *lfaceattrs;       /**< storage for large face attributes */
     struct ccnd_meter *meter[CCND_FACE_METER_N];
     unsigned short pktseq;      /**< sequence number for sent packets */
     unsigned short adjstate;    /**< state of adjacency negotiotiation */

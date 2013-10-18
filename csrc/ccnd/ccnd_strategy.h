@@ -351,8 +351,8 @@ int faceattr_index_from_name(struct ccnd_handle *h, const char *name);
 int faceattr_bool_index_from_name(struct ccnd_handle *h, const char *name);
 int faceattr_index_allocate(struct ccnd_handle *h);
 int faceattr_index_free(struct ccnd_handle *h, int faceattr_index);
-uintmax_t faceattr_get(struct ccnd_handle *h, struct face *face, int faceattr_index);
-int faceattr_set(struct ccnd_handle *h, struct face *face, int faceattr_index, uintmax_t value);
+unsigned faceattr_get(struct ccnd_handle *h, struct face *face, int faceattr_index);
+int faceattr_set(struct ccnd_handle *h, struct face *face, int faceattr_index, unsigned value);
 unsigned faceattr_get_packed(struct ccnd_handle *h, struct face *face);
 
 /** For debugging */

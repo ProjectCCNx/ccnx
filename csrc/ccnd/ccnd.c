@@ -786,9 +786,9 @@ faceattr_index_free(struct ccnd_handle *h, int faceattr_index)
 }
 
 int
-faceattr_set(struct ccnd_handle *h, struct face *face, int faceattr_index, uintmax_t value)
+faceattr_set(struct ccnd_handle *h, struct face *face, int faceattr_index, unsigned value)
 {
-    uintmax_t *x = NULL;
+    unsigned *x = NULL;
 
     if (face == NULL)
         return(-1);
@@ -796,9 +796,9 @@ faceattr_set(struct ccnd_handle *h, struct face *face, int faceattr_index, uintm
         return(-1);
     if (faceattr_index < 32) {
         if (value & 1)
-            face->faceattr_packed |= ((uintmax_t)1 << faceattr_index);
+            face->faceattr_packed |= ((unsigned)1 << faceattr_index);
         else
-            face->faceattr_packed &= ~((uintmax_t)1 << faceattr_index);
+            face->faceattr_packed &= ~((unsigned)1 << faceattr_index);
         return(0);
     }
     x = face->lfaceattrs;
@@ -807,7 +807,7 @@ faceattr_set(struct ccnd_handle *h, struct face *face, int faceattr_index, uintm
             return(-1);
         if (value == 0)
             return(0);
-        x = realloc(x, sizeof(uintmax_t) * (faceattr_index - 32 + 1));
+        x = realloc(x, sizeof(unsigned) * (faceattr_index - 32 + 1));
         if (x == NULL)
             return(-1);
         while (faceattr_index - 32 >= face->nlfaceattr)
@@ -818,7 +818,7 @@ faceattr_set(struct ccnd_handle *h, struct face *face, int faceattr_index, uintm
     return(0);
 }
 
-uintmax_t
+unsigned
 faceattr_get(struct ccnd_handle *h, struct face *face, int faceattr_index)
 {
     if (face == NULL)
