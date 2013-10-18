@@ -703,8 +703,8 @@ finalize_face(struct hashtb_enumerator *e)
         ccnd_meter_destroy(&face->meter[m]);
 }
 
-int
-faceattr_index_from_name(struct ccnd_handle *h, const char *name, int bits)
+static int
+faceattr_index_lookup(struct ccnd_handle *h, const char *name, int bits)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -712,8 +712,6 @@ faceattr_index_from_name(struct ccnd_handle *h, const char *name, int bits)
     int i;
     int res;
     
-    if (bits <= 0 || bits > 8 * sizeof(uintmax_t))
-        return(-1);
     hashtb_start(h->faceattr_index_tab, e);
     res = hashtb_seek(e, (const void *)name, strlen(name), 1);
     entry = e->data;
@@ -744,22 +742,28 @@ faceattr_index_from_name(struct ccnd_handle *h, const char *name, int bits)
 }
 
 int
-faceattr_index_allocate(struct ccnd_handle *h, int bits)
+faceattr_index_from_name(struct ccnd_handle *h, const char *name)
+{
+    return(faceattr_index_lookup(h, name, 8 * sizeof(unsigned)));
+}
+
+int
+faceattr_bool_index_from_name(struct ccnd_handle *h, const char *name)
+{
+    return(faceattr_index_lookup(h, name, 1));
+}
+
+int
+faceattr_index_allocate(struct ccnd_handle *h)
 {
     int ans;
     int i;
     char id[20];
     
     id[0] = 0;
-    i = 32;
-    if (bits == 1)
-        for (i = 0; i < 32; i++)
-            if ((h->faceattr_packed & (1U << i)) == 0)
-                break;
-    if (i == 32)
-        i += h->nlfaceattr;
+    i = 32 + h->nlfaceattr;
     snprintf(id, sizeof(id), "%d", i);
-    ans = faceattr_index_from_name(h, id, bits);
+    ans = faceattr_index_from_name(h, id);
     if (ans >= 0 && ans != i) abort();
     return(ans);
 }
