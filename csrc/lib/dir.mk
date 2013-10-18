@@ -117,6 +117,8 @@ LIB_OBJS = \
     lned.o \
     siphash24.o
 
+SRCLINKS = q.dat
+
 default all: dtag_check lib $(PROGRAMS)
 # Don't try to build shared libs right now.
 # all: shlib
@@ -142,7 +144,7 @@ shlib: $(SHLIBNAME)
 
 lib: libccn.a
 
-test: default encodedecodetest ccnbtreetest nametreetest
+test: default encodedecodetest ccnbtreetest nametreetest q.dat
 	./encodedecodetest -o /dev/null
 	./ccnbtreetest
 	./ccnbtreetest - < q.dat

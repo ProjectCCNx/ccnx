@@ -1,4 +1,4 @@
-# Copyright (C) 2009,2010 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -21,8 +21,7 @@ LOCAL_C_INCLUDES	+= $(LOCAL_PATH)/../include
 
 LOCAL_C_INCLUDES	+= $(LOCAL_PATH)/../../android/external/openssl-armv5/include
 
-CCNDOBJ := ccnd.o ccnd_msg.o ccnd_internal_client.o ccnd_stats.o \
-			android_main.o
+# android_obj.mk is generated, and defines CCNDOBJ
 CCNDSRC := $(CCNDOBJ:.o=.c)
 
 LOCAL_SRC_FILES := $(CCNDSRC)

@@ -298,6 +298,33 @@ ccnd_face_from_faceid(struct ccnd_handle *h, unsigned faceid)
     return(face_from_faceid(h, faceid));
 }
 
+/** Accessor for faceid */
+unsigned
+face_faceid(struct face *face)
+{
+    if (face == NULL)
+        return(CCN_NO_FACEID);
+    return(face->faceid);
+}
+
+/** Accessor for number of pending interests received on a face */
+int
+face_pending_interests(struct face *face)
+{
+    if (face == NULL)
+        return(0);
+    return(face->pending_interests);
+}
+
+/** Accessor for number of outstanding interests sent on a face */
+int
+face_outstanding_interests(struct face *face)
+{
+    if (face == NULL)
+        return(0);
+    return(face->outstanding_interests);
+}
+
 /**
  * Assigns the faceid for a nacent face,
  * calls register_new_face() if successful.
@@ -667,8 +694,144 @@ finalize_face(struct hashtb_enumerator *e)
     }
     else if (face->faceid != CCN_NOFACEID)
         ccnd_msg(h, "orphaned face %u", face->faceid);
+    if (face->lfaceattrs != NULL) {
+        free(face->lfaceattrs);
+        face->lfaceattrs = NULL;
+        face->nlfaceattr = 0;
+    }
     for (m = 0; m < CCND_FACE_METER_N; m++)
         ccnd_meter_destroy(&face->meter[m]);
+}
+
+int
+faceattr_index_from_name(struct ccnd_handle *h, const char *name, int bits)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct faceattr_index_entry *entry = NULL;
+    int i;
+    int res;
+    
+    if (bits <= 0 || bits > 8 * sizeof(uintmax_t))
+        return(-1);
+    hashtb_start(h->faceattr_index_tab, e);
+    res = hashtb_seek(e, (const void *)name, strlen(name), 1);
+    entry = e->data;
+    if (res == HT_OLD_ENTRY) {
+        i = entry->fa_index;
+        if (bits != entry->fa_bits)
+            i = -1;
+    }
+    else if (res == HT_NEW_ENTRY) {
+        i = 32;
+        if (bits == 1) {
+            for (i = 0; i < 32; i++) {
+                if ((h->faceattr_packed & (1U << i)) == 0) {
+                    h->faceattr_packed |= (1U << i);
+                    break;
+                }
+            }
+        }
+        if (i == 32)
+            i += (h->nlfaceattr++);
+        entry->fa_index = i;
+        entry->fa_bits = bits;
+    }
+    else
+        i = -1;
+    hashtb_end(e);
+    return(i);
+}
+
+int
+faceattr_index_allocate(struct ccnd_handle *h, int bits)
+{
+    int ans;
+    int i;
+    char id[20];
+    
+    id[0] = 0;
+    i = 32;
+    if (bits == 1)
+        for (i = 0; i < 32; i++)
+            if ((h->faceattr_packed & (1U << i)) == 0)
+                break;
+    if (i == 32)
+        i += h->nlfaceattr;
+    snprintf(id, sizeof(id), "%d", i);
+    ans = faceattr_index_from_name(h, id, bits);
+    if (ans >= 0 && ans != i) abort();
+    return(ans);
+}
+
+int
+faceattr_index_free(struct ccnd_handle *h, int faceattr_index)
+{
+    /*
+     * Doing a careful job of this could be done:
+     *
+     * 1. enumerate faceattr_index_tab, looking for the assigned index.
+     * 2. remove it, and keep track of the free index
+     * 3. enumerate faces, clearing the associated values
+     *
+     * since all of that is probably more involved than the rest of
+     * the faceattr handling code, for now we simple don't attempt to
+     * re-use the index.
+     */
+    return(0);
+}
+
+int
+faceattr_set(struct ccnd_handle *h, struct face *face, int faceattr_index, uintmax_t value)
+{
+    uintmax_t *x = NULL;
+
+    if (face == NULL)
+        return(-1);
+    if (faceattr_index < 0)
+        return(-1);
+    if (faceattr_index < 32) {
+        if (value & 1)
+            face->faceattr_packed |= ((uintmax_t)1 << faceattr_index);
+        else
+            face->faceattr_packed &= ~((uintmax_t)1 << faceattr_index);
+        return(0);
+    }
+    x = face->lfaceattrs;
+    if (faceattr_index - 32 >= face->nlfaceattr) {
+        if (faceattr_index - 32 >= h->nlfaceattr)
+            return(-1);
+        if (value == 0)
+            return(0);
+        x = realloc(x, sizeof(uintmax_t) * (faceattr_index - 32 + 1));
+        if (x == NULL)
+            return(-1);
+        while (faceattr_index - 32 >= face->nlfaceattr)
+            x[face->nlfaceattr++] = 0;
+        face->lfaceattrs = x;
+    }
+    x[faceattr_index - 32] = value;
+    return(0);
+}
+
+uintmax_t
+faceattr_get(struct ccnd_handle *h, struct face *face, int faceattr_index)
+{
+    if (face == NULL)
+        return(0);
+    if (faceattr_index < 0 || faceattr_index > 32 + face->nlfaceattr)
+        return(0);
+    if (faceattr_index < 32)
+        return((face->faceattr_packed >> faceattr_index) & 1);
+    return(face->lfaceattrs[faceattr_index - 32]);
+}
+
+unsigned
+faceattr_get_packed(struct ccnd_handle *h, struct face *face)
+{
+    if (face == NULL)
+        return(0);
+    return(face->faceattr_packed);
 }
 
 /**
@@ -3137,8 +3300,13 @@ ccnd_req_strategy(struct ccnd_handle *h,
             goto Finish;
         }
         reason = __LINE__;
+        if (h->errbuf != NULL) abort();
         si = create_strategy_instance(h, npe, sclass,
                                       strategy_selection->parameters);
+        if (h->errbuf != NULL) {
+            remove_strategy_instance(h, npe);
+            si = NULL;
+        }
     }
     else if (strcmp(action, "getstrategy") == 0) {
         reason = __LINE__;
@@ -3178,10 +3346,28 @@ Finish:
     if (nackallowed && si == NULL) {
         struct ccn_charbuf *msg = ccn_charbuf_create();
         ccn_charbuf_putf(msg, "could not process strategy req (l.%d)", reason);
+        if (h->errbuf != NULL)
+            ccn_charbuf_putf(msg, ": %s", ccn_charbuf_as_string(h->errbuf));
         res = ccnd_nack(h, reply_body, 504, ccn_charbuf_as_string(msg));
         ccn_charbuf_destroy(&msg);
     }
+    ccn_charbuf_destroy(&h->errbuf);
     return((nackallowed || res <= 0) ? res : -1);
+}
+
+/**
+ * Report a strategy initialization failure
+ */
+void
+strategy_init_error(struct ccnd_handle *h,
+                    struct strategy_instance *instance,
+                    const char *message)
+{
+    if (h->errbuf == NULL)
+        h->errbuf = ccn_charbuf_create();
+    else
+        ccn_charbuf_putf(h->errbuf, " / ");
+    ccn_charbuf_putf(h->errbuf, "%s", message);
 }
 
 /**
@@ -5789,6 +5975,8 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     param.finalize = &finalize_guest;
     h->guest_tab = hashtb_create(sizeof(struct guest_entry), &param);
     param.finalize = 0;
+    h->faceattr_index_tab = hashtb_create(sizeof(struct faceattr_index_entry),
+                                          &param);
     h->headx = calloc(1, sizeof(*h->headx));
     h->headx->staletime = -1;
     h->headx->nextx = h->headx->prevx = h->headx;
@@ -5950,6 +6138,7 @@ ccnd_destroy(struct ccnd_handle **pccnd)
     hashtb_destroy(&h->interest_tab);
     hashtb_destroy(&h->nameprefix_tab);
     hashtb_destroy(&h->guest_tab);
+    hashtb_destroy(&h->faceattr_index_tab);
     if (h->fds != NULL) {
         free(h->fds);
         h->fds = NULL;

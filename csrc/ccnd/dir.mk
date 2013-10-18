@@ -21,23 +21,31 @@ DEBRIS = anything.ccnb contentobjecthash.ccnb contentmishash.ccnb \
          contenthash.ccnb ccnd_stregistry.h
 
 BROKEN_PROGRAMS = 
-CSRC = ccnd_main.c ccnd.c ccnd_msg.c ccnd_stats.c ccnd_internal_client.c ccnd_stregistry.c ccnd_strategy0.c ccndsmoketest.c \
-	ccnd_strategy1.c ccnd_strategy2.c
+CSRC = ccnd_main.c \
+       ccnd.c ccnd_msg.c ccnd_stats.c ccnd_internal_client.c ccnd_stregistry.c \
+       $(STRATEGYSRC) \
+       ccndsmoketest.c
 HSRC = ccnd_private.h ccnd_strategy.h
 SCRIPTSRC = testbasics fortunes.ccnb contentobjecthash.ref anything.ref \
-            minsuffix.ref
- 
+            minsuffix.ref gen_stregistry.sh
+
+# To add a strategy, list its source here, and then make depend.
+STRATEGYSRC = default_strategy.c null_strategy.c trace_strategy.c \
+              parallel_strategy.c loadsharing_strategy.c \
+              faceattr_strategy.c
+
 default: $(PROGRAMS)
 
 all: default $(BROKEN_PROGRAMS)
 
 $(PROGRAMS): $(CCNLIBDIR)/libccn.a
 
-CCND_OBJ = ccnd_main.o ccnd.o ccnd_msg.o ccnd_stats.o ccnd_internal_client.o ccnd_stregistry.o ccnd_strategy0.o \
-	ccnd_strategy1.o ccnd_strategy2.o
+# Leave main out of this list to make it easier to support the android build
+CCND_OBJ = ccnd.o ccnd_msg.o ccnd_stats.o ccnd_internal_client.o ccnd_stregistry.o \
+	$(STRATEGYSRC:.c=.o)
 
-ccnd: $(CCND_OBJ) ccnd_built.sh
-	$(CC) $(CFLAGS) -o $@ $(CCND_OBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+ccnd: ccnd_main.o $(CCND_OBJ) ccnd_built.sh
+	$(CC) $(CFLAGS) -o $@ ccnd_main.o $(CCND_OBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 	sh ./ccnd_built.sh
 
 ccnd_built.sh:
@@ -49,7 +57,14 @@ ccndsmoketest: ccndsmoketest.o
 ccnd_stregistry.h: gen_stregistry.sh $(CSRC)
 	sh gen_stregistry.sh $(CSRC)
 
-depend: ccnd_stregistry.h
+depend: ccnd_stregistry.h android_obj.mk
+android_obj.mk: _always
+	echo 'CCNDOBJ := \' > templist
+	for i in android_main.o $(CCND_OBJ); \
+		do echo "    $$i" '\'; done | sort -u >> templist
+	echo >> templist
+	diff -b templist android_obj.mk || mv templist android_obj.mk
+	$(RM) templist
 
 clean:
 	rm -f *.o *.a $(PROGRAMS) $(BROKEN_PROGRAMS) depend

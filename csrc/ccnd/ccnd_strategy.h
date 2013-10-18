@@ -1,3 +1,5 @@
+
+
 /**
  * @file ccnd_strategy.h
  *
@@ -29,6 +31,7 @@
 /* These types should remain opaque for strategy routines */
 struct ccnd_handle;
 struct interest_entry;
+struct face;
 struct nameprefix_entry;
 
 /* Forward struct defined later in this header */
@@ -137,7 +140,8 @@ struct ccn_strategy {
  *                  call is the appropriate time to parse them and save the
  *                  resulting values in the private instance state for
  *                  rapid access in the more time-critical calls.
-    XXX - we need a way to indicate a bad parameter string.
+ *                  The callout should use strategy_init_error() to report
+ *                  problems with the parameter string.
  *
  * CCNST_FIRST      indicates the creation of a new PIT entry due to an
  *                  arriving interest.  Since there was no existing state
@@ -250,6 +254,18 @@ struct strategy_instance {
 };
 
 /**
+ *  Note a strategy initialization error
+ *
+ * A call to this during the CCNST_INIT callout will do appropriate
+ * logging and error reporting, and cause the instance to be removed after
+ * the termination of the intialization callout.
+ *
+ * Do not call from other contexts.
+ */
+void strategy_init_error(struct ccnd_handle *h,
+                         struct strategy_instance *instance,
+                         const char *message);
+/**
  *  Forward an interest message
  *
  *  The strategy routine may choose to call this directly, and/or
@@ -295,25 +311,55 @@ void strategy_getstate(struct ccnd_handle *h, struct ccn_strategy *s,
  * Any previously scheduled wakeup will be cancelled.
  * To just cancel any existing wakeup, pass CCNST_NOP.
  */
-void
-strategy_settimer(struct ccnd_handle *h, struct interest_entry *ie,
-                  int usec, enum ccn_strategy_op op);
+void strategy_settimer(struct ccnd_handle *h, struct interest_entry *ie,
+                       int usec, enum ccn_strategy_op op);
+
+/**
+ * Get the face handle for a given faceid
+ *
+ * Strategy routines should use the accessors provided.
+ *
+ * @returns NULL if face does not exist.
+ */
+struct face *ccnd_face_from_faceid(struct ccnd_handle *, unsigned);
+
+/** Accessors for things a strategy might want to know about a face. */
+unsigned face_faceid(struct face *);
+int face_pending_interests(struct face *);
+int face_outstanding_interests(struct face *);
+
+/**
+ * Face attributes
+ *
+ * To help strategies do their work, there is provision for faces to carry
+ * a collection of attributes.  These have associated values, which can be
+ * either boolean or numeric (non-negative integers).  Strategies may set
+ * and get these values using an attribute index to say which attribute is
+ * desired.  Some attributes are set by ccnd, based upon things it
+ * knows about the face.  Others have associated names, and may be set from
+ * the outside (using the face managment protocol).  Still others are private
+ * to strategy implementations, and need not have a name, only a dynamically
+ * assigned index.
+ *
+ * The first 32 indices (0 through 31) are reserved for single-bit attributes.
+ * These may be read all at once using faceattr_get_packed, but are set using
+ * the general faceattr_set call.  They may also be read using faceattr_get.
+ * In the packed form, the attribute with index 0 is stored in the low-order
+ * bit, so the bits may be tested using straightforward shifts and masks.
+ */
+int faceattr_index_from_name(struct ccnd_handle *h, const char *name, int bits);
+int faceattr_index_allocate(struct ccnd_handle *h, int bits);
+int faceattr_index_free(struct ccnd_handle *h, int faceattr_index);
+uintmax_t faceattr_get(struct ccnd_handle *h, struct face *face, int faceattr_index);
+int faceattr_set(struct ccnd_handle *h, struct face *face, int faceattr_index, uintmax_t value);
+unsigned faceattr_get_packed(struct ccnd_handle *h, struct face *face);
+
+/** For debugging */
+void ccnd_msg(struct ccnd_handle *, const char *, ...);
 
 /** A PRNG returning 31-bit pseudo-random numbers */
 uint32_t ccnd_random(struct ccnd_handle *);
 
 extern const struct strategy_class ccnd_strategy_classes[];
-
-void strategy1_callout(struct ccnd_handle *h,
-                       struct strategy_instance *instance,
-                       struct ccn_strategy *s,
-                       enum ccn_strategy_op op,
-                       unsigned faceid);
-
-void strategy2_callout(struct ccnd_handle *h,
-                       struct strategy_instance *instance,
-                       struct ccn_strategy *s,
-                       enum ccn_strategy_op op,
-                       unsigned faceid);
 
 #endif

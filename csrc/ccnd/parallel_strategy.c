@@ -1,9 +1,9 @@
 /*
- * @file ccnd/ccnd_strategy1.c
+ * @file ccnd/parallel_strategy.c
  *
  * Part of ccnd - the CCNx Daemon
  *
- * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
+ * Copyright (C) 2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the

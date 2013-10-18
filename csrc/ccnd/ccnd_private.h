@@ -81,6 +81,9 @@ struct ccnd_handle {
     struct hashtb *nameprefix_tab;  /**< keyed by name prefix components */
     struct hashtb *interest_tab;    /**< keyed by interest msg sans Nonce */
     struct hashtb *guest_tab;       /**< keyed by faceid */
+    struct hashtb *faceattr_index_tab; /**< keyed by faceattr name */
+    unsigned faceattr_packed;       /**< Allocation mask for first 32 */
+    int nlfaceattr;                  /**< number of large face attributes */
     unsigned forward_to_gen;        /**< for forward_to updates */
     unsigned face_gen;              /**< faceid generation number */
     unsigned face_rover;            /**< for faceid allocation */
@@ -105,6 +108,7 @@ struct ccnd_handle {
     unsigned starttime_usec;        /**< ccnd start time fractional part */
     unsigned iserial;               /**< interest serial number (for logs) */
     struct ccn_schedule *sched;     /**< our schedule */
+    struct ccn_charbuf *errbuf;     /**< for strategy error reporting */
     struct ccn_charbuf *send_interest_scratch; /**< for use by send_interest */
     struct ccn_charbuf *scratch_charbuf; /**< one-slot scratch cache */
     struct ccn_indexbuf *scratch_indexbuf; /**< one-slot scratch cache */
@@ -217,6 +221,9 @@ struct face {
     int outstanding_interests;  /**< sent and not yet consumed */
     unsigned rrun;
     uintmax_t rseq;
+    unsigned faceattr_packed;   /**< First 32 face attributes (single bits) */
+    int nlfaceattr;              /**< number of large face attributes */
+    uintmax_t *lfaceattrs;       /**< storage for large face attributes */
     struct ccnd_meter *meter[CCND_FACE_METER_N];
     unsigned short pktseq;      /**< sequence number for sent packets */
     unsigned short adjstate;    /**< state of adjacency negotiotiation */
@@ -246,6 +253,25 @@ struct face {
 #define CCN_FACE_BC    (1 << 20) /** Needs SO_BROADCAST to send */
 #define CCN_FACE_NBC   (1 << 21) /** Don't use SO_BROADCAST to send */
 #define CCN_FACE_ADJ   (1 << 22) /** Adjacency guid has been negotiatied */
+
+/**
+ *  Entry in faceattr_index_tab
+ *
+ * This keeps track of the index values that are used to access the per-face
+ * attributes.  We use an index so that the lookup by attribute name only
+ * needs to happen at setup time, rather than each time the attribute is
+ * accessed.  Small values of fa_index (< 32) refer to the single-bit attributes
+ * that are stored in face->faceattr_packed.  Larger values are used to
+ * index into face->faceattrs (after deducting 32, of course).
+ *
+ * The "anonymous" attributes are stored under a name that is the decimal
+ * representation of the index.  This is an implementation detail,
+ * not part of the strategy API.
+ */
+struct faceattr_index_entry {
+    int fa_index;       /**< index into faceattr value array */
+    int fa_bits;        /**< requested bit size */
+};
 
 /**
  * Content table entry

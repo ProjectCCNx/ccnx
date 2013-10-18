@@ -48,7 +48,7 @@ objtree: conf.mk _always
 			../$(OBJTREE)/$$i/dir.mk	 		\
 	     || exit 1);						\
 	done
-	cd $(OBJTREE) && ../configure
+	cd $(OBJTREE) && ../configure && make depend
 
 html: _always
 
