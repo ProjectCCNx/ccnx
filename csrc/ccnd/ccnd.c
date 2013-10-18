@@ -3368,7 +3368,6 @@ strategy_init_error(struct ccnd_handle *h,
     else
         ccn_charbuf_putf(h->errbuf, " / ");
     ccn_charbuf_putf(h->errbuf, "%s", message);
-    ccnd_msg(h, "strategy_init_error.%d - %s", __LINE__, message);
 }
 
 /**
