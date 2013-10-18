@@ -717,7 +717,7 @@ faceattr_index_lookup(struct ccnd_handle *h, const char *name, int bits)
     entry = e->data;
     if (res == HT_OLD_ENTRY) {
         i = entry->fa_index;
-        if (bits != entry->fa_bits)
+        if (i < 32 && bits != 1)
             i = -1;
     }
     else if (res == HT_NEW_ENTRY) {
@@ -733,7 +733,6 @@ faceattr_index_lookup(struct ccnd_handle *h, const char *name, int bits)
         if (i == 32)
             i += (h->nlfaceattr++);
         entry->fa_index = i;
-        entry->fa_bits = bits;
     }
     else
         i = -1;

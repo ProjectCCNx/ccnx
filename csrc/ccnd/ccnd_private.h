@@ -269,8 +269,7 @@ struct face {
  * not part of the strategy API.
  */
 struct faceattr_index_entry {
-    int fa_index;       /**< index into faceattr value array */
-    int fa_bits;        /**< requested bit size */
+    int fa_index;       /**< index for accessing faceattr value */
 };
 
 /**
