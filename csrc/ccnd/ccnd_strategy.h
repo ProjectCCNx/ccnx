@@ -105,6 +105,7 @@ struct pit_face_item {
 #define CCND_PFI_PENDING  0x2000    /**< Pending for immediate data */
 #define CCND_PFI_SUPDATA  0x4000    /**< Suppressed data reply */
 #define CCND_PFI_ATTENTION 0x10000  /**< Upstream needs attention from strategy */
+#define CCND_PFI_INACTIVE 0x20000   /**< Face is nonresponsive, may have lost communication */
 #define CCND_PFI_DCFACE 0x100000    /**< This upstream is a Direct Control face (gets data if unanswered for a long time) */
 
 /**

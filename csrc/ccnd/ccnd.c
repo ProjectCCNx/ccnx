@@ -3772,7 +3772,9 @@ do_propagate(struct ccn_schedule *sched,
             /* Strategy needs to make the decision, so mark it. */
             changes++;
             p->pfi_flags |= CCND_PFI_ATTENTION;
-            p->pfi_flags &= ~CCND_PFI_UPHUNGRY;
+            p->pfi_flags &= ~(CCND_PFI_UPHUNGRY | CCND_PFI_INACTIVE);
+            if (face->recvcount == 0 && (face->flags & CCN_FACE_DGRAM) != 0)
+                p->pfi_flags |= CCND_PFI_INACTIVE;
         }
         else {
             /* Upstream expired, but we have nothing to feed it. */
