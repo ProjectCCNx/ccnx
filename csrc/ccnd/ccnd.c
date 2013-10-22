@@ -837,6 +837,19 @@ faceattr_get_packed(struct ccnd_handle *h, struct face *face)
     return(face->faceattr_packed);
 }
 
+static void
+faceattr_declare(struct ccnd_handle *h, const char *name, int ndx)
+{
+    int res;
+    
+    if (ndx < 32)
+        res = faceattr_bool_index_from_name(h, name);
+    else
+        res = faceattr_index_from_name(h, name);
+    if (res != ndx)
+        abort();
+}
+
 /**
  * Convert an accession to its associated content handle.
  *
@@ -6081,6 +6094,9 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     /* Do keystore setup early, it takes a while the first time */
     ccnd_init_internal_keystore(h);
     ccnd_reseed(h);
+    faceattr_declare(h, "application", FAI_APPLICATION);
+    faceattr_declare(h, "broadcastcapable", FAI_BROADCAST_CAPABLE);
+    faceattr_declare(h, "directcontrol", FAI_DIRECT_CONTROL);
     if (h->face0 == NULL) {
         struct face *face;
         face = calloc(1, sizeof(*face));

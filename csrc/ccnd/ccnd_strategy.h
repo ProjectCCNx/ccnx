@@ -1,5 +1,3 @@
-
-
 /**
  * @file ccnd_strategy.h
  *
@@ -347,6 +345,18 @@ int face_outstanding_interests(struct face *);
  * the general faceattr_set call.  They may also be read using faceattr_get.
  * In the packed form, the attribute with index 0 is stored in the low-order
  * bit, so the bits may be tested using straightforward shifts and masks.
+ * After the first 32 single-bit attributes have been created, any additional
+ * requests will be fullfulled with attributes capable of carrying numeric
+ * values.
+ *
+ * Newly created attributes are initialized to 0/false.
+ *
+ * Some attributes are created and set by ccnd, reflecting things about faces
+ * that may be relevant to the operation of strategies.  These are assigned
+ * with predeclared indices, so it is not necessary to learn the index
+ * from the name at runtime (although this is allowed).  All of the built-in
+ * single-bit attributes have small indices, and so are accessible using
+ * faceattr_get_packed.  Macros for corresponding bit masks are also provided.
  */
 int faceattr_index_from_name(struct ccnd_handle *h, const char *name);
 int faceattr_bool_index_from_name(struct ccnd_handle *h, const char *name);
@@ -355,6 +365,38 @@ int faceattr_index_free(struct ccnd_handle *h, int faceattr_index);
 unsigned faceattr_get(struct ccnd_handle *h, struct face *face, int faceattr_index);
 int faceattr_set(struct ccnd_handle *h, struct face *face, int faceattr_index, unsigned value);
 unsigned faceattr_get_packed(struct ccnd_handle *h, struct face *face);
+
+
+/**
+ *  Face attribute "application"
+ *
+ * If true, the face is deemed to be a local application, by virtue of
+ * connection information (e.g., loopback interface or unix-domain socket).
+ *
+ */
+#define FAI_APPLICATION 0
+#define FAM_APPLICATION (1U << FAI_APPLICATION)
+#define FAM_APP FAM_APPLICATION
+
+/**
+ *  Face attribute "broadcastcapable"
+ *
+ * If true, the face can reach multiple peers via broadcast.
+ */
+#define FAI_BROADCAST_CAPABLE 1
+#define FAM_BROADCAST_CAPABLE (1U << FAI_BROADCAST_CAPABLE)
+#define FAM_BCAST FAM_BROADCAST_CAPABLE
+
+/**
+ *  Face attribute "directcontrol"
+ *
+ * If true, the face should not be sent interests unless there is no
+ * response from any other faces.  This may be used by an application that
+ * can update the FIB on demand.
+ */
+#define FAI_DIRECT_CONTROL 2
+#define FAM_DIRECT_CONTROL (1U << FAM_DIRECT_CONTROL)
+#define FAM_DC FAM_DIRECT_CONTROL
 
 /** For debugging */
 void ccnd_msg(struct ccnd_handle *, const char *, ...);
