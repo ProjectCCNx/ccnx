@@ -366,15 +366,21 @@ unsigned faceattr_get(struct ccnd_handle *h, struct face *face, int faceattr_ind
 int faceattr_set(struct ccnd_handle *h, struct face *face, int faceattr_index, unsigned value);
 unsigned faceattr_get_packed(struct ccnd_handle *h, struct face *face);
 
+/**
+ *  Face attribute "valid"
+ *
+ * If true, the face may be used for interest/data exchange.
+ */
+#define FAI_VALID 0
+#define FAM_VALID (1U << FAI_VALID)
 
 /**
  *  Face attribute "application"
  *
  * If true, the face is deemed to be a local application, by virtue of
  * connection information (e.g., loopback interface or unix-domain socket).
- *
  */
-#define FAI_APPLICATION 0
+#define FAI_APPLICATION 1
 #define FAM_APPLICATION (1U << FAI_APPLICATION)
 #define FAM_APP FAM_APPLICATION
 
@@ -383,7 +389,7 @@ unsigned faceattr_get_packed(struct ccnd_handle *h, struct face *face);
  *
  * If true, the face can reach multiple peers via broadcast.
  */
-#define FAI_BROADCAST_CAPABLE 1
+#define FAI_BROADCAST_CAPABLE 2
 #define FAM_BROADCAST_CAPABLE (1U << FAI_BROADCAST_CAPABLE)
 #define FAM_BCAST FAM_BROADCAST_CAPABLE
 
@@ -394,9 +400,17 @@ unsigned faceattr_get_packed(struct ccnd_handle *h, struct face *face);
  * response from any other faces.  This may be used by an application that
  * can update the FIB on demand.
  */
-#define FAI_DIRECT_CONTROL 2
-#define FAM_DIRECT_CONTROL (1U << FAM_DIRECT_CONTROL)
+#define FAI_DIRECT_CONTROL 3
+#define FAM_DIRECT_CONTROL (1U << FAI_DIRECT_CONTROL)
 #define FAM_DC FAM_DIRECT_CONTROL
+
+/**
+ *  Stateless enumerator for face attribute names
+ *
+ * Call with NULL to get the first name.  Returns NULL after the last name.
+ * The order is unspecified.  Generated names are provided for private attrs.
+ */
+const char *faceattr_next_name(struct ccnd_handle *h, const char *name);
 
 /** For debugging */
 void ccnd_msg(struct ccnd_handle *, const char *, ...);

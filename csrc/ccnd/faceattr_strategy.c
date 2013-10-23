@@ -31,8 +31,12 @@
  * for changing face attributes is defined
  * and implemented.
  *
- * Parse a parameter string in the form
+ * Use a parameter string of the form
  *  faceid/attrname=val
+ * to set a face attribute value.
+ * The value may be a non-negative number or true or false.
+ *
+ * A parameter string with only a faceid prints all of the non-zero attributes.
  */
 void
 ccnd_faceattr_strategy_impl(
@@ -43,7 +47,8 @@ ccnd_faceattr_strategy_impl(
     unsigned faceid)
 {
     const char *s = NULL;
-    struct ccn_charbuf *name = NULL;
+    const char *dlm = NULL;
+    struct ccn_charbuf *c = NULL;
     struct face *face = NULL;
     int is_bool_attr;
     int i;
@@ -60,6 +65,8 @@ ccnd_faceattr_strategy_impl(
         f = 0;
         while ('0' <= s[i] && s[i] <= '9')
             f = f * 10 + (s[i++] - '0');
+        if (s[i] == 0)
+            goto Show;
         if (s[i] != '/')
             goto Fail;
         i++;
@@ -71,8 +78,8 @@ ccnd_faceattr_strategy_impl(
         }
         if (i == j || s[i] == 0)
             goto Fail;
-        name = ccn_charbuf_create();
-        ccn_charbuf_append(name, &(s[j]), i - j);
+        c = ccn_charbuf_create();
+        ccn_charbuf_append(c, &(s[j]), i - j);
         i++;
         if (s[i] == 0)
             goto Fail;
@@ -93,16 +100,35 @@ ccnd_faceattr_strategy_impl(
         if (face == NULL)
             goto Fail;
         if (is_bool_attr)
-            ndx = faceattr_bool_index_from_name(h, ccn_charbuf_as_string(name));
+            ndx = faceattr_bool_index_from_name(h, ccn_charbuf_as_string(c));
         else
-            ndx = faceattr_index_from_name(h, ccn_charbuf_as_string(name));
+            ndx = faceattr_index_from_name(h, ccn_charbuf_as_string(c));
         if (faceattr_set(h, face, ndx, v) < 0)
             goto Fail;
-        ccn_charbuf_destroy(&name);
+        ccn_charbuf_destroy(&c);
         strategy_init_error(h, instance, s);
         return;
+    Show:
+        face = ccnd_face_from_faceid(h, f);
+        if (face == NULL)
+            goto Fail;
+        c = ccn_charbuf_create();
+        ccn_charbuf_putf(c, "%u", f);
+        dlm = "/";
+        for (s = faceattr_next_name(h, NULL); s != NULL;
+             s = faceattr_next_name(h, s)) {
+            ndx = faceattr_index_from_name(h, s);
+            v = faceattr_get(h, face, ndx);
+            if (v != 0) {
+                ccn_charbuf_putf(c, "%s%s=%u", dlm, s, v);
+                dlm = "&";
+            }
+        }
+        strategy_init_error(h, instance, ccn_charbuf_as_string(c));
+        ccn_charbuf_destroy(&c);
+        return;
     Fail:
-        ccn_charbuf_destroy(&name);
+        ccn_charbuf_destroy(&c);
         strategy_init_error(h, instance, "Sorry, Charlie");
     }
     else if (op == CCNST_FINALIZE) {

@@ -1477,6 +1477,34 @@ ccnd_notice_push(struct ccn_schedule *sched,
 }
 
 /**
+ *  Fix up any builtin face attributes that may have changed
+ */
+static void
+adjust_builtin_faceattr(struct ccnd_handle *h, unsigned faceid)
+{
+    struct face *face;
+    unsigned clear;
+    unsigned set;
+    unsigned checkflags;
+    
+    face = ccnd_face_from_faceid(h, faceid);
+    if (face == NULL)
+        return;
+    clear = FAM_VALID | FAM_APP | FAM_BCAST | FAM_DC;
+    set = 0;
+    checkflags = CCN_FACE_UNDECIDED | CCN_FACE_PASSIVE | CCN_FACE_NOSEND;
+    if ((face->flags & checkflags) == 0)
+        set |= FAM_VALID;
+    if ((face->flags & CCN_FACE_GG) != 0)
+        set |= FAM_APP;
+    if ((face->flags & CCN_FACE_MCAST) != 0)
+        set |= FAM_BCAST;
+    if ((face->flags & CCN_FACE_DC) != 0)
+        set |= FAM_DC;
+    face->faceattr_packed = face->faceattr_packed & ~clear | set;
+}
+
+/**
  * Called by ccnd when a face undergoes a substantive status change that
  * should be reported to interested parties.
  *
@@ -1488,6 +1516,7 @@ ccnd_face_status_change(struct ccnd_handle *ccnd, unsigned faceid)
 {
     struct ccn_indexbuf *chface = ccnd->chface;
     
+    adjust_builtin_faceattr(ccnd, faceid);
     if (chface != NULL) {
         ccn_indexbuf_set_insert(chface, faceid);
         if (ccnd->notice_push == NULL)

@@ -704,7 +704,7 @@ finalize_face(struct hashtb_enumerator *e)
 }
 
 static int
-faceattr_index_lookup(struct ccnd_handle *h, const char *name, int bits)
+faceattr_index_lookup(struct ccnd_handle *h, const char *name, int singlebit)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -715,14 +715,11 @@ faceattr_index_lookup(struct ccnd_handle *h, const char *name, int bits)
     hashtb_start(h->faceattr_index_tab, e);
     res = hashtb_seek(e, (const void *)name, strlen(name), 1);
     entry = e->data;
-    if (res == HT_OLD_ENTRY) {
+    if (res == HT_OLD_ENTRY)
         i = entry->fa_index;
-        if (i < 32 && bits != 1)
-            i = -1;
-    }
     else if (res == HT_NEW_ENTRY) {
         i = 32;
-        if (bits == 1) {
+        if (singlebit) {
             for (i = 0; i < 32; i++) {
                 if ((h->faceattr_packed & (1U << i)) == 0) {
                     h->faceattr_packed |= (1U << i);
@@ -743,7 +740,7 @@ faceattr_index_lookup(struct ccnd_handle *h, const char *name, int bits)
 int
 faceattr_index_from_name(struct ccnd_handle *h, const char *name)
 {
-    return(faceattr_index_lookup(h, name, 8 * sizeof(unsigned)));
+    return(faceattr_index_lookup(h, name, 0));
 }
 
 int
@@ -761,7 +758,7 @@ faceattr_index_allocate(struct ccnd_handle *h)
     
     id[0] = 0;
     i = 32 + h->nlfaceattr;
-    snprintf(id, sizeof(id), "%d", i);
+    snprintf(id, sizeof(id), "_%d", i);
     ans = faceattr_index_from_name(h, id);
     if (ans >= 0 && ans != i) abort();
     return(ans);
@@ -848,6 +845,31 @@ faceattr_declare(struct ccnd_handle *h, const char *name, int ndx)
         res = faceattr_index_from_name(h, name);
     if (res != ndx)
         abort();
+}
+
+const char *
+faceattr_next_name(struct ccnd_handle *h, const char *name)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    const char *next = NULL;
+    int res;
+
+    hashtb_start(h->faceattr_index_tab, e);
+    if (name == NULL)
+        next = (const char *)e->key;
+    else {
+        res = hashtb_seek(e, (const void *)name, strlen(name), 1);
+        if (res == HT_OLD_ENTRY) {
+            hashtb_next(e);
+            next = (const char *)e->key;
+        }
+        else if (res == HT_NEW_ENTRY) {
+            hashtb_delete(e);
+        }
+    }
+    hashtb_end(e);
+    return(next);
 }
 
 /**
@@ -6094,6 +6116,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     /* Do keystore setup early, it takes a while the first time */
     ccnd_init_internal_keystore(h);
     ccnd_reseed(h);
+    faceattr_declare(h, "valid", FAI_VALID);
     faceattr_declare(h, "application", FAI_APPLICATION);
     faceattr_declare(h, "broadcastcapable", FAI_BROADCAST_CAPABLE);
     faceattr_declare(h, "directcontrol", FAI_DIRECT_CONTROL);
@@ -6106,6 +6129,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
         h->face0 = face;
     }
     enroll_face(h, h->face0);
+    ccnd_face_status_change(h, 0);
     fd = create_local_listener(h, sockname, 42);
     if (fd == -1)
         ccnd_msg(h, "%s: %s", sockname, strerror(errno));
