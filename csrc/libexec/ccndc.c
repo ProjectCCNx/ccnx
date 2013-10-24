@@ -109,7 +109,6 @@ ccndc_destroy_data(struct ccndc_data **data) {
     if (self != NULL) {
         ccn_charbuf_destroy(&self->no_name);
         ccn_charbuf_destroy(&self->local_scope_template);
-        ccn_disconnect(self->ccn_handle);
         ccn_destroy(&self->ccn_handle);
         free(self);
         *data = NULL;
