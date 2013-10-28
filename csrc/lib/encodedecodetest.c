@@ -151,8 +151,10 @@ int
 unit_tests_for_signing(struct ccn *h, int *ip, int symmetric)
 {
     struct ccn_charbuf *co = ccn_charbuf_create();
+    struct ccn_charbuf *co2 = ccn_charbuf_create();
     struct ccn_signing_params sparm = CCN_SIGNING_PARAMS_INIT;
     struct ccn_parsed_ContentObject pco = {0};
+    struct ccn_parsed_ContentObject pco2 = {0};
     struct ccn_charbuf *name = ccn_charbuf_create();
     int res;
     int result = 0;
@@ -171,13 +173,18 @@ unit_tests_for_signing(struct ccn *h, int *ip, int symmetric)
         goto Bail;
     }
     ccn_charbuf_append(sparm.template_ccnb,
-    co->buf + pco.offset[CCN_PCO_B_SignedInfo],
-    pco.offset[CCN_PCO_E_SignedInfo] - pco.offset[CCN_PCO_B_SignedInfo]);
+        co->buf + pco.offset[CCN_PCO_B_SignedInfo],
+        pco.offset[CCN_PCO_E_SignedInfo] - pco.offset[CCN_PCO_B_SignedInfo]);
     sparm.sp_flags = CCN_SP_TEMPL_TIMESTAMP;
     printf("Unit test case %d\n", (*ip)++);
-    res = ccn_sign_content(h, co, name, &sparm, "DATA", 4);
+    res = ccn_sign_content(h, co2, name, &sparm, "DATA", 4);
     if (res != 0) {
         printf("Failed: res == %d\n", (int)res);
+        result = 1;
+    }
+    res = ccn_parse_ContentObject(co2->buf, co2->length, &pco2, NULL);
+    if (res != 0) {
+        printf("Failed to parse: res == %d\n", (int)res);
         result = 1;
     }
     printf("Unit test case %d\n", (*ip)++);
@@ -205,6 +212,7 @@ Bail:
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&sparm.template_ccnb); 
     ccn_charbuf_destroy(&co);
+    ccn_charbuf_destroy(&co2);
     return result;
 }
 
@@ -363,7 +371,7 @@ main(int argc, char *argv[])
     res = ccn_signed_info_create(signed_info,
                                  /*pubkeyid*/ccn_keystore_key_digest(keystore),
                                  /*publisher_key_id_size*/ccn_keystore_key_digest_length(keystore),
-                                 /*datetime*/NULL,
+                                 /*timestamp*/NULL,
                                  /*type*/CCN_CONTENT_GONE,
                                  /*freshness*/ 42,
                                  /*finalblockid*/NULL,
