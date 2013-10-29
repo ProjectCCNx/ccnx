@@ -1501,7 +1501,7 @@ adjust_builtin_faceattr(struct ccnd_handle *h, unsigned faceid)
         set |= FAM_BCAST;
     if ((face->flags & CCN_FACE_DC) != 0)
         set |= FAM_DC;
-    face->faceattr_packed = face->faceattr_packed & ~clear | set;
+    face->faceattr_packed = (face->faceattr_packed & ~clear) | set;
 }
 
 /**
