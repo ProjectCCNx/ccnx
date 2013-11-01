@@ -38,10 +38,10 @@ ccnd_parallel_strategy_impl(struct ccnd_handle *h,
     if (op == CCNST_UPDATE) {
         /* Just go ahead and send as prompted, unless the face is inactive */
         for (p = strategy->pfl; p!= NULL; p = p->next) {
-            if (((p->pfi_flags & CCND_PFI_ATTENTION) != 0) &&
-                ((p->pfi_flags & CCND_PFI_INACTIVE) == 0)) {
+            if ((p->pfi_flags & CCND_PFI_ATTENTION) != 0) {
                 p->pfi_flags &= ~CCND_PFI_ATTENTION;
-                p->pfi_flags |= CCND_PFI_SENDUPST;
+                if ((p->pfi_flags & CCND_PFI_INACTIVE) == 0)
+                    p->pfi_flags |= CCND_PFI_SENDUPST;
             }
         }
     }
