@@ -21,7 +21,7 @@
 
 /**
  * This implements a strategy which sends an interest in parallel to all
- * eligible upstream faces.  This is expected to result in better performance
+ * eligible active upstream faces.  This is expected to result in better performance
  * when there are multiple independent sources at the expense of increased
  * network traffic.
  */
@@ -36,9 +36,10 @@ ccnd_parallel_strategy_impl(struct ccnd_handle *h,
 
     /* expiry times do not need to be adjusted if we want things sent "now" */
     if (op == CCNST_UPDATE) {
-        /* Just go ahead and send as prompted */
+        /* Just go ahead and send as prompted, unless the face is inactive */
         for (p = strategy->pfl; p!= NULL; p = p->next) {
-            if ((p->pfi_flags & CCND_PFI_ATTENTION) != 0) {
+            if (((p->pfi_flags & CCND_PFI_ATTENTION) != 0) &&
+                ((p->pfi_flags & CCND_PFI_INACTIVE) == 0)) {
                 p->pfi_flags &= ~CCND_PFI_ATTENTION;
                 p->pfi_flags |= CCND_PFI_SENDUPST;
             }

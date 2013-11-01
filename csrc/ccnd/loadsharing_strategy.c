@@ -66,7 +66,8 @@ ccnd_loadsharing_strategy_impl(struct ccnd_handle *h,
                     if ((p->pfi_flags & CCND_PFI_ATTENTION) == 0)
                         continue;
                     face = ccnd_face_from_faceid(h, p->faceid);
-                    outstanding = face_outstanding_interests(face);
+                    outstanding = face_outstanding_interests(face) +
+                    ((p->pfi_flags & CCND_PFI_INACTIVE) ? 100 : 0);
                     if (outstanding < smallestq) {
                         count = 1;
                         smallestq = outstanding;
@@ -81,7 +82,8 @@ ccnd_loadsharing_strategy_impl(struct ccnd_handle *h,
                         if ((p->pfi_flags & CCND_PFI_ATTENTION) == 0)
                             continue;
                         face = ccnd_face_from_faceid(h, p->faceid);
-                        outstanding = face_outstanding_interests(face);
+                        outstanding = face_outstanding_interests(face) +
+                        ((p->pfi_flags & CCND_PFI_INACTIVE) ? 100 : 0);
                         if (outstanding == smallestq &&
                             ((p->pfi_flags & CCND_PFI_UPSTREAM) != 0)) {
                             if (best == 0) {
