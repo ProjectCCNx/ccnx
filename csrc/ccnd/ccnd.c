@@ -4171,6 +4171,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
     struct nameprefix_entry *npe = NULL;
     struct content_entry *content = NULL;
     struct content_entry *last_match = NULL;
+    struct content_entry *next = NULL;
     struct ccn_charbuf *flatname = NULL;
     struct ccn_indexbuf *comps = indexbuf_obtain(h);
     if (size > 65535)
@@ -4251,8 +4252,16 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                 content = NULL;
             }
             for (try = 0; content != NULL; try++) {
-                if ((s_ok || !is_stale(h, content)) &&
-                    ccn_content_matches_interest(content->ccnb,
+                if (!s_ok && is_stale(h, content)) {
+                    next = content_next(h, content);
+                    if (content->refs == 0)
+                        remove_content(h, content);
+                    else
+                        try--;
+                    content = next;
+                    goto check_next_prefix;
+                }
+                if (ccn_content_matches_interest(content->ccnb,
                                        content->size,
                                        1, NULL, msg, size, pi)) {
                     if (h->debug & 8)
