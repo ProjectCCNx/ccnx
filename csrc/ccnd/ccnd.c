@@ -4266,7 +4266,9 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                 }
                 content = content_next(h, content);
             check_next_prefix:
-                if (content != NULL &&
+                if (try >= CCND_MAX_MATCH_PROBES)
+                    content = NULL;
+                else if (content != NULL &&
                     !content_matches_prefix(h, content, flatname)) {
                     if (h->debug & 8)
                         ccnd_debug_content(h, __LINE__, "prefix_mismatch", NULL,
