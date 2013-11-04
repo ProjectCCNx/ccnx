@@ -43,16 +43,18 @@ public class CCNInputStreamTest extends CCNTestBase {
 
 	@Test
 	public void testTimeouts() throws Exception {
+		long t = 9000;
 		Log.info(Log.FAC_TEST, "Started testTimeouts");
 
 		ContentName testName = testHelper.getTestNamespace("testInput/timeouts");
 		CCNInputStream cis = new CCNInputStream(testName, getHandle);
 		long startTime = System.currentTimeMillis();
-		cis.setTimeout(9000);
+		cis.setTimeout(t);
 		try {
 			cis.read();
 		} catch (IOException e) {}
-		Assert.assertTrue("Input stream timed out early", (System.currentTimeMillis() - startTime) > 9000);
+		long stopTime = System.currentTimeMillis();
+		Assert.assertTrue("Input stream timed out early", (stopTime - startTime) >= t);
 
 		cis.close();
 
