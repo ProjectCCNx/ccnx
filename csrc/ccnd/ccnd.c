@@ -2099,7 +2099,7 @@ stuff_and_send(struct ccnd_handle *h, struct face *face,
     }
     else if (size2 != 0 || h->mtu > size1 + size2 ||
              (face->flags & (CCN_FACE_SEQOK | CCN_FACE_SEQPROBE)) != 0 ||
-             face->recvcount == 0) {
+             face->recvcount <= 1) {
         c = charbuf_obtain(h);
         ccn_charbuf_append(c, data1, size1);
         if (size2 != 0)
@@ -2136,7 +2136,7 @@ stuff_link_check(struct ccnd_handle *h,
     struct ccn_charbuf *ibuf = NULL;
     int res;
     int ans = 0;
-    if (face->recvcount > 0)
+    if (face->recvcount > 1)
         return(0);
     if ((face->flags & checkflags) != wantflags)
         return(0);
