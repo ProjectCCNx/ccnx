@@ -45,11 +45,15 @@ ccnd_parallel_strategy_impl(struct ccnd_handle *h,
                 }
             }
         }
-        /* Just go ahead and send as prompted, unless the face is inactive */
+        /* Just go ahead and send as prompted, unless the face is inactive
+         * except if all the faces are inactive.  Also probe an inactive face
+         * with low but non-zero probability
+         */
         for (p = strategy->pfl; p!= NULL; p = p->next) {
             if ((p->pfi_flags & CCND_PFI_ATTENTION) != 0) {
                 p->pfi_flags &= ~CCND_PFI_ATTENTION;
-                if (all_inactive || (p->pfi_flags & CCND_PFI_INACTIVE) == 0)
+                if (all_inactive || (p->pfi_flags & CCND_PFI_INACTIVE) == 0 ||
+                    (ccnd_random(h) & 31) == 0)
                     p->pfi_flags |= CCND_PFI_SENDUPST;
             }
         }
