@@ -27,20 +27,29 @@
  */
 void
 ccnd_parallel_strategy_impl(struct ccnd_handle *h,
-                  struct strategy_instance *instance,
-                  struct ccn_strategy *strategy,
-                  enum ccn_strategy_op op,
-                  unsigned faceid)
+                            struct strategy_instance *instance,
+                            struct ccn_strategy *strategy,
+                            enum ccn_strategy_op op,
+                            unsigned faceid)
 {
     struct pit_face_item *p;
-
+    int all_inactive = 1;
+    
     /* expiry times do not need to be adjusted if we want things sent "now" */
     if (op == CCNST_UPDATE) {
+        for (p = strategy->pfl; p!= NULL; p = p->next) {
+            if ((p->pfi_flags & CCND_PFI_ATTENTION) != 0) {
+                if ((p->pfi_flags & CCND_PFI_INACTIVE) == 0) {
+                    all_inactive = 0;
+                    break;
+                }
+            }
+        }
         /* Just go ahead and send as prompted, unless the face is inactive */
         for (p = strategy->pfl; p!= NULL; p = p->next) {
             if ((p->pfi_flags & CCND_PFI_ATTENTION) != 0) {
                 p->pfi_flags &= ~CCND_PFI_ATTENTION;
-                if ((p->pfi_flags & CCND_PFI_INACTIVE) == 0)
+                if (all_inactive || (p->pfi_flags & CCND_PFI_INACTIVE) == 0)
                     p->pfi_flags |= CCND_PFI_SENDUPST;
             }
         }
