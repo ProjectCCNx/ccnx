@@ -23,6 +23,8 @@
 #include <limits.h>
 #include "ccnd_strategy.h"
 
+#define INACTIVE_PENALTY 100
+
 /**
  * This implements a distribution by performance strategy.
  *
@@ -66,8 +68,16 @@ ccnd_loadsharing_strategy_impl(struct ccnd_handle *h,
                     if ((p->pfi_flags & CCND_PFI_ATTENTION) == 0)
                         continue;
                     face = ccnd_face_from_faceid(h, p->faceid);
-                    outstanding = face_outstanding_interests(face) +
-                    ((p->pfi_flags & CCND_PFI_INACTIVE) ? 100 : 0);
+                    outstanding = face_outstanding_interests(face);
+                    /*
+                     * Inactive faces attract a penalty against their queue size
+                     * but randomly get probed to update their status
+                     */
+                    if (p->pfi_flags & CCND_PFI_INACTIVE) {
+                        outstanding += INACTIVE_PENALTY;
+                        if ((ccnd_random(h) & 31) == 0)
+                            p->pfi_flags |= CCND_PFI_SENDUPST;
+                    }
                     if (outstanding < smallestq) {
                         count = 1;
                         smallestq = outstanding;
@@ -82,8 +92,9 @@ ccnd_loadsharing_strategy_impl(struct ccnd_handle *h,
                         if ((p->pfi_flags & CCND_PFI_ATTENTION) == 0)
                             continue;
                         face = ccnd_face_from_faceid(h, p->faceid);
-                        outstanding = face_outstanding_interests(face) +
-                        ((p->pfi_flags & CCND_PFI_INACTIVE) ? 100 : 0);
+                        outstanding = face_outstanding_interests(face);
+                        if (p->pfi_flags & CCND_PFI_INACTIVE)
+                            outstanding += INACTIVE_PENALTY;
                         if (outstanding == smallestq &&
                             ((p->pfi_flags & CCND_PFI_UPSTREAM) != 0)) {
                             if (best == 0) {
