@@ -32,13 +32,14 @@ format_pfi(struct ccnd_handle *h, struct pit_face_item *p, struct ccn_charbuf *c
     unsigned delta;
     
     face = ccnd_face_from_faceid(h, p->faceid);
-    ccn_charbuf_putf(c, " %s%s%s%s%s%s%s%u",
+    ccn_charbuf_putf(c, " %s%s%s%s%s%s%s%s%u",
                      ((p->pfi_flags & CCND_PFI_UPSTREAM) ? "u" :
                       (p->pfi_flags & CCND_PFI_DNSTREAM) ? "d" : "?"),
                      (p->pfi_flags & (CCND_PFI_PENDING|CCND_PFI_UPENDING)) ? "p" : "",
                      (p->pfi_flags & CCND_PFI_UPHUNGRY) ? "h" : "",
                      (p->pfi_flags & CCND_PFI_SENDUPST) ? "s" : "",
                      (p->pfi_flags & CCND_PFI_ATTENTION) ? "a" : "",
+                     (p->pfi_flags & CCND_PFI_INACTIVE) ? "q" : "",
                      (p->pfi_flags & CCND_PFI_SUPDATA) ? "x" : "",
                      (p->pfi_flags & CCND_PFI_DCFACE) ? "c" : "",
                      (unsigned)p->faceid);

@@ -31,7 +31,8 @@ SCRIPTSRC = testbasics fortunes.ccnb contentobjecthash.ref anything.ref \
 
 # To add a strategy, list its source here, and then make depend.
 STRATEGYSRC = default_strategy.c null_strategy.c trace_strategy.c \
-              parallel_strategy.c loadsharing_strategy.c
+              parallel_strategy.c loadsharing_strategy.c \
+              faceattr_strategy.c
 
 default: $(PROGRAMS)
 
@@ -45,7 +46,7 @@ CCND_OBJ = ccnd.o ccnd_msg.o ccnd_stats.o ccnd_internal_client.o ccnd_stregistry
 
 ccnd: ccnd_main.o $(CCND_OBJ) ccnd_built.sh
 	$(CC) $(CFLAGS) -o $@ ccnd_main.o $(CCND_OBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
-	sh ./ccnd_built.sh
+	$(SH) ./ccnd_built.sh
 
 ccnd_built.sh:
 	touch ccnd_built.sh
@@ -54,7 +55,7 @@ ccndsmoketest: ccndsmoketest.o
 	$(CC) $(CFLAGS) -o $@ ccndsmoketest.o $(LDLIBS)
 
 ccnd_stregistry.h: gen_stregistry.sh $(CSRC)
-	sh gen_stregistry.sh $(CSRC)
+	$(SH) gen_stregistry.sh $(CSRC)
 
 depend: ccnd_stregistry.h android_obj.mk
 android_obj.mk: _always
