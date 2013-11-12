@@ -418,6 +418,9 @@ void ccnd_msg(struct ccnd_handle *, const char *, ...);
 /** A PRNG returning 31-bit pseudo-random numbers */
 uint32_t ccnd_random(struct ccnd_handle *);
 
+/** look up a strategy class */
+const struct strategy_class *strategy_class_from_id(const char *id);
+
 extern const struct strategy_class ccnd_strategy_classes[];
 
 #endif
