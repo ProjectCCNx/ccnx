@@ -17,6 +17,8 @@
  * Boston, MA 02110-1301, USA.
  */
 
+#include <stdlib.h>
+#include <string.h>
 #include <ccn/charbuf.h>
 #include "ccnd_strategy.h"
 #include "ccnd_private.h"
@@ -54,9 +56,6 @@ format_pfi(struct ccnd_handle *h, struct pit_face_item *p, struct ccn_charbuf *c
         ccn_charbuf_putf(c, "@%u", delta);
 }
 
-/* Set this pointer if you want to trace a different strategy. */
-strategy_callout_proc ccnd_traced_strategy = &ccnd_default_strategy_impl;
-
 /**
  * A trace strategy for testing purposes
  *
@@ -71,6 +70,7 @@ ccnd_trace_strategy_impl(struct ccnd_handle *h,
 {
     unsigned serial = 0;
     struct pit_face_item *p = NULL;
+    struct strategy_instance *inner = NULL;
     struct ccn_charbuf *c = ccn_charbuf_create();
     
     if (strategy != NULL) {
@@ -80,7 +80,60 @@ ccnd_trace_strategy_impl(struct ccnd_handle *h,
             format_pfi(h, p, c);
     }
     /* Call through to the traced strategy. */
-    ccnd_traced_strategy(h, instance, strategy, op, faceid);
+    if (op == CCNST_INIT) {
+        /*
+         * The first portion of the parameter string (before the first slash)
+         * is the name of the traced strategy.  The remainder (after this slash)
+         * forms its parameter string.
+         */
+        char tname[16];
+        const char *s = NULL;
+        const char *p = NULL;
+        const struct strategy_class *sclass = NULL;
+        
+        p = instance->parameters;
+        if (p == NULL || p[0] == 0)
+            p = "default/";
+        s = strstr(p, "/");
+        if (s == NULL)
+            s = p + strlen(p);
+        if (s - p >= sizeof(tname)) {
+            strategy_init_error(h, instance, "traced strategy name too long");
+            ccn_charbuf_destroy(&c);
+            return;
+        }
+        memcpy(tname, p, s - p);
+        tname[s - p] = 0;
+        if (s[0] == '/')
+            s++;
+        sclass = strategy_class_from_id(tname);
+        if (sclass == NULL) {
+            strategy_init_error(h, instance, "traced strategy name unknown");
+            ccn_charbuf_destroy(&c);
+            return;
+        }
+        inner = calloc(1, sizeof(*inner));
+        inner->sclass = sclass;
+        inner->parameters = s;
+        inner->data = NULL;
+        inner->npe = instance->npe;
+        instance->data = inner;
+        (sclass->callout)(h, inner, strategy, op, faceid);
+    }
+    else if (op == CCNST_FINALIZE) {
+        inner = instance->data;
+        if (inner != NULL) {
+            (inner->sclass->callout)(h, inner, strategy, op, faceid);
+            if (inner->data != NULL) abort();
+            free(inner);
+            instance->data = inner = NULL;
+        }
+    }
+    else {
+        /* Call through to the traced strategy. */
+        inner = instance->data;
+        (inner->sclass->callout)(h, inner, strategy, op, faceid);
+    }
     if (strategy != NULL) {
         ccn_charbuf_putf(c, " ///");
         for (p = strategy->pfl; p!= NULL; p = p->next)
