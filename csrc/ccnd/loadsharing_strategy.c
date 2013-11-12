@@ -23,7 +23,10 @@
 #include <limits.h>
 #include "ccnd_strategy.h"
 
-#define INACTIVE_PENALTY 100
+#define INACTIVE_PENALTY 1000
+#define SLOW_PENALTY 32
+
+static unsigned mybitindex;
 
 /**
  * This implements a distribution by performance strategy.
@@ -47,11 +50,14 @@ ccnd_loadsharing_strategy_impl(struct ccnd_handle *h,
     unsigned smallestq;
     unsigned upending;
     unsigned outstanding;
+    unsigned slowface;
+    unsigned nfaces;
     
     switch (op) {
         case CCNST_NOP:
             break;
         case CCNST_INIT:
+            mybitindex = faceattr_bool_index_from_name(h, "slow");
             break;
         case CCNST_FIRST:
             break;
@@ -59,7 +65,9 @@ ccnd_loadsharing_strategy_impl(struct ccnd_handle *h,
             count = 0;
             smallestq = INT_MAX;
             upending = 0;
+	    nfaces = 0;
             for (p = strategy->pfl; p!= NULL; p = p->next) {
+                nfaces++;
                 if ((p->pfi_flags & CCND_PFI_UPENDING) != 0)
                     upending++;
             }
@@ -69,15 +77,21 @@ ccnd_loadsharing_strategy_impl(struct ccnd_handle *h,
                         continue;
                     face = ccnd_face_from_faceid(h, p->faceid);
                     outstanding = face_outstanding_interests(face);
+                    slowface = faceattr_get(h, face, mybitindex);
                     /*
                      * Inactive faces attract a penalty against their queue size
                      * but randomly get probed to update their status
                      */
                     if (p->pfi_flags & CCND_PFI_INACTIVE) {
                         outstanding += INACTIVE_PENALTY;
-                        if ((ccnd_random(h) & 31) == 0)
+                        if ((ccnd_random(h) & 255) == 0)
                             p->pfi_flags |= CCND_PFI_SENDUPST;
                     }
+                    if (slowface) {
+                        outstanding += SLOW_PENALTY;
+                        if ((ccnd_random(h) & 63) == 0)
+                            p->pfi_flags |= CCND_PFI_SENDUPST;
+		    }
                     if (outstanding < smallestq) {
                         count = 1;
                         smallestq = outstanding;
@@ -93,8 +107,11 @@ ccnd_loadsharing_strategy_impl(struct ccnd_handle *h,
                             continue;
                         face = ccnd_face_from_faceid(h, p->faceid);
                         outstanding = face_outstanding_interests(face);
+                        slowface = faceattr_get(h, face, mybitindex);
                         if (p->pfi_flags & CCND_PFI_INACTIVE)
                             outstanding += INACTIVE_PENALTY;
+                        if (slowface)
+                            outstanding += SLOW_PENALTY;
                         if (outstanding == smallestq &&
                             ((p->pfi_flags & CCND_PFI_UPSTREAM) != 0)) {
                             if (best == 0) {
@@ -111,6 +128,8 @@ ccnd_loadsharing_strategy_impl(struct ccnd_handle *h,
             }
             break;
         case CCNST_EXPUP:
+            face = ccnd_face_from_faceid(h, faceid);
+            faceattr_set(h, face, mybitindex, 1);
             break;
         case CCNST_EXPDN:
             break;
@@ -119,6 +138,8 @@ ccnd_loadsharing_strategy_impl(struct ccnd_handle *h,
         case CCNST_TIMER:
             break;
         case CCNST_SATISFIED:
+            face = ccnd_face_from_faceid(h, faceid);
+            faceattr_set(h, face, mybitindex, 0);
             break;
         case CCNST_TIMEOUT: // all downstreams timed out, PIT entry will go away
             /* Interest has not been satisfied or refreshed */
