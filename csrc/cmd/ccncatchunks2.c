@@ -241,8 +241,8 @@ make_template(struct mydata *md)
     }
     if (md->rtte > 0) {
         uintmax_t lifetime = (md->rtte * 4096) / 1000000;
-        ccnb_append_tagged_binary_number(templ, CCN_DTAG_InterestLifetime,
-                                         lifetime < 512 ? 512 : lifetime); // min 0.125s
+        lifetime = lifetime < 512 ? 512 : (lifetime > 2048 ? 2048 : lifetime); // 0.125s - 0.5s
+        ccnb_append_tagged_binary_number(templ, CCN_DTAG_InterestLifetime, lifetime);
     }
     ccnb_element_end(templ); /* </Interest> */
     return(templ);
@@ -394,8 +394,6 @@ incoming_content(struct ccn_closure *selfp,
         }
         else
             md->dups++;
-        if (md->curwindow > 1)
-            md->curwindow--;
     }
     else {
         assert(md->ooo[slot].raw_data_size == 0);
