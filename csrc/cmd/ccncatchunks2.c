@@ -34,7 +34,6 @@
 //#define GOT_HERE() fprintf(stderr, "LINE %d\n", __LINE__)
 #define GOT_HERE() ((void)(__LINE__))
 
-struct excludestuff;
 
 struct ooodata {
     struct ccn_closure closure;     /* closure per slot */
@@ -58,11 +57,10 @@ struct mydata {
     unsigned backoff;
     unsigned finalslot;
     struct ccn_charbuf *name;
+    struct ccn_charbuf *tname;
     struct ccn_charbuf *templ;
-    struct excludestuff *excl;
     struct ccn_schedule *sched;
     struct ccn_scheduled_event *report;
-    struct ccn_scheduled_event *holefiller;
     intmax_t interests_sent;
     intmax_t pkts_recvd;
     intmax_t co_bytes_recvd;
@@ -78,9 +76,6 @@ struct mydata {
     struct timeval stop_tv;
     struct ooodata ooo[PIPELIMIT];
 };
-
-static int fill_holes(struct ccn_schedule *sched, void *clienth, 
-                      struct ccn_scheduled_event *ev, int flags);
 
 static FILE* logstream = NULL;
 
@@ -140,8 +135,6 @@ update_rtt(struct mydata *md, int incoming, unsigned slot)
                 rtte = delta;
             md->rtte = rtte;
         }
-        if (md->holefiller == NULL)
-            md->holefiller = ccn_schedule_event(md->sched, 10000, &fill_holes, NULL, 0);
         md->sendtime_slot = ~0;
         if (logstream)
             fprintf(logstream,
@@ -246,6 +239,11 @@ make_template(struct mydata *md)
         ccnb_append_number(templ, CCN_AOK_DEFAULT | CCN_AOK_STALE);
         ccnb_element_end(templ); /* </AnswerOriginKind> */
     }
+    if (md->rtte > 0) {
+        uintmax_t lifetime = (md->rtte * 4096) / 1000000;
+        lifetime = lifetime < 512 ? 512 : (lifetime > 2048 ? 2048 : lifetime); // 0.125s - 0.5s
+        ccnb_append_tagged_binary_number(templ, CCN_DTAG_InterestLifetime, lifetime);
+    }
     ccnb_element_end(templ); /* </Interest> */
     return(templ);
 }
@@ -254,15 +252,13 @@ static struct ccn_charbuf *
 sequenced_name(struct mydata *md, uintmax_t seq)
 {
     struct ccn_charbuf *name = NULL;
-    struct ccn_charbuf *temp = NULL;
     
     name = ccn_charbuf_create();
     ccn_charbuf_append(name, md->name->buf, md->name->length);
     if (md->use_decimal) {
-        temp = ccn_charbuf_create();
-        ccn_charbuf_putf(temp, "%ju", seq);
-        ccn_name_append(name, temp->buf, temp->length);
-        ccn_charbuf_destroy(&temp);
+        ccn_charbuf_reset(md->tname);
+        ccn_charbuf_putf(md->tname, "%ju", seq);
+        ccn_name_append(name, md->tname->buf, md->tname->length);
     }
     else
         ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, seq);
@@ -299,61 +295,6 @@ ask_more(struct mydata *md, uintmax_t seq)
     assert(md->ooo_count < PIPELIMIT);
 }
 
-static enum ccn_upcall_res
-hole_filled(struct ccn_closure *selfp,
-    enum ccn_upcall_kind kind,
-    struct ccn_upcall_info *info)
-{
-    if (kind == CCN_UPCALL_FINAL)
-        free(selfp);
-    return(CCN_UPCALL_RESULT_OK);
-}
-
-static int
-fill_holes(struct ccn_schedule *sched, void *clienth, 
-         struct ccn_scheduled_event *ev, int flags)
-{
-    struct mydata *md = clienth;
-    struct ccn_charbuf *name = NULL;
-    struct ccn_charbuf *templ = NULL;
-    struct ccn_closure *cl = NULL;
-    unsigned backoff;
-    int delay;
-    
-    if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
-        md->holefiller = NULL;
-        return(0);
-    }
-    backoff = md->backoff;
-    if (md->delivered == md->lastcheck && md->ooo_count > 0) {
-        if (backoff == 0) {
-            md->holes++;
-            fprintf(stderr, "*** Hole at %jd\n", md->delivered);
-            reporter(sched, md, NULL, 0);
-            md->curwindow = 1;
-            cl = calloc(1, sizeof(*cl));
-            cl->p = &hole_filled;
-            name = sequenced_name(md, md->delivered);
-            templ = make_template(md);
-            ccn_express_interest(md->h, name, cl, templ);
-            md->interests_sent++;
-            ccn_charbuf_destroy(&templ);
-            ccn_charbuf_destroy(&name);
-        }
-        if ((6000000 >> backoff) > md->rtte)
-            backoff++;
-    }
-    else {
-        md->lastcheck = md->delivered;
-        backoff = 0;
-    }
-    md->backoff = backoff;
-    delay = (md->rtte << backoff);
-    if (delay < 10000)
-        delay = 10000;
-    return(delay);
-}
-
 enum ccn_upcall_res
 incoming_content(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
@@ -372,24 +313,42 @@ incoming_content(struct ccn_closure *selfp,
         selfp->intdata = -1;
         return(CCN_UPCALL_RESULT_OK);
     }
-GOT_HERE();
+    GOT_HERE();
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT) {
-        md->timeouts++;
+        unsigned start = info->pi->offset[CCN_PI_B_InterestLifetime];
+        unsigned end = info->pi->offset[CCN_PI_E_InterestLifetime];
         if (selfp->refcount > 1 || selfp->intdata == -1)
             return(CCN_UPCALL_RESULT_OK);
         md->interests_sent++;
-        md->curwindow = 1;
-        // XXX - may need to reseed bloom filter
-        return(CCN_UPCALL_RESULT_REEXPRESS);
+        if (start == end) {
+            /* No InterestLifetime so it's the second timeout, reset the window */
+            md->timeouts++;
+            md->curwindow = 1;
+            return(CCN_UPCALL_RESULT_REEXPRESS);
+        } else {
+            /* InterestLifetime, remove it, consider it a hole, lower the window */
+            ccn_charbuf_reset(md->tname);
+            ccn_charbuf_append(md->tname, info->interest_ccnb + info->pi->offset[CCN_PI_B_Name],
+                               info->pi->offset[CCN_PI_E_Name] - info->pi->offset[CCN_PI_B_Name]);
+            ccn_charbuf_reset(md->templ);
+            ccn_charbuf_append(md->templ, info->interest_ccnb, start);
+            ccn_charbuf_append(md->templ, info->interest_ccnb + end,
+                               info->pi->offset[CCN_PI_E] - end);
+            res = ccn_express_interest(md->h, md->tname, selfp, md->templ);
+            if (res < 0) abort();
+            if (md->curwindow > 1) md->curwindow--;
+            md->holes++;
+            return(CCN_UPCALL_RESULT_OK);
+        }
     }
-GOT_HERE();
+    GOT_HERE();
     assert(md != NULL);
     switch (kind) {
         case CCN_UPCALL_CONTENT:
-             break;
+            break;
         case CCN_UPCALL_CONTENT_UNVERIFIED:
-             if (md->pkts_recvd == 0)
-            return(CCN_UPCALL_RESULT_VERIFY);
+            if (md->pkts_recvd == 0)
+                return(CCN_UPCALL_RESULT_VERIFY);
             md->unverified++;
             break;
 #if (CCN_API_VERSION >= 4004)
@@ -397,7 +356,7 @@ GOT_HERE();
             break;
         case CCN_UPCALL_CONTENT_KEYMISSING:
             if (md->pkts_recvd == 0)
-            return(CCN_UPCALL_RESULT_FETCHKEY);
+                return(CCN_UPCALL_RESULT_FETCHKEY);
             md->unverified++;
             break;
 #endif
@@ -414,7 +373,7 @@ GOT_HERE();
     ccnb_size = info->pco->offset[CCN_PCO_E];
     res = ccn_content_get_value(ccnb, ccnb_size, info->pco, &data, &data_size);
     if (res < 0) abort();
-GOT_HERE();
+    GOT_HERE();
     /* OK, we will accept this block. */
     md->co_bytes_recvd += data_size;
     slot = ((uintptr_t)selfp->intdata) % PIPELIMIT;
@@ -427,7 +386,7 @@ GOT_HERE();
         /* out-of-order data, save for later */
         struct ooodata *ooo = &md->ooo[slot];
         if (ooo->raw_data_size == 0) {
-GOT_HERE();
+            GOT_HERE();
             update_rtt(md, 1, slot);
             ooo->raw_data = malloc(data_size);
             memcpy(ooo->raw_data, data, data_size);
@@ -435,8 +394,6 @@ GOT_HERE();
         }
         else
             md->dups++;
-        if (md->curwindow > 1)
-            md->curwindow--;
     }
     else {
         assert(md->ooo[slot].raw_data_size == 0);
@@ -447,7 +404,7 @@ GOT_HERE();
         written = md->dummy;
         if (! written)
             written = fwrite(data, data_size, 1, stdout);
-        if (written != 1)
+        if (data_size > 0 && written != 1)
             exit(1);
         /* Check for EOF */
         if (slot == md->finalslot) {
@@ -467,7 +424,7 @@ GOT_HERE();
             written = md->dummy;
             if (! written)
                 written = fwrite(ooo->raw_data, ooo->raw_data_size - 1, 1, stdout);
-            if (written != 1)
+            if (ooo->raw_data_size > 1 && written != 1)
                 exit(1);
             /* Check for EOF */
             if (slot == md->finalslot) {
@@ -560,12 +517,12 @@ main(int argc, char **argv)
     mydata = calloc(1, sizeof(*mydata));
     mydata->h = ccn;
     mydata->name = name;
+    mydata->tname = ccn_charbuf_create();
+    mydata->templ = ccn_charbuf_create();
     mydata->allow_stale = allow_stale;
     mydata->use_decimal = use_decimal;
-    mydata->excl = NULL;
     mydata->sched = ccn_schedule_create(mydata, &myticker);
     mydata->report = ccn_schedule_event(mydata->sched, 0, &reporter, NULL, 0);
-    mydata->holefiller = NULL;
     mydata->maxwindow = maxwindow;
     mydata->finalslot = ~0;
     mydata->dummy = dummy;
