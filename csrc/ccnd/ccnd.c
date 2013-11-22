@@ -4468,7 +4468,8 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         }
         else {
             h->content_dups_recvd++;
-            ccnd_debug_content(h, __LINE__, "content_dup", face, content);
+            if (h->debug & 4)
+                ccnd_debug_content(h, __LINE__, "content_dup", face, content);
         }
         res = 0;
     }
@@ -4514,7 +4515,8 @@ Bail:
                 return;
             }
             if (n_matches == 0 && (face->flags & CCN_FACE_GG) == 0) {
-                ccnd_debug_ccnb(h, __LINE__, "content_unsolicted", face, msg, size);
+                if (h->debug & 4)
+                    ccnd_debug_content(h, __LINE__, "content_unsolicted", face, content);
                 mark_unsolicited(h, content);
             }
         }
