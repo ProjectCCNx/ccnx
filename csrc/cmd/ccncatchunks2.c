@@ -391,6 +391,9 @@ incoming_content(struct ccn_closure *selfp,
             ooo->raw_data = malloc(data_size);
             memcpy(ooo->raw_data, data, data_size);
             ooo->raw_data_size = data_size + 1;
+            /* open the window even if it is out-of-order data */
+            if (md->curwindow < md->maxwindow)
+                md->curwindow++;
         }
         else
             md->dups++;
