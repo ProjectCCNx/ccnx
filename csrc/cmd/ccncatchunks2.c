@@ -187,7 +187,7 @@ reporter(struct ccn_schedule *sched, void *clienth,
         md->report = NULL;
         return(0);
     }
-    return(3000000);
+    return(1000000);
 }
 
 void
