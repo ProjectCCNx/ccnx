@@ -5,7 +5,7 @@
  *
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -164,6 +164,9 @@ enum ccn_dtag {
     CCN_DTAG_SyncConfigSliceList = 125,
     CCN_DTAG_SyncConfigSliceOp = 126,
     CCN_DTAG_SyncNodeDeltas = 127,
+    CCN_DTAG_StrategySelection = 144,
+    CCN_DTAG_StrategyID = 145,
+    CCN_DTAG_StrategyParameters = 146,
     CCN_DTAG_SequenceNumber = 256,
     CCN_DTAG_CCNProtocolDataUnit = 17702112
 };

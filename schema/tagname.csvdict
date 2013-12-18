@@ -104,5 +104,8 @@
 125,SyncConfigSliceList
 126,SyncConfigSliceOp
 127,SyncNodeDeltas
+144,StrategySelection
+145,StrategyID
+146,StrategyParameters
 256,SequenceNumber
 17702112,CCNProtocolDataUnit

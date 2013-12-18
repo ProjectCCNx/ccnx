@@ -58,6 +58,7 @@ CSRC = \
     ccn_signing.c \
     ccn_sockaddrutil.c \
     ccn_sockcreate.c \
+    ccn_strategy_mgmt.c \
     ccn_traverse.c \
     ccn_uri.c \
     ccn_verifysig.c \
@@ -108,6 +109,7 @@ LIB_OBJS = \
     ccn_signing.o \
     ccn_sockaddrutil.o \
     ccn_sockcreate.o \
+    ccn_strategy_mgmt.o \
     ccn_traverse.o \
     ccn_uri.o \
     ccn_versioning.o \
@@ -201,6 +203,9 @@ ccn_signing.o:
 
 ccn_sockcreate.o:
 	$(CC) $(CFLAGS) -c ccn_sockcreate.c
+
+ccn_strategy_mgmt.o:
+	$(CC) $(CFLAGS) -c ccn_strategy_mgmt.c
 
 ccn_traverse.o:
 	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_traverse.c

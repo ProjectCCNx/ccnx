@@ -207,6 +207,16 @@
 
 <!ELEMENT ForwardingFlags (#PCDATA)>	<!-- nonNegativeInteger -->
 
+<!ELEMENT StrategySelection (Action?,
+                             Name?,
+                             PublisherPublicKeyDigest?,
+                             StrategyID?,
+                             StrategyParameters?,
+                             FreshnessSeconds?)>
+
+<!ELEMENT StrategyID         (#PCDATA)>	<!-- string, 1-15 alpha_numeric -->
+<!ELEMENT StrategyParameters (#PCDATA)>	<!-- string -->
+
 <!ELEMENT StatusResponse (StatusCode, StatusText?)>
 <!ELEMENT StatusCode (#PCDATA)>	<!-- nonNegativeInteger -->
 <!ELEMENT StatusText (#PCDATA)>	<!-- textual description of error or other condition -->

@@ -1,8 +1,8 @@
 basicparsetest.o: basicparsetest.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/face_mgmt.h \
-  ../include/ccn/sockcreate.h ../include/ccn/reg_mgmt.h \
-  ../include/ccn/header.h
+  ../include/ccn/sockcreate.h ../include/ccn/strategy_mgmt.h \
+  ../include/ccn/reg_mgmt.h ../include/ccn/header.h
 ccn_aes_keystore.o: ccn_aes_keystore.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/digest.h \
@@ -90,6 +90,9 @@ ccn_signing.o: ccn_signing.c ../include/ccn/merklepathasn1.h \
 ccn_sockaddrutil.o: ccn_sockaddrutil.c ../include/ccn/charbuf.h \
   ../include/ccn/sockaddrutil.h
 ccn_sockcreate.o: ccn_sockcreate.c ../include/ccn/sockcreate.h
+ccn_strategy_mgmt.o: ccn_strategy_mgmt.c ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h ../include/ccn/strategy_mgmt.h
 ccn_traverse.o: ccn_traverse.c ../include/ccn/bloom.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
