@@ -144,6 +144,7 @@ static void strategy_callout(struct ccnd_handle *h,
                              enum ccn_strategy_op op,
                              unsigned faceid);
 
+#ifndef CCND_WTHZ
 /**
  * Frequency of wrapped timer
  *
@@ -151,12 +152,24 @@ static void strategy_callout(struct ccnd_handle *h,
  * maximum supported interest lifetime, and making it too small makes the
  * timekeeping too coarse.
  */
-#define WTHZ 500U
+#define CCND_WTHZ 500
+#endif
 
+#define WTHZ ((unsigned)(CCND_WTHZ))
+
+#ifndef CCND_CACHE_MARGIN
 /**
  * Allow a few extra entries in the cache to allow for output queuing
  */
-#define CACHE_MARGIN 10
+#define CCND_CACHE_MARGIN 10
+#endif
+
+#ifndef CCND_MAX_MATCH_PROBES
+/**
+ * Maximum number of probes when searching the cache for a match
+ */
+#define CCND_MAX_MATCH_PROBES 50000
+#endif
 
 /**
  * Name of our unix-domain listener
@@ -4467,6 +4480,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
     struct nameprefix_entry *npe = NULL;
     struct content_entry *content = NULL;
     struct content_entry *last_match = NULL;
+    struct content_entry *next = NULL;
     struct ccn_charbuf *flatname = NULL;
     struct ccn_indexbuf *comps = indexbuf_obtain(h);
     if (size > 65535)
@@ -4547,8 +4561,16 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                 content = NULL;
             }
             for (try = 0; content != NULL; try++) {
-                if ((s_ok || !is_stale(h, content)) &&
-                    ccn_content_matches_interest(content->ccnb,
+                if (!s_ok && is_stale(h, content)) {
+                    next = content_next(h, content);
+                    if (content->refs == 0)
+                        remove_content(h, content);
+                    else
+                        try--;
+                    content = next;
+                    goto check_next_prefix;
+                }
+                if (ccn_content_matches_interest(content->ccnb,
                                        content->size,
                                        1, NULL, msg, size, pi)) {
                     if (h->debug & 8)
@@ -4562,7 +4584,9 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                 }
                 content = content_next(h, content);
             check_next_prefix:
-                if (content != NULL &&
+                if (try >= CCND_MAX_MATCH_PROBES)
+                    content = NULL;
+                else if (content != NULL &&
                     !content_matches_prefix(h, content, flatname)) {
                     if (h->debug & 8)
                         ccnd_debug_content(h, __LINE__, "prefix_mismatch", NULL,
@@ -4841,7 +4865,7 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         }
     }
     if (h->content_tree->n >= h->content_tree->limit) {
-        if (h->content_tree->limit < h->capacity + CACHE_MARGIN)
+        if (h->content_tree->limit < h->capacity + CCND_CACHE_MARGIN)
             ccn_nametree_grow(h->content_tree);
     }
     ccn_flatname_append_from_ccnb(f, msg, size, 0, -1);
