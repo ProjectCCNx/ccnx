@@ -1,3 +1,40 @@
+Changes between 0.8.1 and 0.8.2:
+--------------------------------
+This highlights some important changes since the most recent numbered release.
+Refer to http://redmine.ccnx.org/versions/21 for more details on CCNx 0.8.2.
+
+- This release features a refactored strategy layer, making it straightforward to add new
+  strategies in a modular way.  Alongside the traditional "default" strategy there are
+  two new examples, a "parallel" strategy that sends interests on all available faces
+  and a "loadsharing" strategy that sends each arriving interest to just one of the
+  available faces.  Strategies may be selected by prefix.  This selection may be
+  done using new subcommands to the ccndc utility.
+
+	* Feature #100929: Implement Junit test suites to facilitate bulk testing.
+	* Feature #100983: strategy layer refactoring
+	* Feature #100984: strategy labels on prefixes
+	* Feature #100990: Restore SYNC_NOISY to INFO
+	* Feature #100992: Add test-security to standard java tests
+	* Feature #100993: Add test-versioning back into standard java tests
+	* Feature #100994: Remove unused cruft from build.xml
+	* Feature #101036: java sync should use Deque operations instead of Stack as recommended in the javadocs
+	* Feature #101039: UDP mode for java netmanagers is not tested in standard testing
+	* Feature #101053: ccncatchunks2 could use improved hole-filling and interest lifetime management
+	* Bug #101030: build.xml setup of ccnr environment is incorrect
+	* Bug #101033: Handling of extremely large values of MaxSuffixComponents is incorrect
+	* Bug #101037: ccn_seqwriter library code should not limit the block size to 4096 bytes
+	* Bug #101042: CcnFileProxy uses deprecated methods
+	* Bug #101046: VLC 2.1.0 release necessitates change in plugin Makefile
+	* Bug #101048: Do not rely on accept(2) returned addr for recognizing a unix-domain socket
+	* Bug #101052: Unbreak objtree build target
+	* Bug #101057: ccn_sign_content / ccn_chk_signing_params do not properly incorporate a timestamp in a template via ccn_signing_params
+	* Bug #101058: ccndc in daemon mode does not exit cleanly when ccnd goes away
+	* Bug #101059: testTimeouts a little too strict
+	* Bug #101060: ccnd cache lookups should take a controllable amount of work
+	* Bug #101061: ccnd minimum interest lifetime problem
+	* Bug #101062: some ccnd logging missing check for logging enabled before calling expensive log procedure
+	* Support #101047: Prepare for ccnx-0.8.2 release
+
 Changes between 0.8.0 and 0.8.1:
 --------------------------------
 This highlights some important changes since the most recent numbered release.
