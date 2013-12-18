@@ -152,7 +152,7 @@ static void strategy_callout(struct ccnd_handle *h,
  * maximum supported interest lifetime, and making it too small makes the
  * timekeeping too coarse.
  */
-#define CCND_WTHZ 500
+#define CCND_WTHZ 1000U
 #endif
 
 #define WTHZ ((unsigned)(CCND_WTHZ))

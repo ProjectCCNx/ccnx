@@ -187,7 +187,7 @@ reporter(struct ccn_schedule *sched, void *clienth,
         md->report = NULL;
         return(0);
     }
-    return(3000000);
+    return(1000000);
 }
 
 void
@@ -321,12 +321,12 @@ incoming_content(struct ccn_closure *selfp,
             return(CCN_UPCALL_RESULT_OK);
         md->interests_sent++;
         if (start == end) {
-            /* No InterestLifetime so it's the second timeout, reset the window */
+            /* No InterestLifetime: second timeout, decrease the window significantly */
             md->timeouts++;
-            md->curwindow = 1;
+            if (md->curwindow >= 2) md->curwindow /= 2;
             return(CCN_UPCALL_RESULT_REEXPRESS);
         } else {
-            /* InterestLifetime, remove it, consider it a hole, lower the window */
+            /* InterestLifetime, remove it, consider it a hole, decrease the window slightly */
             ccn_charbuf_reset(md->tname);
             ccn_charbuf_append(md->tname, info->interest_ccnb + info->pi->offset[CCN_PI_B_Name],
                                info->pi->offset[CCN_PI_E_Name] - info->pi->offset[CCN_PI_B_Name]);
@@ -391,6 +391,9 @@ incoming_content(struct ccn_closure *selfp,
             ooo->raw_data = malloc(data_size);
             memcpy(ooo->raw_data, data, data_size);
             ooo->raw_data_size = data_size + 1;
+            /* open the window even if it is out-of-order data */
+            if (md->curwindow < md->maxwindow)
+                md->curwindow++;
         }
         else
             md->dups++;
