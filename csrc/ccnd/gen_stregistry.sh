@@ -131,7 +131,7 @@ GetAllStrategyProcNames () {
 # name template.
 # Writes to stdout.
 GetStrategyProcNamesInFile () {
-    grep -w '^'$PATLEFT'.[A-Za-z0-9_]*'$PATRIGHT $1 | \
+    grep '^'$PATLEFT'.[A-Za-z0-9_]*'$PATRIGHT $1 | \
     cut -d '(' -f 1
 }
 

@@ -29,6 +29,7 @@
 /* These types should remain opaque for strategy routines */
 struct ccnd_handle;
 struct interest_entry;
+struct face;
 struct nameprefix_entry;
 
 /* Forward struct defined later in this header */
@@ -60,10 +61,10 @@ struct nameprefix_state {
  * Use this macro to make sure that overlaying structures are not oversize
  *
  * XX is an otherwise unused identifier, and T is the overlaid struct type.
- * This is intended to cause a compilation error if T becomes too big.
+ * This is intended to cause a compilation error if T becomes too large.
  */
 #define CCN_STATESIZECHECK(XX, T) \
-    struct XX {char x[(int)(sizeof(struct nameprefix_state)-sizeof(T))];}
+    struct XX {char x[(int)((sizeof(T) > sizeof(struct nameprefix_state)) ? -1 : 1)];}
 
 /**
  * Used for keeping track of interest expiry.
@@ -102,6 +103,7 @@ struct pit_face_item {
 #define CCND_PFI_PENDING  0x2000    /**< Pending for immediate data */
 #define CCND_PFI_SUPDATA  0x4000    /**< Suppressed data reply */
 #define CCND_PFI_ATTENTION 0x10000  /**< Upstream needs attention from strategy */
+#define CCND_PFI_INACTIVE 0x20000   /**< Face is nonresponsive, may have lost communication */
 #define CCND_PFI_DCFACE 0x100000    /**< This upstream is a Direct Control face (gets data if unanswered for a long time) */
 
 /**
@@ -137,7 +139,8 @@ struct ccn_strategy {
  *                  call is the appropriate time to parse them and save the
  *                  resulting values in the private instance state for
  *                  rapid access in the more time-critical calls.
-    XXX - we need a way to indicate a bad parameter string.
+ *                  The callout should use strategy_init_error() to report
+ *                  problems with the parameter string.
  *
  * CCNST_FIRST      indicates the creation of a new PIT entry due to an
  *                  arriving interest.  Since there was no existing state
@@ -250,6 +253,18 @@ struct strategy_instance {
 };
 
 /**
+ *  Note a strategy initialization error
+ *
+ * A call to this during the CCNST_INIT callout will do appropriate
+ * logging and error reporting, and cause the instance to be removed after
+ * the termination of the intialization callout.
+ *
+ * Do not call from other contexts.
+ */
+void strategy_init_error(struct ccnd_handle *h,
+                         struct strategy_instance *instance,
+                         const char *message);
+/**
  *  Forward an interest message
  *
  *  The strategy routine may choose to call this directly, and/or
@@ -295,12 +310,116 @@ void strategy_getstate(struct ccnd_handle *h, struct ccn_strategy *s,
  * Any previously scheduled wakeup will be cancelled.
  * To just cancel any existing wakeup, pass CCNST_NOP.
  */
-void
-strategy_settimer(struct ccnd_handle *h, struct interest_entry *ie,
-                  int usec, enum ccn_strategy_op op);
+void strategy_settimer(struct ccnd_handle *h, struct interest_entry *ie,
+                       int usec, enum ccn_strategy_op op);
+
+/**
+ * Get the face handle for a given faceid
+ *
+ * Strategy routines should use the accessors provided.
+ *
+ * @returns NULL if face does not exist.
+ */
+struct face *ccnd_face_from_faceid(struct ccnd_handle *, unsigned);
+
+/** Accessors for things a strategy might want to know about a face. */
+unsigned face_faceid(struct face *);
+int face_pending_interests(struct face *);
+int face_outstanding_interests(struct face *);
+
+/**
+ * Face attributes
+ *
+ * To help strategies do their work, there is provision for faces to carry
+ * a collection of attributes.  These have associated values, which can be
+ * either boolean or numeric (non-negative integers).  Strategies may set
+ * and get these values using an attribute index to say which attribute is
+ * desired.  Some attributes are set by ccnd, based upon things it
+ * knows about the face.  Others have associated names, and may be set from
+ * the outside (using the face managment protocol).  Still others are private
+ * to strategy implementations, and need not have a name, only a dynamically
+ * assigned index.
+ *
+ * The first 32 indices (0 through 31) are reserved for single-bit attributes.
+ * These may be read all at once using faceattr_get_packed, but are set using
+ * the general faceattr_set call.  They may also be read using faceattr_get.
+ * In the packed form, the attribute with index 0 is stored in the low-order
+ * bit, so the bits may be tested using straightforward shifts and masks.
+ * After the first 32 single-bit attributes have been created, any additional
+ * requests will be fullfulled with attributes capable of carrying numeric
+ * values.
+ *
+ * Newly created attributes are initialized to 0/false.
+ *
+ * Some attributes are created and set by ccnd, reflecting things about faces
+ * that may be relevant to the operation of strategies.  These are assigned
+ * with predeclared indices, so it is not necessary to learn the index
+ * from the name at runtime (although this is allowed).  All of the built-in
+ * single-bit attributes have small indices, and so are accessible using
+ * faceattr_get_packed.  Macros for corresponding bit masks are also provided.
+ */
+int faceattr_index_from_name(struct ccnd_handle *h, const char *name);
+int faceattr_bool_index_from_name(struct ccnd_handle *h, const char *name);
+int faceattr_index_allocate(struct ccnd_handle *h);
+int faceattr_index_free(struct ccnd_handle *h, int faceattr_index);
+unsigned faceattr_get(struct ccnd_handle *h, struct face *face, int faceattr_index);
+int faceattr_set(struct ccnd_handle *h, struct face *face, int faceattr_index, unsigned value);
+unsigned faceattr_get_packed(struct ccnd_handle *h, struct face *face);
+
+/**
+ *  Face attribute "valid"
+ *
+ * If true, the face may be used for interest/data exchange.
+ */
+#define FAI_VALID 0
+#define FAM_VALID (1U << FAI_VALID)
+
+/**
+ *  Face attribute "application"
+ *
+ * If true, the face is deemed to be a local application, by virtue of
+ * connection information (e.g., loopback interface or unix-domain socket).
+ */
+#define FAI_APPLICATION 1
+#define FAM_APPLICATION (1U << FAI_APPLICATION)
+#define FAM_APP FAM_APPLICATION
+
+/**
+ *  Face attribute "broadcastcapable"
+ *
+ * If true, the face can reach multiple peers via broadcast.
+ */
+#define FAI_BROADCAST_CAPABLE 2
+#define FAM_BROADCAST_CAPABLE (1U << FAI_BROADCAST_CAPABLE)
+#define FAM_BCAST FAM_BROADCAST_CAPABLE
+
+/**
+ *  Face attribute "directcontrol"
+ *
+ * If true, the face should not be sent interests unless there is no
+ * response from any other faces.  This may be used by an application that
+ * can update the FIB on demand.
+ */
+#define FAI_DIRECT_CONTROL 3
+#define FAM_DIRECT_CONTROL (1U << FAI_DIRECT_CONTROL)
+#define FAM_DC FAM_DIRECT_CONTROL
+
+/**
+ *  Stateless enumerator for face attribute names
+ *
+ * Call with NULL to get the first name.  Returns NULL after the last name.
+ * The order is unspecified.  Generated names are provided for private attrs.
+ */
+const char *faceattr_next_name(struct ccnd_handle *h, const char *name);
+
+/** For debugging */
+void ccnd_msg(struct ccnd_handle *, const char *, ...);
 
 /** A PRNG returning 31-bit pseudo-random numbers */
 uint32_t ccnd_random(struct ccnd_handle *);
+
+/** look up a strategy class */
+const struct strategy_class *strategy_class_from_id(const char *id);
 
 extern const struct strategy_class ccnd_strategy_classes[];
 

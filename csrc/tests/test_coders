@@ -14,9 +14,12 @@
 # FOR A PARTICULAR PURPOSE.
 #
 
+VALDIR=../../schema/validation
+[ -x $VALDIR ] || VALDIR=../$VALDIR
+[ -x $VALDIR ] || SkipTest could not find schema/validation
 for i in 14 15 18 23; do
-  test -f ../../schema/validation/ccn-test$i.xml || SkipTest missing source
-  ccn_xmltoccnb -w - <../../schema/validation/ccn-test$i.xml > test_coders_$i.ccnb
+  test -f $VALDIR/ccn-test$i.xml || SkipTest missing source
+  ccn_xmltoccnb -w - < $VALDIR/ccn-test$i.xml > test_coders_$i.ccnb
   basicparsetest < test_coders_$i.ccnb || Fail test_coders_$i.ccnb
 done
 rm test_coders_*.ccnb

@@ -54,7 +54,7 @@ coverage:
 
 shared:
 
-depend: dir.mk $(CSRC)
+depend: dir.mk $(HSRC) $(CSRC)
 	set -e; for i in $(CSRC); do $(MKDEP) $(CINCFLAGS) $(CPREFLAGS) $$i; done > depend
 	diff -b depend depend.mk || mv depend depend.mk
 	$(RM) templist depend
