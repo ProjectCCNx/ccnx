@@ -321,12 +321,12 @@ incoming_content(struct ccn_closure *selfp,
             return(CCN_UPCALL_RESULT_OK);
         md->interests_sent++;
         if (start == end) {
-            /* No InterestLifetime so it's the second timeout, decrease the window */
+            /* No InterestLifetime: second timeout, decrease the window significantly */
             md->timeouts++;
             if (md->curwindow >= 2) md->curwindow /= 2;
             return(CCN_UPCALL_RESULT_REEXPRESS);
         } else {
-            /* InterestLifetime, remove it, consider it a hole, don't lower the window */
+            /* InterestLifetime, remove it, consider it a hole, decrease the window slightly */
             ccn_charbuf_reset(md->tname);
             ccn_charbuf_append(md->tname, info->interest_ccnb + info->pi->offset[CCN_PI_B_Name],
                                info->pi->offset[CCN_PI_E_Name] - info->pi->offset[CCN_PI_B_Name]);
@@ -336,7 +336,7 @@ incoming_content(struct ccn_closure *selfp,
                                info->pi->offset[CCN_PI_E] - end);
             res = ccn_express_interest(md->h, md->tname, selfp, md->templ);
             if (res < 0) abort();
-            // if (md->curwindow > 1) md->curwindow--;
+            if (md->curwindow > 1) md->curwindow--;
             md->holes++;
             return(CCN_UPCALL_RESULT_OK);
         }
