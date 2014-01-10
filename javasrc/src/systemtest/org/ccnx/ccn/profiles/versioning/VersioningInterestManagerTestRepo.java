@@ -88,7 +88,7 @@ public class VersioningInterestManagerTestRepo {
 	 */
 	@Test
 	public void testStreamFromRight() throws Exception {
-		System.out.println("********** testStreamFromRight");
+		Log.info(Log.FAC_TEST, "Starting testStreamFromRight");
 
 		ContentName basename = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
 
@@ -108,7 +108,7 @@ public class VersioningInterestManagerTestRepo {
 
 		int tosend = VersioningInterestManager.MAX_FILL;
 
-		System.out.println("***** Sending stream 1 *****");
+		Log.info(Log.FAC_TEST, "***** Sending stream 1 *****");
 		TreeSet<CCNTime> sent1 = sendStreamRight(sinkhandle, vim, basename, t, tosend);
 
 		// wait for them to be received
@@ -121,7 +121,7 @@ public class VersioningInterestManagerTestRepo {
 
 		//		System.out.println(String.format("data  (%d): %s", vim.getInterestDataTree().first().size(), vim.getInterestDataTree().first().dumpContents()));
 
-		System.out.println("***** Sending stream 2 *****");
+		Log.info(Log.FAC_TEST, "***** Sending stream 2 *****");
 		// now send one more and we should see the right sort of split
 		TreeSet<CCNTime> sent2 = sendStreamRight(sinkhandle, vim, basename, t, 1);
 
@@ -134,8 +134,8 @@ public class VersioningInterestManagerTestRepo {
 		Assert.assertTrue("sinkhandle incorrect count: " + sinkhandle.total_count.getValue(), b);
 
 		// make sure we have all the right versions
-		System.out.println("total sent    : " + sent1.size());
-		System.out.println("exclusion size: " + vim.getExclusions().size());
+		Log.info(Log.FAC_TEST, "total sent    : " + sent1.size());
+		Log.info(Log.FAC_TEST, "exclusion size: " + vim.getExclusions().size());
 
 		// the new left one should have MIN_FILL elements and the old (right) one should have the rest
 		InterestData left = vim.getInterestDataTree().first();
@@ -162,7 +162,8 @@ public class VersioningInterestManagerTestRepo {
 
 		Assert.assertEquals(left_size, left.size());
 		Assert.assertEquals(right_size, right.size());
-
+		
+		Log.info(Log.FAC_TEST, "Completed testStreamFromRight");
 	}
 
 	/**
@@ -171,7 +172,8 @@ public class VersioningInterestManagerTestRepo {
 	 */
 	@Test
 	public void testLongStreamFromRight() throws Exception {
-		System.out.println("********** testLongStreamFromRight");
+		Log.info(Log.FAC_TEST, "Starting testLongStreamFromRight");
+		
 		ContentName basename = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		TestListener listener = new TestListener();
@@ -202,7 +204,7 @@ public class VersioningInterestManagerTestRepo {
 			occupancy++;
 		}
 
-		System.out.println(String.format("Sending %d exclusions should result in %d interest packets", tosend, packets));
+		Log.info(Log.FAC_TEST, String.format("Sending %d exclusions should result in %d interest packets", tosend, packets));
 
 		System.out.println("***** Sending stream 1 *****");
 		TreeSet<CCNTime> sent1 = sendStreamRight(sinkhandle, vim, basename, t, tosend);
@@ -218,6 +220,7 @@ public class VersioningInterestManagerTestRepo {
 		Assert.assertEquals(sent1.size(), vim.getExclusions().size());
 		
 		vim.stop();
+		Log.info(Log.FAC_TEST, "Started testLongStreamFromRight");
 	}
 
 	/**
@@ -226,7 +229,8 @@ public class VersioningInterestManagerTestRepo {
 	 */
 	@Test
 	public void testLongStreamFromLeft() throws Exception {
-		System.out.println("********** testLongStreamFromLeft");
+		Log.info(Log.FAC_TEST, "Starting testLongStreamFromLeft");
+		
 		ContentName basename = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		TestListener listener = new TestListener();
@@ -257,9 +261,9 @@ public class VersioningInterestManagerTestRepo {
 			occupancy++;
 		}
 
-		System.out.println(String.format("Sending %d exclusions should result in %d interest packets", tosend, packets));
+		Log.info(Log.FAC_TEST, String.format("Sending %d exclusions should result in %d interest packets", tosend, packets));
 
-		System.out.println("***** Sending stream 1 *****");
+		Log.info(Log.FAC_TEST, "***** Sending stream 1 *****");
 		TreeSet<CCNTime> sent1 = sendStreamLeft(sinkhandle, vim, basename, t, tosend);
 
 		int expected = tosend + packets + 1;
@@ -275,7 +279,8 @@ public class VersioningInterestManagerTestRepo {
 						sinkhandle.total_count.getValue(),
 						expected), b);
 		vim.stop();
-
+		
+		Log.info(Log.FAC_TEST, "Completed testLongStreamFromLeft");
 	}
 
 	/**
@@ -284,7 +289,8 @@ public class VersioningInterestManagerTestRepo {
 	 */
 	@Test
 	public void testLongStreamUniform() throws Exception {
-		System.out.println("********** testLongStreamUniform");
+		Log.info(Log.FAC_TEST, "Starting testLongStreamUniform");
+		
 		ContentName basename = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		TestListener listener = new TestListener();
@@ -311,11 +317,11 @@ public class VersioningInterestManagerTestRepo {
 		int min_interests = (int) Math.ceil((double) tosend / VersioningInterestManager.MAX_FILL);
 		int max_interests = (int) Math.floor((double) tosend / VersioningInterestManager.MIN_FILL);
 
-		System.out.println("handle interests: " + sinkhandle.total_count.getValue());
-		System.out.println("exclusions      : " + vim.getExclusions().size());
-		System.out.println("vim interests   : " + vim.getInterestDataTree().size() + " (should be close to min interests)");
-		System.out.println("min interests   : " + min_interests);
-		System.out.println("max interests   : " + max_interests);
+		Log.info(Log.FAC_TEST, "handle interests: " + sinkhandle.total_count.getValue());
+		Log.info(Log.FAC_TEST, "exclusions      : " + vim.getExclusions().size());
+		Log.info(Log.FAC_TEST, "vim interests   : " + vim.getInterestDataTree().size() + " (should be close to min interests)");
+		Log.info(Log.FAC_TEST, "min interests   : " + min_interests);
+		Log.info(Log.FAC_TEST, "max interests   : " + max_interests);
 
 		Assert.assertTrue( min_interests <= vim.getInterestDataTree().size() );
 		Assert.assertTrue( vim.getInterestDataTree().size() <= max_interests );
@@ -324,6 +330,8 @@ public class VersioningInterestManagerTestRepo {
 		Assert.assertTrue( min_interests + tosend <= sinkhandle.total_count.getValue() );
 		Assert.assertTrue( sinkhandle.total_count.getValue() <= max_interests + tosend );
 		vim.stop();
+		
+		Log.info(Log.FAC_TEST, "Completed testLongStreamUniform");
 	}
 
 	/**
@@ -332,7 +340,8 @@ public class VersioningInterestManagerTestRepo {
 	 */
 	@Test
 	public void testLongStreamGaussian() throws Exception {
-		System.out.println("********** testLongStreamGaussian");
+		Log.info(Log.FAC_TEST, "Starting testLongStreamGaussian");
+		
 		ContentName basename = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		TestListener listener = new TestListener();
@@ -359,11 +368,11 @@ public class VersioningInterestManagerTestRepo {
 		int min_interests = (int) Math.ceil((double) tosend / VersioningInterestManager.MAX_FILL);
 		int max_interests = (int) Math.floor((double) tosend / VersioningInterestManager.MIN_FILL);
 
-		System.out.println("handle interests: " + sinkhandle.total_count.getValue());
-		System.out.println("exclusions      : " + vim.getExclusions().size());
-		System.out.println("vim interests   : " + vim.getInterestDataTree().size() + " (should be close to min interests)");
-		System.out.println("min interests   : " + min_interests);
-		System.out.println("max interests   : " + max_interests);
+		Log.info(Log.FAC_TEST, "handle interests: " + sinkhandle.total_count.getValue());
+		Log.info(Log.FAC_TEST, "exclusions      : " + vim.getExclusions().size());
+		Log.info(Log.FAC_TEST, "vim interests   : " + vim.getInterestDataTree().size() + " (should be close to min interests)");
+		Log.info(Log.FAC_TEST, "min interests   : " + min_interests);
+		Log.info(Log.FAC_TEST, "max interests   : " + max_interests);
 
 		Assert.assertTrue( min_interests <= vim.getInterestDataTree().size() );
 		Assert.assertTrue( vim.getInterestDataTree().size() <= max_interests );
@@ -372,6 +381,8 @@ public class VersioningInterestManagerTestRepo {
 		Assert.assertTrue( min_interests + tosend <= sinkhandle.total_count.getValue() );
 		Assert.assertTrue( sinkhandle.total_count.getValue() <= max_interests + tosend );
 		vim.stop();
+		
+		Log.info(Log.FAC_TEST, "Completed testLongStreamGaussian");
 	}
 
 	// ==============================

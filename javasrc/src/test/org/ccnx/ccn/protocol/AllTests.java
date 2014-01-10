@@ -16,16 +16,13 @@
  */
 package org.ccnx.ccn.protocol;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 import org.junit.runners.Suite.SuiteClasses;
 
 @RunWith(Suite.class)
-
-@SuiteClasses({
-    CCNTimeTest.class
-})
+@SuiteClasses({ CCNTimeTest.class, ComponentTest.class, ContentNameTest.class,
+		ContentObjectTest.class, ExcludeTest.class, InterestTest.class,
+		KeyLocatorTest.class, PublisherIDTest.class, SignedInfoTest.class })
 public class AllTests {
 }

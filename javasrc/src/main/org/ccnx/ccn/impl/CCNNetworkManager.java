@@ -91,6 +91,8 @@ public class CCNNetworkManager implements Runnable {
 	public static final String KEEPALIVE_NAME = "/HereIAm";
 	public static final int THREAD_LIFE = 8;	// in seconds
 	public static final int MAX_PAYLOAD = 8800; // number of bytes in UDP payload
+	public static final int UDP_RETRY = 5;
+	public static final int UDP_BACKOFF = 100;
 
 	// These are to make log messages from CCNNetworkManager intelligable when
 	// there are multiple managers running
@@ -160,7 +162,7 @@ public class CCNNetworkManager implements Runnable {
 
 	// Periodic timer
 	protected ScheduledThreadPoolExecutor _periodicTimer = null;
-	protected Object _timersSetupLock = new Object();
+	protected Semaphore _timersSetupSem = new Semaphore(1);
 	protected Boolean _timersSetup = false;
 	protected PeriodicWriter _periodicWriter = null;
 
@@ -358,25 +360,40 @@ public class CCNNetworkManager implements Runnable {
 	 * @throws IOException
 	 */
 	private void setupTimers() throws IOException {
-		synchronized (_timersSetupLock) {
+		try {
+			_timersSetupSem.acquireUninterruptibly();
 			if (!_timersSetup) {
 				// Create main processing thread
 				_thread = new Thread(this, "CCNNetworkManager " + _managerId);
 				_thread.setPriority(Thread.MAX_PRIORITY);
 				_thread.start();
-
+	
 				_timersSetup = true;
 				_channel.init();
 				if (_protocol == NetworkProtocol.UDP) {
-					_channel.heartbeat();
+					int retryCount = 0;
+					while (retryCount++ < UDP_RETRY) {
+						try {
+							_channel.heartbeat();
+							break;
+						} catch (NotYetConnectedException nyce)  {
+							try {
+								Thread.sleep(UDP_BACKOFF);
+							} catch (InterruptedException e) {
+								return;
+							}			
+						}
+					}
 					_lastHeartbeat = System.currentTimeMillis();
 				}
-
+	
 				// Create timer for periodic behavior
 				_periodicTimer = new ScheduledThreadPoolExecutor(1);
 				_periodicWriter = new PeriodicWriter();
 				_periodicTimer.schedule(_periodicWriter, PERIOD, TimeUnit.MILLISECONDS);
 			}
+		} finally {
+			_timersSetupSem.release();
 		}
 	}
 

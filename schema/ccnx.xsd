@@ -391,6 +391,18 @@
   </xs:sequence>
 </xs:complexType>
 
+<xs:element name="StrategySelection" type="StrategySelectionType"/>
+<xs:complexType name="StrategySelectionType">
+    <xs:sequence>
+        <xs:element name="Action" type="xs:string" minOccurs="0" maxOccurs="1"/>
+        <xs:element name="Name" type="NameType" minOccurs="0" maxOccurs="1"/>
+        <xs:element name="PublisherPublicKeyDigest" type="DigestType" minOccurs="0" maxOccurs="1"/>
+        <xs:element name="StrategyID" type="xs:string" minOccurs="0" maxOccurs="1"/>
+        <xs:element name="StrategyParameters" type="xs:string" minOccurs="0" maxOccurs="1"/>
+        <xs:element name="FreshnessSeconds" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
+    </xs:sequence>
+</xs:complexType>
+    
 <xs:complexType name="StatusResponseType">
   <xs:sequence>
       <xs:element name="StatusCode" type="xs:nonNegativeInteger" minOccurs="1" maxOccurs="1"/>

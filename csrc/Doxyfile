@@ -3,7 +3,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2010 Palo Alto Research Center, Inc.
+# Copyright (C) 2010-2013 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -18,7 +18,7 @@
 #---------------------------------------------------------------------------
 DOXYFILE_ENCODING      = UTF-8
 PROJECT_NAME           = "Content-Centric Networking in C"
-PROJECT_NUMBER         = 0.8.1
+PROJECT_NUMBER         = 0.8.2
 OUTPUT_DIRECTORY       = ../doc/ccode
 CREATE_SUBDIRS         = NO
 OUTPUT_LANGUAGE        = English

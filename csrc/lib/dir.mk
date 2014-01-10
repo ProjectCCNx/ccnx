@@ -58,6 +58,7 @@ CSRC = \
     ccn_signing.c \
     ccn_sockaddrutil.c \
     ccn_sockcreate.c \
+    ccn_strategy_mgmt.c \
     ccn_traverse.c \
     ccn_uri.c \
     ccn_verifysig.c \
@@ -108,12 +109,15 @@ LIB_OBJS = \
     ccn_signing.o \
     ccn_sockaddrutil.o \
     ccn_sockcreate.o \
+    ccn_strategy_mgmt.o \
     ccn_traverse.o \
     ccn_uri.o \
     ccn_versioning.o \
     hashtb.o \
     lned.o \
     siphash24.o
+
+SRCLINKS = q.dat
 
 default all: dtag_check lib $(PROGRAMS)
 # Don't try to build shared libs right now.
@@ -140,7 +144,7 @@ shlib: $(SHLIBNAME)
 
 lib: libccn.a
 
-test: default encodedecodetest ccnbtreetest nametreetest
+test: default encodedecodetest ccnbtreetest nametreetest q.dat
 	./encodedecodetest -o /dev/null
 	./ccnbtreetest
 	./ccnbtreetest - < q.dat
@@ -201,6 +205,9 @@ ccn_signing.o:
 
 ccn_sockcreate.o:
 	$(CC) $(CFLAGS) -c ccn_sockcreate.c
+
+ccn_strategy_mgmt.o:
+	$(CC) $(CFLAGS) -c ccn_strategy_mgmt.c
 
 ccn_traverse.o:
 	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_traverse.c

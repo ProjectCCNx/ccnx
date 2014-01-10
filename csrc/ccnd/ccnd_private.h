@@ -6,7 +6,8 @@
  * routines can be compiled separately.
  *
  * Part of ccnd - the CCNx Daemon.
- *
+ */
+/*
  * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
@@ -38,6 +39,9 @@
 #include <ccn/schedule.h>
 #include <ccn/seqwriter.h>
 
+/* For strategy API */
+#include "ccnd_strategy.h"
+
 /*
  * These are defined in other ccn headers, but the incomplete types suffice
  * for the purposes of this header.
@@ -56,17 +60,7 @@ struct content_entry;
 struct nameprefix_entry;
 struct interest_entry;
 struct guest_entry;
-struct pit_face_item;
 struct ccn_forwarding;
-struct ccn_strategy;
-
-/**
- * Used for keeping track of interest expiry.
- *
- * Modulo 2**32, time units and origin are abitrary and private.
- */
-typedef uint32_t ccn_wrappedtime;
-
 typedef int (*ccnd_logger)(void *loggerdata, const char *format, va_list ap);
 
 /* see nonce_entry */
@@ -87,6 +81,9 @@ struct ccnd_handle {
     struct hashtb *nameprefix_tab;  /**< keyed by name prefix components */
     struct hashtb *interest_tab;    /**< keyed by interest msg sans Nonce */
     struct hashtb *guest_tab;       /**< keyed by faceid */
+    struct hashtb *faceattr_index_tab; /**< keyed by faceattr name */
+    unsigned faceattr_packed;       /**< Allocation mask for first 32 */
+    int nlfaceattr;                  /**< number of large face attributes */
     unsigned forward_to_gen;        /**< for forward_to updates */
     unsigned face_gen;              /**< faceid generation number */
     unsigned face_rover;            /**< for faceid allocation */
@@ -111,6 +108,7 @@ struct ccnd_handle {
     unsigned starttime_usec;        /**< ccnd start time fractional part */
     unsigned iserial;               /**< interest serial number (for logs) */
     struct ccn_schedule *sched;     /**< our schedule */
+    struct ccn_charbuf *errbuf;     /**< for strategy error reporting */
     struct ccn_charbuf *send_interest_scratch; /**< for use by send_interest */
     struct ccn_charbuf *scratch_charbuf; /**< one-slot scratch cache */
     struct ccn_indexbuf *scratch_indexbuf; /**< one-slot scratch cache */
@@ -219,9 +217,13 @@ struct face {
     struct ccn_charbuf *outbuf;
     const struct sockaddr *addr;
     socklen_t addrlen;
-    int pending_interests;
+    int pending_interests;      /**< received and not yet consumed */
+    int outstanding_interests;  /**< sent and not yet consumed */
     unsigned rrun;
     uintmax_t rseq;
+    unsigned faceattr_packed;   /**< First 32 face attributes (single bits) */
+    int nlfaceattr;             /**< number of large face attributes */
+    unsigned *lfaceattrs;       /**< storage for large face attributes */
     struct ccnd_meter *meter[CCND_FACE_METER_N];
     unsigned short pktseq;      /**< sequence number for sent packets */
     unsigned short adjstate;    /**< state of adjacency negotiotiation */
@@ -251,7 +253,24 @@ struct face {
 #define CCN_FACE_BC    (1 << 20) /** Needs SO_BROADCAST to send */
 #define CCN_FACE_NBC   (1 << 21) /** Don't use SO_BROADCAST to send */
 #define CCN_FACE_ADJ   (1 << 22) /** Adjacency guid has been negotiatied */
-#define CCN_NOFACEID    (~0U)    /** denotes no face */
+
+/**
+ *  Entry in faceattr_index_tab
+ *
+ * This keeps track of the index values that are used to access the per-face
+ * attributes.  We use an index so that the lookup by attribute name only
+ * needs to happen at setup time, rather than each time the attribute is
+ * accessed.  Small values of fa_index (< 32) refer to the single-bit attributes
+ * that are stored in face->faceattr_packed.  Larger values are used to
+ * index into face->faceattrs (after deducting 32, of course).
+ *
+ * The "anonymous" attributes are stored under a name that is the decimal
+ * representation of the index.  This is an implementation detail,
+ * not part of the strategy API.
+ */
+struct faceattr_index_entry {
+    int fa_index;       /**< index for accessing faceattr value */
+};
 
 /**
  * Content table entry
@@ -277,19 +296,6 @@ struct content_entry {
  */
 #define CCN_CONTENT_ENTRY_SLOWSEND  1
 
-/**
- * State for the strategy engine
- *
- * This is still quite embryonic.
- */
-struct ccn_strategy {
-    struct ccn_scheduled_event *ev; /**< for time-based strategy event */
-    int state;
-    ccn_wrappedtime birth;          /**< when interest entry was created */
-    ccn_wrappedtime renewed;        /**< when interest entry was renewed */
-    unsigned renewals;              /**< number of times renewed */
-};
-
 struct ielinks;
 struct ielinks {
     struct ielinks *next;           /**< next in list */
@@ -307,8 +313,8 @@ struct ielinks {
 struct interest_entry {
     struct ielinks ll;
     struct ccn_strategy strategy;   /**< state of strategy engine */
-    struct pit_face_item *pfl;      /**< upstream and downstream faces */
-    struct ccn_scheduled_event *ev; /**< next interest timeout */
+    struct ccn_scheduled_event *stev; /**< for time-based strategy event */
+    struct ccn_scheduled_event *ev; /**< next interest timeout */    
     const unsigned char *interest_msg; /**< pending interest message */
     unsigned size;                  /**< size of interest message */
     unsigned serial;                /**< used for logging */
@@ -335,33 +341,6 @@ struct guest_entry {
     struct ccn_charbuf *cob;
 };
 
-#define TYPICAL_NONCE_SIZE 12       /**< actual allocated size may differ */
-/**
- * Per-face PIT information
- *
- * This is used to track the pending interest info that is specific to
- * a face.  The list may contain up to two entries for a given face - one
- * to track the most recent arrival on that face (the downstream), and
- * one to track the most recently sent (the upstream).
- */
-struct pit_face_item {
-    struct pit_face_item *next;     /**< next in list */
-    unsigned faceid;                /**< face id */
-    ccn_wrappedtime renewed;        /**< when entry was last refreshed */
-    ccn_wrappedtime expiry;         /**< when entry expires */
-    unsigned pfi_flags;             /**< CCND_PFI_x */
-    unsigned char nonce[TYPICAL_NONCE_SIZE]; /**< nonce bytes */
-};
-#define CCND_PFI_NONCESZ  0x00FF    /**< Mask for actual nonce size */
-#define CCND_PFI_UPSTREAM 0x0100    /**< Tracks upstream (sent interest) */
-#define CCND_PFI_UPENDING 0x0200    /**< Has been sent upstream */
-#define CCND_PFI_SENDUPST 0x0400    /**< Should be sent upstream */
-#define CCND_PFI_UPHUNGRY 0x0800    /**< Upstream hungry, cupboard bare */
-#define CCND_PFI_DNSTREAM 0x1000    /**< Tracks downstream (recvd interest) */
-#define CCND_PFI_PENDING  0x2000    /**< Pending for immediate data */
-#define CCND_PFI_SUPDATA  0x4000    /**< Suppressed data reply */
-#define CCND_PFI_DCFACE  0x10000    /**< This upstream is a DC face */
-
 /**
  * The nameprefix hash table is keyed by the Component elements of
  * the Name prefix.
@@ -374,10 +353,9 @@ struct nameprefix_entry {
     struct nameprefix_entry *parent; /**< link to next-shorter prefix */
     int children;                /**< number of children */
     unsigned flags;              /**< CCN_FORW_* flags about namespace */
-    int fgen;                    /**< used to decide when forward_to is stale */
-    unsigned src;                /**< faceid of recent content source */
-    unsigned osrc;               /**< and of older matching content */
-    unsigned usec;               /**< response-time prediction */
+    int fgen;                    /**< to decide when cached fields are stale */
+    struct strategy_instance *si;/**< explicit strategy for this prefix */
+    struct nameprefix_state sst; /**< used by strategy layer */
 };
 
 /**
@@ -420,7 +398,6 @@ uintmax_t ccnd_meter_total(struct ccnd_meter *m);
 #define CCN_FORW_PFXO (CCN_FORW_ADVERTISE | CCN_FORW_CAPTURE | CCN_FORW_LOCAL)
 #define CCN_FORW_REFRESHED      (1 << 16) /**< private to ccnd */
 
- 
 /**
  * Determines how frequently we age our forwarding entries
  */
@@ -467,6 +444,15 @@ int ccnd_req_selfreg(struct ccnd_handle *h,
                      const unsigned char *msg, size_t size,
                      struct ccn_charbuf *reply_body);
 
+/*
+ * The internal client calls this with the argument portion ARG of
+ * a strategy selection request (e.g. /ccnx/CCNDID/setstrategy/ARG)
+ */
+int ccnd_req_strategy(struct ccnd_handle *h,
+                      const unsigned char *msg, size_t size,
+                      const char *action,
+                      struct ccn_charbuf *reply_body);
+
 /**
  * URIs for prefixes served by the internal client
  */
@@ -486,6 +472,20 @@ int ccnd_reg_uri(struct ccnd_handle *h,
                  unsigned faceid,
                  int flags,
                  int expires);
+
+const struct strategy_class *
+    strategy_class_from_id(const char *id);
+struct strategy_instance *
+    create_strategy_instance(struct ccnd_handle *h,
+                             struct nameprefix_entry *npe,
+                             const struct strategy_class *sclass,
+                             const char *parameters);
+struct strategy_instance *
+    get_strategy_instance(struct ccnd_handle *h,
+                          struct nameprefix_entry *npe);
+
+void remove_strategy_instance(struct ccnd_handle *h,
+                              struct nameprefix_entry *npe);
 
 void ccnd_generate_face_guid(struct ccnd_handle *h, struct face *face, int size,
                              const unsigned char *lo, const unsigned char *hi);

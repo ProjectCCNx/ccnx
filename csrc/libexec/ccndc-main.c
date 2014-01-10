@@ -4,7 +4,7 @@
  *
  * A CCNx program.
  *
- * Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -54,6 +54,12 @@ usage(const char *progname)
             "           create or destroy a face identified by parameters\n"
             "       destroy face <faceid>\n"
             "           destroy face identified by number\n"
+            "       setstrategy <prefix> <strategy> [<parameters> [<lifetime>]]\n"
+            "           associate <strategy> with <prefix> with specified (strategy specific) <parameters> and <lifetime>\n"
+            "       getstrategy <prefix>\n"
+            "           get strategy information associated with <prefix>\n"
+            "       removestrategy <prefix>\n"
+            "           remove the strategy associated with <prefix>\n"
             "       srv\n"
             "           add ccnx:/ prefix to face created from parameters in SRV\n"
             "           record of a domain in DNS search list\n"

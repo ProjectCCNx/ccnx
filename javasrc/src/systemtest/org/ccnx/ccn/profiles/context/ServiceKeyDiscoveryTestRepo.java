@@ -22,12 +22,11 @@ import java.util.ArrayList;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.CCNTestBaseNoCcnd;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.profiles.context.ServiceDiscoveryProfile;
 import org.ccnx.ccn.protocol.ContentObject;
-import org.ccnx.ccn.CCNTestBase;
 import org.ccnx.ccn.utils.CreateUserData;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -53,8 +52,8 @@ public class ServiceKeyDiscoveryTestRepo {
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		if (null != System.getProperty(CCNTestBase.TEST_DIR))
-			_testDir = System.getProperty(CCNTestBase.TEST_DIR);
+		if (null != System.getProperty(CCNTestBaseNoCcnd.TEST_DIR))
+			_testDir = System.getProperty(CCNTestBaseNoCcnd.TEST_DIR);
 		UserConfiguration.setPublishKeys(false);
 		serviceProviders = new CreateUserData(new File(_testDir + USER_DIRECTORY), SERVICE_PROVIDERS, SERVICE_PROVIDERS.length,
 				UserConfiguration.keystorePassword().toCharArray(), true);

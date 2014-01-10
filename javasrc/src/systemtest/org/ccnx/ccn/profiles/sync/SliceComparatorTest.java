@@ -49,7 +49,7 @@ public class SliceComparatorTest extends CCNTestBase implements CCNSyncHandler {
 	static NodeBuilder nb = new NodeBuilder();
 	static SyncHashCache shc = new SyncHashCache();
 	static SyncNodeCache snc = new SyncNodeCache();
-	static boolean sawContent = false;
+	static volatile boolean sawContent = false;
 	
 	/**
 	 * Tests update with existing node tree which contains a single component node after the

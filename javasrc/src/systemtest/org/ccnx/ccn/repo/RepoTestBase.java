@@ -56,7 +56,7 @@ public class RepoTestBase extends LibraryTestBase {
 		
 		_topdir = System.getProperty(TOP_DIR);
 		if (null == _topdir)
-			_topdir = "src";
+			_topdir = "src/systemtest";
 		
 		_fileTestDir = System.getProperty("REPO_ROOT");
 		if( null == _fileTestDir )

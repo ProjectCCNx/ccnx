@@ -18,10 +18,10 @@
 
   <groupId>org.ccnx</groupId>
   <artifactId>project-ccnx</artifactId>
-  <version>0.8.1-SNAPSHOT</version><!-- Probably use a plugin to handle versioning -->
+  <version>0.8.2-SNAPSHOT</version><!-- Probably use a plugin to handle versioning -->
   <packaging>pom</packaging>
   <name>Project CCNx</name>
-  <url>http://ccnx.org</url>
+  <url>http://www.ccnx.org</url>
   <modules>
       <module>./javasrc</module>
   </modules>

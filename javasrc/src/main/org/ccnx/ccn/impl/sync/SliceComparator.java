@@ -16,10 +16,11 @@
  */
 package org.ccnx.ccn.impl.sync;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.NoSuchElementException;
 import java.util.Queue;
-import java.util.Stack;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -98,8 +99,8 @@ public final class SliceComparator implements Runnable, Comparable<SliceComparat
 	private CCNHandle _handle;
 	private SyncNodeCache _snc = null;
 
-	private Stack<SyncTreeEntry> _current = new Stack<SyncTreeEntry>();
-	private Stack<SyncTreeEntry> _next = new Stack<SyncTreeEntry>();
+	private Deque<SyncTreeEntry> _current = new ArrayDeque<SyncTreeEntry>();
+	private Deque<SyncTreeEntry> _next = new ArrayDeque<SyncTreeEntry>();
 	private SyncCompareState _state = SyncCompareState.INIT;
 	private ArrayList<SyncTreeEntry> _pendingEntries = new ArrayList<SyncTreeEntry>();
 	private Queue<byte[]> _pendingContent = new ConcurrentLinkedQueue<byte[]>();
@@ -747,20 +748,20 @@ public final class SliceComparator implements Runnable, Comparable<SliceComparat
 			callback.handleContentName(_slice, name);
 	}
 	
-	protected void push(SyncTreeEntry srt, Stack<SyncTreeEntry> stack) {
+	protected void push(SyncTreeEntry srt, Deque<SyncTreeEntry> stack) {
 		stack.push(srt);
 	}
 		
-	protected SyncTreeEntry pop(Stack<SyncTreeEntry> stack) {
-		if (!stack.empty()) {
+	protected SyncTreeEntry pop(Deque<SyncTreeEntry> stack) {
+		if (stack.size() != 0) {
 			SyncTreeEntry srt =  stack.pop();
 			return srt;
 		}
 		return null;
 	}
 		
-	protected SyncTreeEntry getHead(Stack<SyncTreeEntry> stack) {
-		if (! stack.empty()) {
+	protected SyncTreeEntry getHead(Deque<SyncTreeEntry> stack) {
+		if (stack.size() != 0) {
 			return stack.peek();
 		}
 		return null;
@@ -785,7 +786,7 @@ public final class SliceComparator implements Runnable, Comparable<SliceComparat
 	 */
 	protected boolean updateCurrent() throws SyncException {
 		TreeSet<ContentName> neededNames = new TreeSet<ContentName>();
-		Stack<SyncTreeEntry> updateStack = new Stack<SyncTreeEntry>();
+		Deque<SyncTreeEntry> updateStack = new ArrayDeque<SyncTreeEntry>();
 		boolean newHasNodes = false;
 		boolean redo = false;
 		SyncTreeEntry ste = getHead(_current);

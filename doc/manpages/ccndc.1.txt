@@ -21,6 +21,12 @@ SYNOPSIS
 
 *ccndc* [*-v*] *destroyface* 'faceid'
 
+*ccndc* [*-v*] *setstrategy* 'uri' 'strategy' ['parameters' ['lifetime']]
+
+*ccndc* [*-v*] *getstrategy* 'uri'
+
+*ccndc* [*-v*] *removestrategy* 'uri'
+
 *ccndc* [*-v*] [*-t* 'lifetime'] *srv*
 
 DESCRIPTION
@@ -84,6 +90,23 @@ OPTIONS
 
 *destroyface* 'faceid'::
       destroy a face based on the numeric faceid.
+
+*setstrategy* 'uri' 'strategy' ['parameters' ['lifetime']]::
+    associate the named 'strategy' with the prefix 'uri'.
+    The 'parameters' are passed along to the strategy;
+    their interpretation is strategy-specific.
+    Lifetime is in seconds.
+    Note - lifetime is currently ignored by ccnd.
+
+*getstrategy* 'uri'::
+    get strategy information associated with the prefix 'uri',
+    and print on standard output.  If no strategy has been
+    associated the prefix, the inherited strategy and its
+    prefix is printed instead.
+
+*removestrategy* 'uri'::
+    remove the strategy associated with the prefix 'uri'.
+    output is the same as getstrategy.
 
 *srv*::
       create a face and FIB entry (for ccnx:/) based on the results of an

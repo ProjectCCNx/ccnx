@@ -1,7 +1,7 @@
 /*
  * A CCNx file proxy program.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -22,8 +22,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
-import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNFileOutputStream;
@@ -72,7 +72,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  * - logging level control from a command line argument
  * - move file writer to a separate thread
  */
-public class CCNFileProxy implements CCNFilterListener {
+public class CCNFileProxy implements CCNInterestHandler {
 	
 	static String DEFAULT_URI = "ccnx:/";
 	static int BUF_SIZE = 4096;
@@ -190,8 +190,8 @@ public class CCNFileProxy implements CCNFilterListener {
 		// Set the version of the CCN content to be the last modification time of the file.
 		CCNTime modificationTime = new CCNTime(fileToWrite.lastModified());
 		ContentName versionedName = 
-			VersioningProfile.addVersion(new ContentName(_prefix, 
-						outstandingInterest.name().postfix(_prefix).components()), modificationTime);
+			new ContentName(_prefix, 
+						outstandingInterest.name().postfix(_prefix), modificationTime);
 
 		// CCNFileOutputStream will use the version on a name you hand it (or if the name
 		// is unversioned, it will version it).
@@ -243,9 +243,9 @@ public class CCNFileProxy implements CCNFilterListener {
 		// See if the resulting response is later than the previous one we released.
 		
 		//now add the response id
-	    ContentName prefixWithId = new ContentName(ner.getPrefix(), _responseName.components());
+	    ContentName prefixWithId = new ContentName(ner.getPrefix(), _responseName);
 	    //now finish up with version and segment
-	    ContentName potentialCollectionName = VersioningProfile.addVersion(prefixWithId, ner.getTimestamp());
+	    ContentName potentialCollectionName = new ContentName(prefixWithId, ner.getTimestamp());
 	    
 	    //switch to add response id to name enumeration objects
 		//ContentName potentialCollectionName = VersioningProfile.addVersion(ner.getPrefix(), ner.getTimestamp());

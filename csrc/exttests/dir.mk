@@ -38,9 +38,9 @@ ALLTESTS = \
   
 default all: $(SCRIPTSRC) testdriver
 
-depend: testlist
+depend: $(SCRIPTSRC) testlist
 # This is a helper to make sure the ALLTESTS list is closed (contains all dependencies)
-testlist:
+testlist: $(ALLTESTS)
 	echo $(ALLTESTS) | xargs -n 1 | sort -u > seeds
 	grep -e '^BEFORE :' -e '^AFTER :' $(ALLTESTS) > deps
 	cat deps | cut -d : -f 3 | xargs -n 1 | sort -u > stems

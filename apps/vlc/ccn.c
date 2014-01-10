@@ -121,6 +121,9 @@ struct access_sys_t
     int i_version_timeout;  /**< timeout in seconds for getting latest media version */
     int i_header_timeout;   /**< timeout in seconds for getting latest header version */
     int i_missed_co;        /**< number of content objects we missed in CCNBlock */
+#if (VLCPLUGINVER >= 20200)
+    uint64_t i_size;        /**< size of input if known */
+#endif
     struct ccn *ccn;        /**< CCN handle */
     struct ccn *ccn_pf;     /**< CCN handle for prefetch thread */
     struct ccn_closure *prefetch;   /**< closure for handling prefetch content */
@@ -195,8 +198,11 @@ CCNOpen(vlc_object_t *p_this)
     p_sys->i_version_timeout = var_CreateGetInteger(p_access, "ccn-version-timeout");
     p_sys->i_header_timeout = var_CreateGetInteger(p_access, "ccn-header-timeout");
     b_tcp = var_CreateGetBool(p_access, "ccn-tcp-connect");
+#if (VLCPLUGINVER >= 20200)
+    p_sys->i_size = LLONG_MAX;
+#else
     p_access->info.i_size = LLONG_MAX;	/* don't know yet, but bigger is better */
-    
+#endif
     p_sys->prefetch = calloc(1, sizeof(struct ccn_closure));
     CHECK_NOMEM(p_sys->prefetch, "CCNOpen failed: no memory for prefetch ccn_closure");
     p_sys->p_prefetch_template = make_prefetch_template();
@@ -251,11 +257,16 @@ CCNOpen(vlc_object_t *p_this)
     /* name is versioned, so get the header to obtain the length */
     p_header = ccn_get_header(p_sys->ccn, p_name, p_sys->i_header_timeout);
     if (p_header != NULL) {
+#if (VLCPLUGINVER >= 20200)
+        p_sys->i_size = p_header->length;
+        msg_Dbg(p_access, "CCNOpen set length %"PRId64, p_sys->i_size);
+#else
         p_access->info.i_size = p_header->length;
+        msg_Dbg(p_access, "CCNOpen set length %"PRId64, p_access->info.i_size);
+#endif
         p_sys->i_chunksize = p_header->block_size;
         ccn_header_destroy(&p_header);
     }
-    msg_Dbg(p_access, "CCNOpen set length %"PRId64, p_access->info.i_size);
     ccn_charbuf_destroy(&p_name);
     
     p_sys->p_content_object = ccn_charbuf_create();
@@ -276,8 +287,13 @@ CCNOpen(vlc_object_t *p_this)
     /* start prefetches for some more, unless it's a short file */
     vlc_mutex_lock(&p_sys->lock);
     for (i=1; i <= p_sys->i_prefetch; i++) {
+#if (VLCPLUGINVER >= 20200)
+        if (i * p_sys->i_chunksize >= p_sys->i_size)
+            break;
+#else
         if (i * p_sys->i_chunksize >= p_access->info.i_size)
             break;
+#endif
         sequenced_name(p_name, p_sys->p_name, i);
         i_ret = ccn_express_interest(p_sys->ccn_pf, p_name, p_sys->prefetch,
                                      p_sys->p_prefetch_template);
@@ -330,6 +346,7 @@ CCNBlock(access_t *p_access)
     size_t data_size = 0;
     uint64_t start_offset = 0;
     uint64_t i_nextpos;
+    uint64_t i_size;
     int i_ret;
     bool b_last = false;
     
@@ -355,8 +372,13 @@ CCNBlock(access_t *p_access)
         /* Ask for next fragment as soon as possible */
         if (!b_last) {
             i_nextpos = p_access->info.i_pos + (data_size - start_offset);
+#if (VLCPLUGINVER >= 20200)
+            i_size = p_sys->i_size;
+#else
+            i_size = p_access->info.i_size;
+#endif
             /* prefetch a fragment if it's not past the end */
-            if (p_sys->i_prefetch * p_sys->i_chunksize <= p_access->info.i_size - i_nextpos) {
+            if (p_sys->i_prefetch * p_sys->i_chunksize <= i_size - i_nextpos) {
                 sequenced_name(p_name, p_sys->p_name, p_sys->i_prefetch + i_nextpos / p_sys->i_chunksize);
                 vlc_mutex_lock(&p_sys->lock);
                 i_ret = ccn_express_interest(p_sys->ccn_pf, p_name, p_sys->prefetch, p_sys->p_prefetch_template);
@@ -375,7 +397,11 @@ CCNBlock(access_t *p_access)
     
     // end
     if (b_last) {
+#if (VLCPLUGINVER >= 20200)
+        p_sys->i_size = p_access->info.i_pos;
+#else
         p_access->info.i_size = p_access->info.i_pos;
+#endif
         p_access->info.b_eof = true;
     }
     return (p_block);
@@ -432,9 +458,12 @@ static int CCNSeek(access_t *p_access, uint64_t i_pos)
 static int
 CCNControl(access_t *p_access, int i_query, va_list args)
 {
+    access_sys_t *p_sys = p_access->p_sys;
     bool   *pb_bool;
     int64_t      *pi_64;
-    
+#if (VLCPLUGINVER >= 20200)
+    uint64_t      *pui_64;
+#endif    
     switch(i_query)
     {
         case ACCESS_CAN_SEEK:
@@ -443,11 +472,18 @@ CCNControl(access_t *p_access, int i_query, va_list args)
             *pb_bool = var_CreateGetBool(p_access, "ccn-streams-seekable");
             break;
             
-        case ACCESS_CAN_CONTROL_PACE:
         case ACCESS_CAN_PAUSE:
+        case ACCESS_CAN_CONTROL_PACE:
             pb_bool = (bool*)va_arg(args, bool *);
             *pb_bool = true;
             break;
+            
+#if (VLCPLUGINVER >= 20200)
+        case ACCESS_GET_SIZE:
+            pui_64 = (uint64_t*)va_arg(args, uint64_t *);
+            *pui_64 = p_sys->i_size;
+            break;
+#endif
             
         case ACCESS_GET_PTS_DELAY:
             pi_64 = (int64_t*)va_arg(args, int64_t *);

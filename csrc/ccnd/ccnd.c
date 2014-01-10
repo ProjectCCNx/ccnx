@@ -59,18 +59,10 @@
 #include <ccn/nametree.h>
 #include <ccn/schedule.h>
 #include <ccn/reg_mgmt.h>
+#include <ccn/strategy_mgmt.h>
 #include <ccn/uri.h>
 
 #include "ccnd_private.h"
-
-/** Ops for strategy callout */
-enum ccn_strategy_op {
-    CCNST_NOP,      /* no-operation */
-    CCNST_FIRST,    /* newly created interest entry (pit entry) */
-    CCNST_TIMER,    /* wakeup used by strategy */
-    CCNST_SATISFIED, /* matching content has arrived, pit entry will go away */
-    CCNST_TIMEOUT,  /* all downstreams timed out, pit entry will go away */
-};
 
 static void cleanup_at_exit(void);
 static void unlink_at_exit(const char *path);
@@ -144,16 +136,15 @@ update_npe_children(struct ccnd_handle *h, struct nameprefix_entry *npe, unsigne
 static void
 pfi_set_expiry_from_lifetime(struct ccnd_handle *h, struct interest_entry *ie,
                              struct pit_face_item *p, intmax_t lifetime);
-static void
-pfi_set_expiry_from_micros(struct ccnd_handle *h, struct interest_entry *ie,
-                           struct pit_face_item *p, unsigned micros);
 static struct pit_face_item *
 pfi_seek(struct ccnd_handle *h, struct interest_entry *ie,
          unsigned faceid, unsigned pfi_flag);
 static void strategy_callout(struct ccnd_handle *h,
                              struct interest_entry *ie,
-                             enum ccn_strategy_op op);
+                             enum ccn_strategy_op op,
+                             unsigned faceid);
 
+#ifndef CCND_WTHZ
 /**
  * Frequency of wrapped timer
  *
@@ -161,12 +152,24 @@ static void strategy_callout(struct ccnd_handle *h,
  * maximum supported interest lifetime, and making it too small makes the
  * timekeeping too coarse.
  */
-#define WTHZ 500U
+#define CCND_WTHZ 1000U
+#endif
 
+#define WTHZ ((unsigned)(CCND_WTHZ))
+
+#ifndef CCND_CACHE_MARGIN
 /**
  * Allow a few extra entries in the cache to allow for output queuing
  */
-#define CACHE_MARGIN 10
+#define CCND_CACHE_MARGIN 10
+#endif
+
+#ifndef CCND_MAX_MATCH_PROBES
+/**
+ * Maximum number of probes when searching the cache for a match
+ */
+#define CCND_MAX_MATCH_PROBES 50000
+#endif
 
 /**
  * Name of our unix-domain listener
@@ -306,6 +309,33 @@ struct face *
 ccnd_face_from_faceid(struct ccnd_handle *h, unsigned faceid)
 {
     return(face_from_faceid(h, faceid));
+}
+
+/** Accessor for faceid */
+unsigned
+face_faceid(struct face *face)
+{
+    if (face == NULL)
+        return(CCN_NO_FACEID);
+    return(face->faceid);
+}
+
+/** Accessor for number of pending interests received on a face */
+int
+face_pending_interests(struct face *face)
+{
+    if (face == NULL)
+        return(0);
+    return(face->pending_interests);
+}
+
+/** Accessor for number of outstanding interests sent on a face */
+int
+face_outstanding_interests(struct face *face)
+{
+    if (face == NULL)
+        return(0);
+    return(face->outstanding_interests);
 }
 
 /**
@@ -460,6 +490,12 @@ ccnd_close_fd(struct ccnd_handle *h, unsigned faceid, int *pfd)
             ccnd_msg(h, "closing fd %d while finalizing face %u", *pfd, faceid);
         *pfd = -1;
     }
+}
+
+uint32_t
+ccnd_random(struct ccnd_handle *h)
+{
+    return(nrand48(h->seed));
 }
 
 /**
@@ -671,8 +707,182 @@ finalize_face(struct hashtb_enumerator *e)
     }
     else if (face->faceid != CCN_NOFACEID)
         ccnd_msg(h, "orphaned face %u", face->faceid);
+    if (face->lfaceattrs != NULL) {
+        free(face->lfaceattrs);
+        face->lfaceattrs = NULL;
+        face->nlfaceattr = 0;
+    }
     for (m = 0; m < CCND_FACE_METER_N; m++)
         ccnd_meter_destroy(&face->meter[m]);
+}
+
+static int
+faceattr_index_lookup(struct ccnd_handle *h, const char *name, int singlebit)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct faceattr_index_entry *entry = NULL;
+    int i;
+    int res;
+    
+    hashtb_start(h->faceattr_index_tab, e);
+    res = hashtb_seek(e, (const void *)name, strlen(name), 1);
+    entry = e->data;
+    if (res == HT_OLD_ENTRY)
+        i = entry->fa_index;
+    else if (res == HT_NEW_ENTRY) {
+        i = 32;
+        if (singlebit) {
+            for (i = 0; i < 32; i++) {
+                if ((h->faceattr_packed & (1U << i)) == 0) {
+                    h->faceattr_packed |= (1U << i);
+                    break;
+                }
+            }
+        }
+        if (i == 32)
+            i += (h->nlfaceattr++);
+        entry->fa_index = i;
+    }
+    else
+        i = -1;
+    hashtb_end(e);
+    return(i);
+}
+
+int
+faceattr_index_from_name(struct ccnd_handle *h, const char *name)
+{
+    return(faceattr_index_lookup(h, name, 0));
+}
+
+int
+faceattr_bool_index_from_name(struct ccnd_handle *h, const char *name)
+{
+    return(faceattr_index_lookup(h, name, 1));
+}
+
+int
+faceattr_index_allocate(struct ccnd_handle *h)
+{
+    int ans;
+    int i;
+    char id[20];
+    
+    id[0] = 0;
+    i = 32 + h->nlfaceattr;
+    snprintf(id, sizeof(id), "_%d", i);
+    ans = faceattr_index_from_name(h, id);
+    if (ans >= 0 && ans != i) abort();
+    return(ans);
+}
+
+int
+faceattr_index_free(struct ccnd_handle *h, int faceattr_index)
+{
+    /*
+     * Doing a careful job of this could be done:
+     *
+     * 1. enumerate faceattr_index_tab, looking for the assigned index.
+     * 2. remove it, and keep track of the free index
+     * 3. enumerate faces, clearing the associated values
+     *
+     * since all of that is probably more involved than the rest of
+     * the faceattr handling code, for now we simple don't attempt to
+     * re-use the index.
+     */
+    return(0);
+}
+
+int
+faceattr_set(struct ccnd_handle *h, struct face *face, int faceattr_index, unsigned value)
+{
+    unsigned *x = NULL;
+
+    if (face == NULL)
+        return(-1);
+    if (faceattr_index < 0)
+        return(-1);
+    if (faceattr_index < 32) {
+        if (value & 1)
+            face->faceattr_packed |= ((unsigned)1 << faceattr_index);
+        else
+            face->faceattr_packed &= ~((unsigned)1 << faceattr_index);
+        return(0);
+    }
+    x = face->lfaceattrs;
+    if (faceattr_index - 32 >= face->nlfaceattr) {
+        if (faceattr_index - 32 >= h->nlfaceattr)
+            return(-1);
+        if (value == 0)
+            return(0);
+        x = realloc(x, sizeof(unsigned) * (faceattr_index - 32 + 1));
+        if (x == NULL)
+            return(-1);
+        while (faceattr_index - 32 >= face->nlfaceattr)
+            x[face->nlfaceattr++] = 0;
+        face->lfaceattrs = x;
+    }
+    x[faceattr_index - 32] = value;
+    return(0);
+}
+
+unsigned
+faceattr_get(struct ccnd_handle *h, struct face *face, int faceattr_index)
+{
+    if (face == NULL)
+        return(0);
+    if (faceattr_index < 0 || faceattr_index > 32 + face->nlfaceattr)
+        return(0);
+    if (faceattr_index < 32)
+        return((face->faceattr_packed >> faceattr_index) & 1);
+    return(face->lfaceattrs[faceattr_index - 32]);
+}
+
+unsigned
+faceattr_get_packed(struct ccnd_handle *h, struct face *face)
+{
+    if (face == NULL)
+        return(0);
+    return(face->faceattr_packed);
+}
+
+static void
+faceattr_declare(struct ccnd_handle *h, const char *name, int ndx)
+{
+    int res;
+    
+    if (ndx < 32)
+        res = faceattr_bool_index_from_name(h, name);
+    else
+        res = faceattr_index_from_name(h, name);
+    if (res != ndx)
+        abort();
+}
+
+const char *
+faceattr_next_name(struct ccnd_handle *h, const char *name)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    const char *next = NULL;
+    int res;
+
+    hashtb_start(h->faceattr_index_tab, e);
+    if (name == NULL)
+        next = (const char *)e->key;
+    else {
+        res = hashtb_seek(e, (const void *)name, strlen(name), 1);
+        if (res == HT_OLD_ENTRY) {
+            hashtb_next(e);
+            next = (const char *)e->key;
+        }
+        else if (res == HT_NEW_ENTRY) {
+            hashtb_delete(e);
+        }
+    }
+    hashtb_end(e);
+    return(next);
 }
 
 /**
@@ -994,6 +1204,8 @@ finalize_nameprefix(struct hashtb_enumerator *e)
         npe->forwarding = f->next;
         free(f);
     }
+    if (npe->si != NULL)
+        remove_strategy_instance(h, npe);
 }
 
 /**
@@ -1025,24 +1237,30 @@ finalize_interest(struct hashtb_enumerator *e)
 
     if (ie->ev != NULL)
         ccn_schedule_cancel(h->sched, ie->ev);
-    if (ie->strategy.ev != NULL)
-        ccn_schedule_cancel(h->sched, ie->strategy.ev);
+    if (ie->stev != NULL)
+        ccn_schedule_cancel(h->sched, ie->stev);
     if (ie->ll.next != NULL) {
         ie->ll.next->prev = ie->ll.prev;
         ie->ll.prev->next = ie->ll.next;
         ie->ll.next = ie->ll.prev = NULL;
         ie->ll.npe = NULL;
     }
-    for (p = ie->pfl; p != NULL; p = next) {
+    for (p = ie->strategy.pfl; p != NULL; p = next) {
         next = p->next;
         if ((p->pfi_flags & CCND_PFI_PENDING) != 0) {
             face = face_from_faceid(h, p->faceid);
             if (face != NULL)
                 face->pending_interests -= 1;
         }
+        if ((p->pfi_flags & CCND_PFI_UPENDING) != 0) {
+            face = face_from_faceid(h, p->faceid);
+            if (face != NULL)
+                face->outstanding_interests -= 1;
+        }
         free(p);
     }
-    ie->pfl = NULL;
+    ie->strategy.pfl = NULL;
+    ie->strategy.ie = NULL;
     ie->interest_msg = NULL; /* part of hashtb, don't free this */
 }
 
@@ -1254,7 +1472,7 @@ init_face_flags(struct ccnd_handle *h, struct face *face, int setflags)
         }
     }
     else if (addr->sa_family == AF_UNIX)
-        face->flags |= (CCN_FACE_GG | CCN_FACE_LOCAL);
+        face->flags |= CCN_FACE_LOCAL;
     face->flags |= setflags;
 }
 
@@ -1303,13 +1521,14 @@ record_connection(struct ccnd_handle *h, int fd,
  * @returns fd of new socket, or -1 for an error.
  */
 static int
-accept_connection(struct ccnd_handle *h, int listener_fd)
+accept_connection(struct ccnd_handle *h, int listener_fd, int listener_flags)
 {
     struct sockaddr_storage who;
     socklen_t wholen = sizeof(who);
     int fd;
     struct face *face;
 
+    listener_flags &= (CCN_FACE_LOCAL | CCN_FACE_INET | CCN_FACE_INET6);
     fd = accept(listener_fd, (struct sockaddr *)&who, &wholen);
     if (fd == -1) {
         ccnd_msg(h, "accept: %s", strerror(errno));
@@ -1317,7 +1536,7 @@ accept_connection(struct ccnd_handle *h, int listener_fd)
     }
     face = record_connection(h, fd,
                             (struct sockaddr *)&who, wholen,
-                            CCN_FACE_UNDECIDED);
+                            CCN_FACE_UNDECIDED | listener_flags);
     if (face == NULL)
         close_fd(&fd);
     else
@@ -1749,7 +1968,7 @@ is_pending_on(struct ccnd_handle *h, struct interest_entry *ie, unsigned faceid)
 {
     struct pit_face_item *x;
     
-    for (x = ie->pfl; x != NULL; x = x->next) {
+    for (x = ie->strategy.pfl; x != NULL; x = x->next) {
         if (x->faceid == faceid && (x->pfi_flags & CCND_PFI_PENDING) != 0)
             return(1);
         // XXX - depending on how list is ordered, an early out might be possible
@@ -1772,7 +1991,8 @@ consume_matching_interests(struct ccnd_handle *h,
                            struct nameprefix_entry *npe,
                            struct content_entry *content,
                            struct ccn_parsed_ContentObject *pc,
-                           struct face *face)
+                           struct face *face,
+                           struct face *content_face)
 {
     int matches = 0;
     struct ielinks *head;
@@ -1795,83 +2015,18 @@ consume_matching_interests(struct ccnd_handle *h,
             continue;
         if (ccn_content_matches_interest(content_msg, content_size, 1, pc,
                                          p->interest_msg, p->size, NULL)) {
-            for (x = p->pfl; x != NULL; x = x->next) {
+            if (content_face != NULL)
+                strategy_callout(h, p, CCNST_SATISFIED, content_face->faceid);
+            for (x = p->strategy.pfl; x != NULL; x = x->next) {
                 if ((x->pfi_flags & CCND_PFI_PENDING) != 0)
                     face_send_queue_insert(h, face_from_faceid(h, x->faceid),
                                            content);
             }
             matches += 1;
-            strategy_callout(h, p, CCNST_SATISFIED);
             consume_interest(h, p);
         }
     }
     return(matches);
-}
-
-/**
- * Adjust the predicted response associated with a name prefix entry.
- *
- * It is decreased by a small fraction if we get content within our
- * previous predicted value, and increased by a larger fraction if not.
- *
- */
-static void
-adjust_npe_predicted_response(struct ccnd_handle *h,
-                              struct nameprefix_entry *npe, int up)
-{
-    unsigned t = npe->usec;
-    if (up)
-        t = t + (t >> 3);
-    else
-        t = t - (t >> 7);
-    if (t < 127)
-        t = 127;
-    else if (t > h->predicted_response_limit)
-        t = h->predicted_response_limit;
-    npe->usec = t;
-}
-
-/**
- * Adjust the predicted responses for an interest.
- *
- * We adjust two npes, so that the parents are informed about activity
- * at the leaves.
- *
- */
-static void
-adjust_predicted_response(struct ccnd_handle *h,
-                          struct interest_entry *ie, int up)
-{
-    struct nameprefix_entry *npe;
-        
-    npe = ie->ll.npe;
-    if (npe == NULL)
-        return;
-    adjust_npe_predicted_response(h, npe, up);
-    if (npe->parent != NULL)
-        adjust_npe_predicted_response(h, npe->parent, up);
-}
-
-/**
- * Keep a little history about where matching content comes from.
- */
-static void
-note_content_from(struct ccnd_handle *h,
-                  struct nameprefix_entry *npe,
-                  unsigned from_faceid,
-                  int prefix_comps)
-{
-    if (npe->src == from_faceid)
-        adjust_npe_predicted_response(h, npe, 0);
-    else if (npe->src == CCN_NOFACEID)
-        npe->src = from_faceid;
-    else {
-        npe->osrc = npe->src;
-        npe->src = from_faceid;
-    }
-    if (h->debug & 8)
-        ccnd_msg(h, "sl.%d %u ci=%d osrc=%u src=%u usec=%d", __LINE__,
-                 from_faceid, prefix_comps, npe->osrc, npe->src, npe->usec);
 }
 
 /**
@@ -1892,7 +2047,6 @@ match_interests(struct ccnd_handle *h, struct content_entry *content,
     int n_matched = 0;
     int new_matches;
     int ci;
-    int cm = 0;
     struct ccn_charbuf *name = NULL;
     struct ccn_indexbuf *namecomps = NULL;
     unsigned c0 = 0;
@@ -1919,19 +2073,15 @@ match_interests(struct ccnd_handle *h, struct content_entry *content,
     name = NULL;
     indexbuf_release(h, namecomps);
     namecomps = NULL;
-    for (; npe != NULL; npe = npe->parent, ci--) {
+    for (; npe != NULL; npe = npe->parent) {
         if (npe->fgen != h->forward_to_gen)
             update_forward_to(h, npe);
         if (from_face != NULL && (npe->flags & CCN_FORW_LOCAL) != 0 &&
             (from_face->flags & CCN_FACE_GG) == 0)
             return(-1);
-        new_matches = consume_matching_interests(h, npe, content, pc, face);
-        if (from_face != NULL && (new_matches != 0 || ci + 1 == cm))
-            note_content_from(h, npe, from_face->faceid, ci);
-        if (new_matches != 0) {
-            cm = ci; /* update stats for this prefix and one shorter */
-            n_matched += new_matches;
-        }
+        new_matches = consume_matching_interests(h, npe, content, pc,
+                                                 face, from_face);
+        n_matched += new_matches;
     }
     return(n_matched);
 }
@@ -1962,7 +2112,7 @@ stuff_and_send(struct ccnd_handle *h, struct face *face,
     }
     else if (size2 != 0 || h->mtu > size1 + size2 ||
              (face->flags & (CCN_FACE_SEQOK | CCN_FACE_SEQPROBE)) != 0 ||
-             face->recvcount == 0) {
+             face->recvcount <= 1) {
         c = charbuf_obtain(h);
         ccn_charbuf_append(c, data1, size1);
         if (size2 != 0)
@@ -1999,7 +2149,7 @@ stuff_link_check(struct ccnd_handle *h,
     struct ccn_charbuf *ibuf = NULL;
     int res;
     int ans = 0;
-    if (face->recvcount > 0)
+    if (face->recvcount > 1)
         return(0);
     if ((face->flags & checkflags) != wantflags)
         return(0);
@@ -2261,13 +2411,14 @@ check_nameprefix_entries(struct ccnd_handle *h)
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     struct ielinks *head;
-    struct nameprefix_entry *npe;    
+    struct nameprefix_entry *npe;
     
     hashtb_start(h->nameprefix_tab, e);
     for (npe = e->data; npe != NULL; npe = e->data) {
-        if (  npe->src == CCN_NOFACEID &&
+        if ( (npe->sst.s[0] & CCN_AGED) != 0 &&
               npe->children == 0 &&
-              npe->forwarding == NULL) {
+              npe->forwarding == NULL &&
+              npe->si == NULL) {
             head = &npe->ie_head;
             if (head == head->next) {
                 count += 1;
@@ -2281,8 +2432,7 @@ check_nameprefix_entries(struct ccnd_handle *h)
         }
         check_forward_to(h, &npe->forward_to);
         check_forward_to(h, &npe->tap);
-        npe->osrc = npe->src;
-        npe->src = CCN_NOFACEID;
+        npe->sst.s[0] |= CCN_AGED;
         hashtb_next(e);
     }
     hashtb_end(e);
@@ -2606,8 +2756,10 @@ ccnd_nack(struct ccnd_handle *h, struct ccn_charbuf *reply_body,
     int res;
     reply_body->length = 0;
     res = ccn_encode_StatusResponse(reply_body, errcode, errtext);
-    if (res == 0)
+    if (res == 0) {
         res = CCN_CONTENT_NACK;
+        ccnd_msg(h, "nack status_code %d - %s", errcode, errtext);
+    }
     return(res);
 }
 
@@ -2699,7 +2851,7 @@ ccnd_req_newface(struct ccnd_handle *h,
     /* consider the source ... */
     reqface = face_from_faceid(h, h->interest_faceid);
     if (reqface == NULL ||
-        (reqface->flags & (CCN_FACE_LOOPBACK | CCN_FACE_LOCAL)) == 0)
+        (reqface->flags & CCN_FACE_GG) == 0)
         goto Finish;
     nackallowed = 1;
     res = check_face_instance_ccndid(h, face_instance, reply_body);
@@ -3104,10 +3256,178 @@ Finish:
 }
 
 /**
+ * Process a strategy selection request
+ *
+ * This is a request to set, remove, or get the strategy associated
+ * with a prefix.
+ */
+int
+ccnd_req_strategy(struct ccnd_handle *h,
+                  const unsigned char *msg, size_t size,
+                  const char *action,
+                  struct ccn_charbuf *reply_body)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct ccn_parsed_ContentObject pco = {0};
+    int reason = 0;
+    int res;
+    const unsigned char *req;
+    size_t req_size;
+    struct ccn_strategy_selection *strategy_selection = NULL;
+    struct strategy_instance *si = NULL;
+    const struct strategy_class *sclass = NULL;
+    struct nameprefix_entry *npe = NULL;
+    struct nameprefix_entry *p = NULL;
+    struct face *reqface = NULL;
+    struct ccn_indexbuf *comps = NULL;
+    int n = 0;
+    int nackallowed = 0;
+    
+    reason = __LINE__;
+    res = ccn_parse_ContentObject(msg, size, &pco, NULL);
+    if (res < 0)
+        goto Finish;
+    res = ccn_content_get_value(msg, size, &pco, &req, &req_size);
+    if (res < 0)
+        goto Finish;
+    res = -1;
+    reason = __LINE__;
+    strategy_selection = ccn_strategy_selection_parse(req, req_size);
+    if (strategy_selection == NULL || strategy_selection->action == NULL)
+        goto Finish;
+    /* consider the source ... */
+    reqface = face_from_faceid(h, h->interest_faceid);
+    if (reqface == NULL)
+        goto Finish;
+    if ((reqface->flags & (CCN_FACE_GG | CCN_FACE_REGOK)) == 0)
+        goto Finish;
+    nackallowed = 1;
+    
+    if (strategy_selection->name_prefix == NULL) {
+        reason = __LINE__;
+        goto Finish;
+    }
+    if (strategy_selection->ccnd_id_size == sizeof(h->ccnd_id)) {
+        if (memcmp(strategy_selection->ccnd_id,
+                   h->ccnd_id, sizeof(h->ccnd_id)) != 0) {
+            reason = __LINE__;
+            goto Finish;
+        }
+    }
+    else if (strategy_selection->ccnd_id_size != 0) {
+        reason = __LINE__;
+        goto Finish;
+    }
+    if (strcmp(strategy_selection->action, action) != 0) {
+        reason = __LINE__;
+        goto Finish;
+    }
+    /* All requests need a prefix to operate on; set it up here */
+    comps = ccn_indexbuf_create();
+    n = ccn_name_split(strategy_selection->name_prefix, comps);
+    if (n < 0) {
+        reason = __LINE__;
+        goto Finish;
+    }
+    reason = __LINE__;
+    hashtb_start(h->nameprefix_tab, e);
+    res = nameprefix_seek(h, e, strategy_selection->name_prefix->buf, comps, n);
+    npe = e->data;
+    hashtb_end(e);
+    if (npe == NULL || res < 0) {
+        reason = __LINE__;
+        goto Finish;
+    }
+    /* Handle the specific command */
+    if (strcmp(action, "setstrategy") == 0) {
+        if (strategy_selection->strategyid == NULL) {
+            reason = __LINE__;
+            goto Finish;
+        }
+        sclass = strategy_class_from_id(strategy_selection->strategyid);
+        if (sclass == NULL) {
+            reason = __LINE__;
+            goto Finish;
+        }
+        reason = __LINE__;
+        if (h->errbuf != NULL) abort();
+        si = create_strategy_instance(h, npe, sclass,
+                                      strategy_selection->parameters);
+        if (h->errbuf != NULL) {
+            remove_strategy_instance(h, npe);
+            si = NULL;
+        }
+    }
+    else if (strcmp(action, "getstrategy") == 0) {
+        reason = __LINE__;
+        si = get_strategy_instance(h, npe);
+    }
+    else if (strcmp(action, "removestrategy") == 0) {
+        reason = __LINE__;
+        remove_strategy_instance(h, npe);
+        si = get_strategy_instance(h, npe);
+    }
+    else abort(); /* bug in caller, not request */
+    if (si == NULL)
+        goto Finish;
+    /* We need to trim the prefix in the reply */
+    for (p = npe; p != NULL && n > 0; p = p->parent) {
+        if (p->si == si)
+            break;
+        n--;
+    }
+    res = ccn_name_chop(strategy_selection->name_prefix, comps, n);
+    if (res < 0) {
+        reason = __LINE__;
+        goto Finish;
+    }
+    strategy_selection->action = NULL;
+    strategy_selection->ccnd_id = h->ccnd_id;
+    strategy_selection->ccnd_id_size = sizeof(h->ccnd_id);
+    strategy_selection->strategyid = si->sclass->id;
+    strategy_selection->parameters = si->parameters;
+    strategy_selection->lifetime = -1; /* NYI */
+    res = ccnb_append_strategy_selection(reply_body, strategy_selection);
+    if (res > 0)
+        res = 0;
+Finish:
+    ccn_strategy_selection_destroy(&strategy_selection);
+    ccn_indexbuf_destroy(&comps);
+    if (nackallowed && si == NULL) {
+        struct ccn_charbuf *msg = ccn_charbuf_create();
+        ccn_charbuf_putf(msg, "could not process strategy req (l.%d)", reason);
+        if (h->errbuf != NULL)
+            ccn_charbuf_putf(msg, ": %s", ccn_charbuf_as_string(h->errbuf));
+        res = ccnd_nack(h, reply_body, 504, ccn_charbuf_as_string(msg));
+        ccn_charbuf_destroy(&msg);
+    }
+    ccn_charbuf_destroy(&h->errbuf);
+    return((nackallowed || res <= 0) ? res : -1);
+}
+
+/**
+ * Report a strategy initialization failure
+ */
+void
+strategy_init_error(struct ccnd_handle *h,
+                    struct strategy_instance *instance,
+                    const char *message)
+{
+    if (h->errbuf == NULL)
+        h->errbuf = ccn_charbuf_create();
+    else
+        ccn_charbuf_putf(h->errbuf, " / ");
+    ccn_charbuf_putf(h->errbuf, "%s", message);
+}
+
+/**
  * Set up forward_to list for a name prefix entry.
  *
  * Recomputes the contents of npe->forward_to and npe->flags
  * from forwarding lists of npe and all of its ancestors.
+ * 
+ * Also updates the tap, strategy_ix, and strategy_up fields of npe.
  */
 static void
 update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
@@ -3158,11 +3478,11 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
     if (lastfaceid != CCN_NOFACEID)
         ccn_indexbuf_move_to_end(x, lastfaceid);
     npe->flags = namespace_flags;
-    npe->fgen = h->forward_to_gen;
     if (x->n == 0)
         ccn_indexbuf_destroy(&npe->forward_to);
     ccn_indexbuf_destroy(&npe->tap);
     npe->tap = tap;
+    npe->fgen = h->forward_to_gen;
 }
 
 /**
@@ -3248,7 +3568,7 @@ ie_next_usec(struct ccnd_handle *h, struct interest_entry *ie,
     
     base = h->wtnow - horizon;
     mn = 600 * WTHZ + horizon;
-    for (p = ie->pfl; p != NULL; p = p->next) {
+    for (p = ie->strategy.pfl; p != NULL; p = p->next) {
         delta = p->expiry - base;
         if (delta >= 0x80000000 && (h->debug & 2) != 0)
             debug = 1;
@@ -3284,11 +3604,11 @@ ie_next_usec(struct ccnd_handle *h, struct interest_entry *ie,
 /**
  *  Forward an interest message
  *
- *  x is downstream (the interest came x).
+ *  x is downstream (the interest came from x).
  *  p is upstream (the interest is to be forwarded to p).
  *  @returns p (or its reallocated replacement).
  */
-static struct pit_face_item *
+struct pit_face_item *
 send_interest(struct ccnd_handle *h, struct interest_entry *ie,
               struct pit_face_item *x, struct pit_face_item *p)
 {
@@ -3318,7 +3638,10 @@ send_interest(struct ccnd_handle *h, struct interest_entry *ie,
         ccnb_append_tagged_blob(c, CCN_DTAG_Nonce, p->nonce, noncesize);
     ccnb_element_end(c);
     h->interests_sent += 1;
-    p->pfi_flags |= CCND_PFI_UPENDING;
+    if ((p->pfi_flags & CCND_PFI_UPENDING) == 0) {
+        p->pfi_flags |= CCND_PFI_UPENDING;
+        face->outstanding_interests += 1;
+    }
     p->pfi_flags &= ~(CCND_PFI_SENDUPST | CCND_PFI_UPHUNGRY);
     ccnd_meter_bump(h, face->meter[FM_INTO], 1);
     stuff_and_send(h, face, ie->interest_msg, ie->size - 1, c->buf, c->length, (h->debug & 2) ? "interest_to" : NULL, __LINE__);
@@ -3348,13 +3671,13 @@ strategy_timer(struct ccn_schedule *sched,
 {
     struct ccnd_handle *h = clienth;
     struct interest_entry *ie = ev->evdata;
-    struct ccn_strategy *s = &ie->strategy;
+    //struct ccn_strategy *s = &ie->strategy;
 
-    if (s->ev == ev)
-        s->ev = NULL;
+    if (ie->stev == ev)
+        ie->stev = NULL;
     if (flags & CCN_SCHEDULE_CANCEL)
         return(0);
-    strategy_callout(h, ie, (enum ccn_strategy_op)ev->evint);
+    strategy_callout(h, ie, (enum ccn_strategy_op)ev->evint, CCN_NOFACEID);
     return(0);
 }
 
@@ -3363,113 +3686,36 @@ strategy_timer(struct ccn_schedule *sched,
  *
  * Any previously wakeup will be cancelled.
  */
-static void
+void
 strategy_settimer(struct ccnd_handle *h, struct interest_entry *ie,
                   int usec, enum ccn_strategy_op op)
 {
-    struct ccn_strategy *s = &ie->strategy;
+    //struct ccn_strategy *s = &ie->strategy;
     
-    if (s->ev != NULL)
-        ccn_schedule_cancel(h->sched, s->ev);
+    if (ie->stev != NULL)
+        ccn_schedule_cancel(h->sched, ie->stev);
     if (op == CCNST_NOP)
         return;
-    s->ev = ccn_schedule_event(h->sched, usec, strategy_timer, ie, op);
+    ie->stev = ccn_schedule_event(h->sched, usec, strategy_timer, ie, op);
 }
 
 /**
- * This implements the default strategy.
- *
- * Eventually there will be a way to have other strategies.
+ * Return a pointer to the strategy state records for
+ * the name prefix of the given interest entry and up to k-1 parents.
  */
-static void
-strategy_callout(struct ccnd_handle *h,
-                 struct interest_entry *ie,
-                 enum ccn_strategy_op op)
+void
+strategy_getstate(struct ccnd_handle *h, struct ccn_strategy *s,
+                  struct nameprefix_state **sst, int k)
 {
-    struct pit_face_item *x = NULL;
-    struct pit_face_item *p = NULL;
     struct nameprefix_entry *npe = NULL;
-    struct ccn_indexbuf *tap = NULL;
-    unsigned best = CCN_NOFACEID;
-    unsigned randlow, randrange;
-    unsigned nleft;
-    unsigned amt;
-    int usec;
+    int i;
     
-    switch (op) {
-        case CCNST_NOP:
-            break;
-        case CCNST_FIRST:
-            
-            npe = get_fib_npe(h, ie);
-            if (npe != NULL)
-                tap = npe->tap;
-            npe = ie->ll.npe;
-            best = npe->src;
-            if (best == CCN_NOFACEID)
-                best = npe->src = npe->osrc;
-            /* Find our downstream; right now there should be just one. */
-            for (x = ie->pfl; x != NULL; x = x->next)
-                if ((x->pfi_flags & CCND_PFI_DNSTREAM) != 0)
-                    break;
-            if (x == NULL || (x->pfi_flags & CCND_PFI_PENDING) == 0) {
-                ccnd_debug_ccnb(h, __LINE__, "canthappen", NULL,
-                                ie->interest_msg, ie->size);
-                break;
-            }
-            if (best == CCN_NOFACEID) {
-                randlow = 4000;
-                randrange = 75000;
-            }
-            else {
-                randlow = npe->usec;
-                if (randlow < 2000)
-                    randlow = 100 + nrand48(h->seed) % 4096U;
-                randrange = (randlow + 1) / 2;
-            }
-            nleft = 0;
-            for (p = ie->pfl; p!= NULL; p = p->next) {
-                if ((p->pfi_flags & CCND_PFI_UPSTREAM) != 0) {
-                    if (p->faceid == best) {
-                        p = send_interest(h, ie, x, p);
-                        strategy_settimer(h, ie, npe->usec, CCNST_TIMER);
-                    }
-                    else if (ccn_indexbuf_member(tap, p->faceid) >= 0)
-                        p = send_interest(h, ie, x, p);
-                    else if (p->faceid == npe->osrc)
-                        pfi_set_expiry_from_micros(h, ie, p, randlow);
-                    else {
-                        /* Want to preserve the order of the rest */
-                        nleft++;
-                        p->pfi_flags |= CCND_PFI_SENDUPST;
-                    }
-                }
-            }
-            if (nleft > 0) {
-                /* Send remainder in order, with randomized timing */
-                amt = (2 * randrange + nleft - 1) / nleft;
-                if (amt == 0) amt = 1; /* paranoia - should never happen */
-                usec = randlow;
-                for (p = ie->pfl; p!= NULL; p = p->next) {
-                    if ((p->pfi_flags & CCND_PFI_SENDUPST) != 0) {
-                        pfi_set_expiry_from_micros(h, ie, p, usec);
-                        usec += nrand48(h->seed) % amt;
-                    }
-                }
-            }
-            break;
-        case CCNST_TIMER:
-            /*
-             * Our best choice has not responded in time.
-             * Increase the predicted response.
-             */
-            adjust_predicted_response(h, ie, 1);
-            break;
-        case CCNST_SATISFIED:
-            break;
-        case CCNST_TIMEOUT:
-            break;
-    }
+    if (s != NULL)
+        npe = s->ie->ll.npe;
+    for (i = 0; i < k && npe != NULL; i++, npe = npe->parent)
+        sst[i] = &npe->sst;
+    while (i < k)
+        sst[i++] = NULL;
 }
 
 /**
@@ -3492,7 +3738,7 @@ do_propagate(struct ccn_schedule *sched,
     int i;
     int n;
     int pending;
-    int upstreams;
+    int changes;
     unsigned life;
     unsigned mn;
     unsigned rem;
@@ -3506,10 +3752,11 @@ do_propagate(struct ccn_schedule *sched,
     mn = 600 * WTHZ; /* keep track of when we should wake up again */
     pending = 0;
     n = 0;
-    for (p = ie->pfl; p != NULL; p = next) {
+    for (p = ie->strategy.pfl; p != NULL; p = next) {
         next = p->next;
         if ((p->pfi_flags & CCND_PFI_DNSTREAM) != 0) {
             if (wt_compare(p->expiry, now) <= 0) {
+                strategy_callout(h, ie, CCNST_EXPDN, p->faceid);
                 if (h->debug & 2)
                     ccnd_debug_ccnb(h, __LINE__, "interest_expiry",
                                     face_from_faceid(h, p->faceid),
@@ -3535,9 +3782,9 @@ do_propagate(struct ccn_schedule *sched,
                 n++;
         }
     }
-    /* Send the interests out */
-    upstreams = 0; /* Count unexpired upstreams */
-    for (p = ie->pfl; p != NULL; p = next) {
+    /* Check the upstreams */
+    changes = 0;
+    for (p = ie->strategy.pfl; p != NULL; p = next) {
         next = p->next;
         if ((p->pfi_flags & CCND_PFI_UPSTREAM) == 0)
             continue;
@@ -3557,9 +3804,43 @@ do_propagate(struct ccn_schedule *sched,
             rem = p->expiry - now;
             if (rem < mn)
                 mn = rem;
-            upstreams++;
             continue;
         }
+        if ((p->pfi_flags & CCND_PFI_UPENDING) != 0) {
+            p->pfi_flags &= ~CCND_PFI_UPENDING;
+            face->outstanding_interests -= 1;
+            strategy_callout(h, ie, CCNST_EXPUP, p->faceid);
+        }
+        if ((p->pfi_flags & CCND_PFI_SENDUPST) != 0)
+            continue; /* strategy has already asked to send */
+        for (i = 0; i < n; i++)
+            if (d[i]->faceid != p->faceid)
+                break;
+        if (i < n) {
+            /* Strategy needs to make the decision, so mark it. */
+            changes++;
+            p->pfi_flags |= CCND_PFI_ATTENTION;
+            p->pfi_flags &= ~(CCND_PFI_UPHUNGRY | CCND_PFI_INACTIVE);
+            if (face->recvcount == 0 && (face->flags & CCN_FACE_DGRAM) != 0)
+                p->pfi_flags |= CCND_PFI_INACTIVE;
+        }
+        else {
+            /* Upstream expired, but we have nothing to feed it. */
+            p->pfi_flags |= CCND_PFI_UPHUNGRY;
+        }
+    }
+    if (changes != 0)
+        strategy_callout(h, ie, CCNST_UPDATE, CCN_NOFACEID);
+    for (p = ie->strategy.pfl; p != NULL; p = p->next) {
+        if ((p->pfi_flags & CCND_PFI_ATTENTION) != 0) {
+            ccnd_msg(h, "BUG: ccnd_%s_strategy_impl failed to clear "
+                        "CCND_PFI_ATTENTION",
+                        get_strategy_instance(h, ie->ll.npe)->sclass->id);
+            p->pfi_flags &= ~CCND_PFI_ATTENTION;
+        }
+        if ((p->pfi_flags & CCND_PFI_SENDUPST) == 0)
+            continue;
+        /* select a legitimate downstream */
         for (i = 0; i < n; i++)
             if (d[i]->faceid != p->faceid)
                 break;
@@ -3567,18 +3848,18 @@ do_propagate(struct ccn_schedule *sched,
             p = send_interest(h, ie, d[i], p);
             if (ie->ev != NULL)
                 ccn_schedule_cancel(h->sched, ie->ev);
-            upstreams++;
             rem = p->expiry - now;
             if (rem < mn)
                 mn = rem;
         }
-        else {
-            /* Upstream expired, but we have nothing to feed it. */
-            p->pfi_flags |= CCND_PFI_UPHUNGRY;
-        }
     }
-    if (pending == 0 && upstreams == 0) {
-        strategy_callout(h, ie, CCNST_TIMEOUT);
+    /* if we have some pending upstreams, stick around even if no downstreams */
+    for (p = ie->strategy.pfl; pending == 0 && p != NULL; p = p->next) {
+        if ((p->pfi_flags & CCND_PFI_UPENDING) != 0)
+            pending++;
+    }
+    if (pending == 0) {
+        strategy_callout(h, ie, CCNST_TIMEOUT, CCN_NOFACEID);
         consume_interest(h, ie);
         return(0);
     }
@@ -3690,13 +3971,18 @@ pfi_destroy(struct ccnd_handle *h, struct interest_entry *ie,
     struct face *face = NULL;
     struct pit_face_item **pp;
     
-    for (pp = &ie->pfl; *pp != p; pp = &(*pp)->next) {
+    for (pp = &ie->strategy.pfl; *pp != p; pp = &(*pp)->next) {
         if (*pp == NULL) abort();
     }
     if ((p->pfi_flags & CCND_PFI_PENDING) != 0) {
         face = face_from_faceid(h, p->faceid);
         if (face != NULL)
             face->pending_interests -= 1;
+    }
+    if ((p->pfi_flags & CCND_PFI_UPENDING) != 0) {
+        face = face_from_faceid(h, p->faceid);
+        if (face != NULL)
+            face->outstanding_interests -= 1;
     }
     *pp = p->next;
     free(p);
@@ -3715,7 +4001,7 @@ pfi_seek(struct ccnd_handle *h, struct interest_entry *ie,
     struct pit_face_item *p;
     struct pit_face_item **pp;
     
-    for (pp = &ie->pfl, p = ie->pfl; p != NULL; pp = &p->next, p = p->next) {
+    for (pp = &ie->strategy.pfl, p = ie->strategy.pfl; p != NULL; pp = &p->next, p = p->next) {
         if (p->faceid == faceid && (p->pfi_flags & pfi_flag) != 0)
             return(p);
     }
@@ -3742,7 +4028,7 @@ pfi_set_expiry_from_lifetime(struct ccnd_handle *h, struct interest_entry *ie,
 {
     ccn_wrappedtime delta;
     ccn_wrappedtime odelta;
-    int minlifetime = 4096 / 4;
+    int minlifetime = 4096 / 8;
     unsigned maxlifetime = 7 * 24 * 3600 * 4096U; /* one week */
     
     if (lifetime < minlifetime)
@@ -3763,7 +4049,7 @@ pfi_set_expiry_from_lifetime(struct ccnd_handle *h, struct interest_entry *ie,
  *
  * Does not set the renewed timestamp.
  */
-static void
+void
 pfi_set_expiry_from_micros(struct ccnd_handle *h, struct interest_entry *ie,
                            struct pit_face_item *p, unsigned micros)
 {
@@ -3848,11 +4134,40 @@ pfi_unique_nonce(struct ccnd_handle *h, struct interest_entry *ie,
     if (p == NULL)
         return(1);
     nsize = (p->pfi_flags & CCND_PFI_NONCESZ);
-    for (q = ie->pfl; q != NULL; q = q->next) {
+    for (q = ie->strategy.pfl; q != NULL; q = q->next) {
         if (q != p && pfi_nonce_matches(q, p->nonce, nsize))
             return(0);
     }
     return(1);
+}
+
+/**
+ * Send out a new interest to all the TAP registrations
+ */
+static void
+send_tap_interests(struct ccnd_handle *h, struct interest_entry *ie)
+{
+    struct nameprefix_entry *npe;
+    struct ccn_indexbuf *tap = NULL;
+    struct pit_face_item *x = NULL;
+    struct pit_face_item *p = NULL;
+
+    npe = get_fib_npe(h, ie);
+    if (npe == NULL) return;
+    tap = npe->tap;
+    if (tap == NULL) return;
+    /* Find our downstream; right now there should be just one. */
+    for (x = ie->strategy.pfl; x != NULL; x = x->next)
+        if ((x->pfi_flags & CCND_PFI_DNSTREAM) != 0)
+            break;
+    if (x == NULL || (x->pfi_flags & CCND_PFI_PENDING) == 0)
+        return;
+    for (p = ie->strategy.pfl; p!= NULL; p = p->next) {
+        if ((p->pfi_flags & CCND_PFI_UPSTREAM) != 0) {
+            if (ccn_indexbuf_member(tap, p->faceid) >= 0)
+                p = send_interest(h, ie, x, p);
+        }
+    }
 }
 
 /**
@@ -3890,6 +4205,7 @@ propagate_interest(struct ccnd_handle *h,
         ie->strategy.birth = h->wtnow;
         ie->strategy.renewed = h->wtnow;
         ie->strategy.renewals = 0;
+        ie->strategy.ie = ie;
     }
     if (ie->interest_msg == NULL) {
         struct ccn_parsed_interest xpi = {0};
@@ -3920,6 +4236,7 @@ propagate_interest(struct ccnd_handle *h,
     }
     p = pfi_seek(h, ie, faceid, CCND_PFI_DNSTREAM);
     p = pfi_set_nonce(h, ie, p, nonce, noncesize);
+    pfi_set_expiry_from_lifetime(h, ie, p, lifetime);
     if (nonce == cb || pfi_unique_nonce(h, ie, p)) {
         ie->strategy.renewed = h->wtnow;
         ie->strategy.renewals += 1;
@@ -3927,21 +4244,24 @@ propagate_interest(struct ccnd_handle *h,
             p->pfi_flags |= CCND_PFI_PENDING;
             face->pending_interests += 1;
         }
+        if (res == HT_OLD_ENTRY)
+            strategy_callout(h, ie, CCNST_REFRESH, faceid);
     }
     else {
         /* Nonce has been seen before; do not forward. */
         p->pfi_flags |= CCND_PFI_SUPDATA;
     }
-    pfi_set_expiry_from_lifetime(h, ie, p, lifetime);
     for (i = 0; i < outbound->n; i++) {
         p = pfi_seek(h, ie, outbound->buf[i], CCND_PFI_UPSTREAM);
-        if (wt_compare(p->expiry, h->wtnow) < 0) {
-            p->expiry = h->wtnow + 1; // ZZZZ - the +1 may be overkill here.
+        if ((p->pfi_flags & CCND_PFI_UPENDING) == 0) {
+            p->expiry = h->wtnow;
             p->pfi_flags &= ~CCND_PFI_UPHUNGRY;
         }
     }
-    if (res == HT_NEW_ENTRY)
-        strategy_callout(h, ie, CCNST_FIRST);
+    if (res == HT_NEW_ENTRY) {
+        send_tap_interests(h, ie);
+        strategy_callout(h, ie, CCNST_FIRST, faceid);
+    }
     usec = ie_next_usec(h, ie, &expiry);
     if (ie->ev != NULL && wt_compare(expiry + 2, ie->ev->evint) < 0)
         ccn_schedule_cancel(h->sched, ie->ev);
@@ -3974,7 +4294,7 @@ update_npe_children(struct ccnd_handle *h, struct nameprefix_entry *npe, unsigne
     for (ie = e->data; ie != NULL; ie = e->data) {
         for (x = ie->ll.npe; x != NULL; x = x->parent) {
             if (x == npe) {
-                for (fface = NULL, p = ie->pfl; p != NULL; p = p->next) {
+                for (fface = NULL, p = ie->strategy.pfl; p != NULL; p = p->next) {
                     if (p->faceid == faceid) {
                         if ((p->pfi_flags & CCND_PFI_UPSTREAM) != 0) {
                             fface = NULL;
@@ -3993,6 +4313,7 @@ update_npe_children(struct ccnd_handle *h, struct nameprefix_entry *npe, unsigne
                     for (i = 0; i < ob->n; i++) {
                         if (ob->buf[i] == faceid) {
                             p = pfi_seek(h, ie, faceid, CCND_PFI_UPSTREAM);
+                            // XXX - strategy callout should be able to control what happens next.
                             if ((p->pfi_flags & CCND_PFI_UPENDING) == 0) {
                                 p->expiry = h->wtnow + usec / (1000000 / WTHZ);
                                 usec += 200;
@@ -4023,6 +4344,7 @@ nameprefix_seek(struct ccnd_handle *h, struct hashtb_enumerator *e,
                 const unsigned char *msg, struct ccn_indexbuf *comps, int ncomps)
 {
     int i;
+    int j;
     int base;
     int res = -1;
     struct nameprefix_entry *parent = NULL;
@@ -4046,16 +4368,16 @@ nameprefix_seek(struct ccnd_handle *h, struct hashtb_enumerator *e,
             npe->forwarding = NULL;
             npe->fgen = h->forward_to_gen - 1;
             npe->forward_to = NULL;
+            npe->si = NULL;
             if (parent != NULL) {
                 parent->children++;
                 npe->flags = parent->flags;
-                npe->src = parent->src;
-                npe->osrc = parent->osrc;
-                npe->usec = parent->usec;
+                npe->sst = parent->sst;
+                // XXX - it might be a good idea to flag the copy
             }
             else {
-                npe->src = npe->osrc = CCN_NOFACEID;
-                npe->usec = (nrand48(h->seed) % 4096U) + 8192;
+                for (j = 0; j < CCND_STRATEGY_STATE_N; j++)
+                    npe->sst.s[j] = CCN_UNINIT;
             }
         }
         parent = npe;
@@ -4158,6 +4480,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
     struct nameprefix_entry *npe = NULL;
     struct content_entry *content = NULL;
     struct content_entry *last_match = NULL;
+    struct content_entry *next = NULL;
     struct ccn_charbuf *flatname = NULL;
     struct ccn_indexbuf *comps = indexbuf_obtain(h);
     if (size > 65535)
@@ -4238,8 +4561,16 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                 content = NULL;
             }
             for (try = 0; content != NULL; try++) {
-                if ((s_ok || !is_stale(h, content)) &&
-                    ccn_content_matches_interest(content->ccnb,
+                if (!s_ok && is_stale(h, content)) {
+                    next = content_next(h, content);
+                    if (content->refs == 0)
+                        remove_content(h, content);
+                    else
+                        try--;
+                    content = next;
+                    goto check_next_prefix;
+                }
+                if (ccn_content_matches_interest(content->ccnb,
                                        content->size,
                                        1, NULL, msg, size, pi)) {
                     if (h->debug & 8)
@@ -4253,7 +4584,9 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                 }
                 content = content_next(h, content);
             check_next_prefix:
-                if (content != NULL &&
+                if (try >= CCND_MAX_MATCH_PROBES)
+                    content = NULL;
+                else if (content != NULL &&
                     !content_matches_prefix(h, content, flatname)) {
                     if (h->debug & 8)
                         ccnd_debug_content(h, __LINE__, "prefix_mismatch", NULL,
@@ -4290,6 +4623,100 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
     }
     indexbuf_release(h, comps);
     ccn_charbuf_destroy(&flatname);
+}
+
+const struct strategy_class *
+strategy_class_from_id(const char *id)
+{
+    const struct strategy_class *sclass;
+
+    for (sclass = ccnd_strategy_classes; sclass->id[0] != 0; sclass++) {
+        if (strncmp(id, sclass->id, sizeof(sclass->id)) == 0)
+            return(sclass);
+    }
+    return(NULL);
+}
+
+struct strategy_instance *
+create_strategy_instance(struct ccnd_handle *h, struct nameprefix_entry *npe,
+                         const struct strategy_class *sclass,
+                         const char *parameters)
+{
+    struct strategy_instance *si = NULL;
+    char *space = NULL;
+    size_t size;
+    
+    if (parameters == NULL)
+        parameters = "";
+    size = strlen(parameters) + 1;
+    if (npe->si != NULL &&
+        npe->si->sclass == sclass &&
+        strcmp(npe->si->parameters, parameters) == 0)
+        return(npe->si); /* no change */
+    /* Use one allocation for si and parameters */
+    space = calloc(1, sizeof(*si) + size);
+    if (space == NULL)
+        return(NULL);
+    si = (void *)space;
+    memcpy(space + sizeof(*si), parameters, size);
+    if (npe->si != NULL)
+        remove_strategy_instance(h, npe);
+    si->sclass = sclass;
+    si->parameters = space + sizeof(*si);
+    si->npe = npe;
+    npe->si = si;
+    (si->sclass->callout)(h, si, NULL, CCNST_INIT, CCN_NOFACEID);
+    return(si);
+}
+
+void
+remove_strategy_instance(struct ccnd_handle *h,
+                         struct nameprefix_entry *npe)
+{
+    struct strategy_instance *si;
+    
+    si = npe->si;
+    if (si == NULL)
+        return;
+    if (si->npe != npe) abort();
+    (si->sclass->callout)(h, si, NULL, CCNST_FINALIZE, CCN_NOFACEID);
+    npe->si = NULL;
+    if (si->data != NULL) abort();  /* callout should have cleaned this */
+    free(si);
+}
+
+/**
+ * Search the nameprefix tree to find the strategy that is in effect.
+ */
+struct strategy_instance *
+get_strategy_instance(struct ccnd_handle *h,
+                      struct nameprefix_entry *npe)
+{
+    struct nameprefix_entry *p;
+    
+    for (p = npe; p != NULL; p = p->parent)
+        if (p->si != NULL)
+            return(p->si);
+    /* rarely, we need to provide the default on the root */
+    while (npe->parent != NULL)
+        npe = npe->parent;
+    return(create_strategy_instance(h, npe,
+               strategy_class_from_id("default"), NULL));
+}
+
+/**
+ * Call the strategy routine
+ */
+static void
+strategy_callout(struct ccnd_handle *h,
+                 struct interest_entry *ie,
+                 enum ccn_strategy_op op,
+                 unsigned faceid)
+{
+    struct strategy_instance *si;
+    
+    si = get_strategy_instance(h, ie->ll.npe);
+    (si->sclass->callout)(h, si, &ie->strategy, op, faceid);
 }
 
 /**
@@ -4438,7 +4865,7 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         }
     }
     if (h->content_tree->n >= h->content_tree->limit) {
-        if (h->content_tree->limit < h->capacity + CACHE_MARGIN)
+        if (h->content_tree->limit < h->capacity + CCND_CACHE_MARGIN)
             ccn_nametree_grow(h->content_tree);
     }
     ccn_flatname_append_from_ccnb(f, msg, size, 0, -1);
@@ -4467,7 +4894,8 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         }
         else {
             h->content_dups_recvd++;
-            ccnd_debug_content(h, __LINE__, "content_dup", face, content);
+            if (h->debug & 4)
+                ccnd_debug_content(h, __LINE__, "content_dup", face, content);
         }
         res = 0;
     }
@@ -4513,7 +4941,8 @@ Bail:
                 return;
             }
             if (n_matches == 0 && (face->flags & CCN_FACE_GG) == 0) {
-                ccnd_debug_ccnb(h, __LINE__, "content_unsolicted", face, msg, size);
+                if (h->debug & 4)
+                    ccnd_debug_content(h, __LINE__, "content_unsolicted", face, content);
                 mark_unsolicited(h, content);
             }
         }
@@ -4555,7 +4984,7 @@ process_input_message(struct ccnd_handle *h, struct face *face,
     
     if ((face->flags & CCN_FACE_UNDECIDED) != 0) {
         face->flags &= ~CCN_FACE_UNDECIDED;
-        if ((face->flags & CCN_FACE_LOOPBACK) != 0)
+        if ((face->flags & (CCN_FACE_LOOPBACK | CCN_FACE_LOCAL)) != 0)
             face->flags |= CCN_FACE_GG;
         /* YYY This is the first place that we know that an inbound stream face is speaking CCNx protocol. */
         register_new_face(h, face);
@@ -4775,7 +5204,7 @@ process_input(struct ccnd_handle *h, int fd)
     if (face == NULL)
         return;
     if ((face->flags & (CCN_FACE_DGRAM | CCN_FACE_PASSIVE)) == CCN_FACE_PASSIVE) {
-        accept_connection(h, fd);
+        accept_connection(h, fd, face->flags);
         check_comm_file(h);
         return;
     }
@@ -5612,6 +6041,8 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     param.finalize = &finalize_guest;
     h->guest_tab = hashtb_create(sizeof(struct guest_entry), &param);
     param.finalize = 0;
+    h->faceattr_index_tab = hashtb_create(sizeof(struct faceattr_index_entry),
+                                          &param);
     h->headx = calloc(1, sizeof(*h->headx));
     h->headx->staletime = -1;
     h->headx->nextx = h->headx->prevx = h->headx;
@@ -5711,15 +6142,20 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     /* Do keystore setup early, it takes a while the first time */
     ccnd_init_internal_keystore(h);
     ccnd_reseed(h);
+    faceattr_declare(h, "valid", FAI_VALID);
+    faceattr_declare(h, "application", FAI_APPLICATION);
+    faceattr_declare(h, "broadcastcapable", FAI_BROADCAST_CAPABLE);
+    faceattr_declare(h, "directcontrol", FAI_DIRECT_CONTROL);
     if (h->face0 == NULL) {
         struct face *face;
         face = calloc(1, sizeof(*face));
         face->recv_fd = -1;
         face->sendface = 0;
-        face->flags = (CCN_FACE_GG | CCN_FACE_LOCAL);
+        face->flags = CCN_FACE_GG;
         h->face0 = face;
     }
     enroll_face(h, h->face0);
+    ccnd_face_status_change(h, 0);
     fd = create_local_listener(h, sockname, 42);
     if (fd == -1)
         ccnd_msg(h, "%s: %s", sockname, strerror(errno));
@@ -5773,6 +6209,7 @@ ccnd_destroy(struct ccnd_handle **pccnd)
     hashtb_destroy(&h->interest_tab);
     hashtb_destroy(&h->nameprefix_tab);
     hashtb_destroy(&h->guest_tab);
+    hashtb_destroy(&h->faceattr_index_tab);
     if (h->fds != NULL) {
         free(h->fds);
         h->fds = NULL;

@@ -600,13 +600,13 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
                                                            CCN_DTAG_MinSuffixComponents);
         interest->offset[CCN_PI_E_MinSuffixComponents] = d->decoder.token_index;
         if (res >= 0)
-            interest->min_suffix_comps = res;
+            interest->min_suffix_comps = res < 32767 ? res : 32767;
         interest->offset[CCN_PI_B_MaxSuffixComponents] = d->decoder.token_index;
         res = ccn_parse_optional_tagged_nonNegativeInteger(d,
                                                            CCN_DTAG_MaxSuffixComponents);
         interest->offset[CCN_PI_E_MaxSuffixComponents] = d->decoder.token_index;
         if (res >= 0)
-            interest->max_suffix_comps = res;
+            interest->max_suffix_comps = res < 32767 ? res : 32767;
         if (interest->max_suffix_comps < interest->min_suffix_comps)
             return (d->decoder.state = -__LINE__);
         /* optional PublisherID */

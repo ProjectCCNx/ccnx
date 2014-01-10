@@ -31,11 +31,11 @@ static void
 usage(const char *progname)
 {
         fprintf(stderr,
-                "%s [-h] [-b 0<blocksize<=4096] [-r] [-o keystore-directory] [-d digest] [-p password] ccnx:/some/uri\n"
+                "%s [-h] [-b 0<blocksize<=%d] [-r] [-o keystore-directory] [-d digest] [-p password] ccnx:/some/uri\n"
                 "    Reads stdin, sending data under the given URI"
                 " using ccn versioning and segmentation.\n"
                 "    -h generate this help message.\n"
-                "    -b specify the block (segment) size for content objects.  Default 1024.\n"
+                "    -b specify the block (segment) size for content objects.  Default %d\n"
                 "    -r generate start-write interest so a repository will"
                 " store the content.\n"
                 "    -s n set scope of start-write interest.\n"
@@ -44,7 +44,7 @@ usage(const char *progname)
                 "    -o specify a directory for symmetric keystore\n"
                 "    -d specify a symmetric digest to use a symmetric key.\n"
                 "    -p specify a password for a symmetric keystore.\n",
-                progname);
+                progname, CCN_MAX_CONTENT_PAYLOAD, CCN_MAX_CONTENT_PAYLOAD / 2);
         exit(1);
 }
 /*
@@ -73,7 +73,7 @@ main(int argc, char **argv)
     struct ccn *ccn = NULL;
     struct ccn_charbuf *name = NULL;
     struct ccn_seqwriter *w = NULL;
-    int blocksize = 1024;
+    int blocksize = CCN_MAX_CONTENT_PAYLOAD / 2;
     int freshness = -1;
     int torepo = 0;
     int scope = 1;
@@ -92,7 +92,7 @@ main(int argc, char **argv)
         switch (res) {
             case 'b':
                 blocksize = atoi(optarg);
-                if (blocksize <= 0 || blocksize > 4096)
+                if (blocksize <= 0 || blocksize > CCN_MAX_CONTENT_PAYLOAD)
                     usage(progname);
                 break;
             case 'r':

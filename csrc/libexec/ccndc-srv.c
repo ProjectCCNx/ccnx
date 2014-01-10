@@ -4,7 +4,7 @@
  *
  * A CCNx program.
  *
- * Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -71,12 +71,14 @@ incoming_interest(struct ccn_closure *selfp,
 void
 ccndc_daemonize(struct ccndc_data *ccndc)
 {
-    struct ccn_closure interest_closure = { .p=&incoming_interest, .data = (void *)ccndc };
+    struct ccn_closure *interest_closure = calloc(1, sizeof(*interest_closure));
     struct ccn_charbuf *temp = ccn_charbuf_create();
     
     /* Set up a handler for interests */
+    interest_closure->p = &incoming_interest;
+    interest_closure->data = (void *)ccndc;
     ccn_name_from_uri(temp, "ccnx:/");
-    ccn_set_interest_filter_with_flags(ccndc->ccn_handle, temp, &interest_closure,
+    ccn_set_interest_filter_with_flags(ccndc->ccn_handle, temp, interest_closure,
                                        CCN_FORW_ACTIVE | CCN_FORW_CHILD_INHERIT | CCN_FORW_LAST);
     ccn_charbuf_destroy(&temp);
     
@@ -202,8 +204,7 @@ incoming_interest(struct ccn_closure *selfp,
                   enum ccn_upcall_kind kind,
                   struct ccn_upcall_info *info)
 {
-    const unsigned char *ccnb = info->interest_ccnb;
-    struct ccn_indexbuf *comps = info->interest_comps;
+    struct ccn_indexbuf *comps = NULL;
     const unsigned char *comp0 = NULL;
     size_t comp0_size = 0;
     int res;
@@ -213,11 +214,11 @@ incoming_interest(struct ccn_closure *selfp,
         return (CCN_UPCALL_RESULT_OK);
     if (kind != CCN_UPCALL_INTEREST)
         return (CCN_UPCALL_RESULT_ERR);
-    if (comps->n < 1)
+    if (info->interest_comps->n < 1)
         return (CCN_UPCALL_RESULT_OK);
     
-    
-    res = ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb, comps->buf[0], comps->buf[1],
+    comps = info->interest_comps;
+    res = ccn_ref_tagged_BLOB(CCN_DTAG_Component, info->interest_ccnb, comps->buf[0], comps->buf[1],
                               &comp0, &comp0_size);
     if (res < 0 || comp0_size > (NS_MAXDNAME - 12))
         return (CCN_UPCALL_RESULT_OK);

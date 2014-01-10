@@ -2953,6 +2953,14 @@ ccn_sign_content(struct ccn *h,
             ccnb_element_end(keylocator); /* </Key> */
             ccnb_element_end(keylocator); /* </KeyLocator> */
         }
+        if (res >= 0 && timestamp != NULL && timestamp->length > 0) {
+            /* ccn_signed_info_create() requires the ccnb BLOB token */
+            struct ccn_charbuf *c = ccn_charbuf_create();
+            ccn_charbuf_append_tt(c, timestamp->length, CCN_BLOB);
+            ccn_charbuf_append_charbuf(c, timestamp);
+            ccn_charbuf_destroy(&timestamp);
+            timestamp = c;
+        }
         if (res >= 0 && (p.sp_flags & CCN_SP_FINAL_BLOCK) != 0) {
             int ncomp;
             struct ccn_indexbuf *ndx;

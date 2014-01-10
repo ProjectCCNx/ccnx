@@ -964,6 +964,9 @@ ccnd_req_guest(struct ccn_closure *selfp,
 #define OP_SERVICE     0x0800
 #define OP_ADJACENCY   0x0900
 #define OP_GUEST       0x0A00
+#define OP_SETSTRATEGY 0x0B00
+#define OP_GETSTRATEGY 0x0C00
+#define OP_REMSTRATEGY 0x0D00
 
 /**
  * Common interest handler for ccnd_internal_client
@@ -987,6 +990,7 @@ ccnd_answer_req(struct ccn_closure *selfp,
     size_t final_size = 0;
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     struct face *face = NULL;
+    const char *v = NULL;
     
     switch (kind) {
         case CCN_UPCALL_FINAL:
@@ -1068,6 +1072,21 @@ ccnd_answer_req(struct ccn_closure *selfp,
         case OP_UNREG:
             reply_body = ccn_charbuf_create();
             res = ccnd_req_unreg(ccnd, final_comp, final_size, reply_body);
+            break;
+        case OP_SETSTRATEGY:
+            v = "setstrategy";
+            reply_body = ccn_charbuf_create();
+            res = ccnd_req_strategy(ccnd, final_comp, final_size, v, reply_body);
+            break;
+        case OP_GETSTRATEGY:
+            v = "getstrategy";
+            reply_body = ccn_charbuf_create();
+            res = ccnd_req_strategy(ccnd, final_comp, final_size, v, reply_body);
+            break;
+        case OP_REMSTRATEGY:
+            v = "removestrategy";
+            reply_body = ccn_charbuf_create();
+            res = ccnd_req_strategy(ccnd, final_comp, final_size, v, reply_body);
             break;
         case OP_NOTICE:
             ccnd_start_notice(ccnd);
@@ -1458,6 +1477,34 @@ ccnd_notice_push(struct ccn_schedule *sched,
 }
 
 /**
+ *  Fix up any builtin face attributes that may have changed
+ */
+static void
+adjust_builtin_faceattr(struct ccnd_handle *h, unsigned faceid)
+{
+    struct face *face;
+    unsigned clear;
+    unsigned set;
+    unsigned checkflags;
+    
+    face = ccnd_face_from_faceid(h, faceid);
+    if (face == NULL)
+        return;
+    clear = FAM_VALID | FAM_APP | FAM_BCAST | FAM_DC;
+    set = 0;
+    checkflags = CCN_FACE_UNDECIDED | CCN_FACE_PASSIVE | CCN_FACE_NOSEND;
+    if ((face->flags & checkflags) == 0)
+        set |= FAM_VALID;
+    if ((face->flags & CCN_FACE_GG) != 0)
+        set |= FAM_APP;
+    if ((face->flags & CCN_FACE_MCAST) != 0)
+        set |= FAM_BCAST;
+    if ((face->flags & CCN_FACE_DC) != 0)
+        set |= FAM_DC;
+    face->faceattr_packed = (face->faceattr_packed & ~clear) | set;
+}
+
+/**
  * Called by ccnd when a face undergoes a substantive status change that
  * should be reported to interested parties.
  *
@@ -1469,6 +1516,7 @@ ccnd_face_status_change(struct ccnd_handle *ccnd, unsigned faceid)
 {
     struct ccn_indexbuf *chface = ccnd->chface;
     
+    adjust_builtin_faceattr(ccnd, faceid);
     if (chface != NULL) {
         ccn_indexbuf_set_insert(chface, faceid);
         if (ccnd->notice_push == NULL)
@@ -1541,6 +1589,14 @@ ccnd_internal_client_start(struct ccnd_handle *ccnd)
                     &ccnd_answer_req, OP_SELFREG + MUST_VERIFY1);
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/unreg",
                     &ccnd_answer_req, OP_UNREG + MUST_VERIFY1);
+    
+    ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/setstrategy",
+                    &ccnd_answer_req, MUST_VERIFY1 + OP_SETSTRATEGY);
+    ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/getstrategy",
+                    &ccnd_answer_req, MUST_VERIFY1 + OP_GETSTRATEGY);
+    ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/removestrategy",
+                    &ccnd_answer_req, MUST_VERIFY1 + OP_REMSTRATEGY);
+    
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/" CCND_NOTICE_NAME,
                     &ccnd_answer_req, OP_NOTICE);
     ccnd_uri_listen(ccnd, "ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnd",
