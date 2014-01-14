@@ -113,6 +113,35 @@ OPTIONS
       SRV lookup using the default DNS search rules.  Queries _ccnx._tcp and
       _ccnx._udp.
 
+PREDEFINED STRATEGIES
+---------------------
+
+*default*::
+	Prefers the fastest responding face, and performs experiments to determine if other
+	faces can provide faster response.  This strategy also operates efficiently in environments
+	where link quality changes or a face becomes unresponsive, but does not make use of
+	multiple paths or sources.
+
+*loadsharing*::
+	Distributes Interests amongst the available faces based on the unanswered queue size.
+	This strategy operates most efficiently when there are multiple physical interfaces
+	and the network is the limiting performance factor.  Because it sends each interest to
+	a single face, it is not recommended for chat-like or discovery applications,
+	or in the presence of lossy links.
+
+*parallel*::
+	Sends Interests to all available faces in parallel.  This strategy attempts to mask
+	unstable links or poorly performing faces by redundantly sending Interests.
+	This increases the overall network load and local processing overhead, and is not
+	recommended when the links are of high quality.
+
+*trace*::
+	Produces log output that is useful during the development of a new strategy.
+	The first portion of the parameter string (before the first occurance of a slash)
+        is the name of the traced strategy.  The remainder (after this slash) forms the
+	traced strategy’s parameter string.
+
+
 CONFIGURATION FILE
 ------------------
 
