@@ -22,6 +22,7 @@ LOCAL_C_INCLUDES	+= $(LOCAL_PATH)/../include
 LOCAL_C_INCLUDES	+= $(LOCAL_PATH)/../../android/external/openssl-armv5/include
 
 # android_obj.mk is generated, and defines CCNDOBJ
+include jni/csrc/ccnd/android_obj.mk
 CCNDSRC := $(CCNDOBJ:.o=.c)
 
 LOCAL_SRC_FILES := $(CCNDSRC)
