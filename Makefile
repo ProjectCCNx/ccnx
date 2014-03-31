@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009-2013 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2014 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -94,7 +94,7 @@ distfile: tar
 	mkdir ccnx-$(VERSION)
 	( cd ccnx-$(VERSION) && tar xf ../ccnx.tar && $(MAKE) fixupversions VERSION=$(VERSION) && $(MAKE) MD5 SHA1 )
 	# Build the documentation
-	( cd ccnx-$(VERSION) && $(MAKE) dist-docs 2>&1) > ccnx-$(VERSION)-documentation.log
+	( cd ccnx-$(VERSION) && ./configure && $(MAKE) dist-docs 2>&1) > ccnx-$(VERSION)-documentation.log
 	tar cf ccnx-$(VERSION).tar ccnx-$(VERSION)
 	gzip -9 ccnx-$(VERSION).tar
 	ls -l ccnx-$(VERSION).tar.gz
