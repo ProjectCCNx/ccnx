@@ -93,8 +93,10 @@ distfile: tar
 	# fail on the next step if the directory already exists
 	mkdir ccnx-$(VERSION)
 	( cd ccnx-$(VERSION) && tar xf ../ccnx.tar && $(MAKE) fixupversions VERSION=$(VERSION) && $(MAKE) MD5 SHA1 )
+	: > ccnx-$(VERSION)/csrc/conf.mk
 	# Build the documentation
-	( cd ccnx-$(VERSION) && ./configure && $(MAKE) dist-docs 2>&1) > ccnx-$(VERSION)-documentation.log
+	( cd ccnx-$(VERSION) && $(MAKE) dist-docs 2>&1) > ccnx-$(VERSION)-documentation.log
+	rm ccnx-$(VERSION)/csrc/conf.mk
 	tar cf ccnx-$(VERSION).tar ccnx-$(VERSION)
 	gzip -9 ccnx-$(VERSION).tar
 	ls -l ccnx-$(VERSION).tar.gz
