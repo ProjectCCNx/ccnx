@@ -29,6 +29,6 @@ if [ "x$udp_face_info" = "x" -o "x$local_prefix" = "x" ]; then
    exit 1
 fi
 
-echo $udp_face_info | ccnseqwriter -c 1 -r -x 5 "/local/ndn/udp"
-echo $local_prefix  | ccnseqwriter -c 1 -r -x 5 "/local/ndn/prefix"
+echo $udp_face_info | ccnseqwriter -s 1 -r -x 5 "/local/ndn/udp"
+echo $local_prefix  | ccnseqwriter -s 1 -r -x 5 "/local/ndn/prefix"
 
